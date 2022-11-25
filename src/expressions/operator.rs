@@ -1,11 +1,13 @@
+use std::fmt::Display;
+
 use serde_json::{Number, Value};
 
 use super::{
-    base::{Expression, ExpressionExecutionState},
+    base::{get_number_from_value, Expression, ExpressionExecutionState},
     transform_error::TransformError,
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Operator {
     Plus,
     Minus,
@@ -13,16 +15,37 @@ pub enum Operator {
     Divide,
 }
 
-struct OpExpression {
+impl Display for Operator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Operator::Plus => write!(f, "+"),
+            Operator::Minus => write!(f, "-"),
+            Operator::Multiply => write!(f, "*"),
+            Operator::Divide => write!(f, "/"),
+        }
+    }
+}
+
+pub struct OpExpression {
     operator: Operator,
     descriptor: String,
     elements: [Box<dyn Expression>; 2],
 }
 
+impl Display for OpExpression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "({} {} {})",
+            self.elements[0], self.operator, self.elements[1]
+        )
+    }
+}
+
 impl Expression for OpExpression {
     fn resolve(&self, state: &ExpressionExecutionState) -> Result<Value, TransformError> {
-        let lhs = self.get_number_from_value(self.elements[0].resolve(state)?)?;
-        let rhs = self.get_number_from_value(self.elements[1].resolve(state)?)?;
+        let lhs = get_number_from_value(&self.descriptor, self.elements[0].resolve(state)?)?;
+        let rhs = get_number_from_value(&self.descriptor, self.elements[1].resolve(state)?)?;
 
         let res = match &self.operator {
             Operator::Plus => lhs + rhs,
@@ -40,22 +63,11 @@ impl Expression for OpExpression {
 }
 
 impl OpExpression {
-    fn get_number_from_value(&self, val: Value) -> Result<f64, TransformError> {
-        let v = match val {
-            Value::Number(n) => n,
-            _ => {
-                return Err(TransformError::new_incorrect_type(
-                    &self.descriptor,
-                    "number",
-                    &val,
-                ))
-            }
-        };
-        return v.as_f64().ok_or_else(|| {
-            TransformError::ConversionFailed(format!(
-                "Failed to convert field into number for operator {}",
-                &self.descriptor
-            ))
-        });
+    pub fn new(op: Operator, lhs: Box<dyn Expression>, rhs: Box<dyn Expression>) -> Self {
+        Self {
+            operator: op,
+            descriptor: "".to_string(), //TODO: Make this actually useful
+            elements: [lhs, rhs],
+        }
     }
 }

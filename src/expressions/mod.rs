@@ -1,6 +1,10 @@
 mod base;
+mod function;
 mod operator;
 mod selector;
 mod transform_error;
 
-pub use operator::Operator;
+pub use base::{Constant, Expression};
+pub use function::{FunctionExpression, PowFunction};
+pub use operator::{OpExpression, Operator};
+pub use selector::SelectorExpression;

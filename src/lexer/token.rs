@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use logos::{Lexer, Logos};
 
 use crate::expressions::Operator;
@@ -27,7 +29,7 @@ fn parse_bare_string(lexer: &mut Lexer<Token>) -> String {
 }
 
 #[derive(Logos, Debug, PartialEq)]
-enum Token {
+pub enum Token {
     #[token(".")]
     Period,
 
@@ -63,6 +65,23 @@ enum Token {
     #[error]
     #[regex(r"[ \t\n\f]+", logos::skip)]
     Error,
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::Period => write!(f, "."),
+            Token::OpenParenthesis => write!(f, "("),
+            Token::CloseParenthesis => write!(f, ")"),
+            Token::Comma => write!(f, ","),
+            Token::Number(x) => write!(f, "{}", x),
+            Token::Operator(x) => write!(f, "{}", x),
+            Token::String(x) => write!(f, "\"{}\"", x),
+            Token::BareString(x) => write!(f, "`{}`", x),
+            Token::SelectorStart => write!(f, "$"),
+            Token::Error => Ok(()),
+        }
+    }
 }
 
 #[cfg(test)]

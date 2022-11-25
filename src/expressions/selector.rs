@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use serde_json::Value;
 
 use super::{
@@ -5,9 +7,19 @@ use super::{
     transform_error::TransformError,
 };
 
-struct SelectorExpression {
+pub struct SelectorExpression {
     source: String,
     path: Vec<String>,
+}
+
+impl Display for SelectorExpression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "${}", self.source)?;
+        for el in &self.path {
+            write!(f, ".{}", el)?;
+        }
+        Ok(())
+    }
 }
 
 impl Expression for SelectorExpression {
@@ -23,5 +35,11 @@ impl Expression for SelectorExpression {
             }
         }
         Ok(elem.clone())
+    }
+}
+
+impl SelectorExpression {
+    pub fn new(source: String, path: Vec<String>) -> Self {
+        Self { source, path }
     }
 }

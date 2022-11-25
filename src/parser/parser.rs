@@ -1,0 +1,218 @@
+use logos::Lexer;
+
+use crate::{
+    expressions::{
+        Constant, Expression, FunctionExpression, OpExpression, PowFunction, SelectorExpression,
+    },
+    lexer::Token,
+};
+
+use super::parse_error::ParserError;
+
+enum ParserState {
+    Start,
+    End,
+}
+
+struct Parser<'source> {
+    tokens: Lexer<'source, Token>,
+    state: ParserState,
+    pos: usize,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum ExprTerminator {
+    Comma,
+    CloseParenthesis,
+    End,
+}
+
+fn get_function_expression(
+    pos: usize,
+    name: &str,
+    args: Vec<Box<dyn Expression>>,
+) -> Result<Box<dyn Expression>, ParserError> {
+    let info = match name {
+        "pow" => PowFunction::INFO,
+        _ => return Err(ParserError::incorrect_symbol(pos, name.to_string())),
+    };
+
+    if !info.validate(args.len()) {
+        return Err(ParserError::n_function_args(pos, &info.num_args_desc()));
+    }
+
+    let expr = match info.name {
+        "pow" => {
+            let mut iter = args.into_iter();
+            PowFunction::new(iter.next().unwrap(), iter.next().unwrap())
+        }
+        _ => unreachable!(),
+    };
+    Ok(Box::new(expr))
+}
+
+impl<'source> Parser<'source> {
+    pub fn new(stream: Lexer<'source, Token>) -> Self {
+        Self {
+            tokens: stream,
+            state: ParserState::Start,
+            pos: 0,
+        }
+    }
+
+    pub fn parse(&mut self) -> Result<Box<dyn Expression>, ParserError> {
+        let (expr, term) = self.parse_expression()?;
+        if term == ExprTerminator::End {
+            Ok(expr)
+        } else {
+            Err(ParserError::empty_expression(self.pos))
+        }
+    }
+
+    fn parse_expression(&mut self) -> Result<(Box<dyn Expression>, ExprTerminator), ParserError> {
+        let start = self.pos;
+        let mut exprs = vec![];
+        self.pos += self.tokens.slice().len();
+        let mut token = match self.tokens.next() {
+            Some(x) => x,
+            None => return Err(ParserError::empty_expression(self.pos)),
+        };
+        let term = loop {
+            println!("Investigate symbol {}", token.to_string());
+            match token {
+                Token::Period => {
+                    return Err(ParserError::incorrect_symbol(self.pos, token.to_string()))
+                }
+                Token::Comma => break ExprTerminator::Comma,
+                Token::Error => {
+                    return Err(ParserError::incorrect_symbol(self.pos, token.to_string()))
+                }
+                Token::Operator(o) => {
+                    if exprs.len() != 1 {
+                        return Err(ParserError::invalid_expr(start, "Expected operator"));
+                    }
+                    let lhs = exprs.drain(..).next().unwrap();
+                    let (rhs, term) = self.parse_expression()?;
+                    let expr = OpExpression::new(o, lhs, rhs);
+                    exprs.push(Box::new(expr));
+                    break term;
+                }
+                Token::OpenParenthesis => {
+                    let (expr, term) = self.parse_expression()?;
+                    match term {
+                        ExprTerminator::CloseParenthesis => (),
+                        _ => return Err(ParserError::expected_symbol(self.pos, ")")),
+                    }
+                    exprs.push(expr)
+                }
+                Token::CloseParenthesis => break ExprTerminator::CloseParenthesis,
+                Token::Number(n) => {
+                    exprs.push(Box::new(Constant::try_new_f64(n).ok_or_else(|| {
+                        ParserError::incorrect_symbol(self.pos, token.to_string())
+                    })?))
+                }
+                Token::String(ref s) => exprs.push(Box::new(Constant::try_new_string(s.clone()))),
+                Token::BareString(f) => {
+                    self.pos += self.tokens.slice().len();
+                    token = match self.tokens.next() {
+                        Some(x) => x,
+                        None => return Err(ParserError::empty_expression(self.pos)),
+                    };
+                    match token {
+                        Token::OpenParenthesis => (),
+                        _ => {
+                            return Err(ParserError::incorrect_symbol(self.pos, token.to_string()));
+                        }
+                    }
+                    let mut args = vec![];
+                    loop {
+                        let (expr, term) = self.parse_expression()?;
+                        args.push(expr);
+                        match term {
+                            ExprTerminator::CloseParenthesis => break,
+                            ExprTerminator::End => {
+                                return Err(ParserError::empty_expression(self.pos))
+                            }
+                            ExprTerminator::Comma => (),
+                        }
+                    }
+                    let func = get_function_expression(self.pos, &f, args)?;
+                    exprs.push(func);
+                }
+                Token::SelectorStart => {
+                    let (expr, next) = self.parse_selector()?;
+                    exprs.push(Box::new(expr));
+                    self.pos += self.tokens.slice().len();
+                    match next {
+                        Some(x) => token = x,
+                        None => break ExprTerminator::End,
+                    }
+                    continue;
+                }
+            }
+            self.pos += self.tokens.slice().len();
+            token = match self.tokens.next() {
+                Some(x) => x,
+                None => break ExprTerminator::End,
+            };
+        };
+
+        if exprs.len() != 1 {
+            return Err(ParserError::empty_expression(self.pos));
+        }
+        let expr = exprs.drain(..).next().unwrap();
+        Ok((expr, term))
+    }
+
+    fn parse_selector(&mut self) -> Result<(SelectorExpression, Option<Token>), ParserError> {
+        let mut path = vec![];
+        let final_token = loop {
+            self.pos += self.tokens.slice().len();
+            let next = match self.tokens.next() {
+                Some(x) => x,
+                None => break None,
+            };
+            println!("Investigate selector symbol {}", next);
+            match next {
+                Token::BareString(s) => path.push(s),
+                _ => return Err(ParserError::incorrect_symbol(self.pos, next.to_string())),
+            }
+            self.pos += self.tokens.slice().len();
+            let next = match self.tokens.next() {
+                Some(x) => x,
+                None => break None,
+            };
+            match next {
+                Token::Period => (),
+                _ => break Some(next),
+            }
+        };
+        if path.is_empty() {
+            return Err(ParserError::empty_expression(
+                self.pos - self.tokens.slice().len(),
+            ));
+        }
+        let expr = SelectorExpression::new(path.remove(0), path);
+        println!("Got selector {}", expr.to_string());
+        Ok((expr, final_token))
+    }
+}
+
+#[cfg(test)]
+pub mod test {
+    use logos::Logos;
+
+    use crate::lexer::Token;
+
+    use super::Parser;
+
+    #[test]
+    pub fn test_parser() {
+        let mut lex = Token::lexer("(123 + $id.elem) * 321 + (321 * 123) - $id + pow(1, 2)");
+
+        let res = Parser::new(lex).parse().unwrap();
+
+        println!("{}", res);
+        panic!("test");
+    }
+}
