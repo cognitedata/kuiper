@@ -2,7 +2,11 @@ use std::{fmt::Display, ops::Range};
 
 use serde_json::{Number, Value};
 
-use super::{base::get_number_from_value, transform_error::TransformError, Expression};
+use super::{
+    base::{get_number_from_value, ExpressionType},
+    transform_error::TransformError,
+    Expression,
+};
 
 pub struct FunctionInfo {
     pub minargs: usize,
@@ -40,13 +44,16 @@ pub trait FunctionExpression: Expression {
 }
 
 pub struct PowFunction {
-    base: Box<dyn Expression>,
-    exponent: Box<dyn Expression>,
+    base: Box<ExpressionType>,
+    exponent: Box<ExpressionType>,
 }
 
 impl PowFunction {
-    pub fn new(base: Box<dyn Expression>, exponent: Box<dyn Expression>) -> Self {
-        Self { base, exponent }
+    pub fn new(base: ExpressionType, exponent: ExpressionType) -> Self {
+        Self {
+            base: Box::new(base),
+            exponent: Box::new(exponent),
+        }
     }
 }
 

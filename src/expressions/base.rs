@@ -2,7 +2,7 @@ use std::{collections::HashMap, fmt::Display};
 
 use serde_json::{Number, Value};
 
-use super::transform_error::TransformError;
+use super::{transform_error::TransformError, OpExpression, PowFunction, SelectorExpression};
 
 pub struct ExpressionExecutionState {
     pub data: HashMap<String, Value>,
@@ -10,6 +10,55 @@ pub struct ExpressionExecutionState {
 
 pub trait Expression: Display {
     fn resolve(&self, state: &ExpressionExecutionState) -> Result<Value, TransformError>;
+}
+
+pub enum FunctionType {
+    Pow(PowFunction),
+}
+
+pub enum ExpressionType {
+    Constant(Constant),
+    Operator(OpExpression),
+    Selector(SelectorExpression),
+    Function(FunctionType),
+}
+
+impl Display for ExpressionType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ExpressionType::Constant(e) => e.fmt(f),
+            ExpressionType::Operator(e) => e.fmt(f),
+            ExpressionType::Selector(e) => e.fmt(f),
+            ExpressionType::Function(e) => e.fmt(f),
+        }
+    }
+}
+
+impl Expression for ExpressionType {
+    fn resolve(&self, state: &ExpressionExecutionState) -> Result<Value, TransformError> {
+        match self {
+            ExpressionType::Constant(e) => e.resolve(state),
+            ExpressionType::Operator(e) => e.resolve(state),
+            ExpressionType::Selector(e) => e.resolve(state),
+            ExpressionType::Function(e) => e.resolve(state),
+        }
+    }
+}
+
+impl Display for FunctionType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Pow(p) => p.fmt(f),
+        }
+    }
+}
+
+impl Expression for FunctionType {
+    fn resolve(&self, state: &ExpressionExecutionState) -> Result<Value, TransformError> {
+        match self {
+            Self::Pow(p) => p.resolve(state),
+        }
+    }
 }
 
 pub struct Constant {

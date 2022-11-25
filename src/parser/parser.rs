@@ -2,7 +2,8 @@ use logos::{Lexer, Span};
 
 use crate::{
     expressions::{
-        Constant, Expression, FunctionExpression, OpExpression, PowFunction, SelectorExpression,
+        Constant, Expression, ExpressionType, FunctionExpression, FunctionType, OpExpression,
+        PowFunction, SelectorExpression,
     },
     lexer::Token,
 };
@@ -30,8 +31,8 @@ enum ExprTerminator {
 fn get_function_expression(
     pos: Span,
     name: &str,
-    args: Vec<Box<dyn Expression>>,
-) -> Result<Box<dyn Expression>, ParserError> {
+    args: Vec<ExpressionType>,
+) -> Result<ExpressionType, ParserError> {
     let info = match name {
         "pow" => PowFunction::INFO,
         _ => return Err(ParserError::incorrect_symbol(pos, name.to_string())),
@@ -44,11 +45,11 @@ fn get_function_expression(
     let expr = match info.name {
         "pow" => {
             let mut iter = args.into_iter();
-            PowFunction::new(iter.next().unwrap(), iter.next().unwrap())
+            FunctionType::Pow(PowFunction::new(iter.next().unwrap(), iter.next().unwrap()))
         }
         _ => unreachable!(),
     };
-    Ok(Box::new(expr))
+    Ok(ExpressionType::Function(expr))
 }
 
 impl<'source> Parser<'source> {
@@ -60,7 +61,7 @@ impl<'source> Parser<'source> {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Box<dyn Expression>, ParserError> {
+    pub fn parse(&mut self) -> Result<ExpressionType, ParserError> {
         let (expr, term) = self.parse_expression()?;
         if term == ExprTerminator::End {
             Ok(expr)
@@ -69,7 +70,7 @@ impl<'source> Parser<'source> {
         }
     }
 
-    fn parse_expression(&mut self) -> Result<(Box<dyn Expression>, ExprTerminator), ParserError> {
+    fn parse_expression(&mut self) -> Result<(ExpressionType, ExprTerminator), ParserError> {
         let start = self.tokens.span();
         let mut exprs = vec![];
         self.pos += self.tokens.slice().len();
@@ -100,7 +101,7 @@ impl<'source> Parser<'source> {
                     let lhs = exprs.drain(..).next().unwrap();
                     let (rhs, term) = self.parse_expression()?;
                     let expr = OpExpression::new(o, lhs, rhs);
-                    exprs.push(Box::new(expr));
+                    exprs.push(ExpressionType::Operator(expr));
                     break term;
                 }
                 Token::OpenParenthesis => {
@@ -112,12 +113,14 @@ impl<'source> Parser<'source> {
                     exprs.push(expr)
                 }
                 Token::CloseParenthesis => break ExprTerminator::CloseParenthesis,
-                Token::Number(n) => {
-                    exprs.push(Box::new(Constant::try_new_f64(n).ok_or_else(|| {
+                Token::Number(n) => exprs.push(ExpressionType::Constant(
+                    Constant::try_new_f64(n).ok_or_else(|| {
                         ParserError::incorrect_symbol(self.tokens.span(), token.to_string())
-                    })?))
-                }
-                Token::String(ref s) => exprs.push(Box::new(Constant::try_new_string(s.clone()))),
+                    })?,
+                )),
+                Token::String(ref s) => exprs.push(ExpressionType::Constant(
+                    Constant::try_new_string(s.clone()),
+                )),
                 Token::BareString(f) => {
                     token = match self.tokens.next() {
                         Some(x) => x,
@@ -149,7 +152,7 @@ impl<'source> Parser<'source> {
                 }
                 Token::SelectorStart => {
                     let (expr, next) = self.parse_selector()?;
-                    exprs.push(Box::new(expr));
+                    exprs.push(ExpressionType::Selector(expr));
                     self.pos += self.tokens.slice().len();
                     match next {
                         Some(x) => token = x,
@@ -216,7 +219,10 @@ pub mod test {
     use logos::Logos;
     use serde_json::json;
 
-    use crate::{expressions::ExpressionExecutionState, lexer::Token};
+    use crate::{
+        expressions::{Expression, ExpressionExecutionState},
+        lexer::Token,
+    };
 
     use super::Parser;
 

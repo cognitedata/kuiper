@@ -3,7 +3,7 @@ use std::fmt::Display;
 use serde_json::{Number, Value};
 
 use super::{
-    base::{get_number_from_value, Expression, ExpressionExecutionState},
+    base::{get_number_from_value, Expression, ExpressionExecutionState, ExpressionType},
     transform_error::TransformError,
 };
 
@@ -29,7 +29,7 @@ impl Display for Operator {
 pub struct OpExpression {
     operator: Operator,
     descriptor: String,
-    elements: [Box<dyn Expression>; 2],
+    elements: [Box<ExpressionType>; 2],
 }
 
 impl Display for OpExpression {
@@ -63,11 +63,11 @@ impl Expression for OpExpression {
 }
 
 impl OpExpression {
-    pub fn new(op: Operator, lhs: Box<dyn Expression>, rhs: Box<dyn Expression>) -> Self {
+    pub fn new(op: Operator, lhs: ExpressionType, rhs: ExpressionType) -> Self {
         Self {
             operator: op,
             descriptor: "".to_string(), //TODO: Make this actually useful
-            elements: [lhs, rhs],
+            elements: [Box::new(lhs), Box::new(rhs)],
         }
     }
 }
