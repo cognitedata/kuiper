@@ -214,6 +214,7 @@ pub mod test {
     use std::collections::HashMap;
 
     use logos::Logos;
+    use serde_json::json;
 
     use crate::{expressions::ExpressionExecutionState, lexer::Token};
 
@@ -221,12 +222,16 @@ pub mod test {
 
     #[test]
     pub fn test_parser() {
-        let mut lex = Token::lexer("((123 + 4) * 321) + (321 * 123) + pow(1, 2)");
+        let mut input = HashMap::new();
+        let inp = json!({
+            "elem": 321
+        });
+        input.insert("id".to_string(), inp);
+
+        let lex = Token::lexer("((123 + 4) * $id.elem) + (321 * 123) + pow(1, 2)");
 
         let res = Parser::new(lex).parse().unwrap();
-        let state = ExpressionExecutionState {
-            data: HashMap::new(),
-        };
+        let state = ExpressionExecutionState { data: input };
         println!("{}", res.resolve(&state).unwrap());
 
         println!("{}", res);
