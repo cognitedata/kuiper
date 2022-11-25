@@ -1,0 +1,115 @@
+use logos::{Lexer, Logos};
+
+use crate::expressions::Operator;
+
+fn parse_string(lexer: &mut Lexer<Token>) -> String {
+    let mut raw = lexer.slice();
+    if raw.starts_with('"') {
+        raw = &raw[1..];
+    }
+    if raw.ends_with('"') {
+        raw = &raw[..raw.len() - 1]
+    }
+
+    raw.to_string()
+}
+
+fn parse_bare_string(lexer: &mut Lexer<Token>) -> String {
+    let mut raw = lexer.slice();
+    if raw.starts_with('`') {
+        raw = &raw[1..];
+    }
+    if raw.ends_with('`') {
+        raw = &raw[..raw.len() - 1]
+    }
+
+    raw.to_string()
+}
+
+#[derive(Logos, Debug, PartialEq)]
+enum Token {
+    #[token(".")]
+    Period,
+
+    #[token("(")]
+    OpenParenthesis,
+
+    #[token(")")]
+    CloseParenthesis,
+
+    #[token(",")]
+    Comma,
+
+    #[regex("[0-9]+", |lex| lex.slice().parse(), priority = 2)]
+    Number(f64),
+
+    // #[regex(r#"[+\-/\*]"#, priority = 2)]
+    #[token("+", |_| Operator::Plus)]
+    #[token("-", |_| Operator::Minus)]
+    #[token("/", |_| Operator::Divide)]
+    #[token("*", |_| Operator::Multiply)]
+    Operator(Operator),
+
+    #[regex(r#""(?:[^"\\]|\\.)*""#, parse_string)]
+    String(String),
+
+    #[regex(r#"[a-zA-Z0-9_]+"#, |s| s.slice().to_string())]
+    #[regex(r#"`(?:[^`\\]|\\.)*`"#, parse_bare_string)]
+    BareString(String),
+
+    #[token("$")]
+    SelectorStart,
+
+    #[error]
+    #[regex(r"[ \t\n\f]+", logos::skip)]
+    Error,
+}
+
+#[cfg(test)]
+mod test {
+    use logos::Logos;
+
+    use crate::expressions::Operator;
+
+    use super::Token;
+
+    #[test]
+    pub fn test_lexer() {
+        let mut lex = Token::lexer("123 +   $id.seg.`seg2 complex`/3-\"some string here\" + function_call($id, nested(3, 4))");
+
+        assert_eq!(lex.next(), Some(Token::Number(123f64)));
+        assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
+        assert_eq!(lex.next(), Some(Token::SelectorStart));
+        assert_eq!(lex.next(), Some(Token::BareString("id".to_string())));
+        assert_eq!(lex.next(), Some(Token::Period));
+        assert_eq!(lex.next(), Some(Token::BareString("seg".to_string())));
+        assert_eq!(lex.next(), Some(Token::Period));
+        assert_eq!(
+            lex.next(),
+            Some(Token::BareString("seg2 complex".to_string()))
+        );
+        assert_eq!(lex.next(), Some(Token::Operator(Operator::Divide)));
+        assert_eq!(lex.next(), Some(Token::Number(3f64)));
+        assert_eq!(lex.next(), Some(Token::Operator(Operator::Minus)));
+        assert_eq!(
+            lex.next(),
+            Some(Token::String("some string here".to_string()))
+        );
+        assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
+        assert_eq!(
+            lex.next(),
+            Some(Token::BareString("function_call".to_string()))
+        );
+        assert_eq!(lex.next(), Some(Token::OpenParenthesis));
+        assert_eq!(lex.next(), Some(Token::SelectorStart));
+        assert_eq!(lex.next(), Some(Token::BareString("id".to_string())));
+        assert_eq!(lex.next(), Some(Token::Comma));
+        assert_eq!(lex.next(), Some(Token::BareString("nested".to_string())));
+        assert_eq!(lex.next(), Some(Token::OpenParenthesis));
+        assert_eq!(lex.next(), Some(Token::Number(3f64)));
+        assert_eq!(lex.next(), Some(Token::Comma));
+        assert_eq!(lex.next(), Some(Token::Number(4f64)));
+        assert_eq!(lex.next(), Some(Token::CloseParenthesis));
+        assert_eq!(lex.next(), Some(Token::CloseParenthesis));
+    }
+}
