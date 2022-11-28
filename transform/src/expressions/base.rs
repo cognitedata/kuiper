@@ -11,8 +11,8 @@ use super::{
 
 use transform_macros::{pass_through, PassThrough};
 
-pub struct ExpressionExecutionState {
-    pub data: HashMap<String, Value>,
+pub struct ExpressionExecutionState<'a> {
+    pub data: HashMap<String, &'a Value>,
 }
 
 pub trait Expression<'a>: Display {
@@ -96,6 +96,16 @@ impl<'a> Expression<'a> for Constant {
 impl Constant {
     pub fn try_new_f64(v: f64) -> Option<Self> {
         let val = Number::from_f64(v).map(Value::Number);
+        val.map(|v| Self { val: v })
+    }
+
+    pub fn try_new_i64(v: i64) -> Option<Self> {
+        let val = Number::try_from(v).map(Value::Number).ok();
+        val.map(|v| Self { val: v })
+    }
+
+    pub fn try_new_u64(v: u64) -> Option<Self> {
+        let val = Number::try_from(v).map(Value::Number).ok();
         val.map(|v| Self { val: v })
     }
 

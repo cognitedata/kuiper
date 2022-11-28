@@ -3,7 +3,7 @@ use proc_macro2::Span;
 use quote::{quote, ToTokens};
 use syn::{
     parse::Parse, parse_macro_input, DeriveInput, Generics, Ident, LitStr, Pat, Result, Signature,
-    Token, Type,
+    Token,
 };
 
 #[proc_macro_derive(PassThrough, attributes(pass_through_exclude))]
@@ -136,7 +136,6 @@ pub fn pass_through(args: TokenStream, input: TokenStream) -> TokenStream {
         Some(x) => {
             let generics = args.generics;
             let generics = generics.unwrap();
-            let dt = quote! { #generics}.to_string();
             quote! { impl #generics #x #generics for #name }
         }
         None => quote! { impl #name },

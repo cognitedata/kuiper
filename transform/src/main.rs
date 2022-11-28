@@ -18,18 +18,22 @@ fn main() {
     let inp = json!({
         "elem": 3,
         "elem2": 4,
-        "arr": [1, 2, 3]
+        "arr": [1, 2, 3],
+        "deep": [{
+            "nested": 10
+        }]
     });
-    input.insert("id".to_string(), inp);
+    input.insert("id".to_string(), &inp);
 
     // Fancy array selectors
-    let lex = Token::lexer("1 + $id.elem + 2 + 3");
+    let lex = Token::lexer("1 + $id.elem + 2 + 3 + floor(2.5)");
     let res = Parser::new(lex).parse().unwrap();
     let state = ExpressionExecutionState { data: input };
     println!("{}", res.resolve(&state).unwrap().as_ref());
     println!("{}", res);
 
-    let lex = Token::lexer("[0, 1, 2, 3, $id.arr]");
+    // let lex = Token::lexer("[0, 1, 2, 3, $id.arr]");
+    let lex = Token::lexer("$id.deep[0].nested");
     let res = Parser::new(lex).parse().unwrap();
     println!("{}", res.resolve(&state).unwrap().as_ref());
 

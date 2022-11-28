@@ -43,7 +43,7 @@ impl<'a> Expression<'a> for SelectorExpression {
     ) -> Result<ResolveResult<'a>, TransformError> {
         let source = match &self.source {
             SelectorElement::Constant(x) => match state.data.get(x) {
-                Some(x) => x,
+                Some(x) => *x,
                 None => return Err(TransformError::SourceMissingError(self.source.to_string())),
             },
             SelectorElement::Expression(x) => {
@@ -56,7 +56,6 @@ impl<'a> Expression<'a> for SelectorExpression {
                         }
                     },
                     Value::Number(n) => match n.as_f64() {
-                        // Some(x) if x.fract() == 0.0 && x >= u64::MIN as f64 && x <= u64::MAX as f64 => Ok(PathElement::Integer(x as u64)),
                         _ => {
                             return Err(TransformError::SourceMissingError(
                                 "Root selector must be string".to_string(),
@@ -88,8 +87,8 @@ impl<'a> Expression<'a> for SelectorExpression {
                             Some(x) => x,
                             None => return Ok(ResolveResult::Value(Value::Null))
                         },
-                        Value::Number(n) => match n.as_f64() {
-                            Some(x) if x.fract() == 0.0 && x >= u64::MIN as f64 && x <= u64::MAX as f64 => match elem.as_array().and_then(|a| a.get(x as usize)) {
+                        Value::Number(n) => match n.as_u64() {
+                            Some(x) => match elem.as_array().and_then(|a| a.get(x as usize)) {
                                 Some(x) => x,
                                 None => return Ok(ResolveResult::Value(Value::Null))
                             },

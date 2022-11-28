@@ -2,8 +2,8 @@ use logos::{Lexer, Span};
 
 use crate::{
     expressions::{
-        get_function_expression, ArrayExpression, Constant, ExpressionType, FunctionExpression,
-        FunctionType, OpExpression, Operator, PowFunction, SelectorElement, SelectorExpression,
+        get_function_expression, ArrayExpression, Constant, ExpressionType, OpExpression, Operator,
+        SelectorElement, SelectorExpression,
     },
     lexer::Token,
 };
@@ -130,8 +130,18 @@ impl<'source> Parser<'source> {
                     exprs.push(expr)
                 }
                 Token::CloseParenthesis => break ExprTerminator::CloseParenthesis,
-                Token::Number(n) => exprs.push(ExpressionType::Constant(
+                Token::Float(n) => exprs.push(ExpressionType::Constant(
                     Constant::try_new_f64(n).ok_or_else(|| {
+                        ParserError::incorrect_symbol(self.tokens.span(), token.to_string())
+                    })?,
+                )),
+                Token::Integer(n) => exprs.push(ExpressionType::Constant(
+                    Constant::try_new_i64(n).ok_or_else(|| {
+                        ParserError::incorrect_symbol(self.tokens.span(), token.to_string())
+                    })?,
+                )),
+                Token::UInteger(n) => exprs.push(ExpressionType::Constant(
+                    Constant::try_new_u64(n).ok_or_else(|| {
                         ParserError::incorrect_symbol(self.tokens.span(), token.to_string())
                     })?,
                 )),
@@ -210,28 +220,27 @@ impl<'source> Parser<'source> {
         let mut require_symbol = true;
 
         let final_token = loop {
-            let next = match self.tokens.next() {
+            let mut next = match self.tokens.next() {
                 Some(x) => x,
                 None => break None,
             };
             println!("Investigate selector symbol {}", next);
-            match next {
-                Token::BareString(s) => path.push(SelectorElement::Constant(s)),
-                _ => {
-                    if require_symbol {
+            if require_symbol {
+                match next {
+                    Token::BareString(s) => path.push(SelectorElement::Constant(s)),
+                    _ => {
                         return Err(ParserError::incorrect_symbol(
                             self.tokens.span(),
                             next.to_string(),
                         ));
-                    } else {
-                        break Some(next);
                     }
                 }
+                next = match self.tokens.next() {
+                    Some(x) => x,
+                    None => break None,
+                };
             }
-            let next = match self.tokens.next() {
-                Some(x) => x,
-                None => break None,
-            };
+
             match next {
                 Token::Period => require_symbol = true,
                 Token::OpenBracket => {
@@ -268,10 +277,7 @@ pub mod test {
     use logos::Logos;
     use serde_json::json;
 
-    use crate::{
-        expressions::{Expression, ExpressionExecutionState},
-        lexer::Token,
-    };
+    use crate::lexer::Token;
 
     use super::Parser;
 
@@ -281,11 +287,10 @@ pub mod test {
         let inp = json!({
             "elem": 3
         });
-        input.insert("id".to_string(), inp);
+        input.insert("id".to_string(), &inp);
 
         let lex = Token::lexer("2 + 2 * $id.elem - 3 * 3 + pow(2, 2)");
 
-        let res = Parser::new(lex).parse().unwrap();
-        let state = ExpressionExecutionState { data: input };
+        Parser::new(lex).parse().unwrap();
     }
 }
