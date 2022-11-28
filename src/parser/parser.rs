@@ -3,7 +3,7 @@ use logos::{Lexer, Span};
 use crate::{
     expressions::{
         Constant, Expression, ExpressionType, FunctionExpression, FunctionType, OpExpression,
-        PowFunction, SelectorExpression,
+        Operator, PowFunction, SelectorExpression,
     },
     lexer::Token,
 };
@@ -17,8 +17,6 @@ enum ParserState {
 
 pub struct Parser<'source> {
     tokens: Lexer<'source, Token>,
-    state: ParserState,
-    pos: usize,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -54,11 +52,7 @@ fn get_function_expression(
 
 impl<'source> Parser<'source> {
     pub fn new(stream: Lexer<'source, Token>) -> Self {
-        Self {
-            tokens: stream,
-            state: ParserState::Start,
-            pos: 0,
-        }
+        Self { tokens: stream }
     }
 
     pub fn parse(&mut self) -> Result<ExpressionType, ParserError> {
@@ -70,10 +64,45 @@ impl<'source> Parser<'source> {
         }
     }
 
+    fn group_expressions(ops: Vec<Operator>, exprs: Vec<ExpressionType>) -> ExpressionType {
+        let mut lowest = 1000;
+        let mut idx: i64 = -1;
+
+        for i in 0..ops.len() {
+            if ops[i].priority() <= lowest {
+                lowest = ops[i].priority();
+                idx = i as i64;
+            }
+        }
+
+        if idx < 0 {
+            return exprs.into_iter().next().unwrap();
+        }
+
+        let mut lhs_ops = vec![];
+        let mut lhs = vec![];
+        let mut drain = exprs.into_iter();
+
+        for i in 0..(idx + 1) {
+            lhs.push(drain.next().unwrap());
+            if i < idx {
+                lhs_ops.push(ops[i as usize]);
+            }
+        }
+        let rhs = drain.collect();
+        let mut rhs_ops = vec![];
+        for i in (idx + 1)..(ops.len() as i64) {
+            rhs_ops.push(ops[i as usize]);
+        }
+        let lhs = Self::group_expressions(lhs_ops, lhs);
+        let rhs = Self::group_expressions(rhs_ops, rhs);
+        ExpressionType::Operator(OpExpression::new(ops[idx as usize], lhs, rhs))
+    }
+
     fn parse_expression(&mut self) -> Result<(ExpressionType, ExprTerminator), ParserError> {
         let start = self.tokens.span();
         let mut exprs = vec![];
-        self.pos += self.tokens.slice().len();
+        let mut ops = vec![];
         let mut token = match self.tokens.next() {
             Some(x) => x,
             None => return Err(ParserError::empty_expression(self.tokens.span())),
@@ -95,14 +124,14 @@ impl<'source> Parser<'source> {
                     ))
                 }
                 Token::Operator(o) => {
-                    if exprs.len() != 1 {
+                    /* if exprs.len() != 1 {
                         return Err(ParserError::invalid_expr(start, "Expected operator"));
                     }
                     let lhs = exprs.drain(..).next().unwrap();
                     let (rhs, term) = self.parse_expression()?;
                     let expr = OpExpression::new(o, lhs, rhs);
-                    exprs.push(ExpressionType::Operator(expr));
-                    break term;
+                    exprs.push(ExpressionType::Operator(expr)); */
+                    ops.push(o)
                 }
                 Token::OpenParenthesis => {
                     let (expr, term) = self.parse_expression()?;
@@ -153,7 +182,6 @@ impl<'source> Parser<'source> {
                 Token::SelectorStart => {
                     let (expr, next) = self.parse_selector()?;
                     exprs.push(ExpressionType::Selector(expr));
-                    self.pos += self.tokens.slice().len();
                     match next {
                         Some(x) => token = x,
                         None => break ExprTerminator::End,
@@ -161,24 +189,26 @@ impl<'source> Parser<'source> {
                     continue;
                 }
             }
-            self.pos += self.tokens.slice().len();
             token = match self.tokens.next() {
                 Some(x) => x,
                 None => break ExprTerminator::End,
             };
         };
 
-        if exprs.len() != 1 {
-            return Err(ParserError::empty_expression(self.tokens.span()));
+        if exprs.len() != ops.len() + 1 {
+            return Err(ParserError::invalid_expr(
+                start,
+                "Failed to parse expression",
+            ));
         }
-        let expr = exprs.drain(..).next().unwrap();
+
+        let expr = Self::group_expressions(ops, exprs);
         Ok((expr, term))
     }
 
     fn parse_selector(&mut self) -> Result<(SelectorExpression, Option<Token>), ParserError> {
         let mut path = vec![];
         let final_token = loop {
-            self.pos += self.tokens.slice().len();
             let next = match self.tokens.next() {
                 Some(x) => x,
                 None => break None,
@@ -193,7 +223,6 @@ impl<'source> Parser<'source> {
                     ))
                 }
             }
-            self.pos += self.tokens.slice().len();
             let next = match self.tokens.next() {
                 Some(x) => x,
                 None => break None,
@@ -230,11 +259,11 @@ pub mod test {
     pub fn test_parser() {
         let mut input = HashMap::new();
         let inp = json!({
-            "elem": 321
+            "elem": 3
         });
         input.insert("id".to_string(), inp);
 
-        let lex = Token::lexer("((123 + 4) * $id.elem) + (321 * 123) + pow(1, 2)");
+        let lex = Token::lexer("2 + 2 * $id.elem - 3 * 3 + pow(2, 2)");
 
         let res = Parser::new(lex).parse().unwrap();
         let state = ExpressionExecutionState { data: input };

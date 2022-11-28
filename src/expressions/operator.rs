@@ -26,6 +26,17 @@ impl Display for Operator {
     }
 }
 
+impl Operator {
+    pub fn priority(&self) -> i32 {
+        match self {
+            Self::Plus => 1,
+            Self::Minus => 1,
+            Self::Multiply => 2,
+            Self::Divide => 2,
+        }
+    }
+}
+
 pub struct OpExpression {
     operator: Operator,
     descriptor: String,

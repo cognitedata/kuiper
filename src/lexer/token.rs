@@ -45,7 +45,6 @@ pub enum Token {
     #[regex("[0-9]+", |lex| lex.slice().parse(), priority = 2)]
     Number(f64),
 
-    // #[regex(r#"[+\-/\*]"#, priority = 2)]
     #[token("+", |_| Operator::Plus)]
     #[token("-", |_| Operator::Minus)]
     #[token("/", |_| Operator::Divide)]
