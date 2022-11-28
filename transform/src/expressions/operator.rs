@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use logos::Span;
 use serde_json::{Number, Value};
 
 use super::{
@@ -41,6 +42,7 @@ pub struct OpExpression {
     operator: Operator,
     descriptor: String,
     elements: [Box<ExpressionType>; 2],
+    span: Span,
 }
 
 impl Display for OpExpression {
@@ -55,8 +57,16 @@ impl Display for OpExpression {
 
 impl Expression for OpExpression {
     fn resolve(&self, state: &ExpressionExecutionState) -> Result<Value, TransformError> {
-        let lhs = get_number_from_value(&self.descriptor, self.elements[0].resolve(state)?)?;
-        let rhs = get_number_from_value(&self.descriptor, self.elements[1].resolve(state)?)?;
+        let lhs = get_number_from_value(
+            &self.descriptor,
+            self.elements[0].resolve(state)?,
+            &self.span,
+        )?;
+        let rhs = get_number_from_value(
+            &self.descriptor,
+            self.elements[1].resolve(state)?,
+            &self.span,
+        )?;
 
         let res = match &self.operator {
             Operator::Plus => lhs + rhs,
@@ -74,11 +84,12 @@ impl Expression for OpExpression {
 }
 
 impl OpExpression {
-    pub fn new(op: Operator, lhs: ExpressionType, rhs: ExpressionType) -> Self {
+    pub fn new(op: Operator, lhs: ExpressionType, rhs: ExpressionType, span: Span) -> Self {
         Self {
             operator: op,
-            descriptor: "".to_string(), //TODO: Make this actually useful
+            descriptor: format!("'{}'", &op),
             elements: [Box::new(lhs), Box::new(rhs)],
+            span,
         }
     }
 }

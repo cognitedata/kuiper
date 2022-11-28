@@ -6,10 +6,10 @@ use crate::expressions::Operator;
 
 fn parse_string(lexer: &mut Lexer<Token>) -> String {
     let mut raw = lexer.slice();
-    if raw.starts_with('"') {
+    if raw.starts_with('\'') {
         raw = &raw[1..];
     }
-    if raw.ends_with('"') {
+    if raw.ends_with('\'') {
         raw = &raw[..raw.len() - 1]
     }
 
@@ -42,7 +42,7 @@ pub enum Token {
     #[token(",")]
     Comma,
 
-    #[regex("[0-9]+", |lex| lex.slice().parse(), priority = 2)]
+    #[regex(r#"[-]?(\d*\.)?\d+"#, |lex| lex.slice().parse(), priority = 2)]
     Number(f64),
 
     #[token("+", |_| Operator::Plus)]
@@ -51,7 +51,7 @@ pub enum Token {
     #[token("*", |_| Operator::Multiply)]
     Operator(Operator),
 
-    #[regex(r#""(?:[^"\\]|\\.)*""#, parse_string)]
+    #[regex(r#"'(?:[^'\\]|\\.)*'"#, parse_string)]
     String(String),
 
     #[regex(r#"[a-zA-Z0-9_]+"#, |s| s.slice().to_string())]
@@ -60,6 +60,12 @@ pub enum Token {
 
     #[token("$")]
     SelectorStart,
+
+    #[token("[")]
+    OpenBracket,
+
+    #[token("]")]
+    CloseBracket,
 
     #[error]
     #[regex(r"[ \t\n\f]+", logos::skip)]
@@ -75,10 +81,12 @@ impl Display for Token {
             Token::Comma => write!(f, ","),
             Token::Number(x) => write!(f, "{}", x),
             Token::Operator(x) => write!(f, "{}", x),
-            Token::String(x) => write!(f, "\"{}\"", x),
+            Token::String(x) => write!(f, "'{}'", x),
             Token::BareString(x) => write!(f, "`{}`", x),
             Token::SelectorStart => write!(f, "$"),
-            Token::Error => Ok(()),
+            Token::OpenBracket => write!(f, "["),
+            Token::CloseBracket => write!(f, "]"),
+            Token::Error => write!(f, "unknown token"),
         }
     }
 }
@@ -93,7 +101,7 @@ mod test {
 
     #[test]
     pub fn test_lexer() {
-        let mut lex = Token::lexer("123 +   $id.seg.`seg2 complex`/3-\"some string here\" + function_call($id, nested(3, 4))");
+        let mut lex = Token::lexer("123 +   $id.seg.`seg2 complex`/3-'some string here' + function_call($id, nested(3, 4))");
 
         assert_eq!(lex.next(), Some(Token::Number(123f64)));
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));

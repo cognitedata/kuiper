@@ -1,7 +1,13 @@
+use logos::Span;
 use serde_json::{Number, Value};
 use std::{collections::HashMap, fmt::Display};
 
-use super::{transform_error::TransformError, OpExpression, PowFunction, SelectorExpression};
+use crate::parse::ParserError;
+
+use super::{
+    function::*, transform_error::TransformError, ArrayExpression, OpExpression, PowFunction,
+    SelectorExpression,
+};
 
 use transform_macros::{pass_through, PassThrough};
 
@@ -18,6 +24,26 @@ pub trait Expression: Display {
 #[pass_through(fn resolve(&self, state: &ExpressionExecutionState) -> Result<Value, TransformError>, "", Expression)]
 pub enum FunctionType {
     Pow(PowFunction),
+    Log(LogFunction),
+    Atan2(Atan2Function),
+    Floor(FloorFunction),
+    Ceil(CeilFunction),
+}
+
+pub fn get_function_expression(
+    pos: Span,
+    name: &str,
+    args: Vec<ExpressionType>,
+) -> Result<ExpressionType, ParserError> {
+    let expr = match name {
+        "pow" => FunctionType::Pow(PowFunction::new(args, pos)?),
+        "log" => FunctionType::Log(LogFunction::new(args, pos)?),
+        "atan2" => FunctionType::Atan2(Atan2Function::new(args, pos)?),
+        "floor" => FunctionType::Floor(FloorFunction::new(args, pos)?),
+        "ceil" => FunctionType::Ceil(CeilFunction::new(args, pos)?),
+        _ => return Err(ParserError::incorrect_symbol(pos, name.to_string())),
+    };
+    Ok(ExpressionType::Function(expr))
 }
 
 #[derive(PassThrough)]
@@ -28,6 +54,7 @@ pub enum ExpressionType {
     Operator(OpExpression),
     Selector(SelectorExpression),
     Function(FunctionType),
+    Array(ArrayExpression),
 }
 
 pub struct Constant {
@@ -59,15 +86,15 @@ impl Constant {
     }
 }
 
-pub fn get_number_from_value(desc: &str, val: Value) -> Result<f64, TransformError> {
+pub fn get_number_from_value(desc: &str, val: Value, span: &Span) -> Result<f64, TransformError> {
     let v = match val {
         Value::Number(n) => n,
         _ => return Err(TransformError::new_incorrect_type(desc, "number", &val)),
     };
     v.as_f64().ok_or_else(|| {
         TransformError::ConversionFailed(format!(
-            "Failed to convert field into number for operator {}",
-            desc
+            "Failed to convert field into number for operator {} at {}",
+            desc, span.start
         ))
     })
 }

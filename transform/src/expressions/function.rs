@@ -2,11 +2,15 @@ use std::fmt::Display;
 
 use serde_json::{Number, Value};
 
+use crate::parse::ParserError;
+
 use super::{
     base::{get_number_from_value, ExpressionType},
     transform_error::TransformError,
     Expression,
 };
+
+use logos::Span;
 
 pub struct FunctionInfo {
     pub minargs: usize,
@@ -42,52 +46,133 @@ impl FunctionInfo {
     }
 }
 
-pub trait FunctionExpression: Expression {
+pub trait FunctionExpression: Expression
+where
+    Self: Sized,
+{
     const INFO: FunctionInfo;
+
+    fn new(args: Vec<ExpressionType>, span: Span) -> Result<Self, ParserError>;
 }
 
-pub struct PowFunction {
-    base: Box<ExpressionType>,
-    exponent: Box<ExpressionType>,
-}
-
-impl PowFunction {
-    pub fn new(base: ExpressionType, exponent: ExpressionType) -> Self {
-        Self {
-            base: Box::new(base),
-            exponent: Box::new(exponent),
+macro_rules! arg2_math_func {
+    ($typ:ident, $name:expr, $rname:ident) => {
+        pub struct $typ {
+            lhs: Box<ExpressionType>,
+            rhs: Box<ExpressionType>,
+            span: Span,
         }
-    }
-}
 
-impl Display for PowFunction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "pow({}, {})", self.base, self.exponent)
-    }
-}
+        impl Display for $typ {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}({}, {})", $name, self.lhs, self.rhs)
+            }
+        }
 
-impl Expression for PowFunction {
-    fn resolve(
-        &self,
-        state: &super::base::ExpressionExecutionState,
-    ) -> Result<serde_json::Value, super::transform_error::TransformError> {
-        let lhs = get_number_from_value("", self.base.resolve(state)?)?;
-        let rhs = get_number_from_value("", self.exponent.resolve(state)?)?;
+        impl Expression for $typ {
+            fn resolve(
+                &self,
+                state: &super::base::ExpressionExecutionState,
+            ) -> Result<serde_json::Value, super::transform_error::TransformError> {
+                let lhs =
+                    get_number_from_value(Self::INFO.name, self.lhs.resolve(state)?, &self.span)?;
+                let rhs =
+                    get_number_from_value(Self::INFO.name, self.rhs.resolve(state)?, &self.span)?;
 
-        let res = lhs.powf(rhs);
+                let res = lhs.$rname(rhs);
 
-        Ok(Value::Number(Number::from_f64(res).ok_or_else(|| {
-            TransformError::ConversionFailed(format!(
-                "Failed to convert result of operator pow to number",
-            ))
-        })?))
-    }
-}
+                Ok(Value::Number(Number::from_f64(res).ok_or_else(|| {
+                    TransformError::ConversionFailed(format!(
+                        "Failed to convert result of operator {} to number at {}",
+                        $name, self.span.start
+                    ))
+                })?))
+            }
+        }
 
-impl FunctionExpression for PowFunction {
-    const INFO: FunctionInfo = FunctionInfo {
-        minargs: 2,
-        maxargs: Some(2),
-        name: "pow",
+        impl FunctionExpression for $typ {
+            const INFO: FunctionInfo = FunctionInfo {
+                minargs: 2,
+                maxargs: Some(2),
+                name: $name,
+            };
+
+            fn new(args: Vec<ExpressionType>, span: Span) -> Result<Self, ParserError> {
+                if !Self::INFO.validate(args.len()) {
+                    return Err(ParserError::n_function_args(
+                        span,
+                        &Self::INFO.num_args_desc(),
+                    ));
+                }
+                let mut iter = args.into_iter();
+                Ok(Self {
+                    lhs: Box::new(iter.next().unwrap()),
+                    rhs: Box::new(iter.next().unwrap()),
+                    span,
+                })
+            }
+        }
     };
 }
+
+macro_rules! arg1_math_func {
+    ($typ:ident, $name:expr, $rname:ident) => {
+        pub struct $typ {
+            arg: Box<ExpressionType>,
+            span: Span,
+        }
+
+        impl Display for $typ {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}({})", $name, self.arg)
+            }
+        }
+
+        impl Expression for $typ {
+            fn resolve(
+                &self,
+                state: &super::base::ExpressionExecutionState,
+            ) -> Result<serde_json::Value, super::transform_error::TransformError> {
+                let arg =
+                    get_number_from_value(Self::INFO.name, self.arg.resolve(state)?, &self.span)?;
+
+                let res = arg.$rname();
+
+                Ok(Value::Number(Number::from_f64(res).ok_or_else(|| {
+                    TransformError::ConversionFailed(format!(
+                        "Failed to convert result of operator {} to number at {}",
+                        $name, self.span.start
+                    ))
+                })?))
+            }
+        }
+
+        impl FunctionExpression for $typ {
+            const INFO: FunctionInfo = FunctionInfo {
+                minargs: 1,
+                maxargs: Some(1),
+                name: $name,
+            };
+
+            fn new(args: Vec<ExpressionType>, span: Span) -> Result<Self, ParserError> {
+                if !Self::INFO.validate(args.len()) {
+                    return Err(ParserError::n_function_args(
+                        span,
+                        &Self::INFO.num_args_desc(),
+                    ));
+                }
+                let mut iter = args.into_iter();
+                Ok(Self {
+                    arg: Box::new(iter.next().unwrap()),
+                    span,
+                })
+            }
+        }
+    };
+}
+
+arg2_math_func!(PowFunction, "pow", powf);
+arg2_math_func!(LogFunction, "log", log);
+arg2_math_func!(Atan2Function, "atan2", atan2);
+arg1_math_func!(FloorFunction, "floor", floor);
+arg1_math_func!(CeilFunction, "ceil", ceil);

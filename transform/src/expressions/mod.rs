@@ -1,10 +1,15 @@
+mod array;
 mod base;
 mod function;
 mod operator;
 mod selector;
 mod transform_error;
 
-pub use base::{Constant, Expression, ExpressionExecutionState, ExpressionType, FunctionType};
+pub use array::ArrayExpression;
+pub use base::{
+    get_function_expression, Constant, Expression, ExpressionExecutionState, ExpressionType,
+    FunctionType,
+};
 pub use function::{FunctionExpression, PowFunction};
 pub use operator::{OpExpression, Operator};
-pub use selector::SelectorExpression;
+pub use selector::{SelectorElement, SelectorExpression};
