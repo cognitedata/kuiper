@@ -1,4 +1,4 @@
-use std::{fmt::Display, ops::Range};
+use std::fmt::Display;
 
 use serde_json::{Number, Value};
 
@@ -19,18 +19,21 @@ impl FunctionInfo {
         if num_args < self.minargs {
             return false;
         }
-        match self.maxargs {
-            Some(x) if num_args > x => false,
-            _ => true,
-        }
+        !matches!(self.maxargs, Some(x) if num_args > x)
     }
 
     pub fn num_args_desc(&self) -> String {
         match self.maxargs {
-            Some(x) => format!(
-                "function {} takes {} to {} arguments",
-                self.name, self.minargs, x
-            ),
+            Some(x) => {
+                if x == self.minargs {
+                    format!("function {} takes {} arguments", self.name, self.minargs)
+                } else {
+                    format!(
+                        "function {} takes {} to {} arguments",
+                        self.name, self.minargs, x
+                    )
+                }
+            }
             None => format!(
                 "function {} takes at least {} arguments",
                 self.name, self.minargs

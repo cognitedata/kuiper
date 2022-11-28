@@ -27,6 +27,7 @@ dependencies = [
  "logos",
  "serde",
  "serde_json",
+ "transform_macros",
 ]
 
 [[package]]
@@ -122,6 +123,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "transform_macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

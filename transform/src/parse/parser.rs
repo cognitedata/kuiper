@@ -2,18 +2,13 @@ use logos::{Lexer, Span};
 
 use crate::{
     expressions::{
-        Constant, Expression, ExpressionType, FunctionExpression, FunctionType, OpExpression,
-        Operator, PowFunction, SelectorExpression,
+        Constant, ExpressionType, FunctionExpression, FunctionType, OpExpression, Operator,
+        PowFunction, SelectorExpression,
     },
     lexer::Token,
 };
 
 use super::parse_error::ParserError;
-
-enum ParserState {
-    Start,
-    End,
-}
 
 pub struct Parser<'source> {
     tokens: Lexer<'source, Token>,
@@ -68,9 +63,9 @@ impl<'source> Parser<'source> {
         let mut lowest = 1000;
         let mut idx: i64 = -1;
 
-        for i in 0..ops.len() {
-            if ops[i].priority() <= lowest {
-                lowest = ops[i].priority();
+        for (i, op) in ops.iter().enumerate() {
+            if op.priority() <= lowest {
+                lowest = op.priority();
                 idx = i as i64;
             }
         }
@@ -108,7 +103,7 @@ impl<'source> Parser<'source> {
             None => return Err(ParserError::empty_expression(self.tokens.span())),
         };
         let term = loop {
-            println!("Investigate symbol {}", token.to_string());
+            println!("Investigate symbol {}", token);
             match token {
                 Token::Period => {
                     return Err(ParserError::incorrect_symbol(
@@ -123,16 +118,7 @@ impl<'source> Parser<'source> {
                         token.to_string(),
                     ))
                 }
-                Token::Operator(o) => {
-                    /* if exprs.len() != 1 {
-                        return Err(ParserError::invalid_expr(start, "Expected operator"));
-                    }
-                    let lhs = exprs.drain(..).next().unwrap();
-                    let (rhs, term) = self.parse_expression()?;
-                    let expr = OpExpression::new(o, lhs, rhs);
-                    exprs.push(ExpressionType::Operator(expr)); */
-                    ops.push(o)
-                }
+                Token::Operator(o) => ops.push(o),
                 Token::OpenParenthesis => {
                     let (expr, term) = self.parse_expression()?;
                     match term {
@@ -236,7 +222,7 @@ impl<'source> Parser<'source> {
             return Err(ParserError::empty_expression(self.tokens.span()));
         }
         let expr = SelectorExpression::new(path.remove(0), path);
-        println!("Got selector {}", expr.to_string());
+        println!("Got selector {}", expr);
         Ok((expr, final_token))
     }
 }
