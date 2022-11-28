@@ -26,12 +26,12 @@ fn main() {
     let lex = Token::lexer("1 + $id.elem + 2 + 3");
     let res = Parser::new(lex).parse().unwrap();
     let state = ExpressionExecutionState { data: input };
-    println!("{}", res.resolve(&state).unwrap());
+    println!("{}", res.resolve(&state).unwrap().as_ref());
     println!("{}", res);
 
     let lex = Token::lexer("[0, 1, 2, 3, $id.arr]");
     let res = Parser::new(lex).parse().unwrap();
-    println!("{}", res.resolve(&state).unwrap());
+    println!("{}", res.resolve(&state).unwrap().as_ref());
 
     println!("{}", res);
 }

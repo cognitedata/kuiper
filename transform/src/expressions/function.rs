@@ -5,7 +5,7 @@ use serde_json::{Number, Value};
 use crate::parse::ParserError;
 
 use super::{
-    base::{get_number_from_value, ExpressionType},
+    base::{get_number_from_value, ExpressionType, ResolveResult},
     transform_error::TransformError,
     Expression,
 };
@@ -46,7 +46,7 @@ impl FunctionInfo {
     }
 }
 
-pub trait FunctionExpression: Expression
+pub trait FunctionExpression<'a>: Expression<'a>
 where
     Self: Sized,
 {
@@ -69,28 +69,36 @@ macro_rules! arg2_math_func {
             }
         }
 
-        impl Expression for $typ {
+        impl<'a> Expression<'a> for $typ {
             fn resolve(
                 &self,
                 state: &super::base::ExpressionExecutionState,
-            ) -> Result<serde_json::Value, super::transform_error::TransformError> {
-                let lhs =
-                    get_number_from_value(Self::INFO.name, self.lhs.resolve(state)?, &self.span)?;
-                let rhs =
-                    get_number_from_value(Self::INFO.name, self.rhs.resolve(state)?, &self.span)?;
+            ) -> Result<ResolveResult<'a>, super::transform_error::TransformError> {
+                let lhs = get_number_from_value(
+                    Self::INFO.name,
+                    self.lhs.resolve(state)?.as_ref(),
+                    &self.span,
+                )?;
+                let rhs = get_number_from_value(
+                    Self::INFO.name,
+                    self.rhs.resolve(state)?.as_ref(),
+                    &self.span,
+                )?;
 
                 let res = lhs.$rname(rhs);
 
-                Ok(Value::Number(Number::from_f64(res).ok_or_else(|| {
-                    TransformError::ConversionFailed(format!(
-                        "Failed to convert result of operator {} to number at {}",
-                        $name, self.span.start
-                    ))
-                })?))
+                Ok(ResolveResult::Value(Value::Number(
+                    Number::from_f64(res).ok_or_else(|| {
+                        TransformError::ConversionFailed(format!(
+                            "Failed to convert result of operator {} to number at {}",
+                            $name, self.span.start
+                        ))
+                    })?,
+                )))
             }
         }
 
-        impl FunctionExpression for $typ {
+        impl<'a> FunctionExpression<'a> for $typ {
             const INFO: FunctionInfo = FunctionInfo {
                 minargs: 2,
                 maxargs: Some(2),
@@ -128,26 +136,31 @@ macro_rules! arg1_math_func {
             }
         }
 
-        impl Expression for $typ {
+        impl<'a> Expression<'a> for $typ {
             fn resolve(
                 &self,
                 state: &super::base::ExpressionExecutionState,
-            ) -> Result<serde_json::Value, super::transform_error::TransformError> {
-                let arg =
-                    get_number_from_value(Self::INFO.name, self.arg.resolve(state)?, &self.span)?;
+            ) -> Result<ResolveResult<'a>, super::transform_error::TransformError> {
+                let arg = get_number_from_value(
+                    Self::INFO.name,
+                    self.arg.resolve(state)?.as_ref(),
+                    &self.span,
+                )?;
 
                 let res = arg.$rname();
 
-                Ok(Value::Number(Number::from_f64(res).ok_or_else(|| {
-                    TransformError::ConversionFailed(format!(
-                        "Failed to convert result of operator {} to number at {}",
-                        $name, self.span.start
-                    ))
-                })?))
+                Ok(ResolveResult::Value(Value::Number(
+                    Number::from_f64(res).ok_or_else(|| {
+                        TransformError::ConversionFailed(format!(
+                            "Failed to convert result of operator {} to number at {}",
+                            $name, self.span.start
+                        ))
+                    })?,
+                )))
             }
         }
 
-        impl FunctionExpression for $typ {
+        impl<'a> FunctionExpression<'a> for $typ {
             const INFO: FunctionInfo = FunctionInfo {
                 minargs: 1,
                 maxargs: Some(1),

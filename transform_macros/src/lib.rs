@@ -2,8 +2,8 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{quote, ToTokens};
 use syn::{
-    parse::Parse, parse_macro_input, DeriveInput, Ident, LitStr, Pat, Result, Signature, Token,
-    Type,
+    parse::Parse, parse_macro_input, DeriveInput, Generics, Ident, LitStr, Pat, Result, Signature,
+    Token, Type,
 };
 
 #[proc_macro_derive(PassThrough, attributes(pass_through_exclude))]
@@ -34,7 +34,8 @@ impl Parse for IdentList {
 struct FuncAndError {
     sign: Signature,
     err: String,
-    trt: Option<Type>,
+    trt: Option<Ident>,
+    generics: Option<Generics>,
 }
 
 impl Parse for FuncAndError {
@@ -49,14 +50,16 @@ impl Parse for FuncAndError {
                     sign,
                     err: errit.value(),
                     trt: None,
+                    generics: None,
                 })
             }
         }
-        let trt: Type = input.parse()?;
+        let trt: Ident = input.parse()?;
         Ok(FuncAndError {
             sign,
             err: errit.value(),
             trt: Some(trt),
+            generics: Some(input.parse().unwrap()),
         })
     }
 }
@@ -130,7 +133,12 @@ pub fn pass_through(args: TokenStream, input: TokenStream) -> TokenStream {
     };
 
     let imp = match args.trt {
-        Some(x) => quote! { impl #x for #name },
+        Some(x) => {
+            let generics = args.generics;
+            let generics = generics.unwrap();
+            let dt = quote! { #generics}.to_string();
+            quote! { impl #generics #x #generics for #name }
+        }
         None => quote! { impl #name },
     };
 

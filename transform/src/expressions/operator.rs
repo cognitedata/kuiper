@@ -4,7 +4,9 @@ use logos::Span;
 use serde_json::{Number, Value};
 
 use super::{
-    base::{get_number_from_value, Expression, ExpressionExecutionState, ExpressionType},
+    base::{
+        get_number_from_value, Expression, ExpressionExecutionState, ExpressionType, ResolveResult,
+    },
     transform_error::TransformError,
 };
 
@@ -55,16 +57,19 @@ impl Display for OpExpression {
     }
 }
 
-impl Expression for OpExpression {
-    fn resolve(&self, state: &ExpressionExecutionState) -> Result<Value, TransformError> {
+impl<'a> Expression<'a> for OpExpression {
+    fn resolve(
+        &self,
+        state: &ExpressionExecutionState,
+    ) -> Result<ResolveResult<'a>, TransformError> {
         let lhs = get_number_from_value(
             &self.descriptor,
-            self.elements[0].resolve(state)?,
+            self.elements[0].resolve(state)?.as_ref(),
             &self.span,
         )?;
         let rhs = get_number_from_value(
             &self.descriptor,
-            self.elements[1].resolve(state)?,
+            self.elements[1].resolve(state)?.as_ref(),
             &self.span,
         )?;
 
@@ -74,12 +79,14 @@ impl Expression for OpExpression {
             Operator::Multiply => lhs * rhs,
             Operator::Divide => lhs / rhs,
         };
-        Ok(Value::Number(Number::from_f64(res).ok_or_else(|| {
-            TransformError::ConversionFailed(format!(
-                "Failed to convert result of operator {} to number",
-                &self.descriptor
-            ))
-        })?))
+        Ok(ResolveResult::Value(Value::Number(
+            Number::from_f64(res).ok_or_else(|| {
+                TransformError::ConversionFailed(format!(
+                    "Failed to convert result of operator {} to number",
+                    &self.descriptor
+                ))
+            })?,
+        )))
     }
 }
 

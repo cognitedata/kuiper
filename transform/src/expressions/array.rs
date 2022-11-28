@@ -4,7 +4,8 @@ use logos::Span;
 use serde_json::Value;
 
 use super::{
-    transform_error::TransformError, Expression, ExpressionExecutionState, ExpressionType,
+    base::ResolveResult, transform_error::TransformError, Expression, ExpressionExecutionState,
+    ExpressionType,
 };
 
 pub struct ArrayExpression {
@@ -27,13 +28,16 @@ impl Display for ArrayExpression {
     }
 }
 
-impl Expression for ArrayExpression {
-    fn resolve(&self, state: &ExpressionExecutionState) -> Result<Value, TransformError> {
+impl<'a> Expression<'a> for ArrayExpression {
+    fn resolve(
+        &self,
+        state: &ExpressionExecutionState,
+    ) -> Result<ResolveResult<'a>, TransformError> {
         let mut arr = vec![];
         for expr in self.items.iter() {
-            arr.push(expr.resolve(state)?);
+            arr.push(expr.resolve(state)?.as_ref().clone());
         }
-        Ok(Value::Array(arr))
+        Ok(ResolveResult::Value(Value::Array(arr)))
     }
 }
 

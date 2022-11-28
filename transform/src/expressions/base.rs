@@ -15,13 +15,16 @@ pub struct ExpressionExecutionState {
     pub data: HashMap<String, Value>,
 }
 
-pub trait Expression: Display {
-    fn resolve(&self, state: &ExpressionExecutionState) -> Result<Value, TransformError>;
+pub trait Expression<'a>: Display {
+    fn resolve(
+        &'a self,
+        state: &'a ExpressionExecutionState,
+    ) -> Result<ResolveResult<'a>, TransformError>;
 }
 
 #[derive(PassThrough)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
-#[pass_through(fn resolve(&self, state: &ExpressionExecutionState) -> Result<Value, TransformError>, "", Expression)]
+#[pass_through(fn resolve(&'a self, state: &'a ExpressionExecutionState) -> Result<ResolveResult<'a>, TransformError>, "", Expression<'a>)]
 pub enum FunctionType {
     Pow(PowFunction),
     Log(LogFunction),
@@ -48,13 +51,27 @@ pub fn get_function_expression(
 
 #[derive(PassThrough)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
-#[pass_through(fn resolve(&self, state: &ExpressionExecutionState) -> Result<Value, TransformError>, "", Expression)]
+#[pass_through(fn resolve(&'a self, state: &'a ExpressionExecutionState) -> Result<ResolveResult<'a>, TransformError>, "", Expression<'a>)]
 pub enum ExpressionType {
     Constant(Constant),
     Operator(OpExpression),
     Selector(SelectorExpression),
     Function(FunctionType),
     Array(ArrayExpression),
+}
+
+pub enum ResolveResult<'a> {
+    Reference(&'a Value),
+    Value(Value),
+}
+
+impl<'a> ResolveResult<'a> {
+    pub fn as_ref(&self) -> &Value {
+        match self {
+            Self::Reference(r) => r,
+            Self::Value(v) => v,
+        }
+    }
 }
 
 pub struct Constant {
@@ -67,9 +84,12 @@ impl Display for Constant {
     }
 }
 
-impl Expression for Constant {
-    fn resolve(&self, _state: &ExpressionExecutionState) -> Result<Value, TransformError> {
-        Ok(self.val.clone())
+impl<'a> Expression<'a> for Constant {
+    fn resolve(
+        &'a self,
+        _state: &ExpressionExecutionState,
+    ) -> Result<ResolveResult<'a>, TransformError> {
+        Ok(ResolveResult::Reference(&self.val))
     }
 }
 
@@ -86,7 +106,7 @@ impl Constant {
     }
 }
 
-pub fn get_number_from_value(desc: &str, val: Value, span: &Span) -> Result<f64, TransformError> {
+pub fn get_number_from_value(desc: &str, val: &Value, span: &Span) -> Result<f64, TransformError> {
     let v = match val {
         Value::Number(n) => n,
         _ => return Err(TransformError::new_incorrect_type(desc, "number", &val)),
