@@ -171,7 +171,7 @@ impl Program {
 
         let output = inp.last().unwrap();
         let mut res = vec![];
-        Self::compile_rec(&output, &inp, &mut res, &mut transform_map, &vec![])?;
+        Self::compile_rec(output, &inp, &mut res, &mut transform_map, &[])?;
 
         Ok(Self { transforms: res })
 
@@ -190,7 +190,7 @@ impl Program {
         inp: &Vec<TransformInput>,
         build: &mut Vec<Transform>,
         state: &mut HashMap<String, usize>,
-        visited: &Vec<&'a String>,
+        visited: &[&'a String],
     ) -> Result<(), CompileError> {
         if raw.id() == "input" {
             return Err(CompileError::Config(
@@ -208,7 +208,7 @@ impl Program {
             return Ok(());
         }
 
-        let mut next_visited = visited.clone();
+        let mut next_visited = visited.to_owned();
         next_visited.push(raw.id());
         let mut final_inputs = HashMap::new();
         for input in raw.inputs() {
@@ -227,7 +227,7 @@ impl Program {
             }
         }
         if !state.contains_key(raw.id()) {
-            build.push(Transform::compile(final_inputs, &raw)?);
+            build.push(Transform::compile(final_inputs, raw)?);
             state.insert(raw.id().clone(), build.len() - 1);
         }
         Ok(())

@@ -99,7 +99,7 @@ impl<'a> ResolveResult<'a> {
         }
     }
 
-    pub fn as_value(self) -> Value {
+    pub fn into_value(self) -> Value {
         match self {
             Self::Reference(r) => r.clone(),
             Self::Value(v) => v,
@@ -109,7 +109,7 @@ impl<'a> ResolveResult<'a> {
     pub fn as_self_ref(&'a self) -> Self {
         match self {
             Self::Reference(r) => Self::Reference(r),
-            Self::Value(v) => Self::Reference(&v),
+            Self::Value(v) => Self::Reference(v),
         }
     }
 }
@@ -168,7 +168,7 @@ pub fn get_number_from_value(
             return Err(TransformError::new_incorrect_type(
                 desc,
                 "number",
-                &TransformError::value_desc(val),
+                TransformError::value_desc(val),
                 span,
                 id,
             ))

@@ -83,18 +83,18 @@ impl Transform {
         &self,
         data: &HashMap<TransformOrInput, ResolveResult>,
     ) -> Result<Vec<Value>, TransformError> {
-        let state = ExpressionExecutionState::new(&data, &self.inputs().inputs, self.id());
+        let state = ExpressionExecutionState::new(data, &self.inputs().inputs, self.id());
         Ok(match self {
             Self::Map(m) => {
                 let mut map = serde_json::Map::new();
                 for (key, tf) in m.map.iter() {
-                    let value = tf.resolve(&state)?.as_value();
+                    let value = tf.resolve(&state)?.into_value();
                     map.insert(key.clone(), value);
                 }
                 vec![Value::Object(map)]
             }
             Self::Flatten(m) => {
-                let value = m.map.resolve(&state)?.as_value();
+                let value = m.map.resolve(&state)?.into_value();
                 match value {
                     Value::Array(a) => a,
                     _ => vec![value],
@@ -107,7 +107,7 @@ impl Transform {
         &self,
         raw_data: &HashMap<TransformOrInput, Vec<ResolveResult>>,
     ) -> Result<Vec<Value>, TransformError> {
-        let items = self.compute_input_product(&raw_data);
+        let items = self.compute_input_product(raw_data);
 
         let res = if items.is_empty() {
             let data = HashMap::new();
