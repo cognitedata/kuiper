@@ -1,3 +1,3 @@
 mod input;
-
-pub use self::input::{CompileError, Program, TransformInput};
+mod run;
+pub use self::input::{CompileError, Program, TransformInput, TransformOrInput};

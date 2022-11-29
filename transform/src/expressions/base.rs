@@ -2,7 +2,7 @@ use logos::Span;
 use serde_json::{Number, Value};
 use std::{collections::HashMap, fmt::Display};
 
-use crate::parse::ParserError;
+use crate::{parse::ParserError, program::TransformOrInput};
 
 use super::{
     function::*, transform_error::TransformError, ArrayExpression, OpExpression, PowFunction,
@@ -11,8 +11,31 @@ use super::{
 
 use transform_macros::{pass_through, PassThrough};
 
-pub struct ExpressionExecutionState<'a> {
-    pub data: HashMap<String, &'a Value>,
+pub struct ExpressionExecutionState<'a, 'b>
+where
+    'b: 'a,
+{
+    data: &'b HashMap<TransformOrInput, ResolveResult<'a>>,
+    map: &'b HashMap<String, TransformOrInput>,
+}
+
+impl<'a, 'b> ExpressionExecutionState<'a, 'b> {
+    pub fn get_value(&self, key: &str) -> Option<&'a Value> {
+        self.map
+            .get(key)
+            .and_then(|k| self.data.get(k))
+            .map(|r| match r {
+                ResolveResult::Reference(rf) => *rf,
+                ResolveResult::Value(v) => v,
+            })
+    }
+
+    pub fn new(
+        data: &'b HashMap<TransformOrInput, ResolveResult<'a>>,
+        map: &'b HashMap<String, TransformOrInput>,
+    ) -> Self {
+        Self { data, map }
+    }
 }
 
 pub trait Expression<'a>: Display {

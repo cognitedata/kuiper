@@ -16,7 +16,7 @@ mod parse;
 mod program;
 
 fn main() {
-    let input: Vec<TransformInput> = serde_json::from_value(json!([
+    let raw: Vec<TransformInput> = serde_json::from_value(json!([
         {
             "id": "step1",
             "inputs": ["input"],
@@ -45,7 +45,15 @@ fn main() {
     ]))
     .unwrap();
 
-    let program = Program::compile(input).unwrap();
+    let program = Program::compile(raw).unwrap();
+    let input = json!({
+        "id": "my-id",
+        "id2": "my-other-id",
+        "value": 123.321,
+        "timestamp": 12395184235i64
+    });
+    let res = program.execute(input).unwrap();
+    println!("{}", res);
 
     /*let mut input = HashMap::new();
     let inp = json!({

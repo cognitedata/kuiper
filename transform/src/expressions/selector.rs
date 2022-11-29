@@ -42,14 +42,14 @@ impl<'a> Expression<'a> for SelectorExpression {
         state: &'a ExpressionExecutionState,
     ) -> Result<ResolveResult<'a>, TransformError> {
         let source = match &self.source {
-            SelectorElement::Constant(x) => match state.data.get(x) {
-                Some(x) => *x,
+            SelectorElement::Constant(x) => match state.get_value(x) {
+                Some(x) => x,
                 None => return Err(TransformError::SourceMissingError(self.source.to_string())),
             },
             SelectorElement::Expression(x) => {
                 let val = x.resolve(state)?;
                 match val.as_ref() {
-                    Value::String(s) => match state.data.get(s) {
+                    Value::String(s) => match state.get_value(s) {
                         Some(x) => x,
                         None => {
                             return Err(TransformError::SourceMissingError(self.source.to_string()))

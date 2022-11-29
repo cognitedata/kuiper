@@ -2,9 +2,12 @@ use std::collections::HashMap;
 
 use logos::Logos;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::{
-    expressions::ExpressionType,
+    expressions::{
+        Expression, ExpressionExecutionState, ExpressionType, ResolveResult, TransformError,
+    },
     lexer::Token,
     parse::{Parser, ParserError},
 };
@@ -17,7 +20,8 @@ pub struct TransformInput {
     pub transform: HashMap<String, String>,
 }
 
-enum TransformOrInput {
+#[derive(Hash, PartialEq, Eq, Debug)]
+pub enum TransformOrInput {
     Input,
     Transform(usize),
 }
@@ -40,10 +44,27 @@ impl Transform {
         }
         Ok(Self { inputs, map })
     }
+
+    pub fn execute(
+        &self,
+        raw_data: &HashMap<TransformOrInput, ResolveResult>,
+    ) -> Result<Value, TransformError> {
+        let state = ExpressionExecutionState::new(&raw_data, &self.inputs);
+        let mut map = serde_json::Map::new();
+        for (idx, (key, tf)) in self.map.iter().enumerate() {
+            let res = tf.resolve(&state)?;
+            let value = match res {
+                ResolveResult::Reference(r) => r.clone(),
+                ResolveResult::Value(r) => r,
+            };
+            map.insert(key.clone(), value);
+        }
+        Ok(Value::Object(map))
+    }
 }
 
 pub struct Program {
-    transforms: Vec<Transform>,
+    pub(crate) transforms: Vec<Transform>,
 }
 
 #[derive(Debug)]
