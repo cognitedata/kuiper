@@ -200,7 +200,7 @@ impl Program {
         }
         if visited.iter().any(|i| *i == raw.id()) {
             return Err(CompileError::Config(format!(
-                "Recursive transformations is not allowed, {} indirectly references itself",
+                "Recursive transformations are not allowed, {} indirectly references itself",
                 raw.id()
             )));
         }

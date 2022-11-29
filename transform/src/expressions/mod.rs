@@ -13,4 +13,4 @@ pub use base::{
 pub use function::{FunctionExpression, PowFunction};
 pub use operator::{OpExpression, Operator};
 pub use selector::{SelectorElement, SelectorExpression};
-pub use transform_error::TransformError;
+pub use transform_error::{TransformError, TransformErrorData};
