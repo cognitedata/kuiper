@@ -2,7 +2,6 @@ use logos::Span;
 
 #[derive(Debug)]
 pub enum ParserError {
-    GenericFailure(String),
     EmptyExpression(ParserErrorData),
     IncorrectSymbol(ParserErrorData),
     ExpectedSymbol(ParserErrorData),

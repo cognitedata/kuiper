@@ -2,7 +2,6 @@ use serde_json::Value;
 
 #[derive(Debug)]
 pub enum TransformError {
-    GenericFailure(String),
     SourceMissingError(String),
     IncorrectTypeInField(String),
     ConversionFailed(String),

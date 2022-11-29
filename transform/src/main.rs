@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use logos::Logos;
+use program::{Program, TransformInput};
 use serde_json::json;
 
 use crate::{
@@ -12,9 +13,41 @@ use crate::{
 mod expressions;
 mod lexer;
 mod parse;
+mod program;
 
 fn main() {
-    let mut input = HashMap::new();
+    let input: Vec<TransformInput> = serde_json::from_value(json!([
+        {
+            "id": "step1",
+            "inputs": ["input"],
+            "transform": {
+                "externalId": "$input.id",
+                "value": "$input.value",
+                "timestamp": "$input.timestamp"
+            }
+        },
+        {
+            "id": "unused",
+            "inputs": ["input"],
+            "transform": {
+                "some-unused-transform": "This can contain syntax errors",
+                "since": "it won't be compiled"
+            }
+        },
+        {
+            "id": "step2",
+            "inputs": ["input", "step1"],
+            "transform": {
+                "externalId": "$input.id2",
+                "nested": "$step1"
+            }
+        }
+    ]))
+    .unwrap();
+
+    let program = Program::compile(input).unwrap();
+
+    /*let mut input = HashMap::new();
     let inp = json!({
         "elem": 3,
         "elem2": 4,
@@ -37,5 +70,5 @@ fn main() {
     let res = Parser::new(lex).parse().unwrap();
     println!("{}", res.resolve(&state).unwrap().as_ref());
 
-    println!("{}", res);
+    println!("{}", res); */
 }

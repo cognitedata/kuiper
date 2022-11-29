@@ -10,7 +10,7 @@ use super::{
 
 pub struct ArrayExpression {
     items: Vec<ExpressionType>,
-    span: Span,
+    _span: Span,
 }
 
 impl Display for ArrayExpression {
@@ -43,6 +43,6 @@ impl<'a> Expression<'a> for ArrayExpression {
 
 impl ArrayExpression {
     pub fn new(items: Vec<ExpressionType>, span: Span) -> Self {
-        Self { items, span }
+        Self { items, _span: span }
     }
 }
