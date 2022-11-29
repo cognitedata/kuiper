@@ -10,11 +10,11 @@ use super::{
 };
 
 impl Program {
-    pub fn execute(&self, input: Value) -> Result<Vec<Value>, TransformError> {
+    pub fn execute(&self, input: &Value) -> Result<Vec<Value>, TransformError> {
         let mut result = HashMap::<TransformOrInput, Vec<ResolveResult>>::new();
         result.insert(
             TransformOrInput::Input,
-            vec![ResolveResult::Reference(&input)],
+            vec![ResolveResult::Reference(input)],
         );
 
         let len = self.transforms.len();
@@ -35,73 +35,94 @@ impl Program {
     }
 }
 
-fn compute_input_product<'a>(
-    it: &'a HashMap<TransformOrInput, Vec<ResolveResult<'a>>>,
-) -> Vec<HashMap<TransformOrInput, ResolveResult<'a>>> {
-    let len = it.iter().fold(1usize, |acc, v| acc * v.1.len());
-    let mut res: Vec<HashMap<TransformOrInput, ResolveResult<'a>>> = Vec::with_capacity(len);
-
-    for (idx, (key, value)) in it.iter().enumerate() {
-        if idx == 0 {
-            for el in value {
-                let mut chunk = HashMap::with_capacity(it.len());
-                chunk.insert(key.clone(), el.as_self_ref());
-                res.push(chunk);
+impl Transform {
+    fn compute_input_product<'a>(
+        &self,
+        it: &'a HashMap<TransformOrInput, Vec<ResolveResult<'a>>>,
+    ) -> Vec<HashMap<TransformOrInput, ResolveResult<'a>>> {
+        let mut res_len = 1usize;
+        let mut len = 1usize;
+        for (k, v) in it.iter() {
+            if self.inputs().used_inputs.contains(k) && !v.is_empty() {
+                len += 1;
+                res_len *= v.len();
             }
-        } else {
-            let mut next_res = Vec::new();
-            for el in value {
-                for nested_vec in res.iter() {
-                    let mut new_vec = nested_vec.clone();
-                    new_vec.insert(key.clone(), el.as_self_ref());
-                    next_res.push(new_vec);
+        }
+
+        let mut res: Vec<HashMap<TransformOrInput, ResolveResult<'a>>> =
+            Vec::with_capacity(res_len);
+
+        let mut first = true;
+        for (key, value) in it.iter() {
+            if !self.inputs().used_inputs.contains(key) || value.is_empty() {
+                continue;
+            }
+            if first {
+                for el in value {
+                    let mut chunk = HashMap::with_capacity(len);
+                    chunk.insert(key.clone(), el.as_self_ref());
+                    res.push(chunk);
+                }
+                first = false;
+            } else {
+                let mut next_res = Vec::new();
+                for el in value {
+                    for nested_vec in res.iter() {
+                        let mut new_vec = nested_vec.clone();
+                        new_vec.insert(key.clone(), el.as_self_ref());
+                        next_res.push(new_vec);
+                    }
+                }
+                res = next_res;
+            }
+        }
+        res
+    }
+
+    fn execute_chunk(
+        &self,
+        data: &HashMap<TransformOrInput, ResolveResult>,
+    ) -> Result<Vec<Value>, TransformError> {
+        let state = ExpressionExecutionState::new(&data, &self.inputs().inputs);
+        Ok(match self {
+            Self::Map(m) => {
+                let mut map = serde_json::Map::new();
+                for (key, tf) in m.map.iter() {
+                    let value = tf.resolve(&state)?.as_value();
+                    map.insert(key.clone(), value);
+                }
+                vec![Value::Object(map)]
+            }
+            Self::Flatten(m) => {
+                let value = m.map.resolve(&state)?.as_value();
+                match value {
+                    Value::Array(a) => a,
+                    _ => vec![value],
                 }
             }
-            res = next_res;
-        }
+        })
     }
-    res
-}
 
-impl Transform {
     pub fn execute(
         &self,
         raw_data: &HashMap<TransformOrInput, Vec<ResolveResult>>,
     ) -> Result<Vec<Value>, TransformError> {
-        let items = compute_input_product(&raw_data);
+        let items = self.compute_input_product(&raw_data);
 
-        let mut res = Vec::new();
-        for data in items {
-            let state = ExpressionExecutionState::new(&data, self.inputs());
-            let next = match self {
-                Self::Map(m) => {
-                    let mut map = serde_json::Map::new();
-                    for (key, tf) in m.map.iter() {
-                        let res = tf.resolve(&state)?;
-                        let value = match res {
-                            ResolveResult::Reference(r) => r.clone(),
-                            ResolveResult::Value(r) => r,
-                        };
-                        map.insert(key.clone(), value);
-                    }
-                    vec![Value::Object(map)]
+        let res = if items.is_empty() {
+            let data = HashMap::new();
+            self.execute_chunk(&data)?
+        } else {
+            let mut res = Vec::new();
+            for data in items {
+                let next = self.execute_chunk(&data)?;
+                for it in next {
+                    res.push(it);
                 }
-                Self::Flatten(m) => {
-                    let res = m.map.resolve(&state)?;
-                    let value = match res {
-                        ResolveResult::Reference(r) => r.clone(),
-                        ResolveResult::Value(r) => r,
-                    };
-                    match value {
-                        Value::Array(a) => a,
-                        _ => vec![value],
-                    }
-                }
-            };
-            for it in next {
-                res.push(it);
             }
-        }
+            res
+        };
+
         Ok(res)
     }
 }

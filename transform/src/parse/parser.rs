@@ -105,7 +105,7 @@ impl<'source> Parser<'source> {
             None => return Err(ParserError::empty_expression(self.tokens.span())),
         };
         let term = loop {
-            println!("Investigate symbol {}", token);
+            // println!("Investigate symbol {}", token);
             match token {
                 Token::Period => {
                     return Err(ParserError::incorrect_symbol(
@@ -224,7 +224,7 @@ impl<'source> Parser<'source> {
                 Some(x) => x,
                 None => break None,
             };
-            println!("Investigate selector symbol {}", next);
+            // println!("Investigate selector symbol {}", next);
             if require_symbol {
                 match next {
                     Token::BareString(s) => path.push(SelectorElement::Constant(s)),
@@ -265,7 +265,7 @@ impl<'source> Parser<'source> {
             return Err(ParserError::empty_expression(self.tokens.span()));
         }
         let expr = SelectorExpression::new(path.remove(0), path);
-        println!("Got selector {}", expr);
+        // println!("Got selector {}", expr);
         Ok((expr, final_token))
     }
 }

@@ -1,4 +1,7 @@
-use std::collections::HashMap;
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Display,
+};
 
 use logos::Logos;
 use serde::{Deserialize, Serialize};
@@ -49,19 +52,43 @@ impl TransformInput {
     }
 }
 
+pub(crate) struct TransformInputs {
+    pub inputs: HashMap<String, TransformOrInput>,
+    pub used_inputs: HashSet<TransformOrInput>,
+}
+
+impl TransformInputs {
+    pub fn new(inputs: HashMap<String, TransformOrInput>) -> Self {
+        let set = HashSet::from_iter(inputs.iter().map(|(_, v)| v.clone()));
+        Self {
+            inputs,
+            used_inputs: set,
+        }
+    }
+}
+
 #[derive(Hash, PartialEq, Eq, Debug, Clone)]
 pub enum TransformOrInput {
     Input,
     Transform(usize),
 }
 
+impl Display for TransformOrInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Input => write!(f, "input"),
+            Self::Transform(u) => write!(f, "{}", u),
+        }
+    }
+}
+
 pub struct MapTransform {
-    inputs: HashMap<String, TransformOrInput>,
+    inputs: TransformInputs,
     pub(crate) map: HashMap<String, ExpressionType>,
 }
 
 pub struct FlattenTransform {
-    inputs: HashMap<String, TransformOrInput>,
+    inputs: TransformInputs,
     pub(crate) map: ExpressionType,
 }
 
@@ -71,7 +98,7 @@ pub enum Transform {
 }
 
 impl Transform {
-    pub(crate) fn inputs(&self) -> &HashMap<String, TransformOrInput> {
+    pub(crate) fn inputs(&self) -> &TransformInputs {
         match self {
             Transform::Map(x) => &x.inputs,
             Transform::Flatten(x) => &x.inputs,
@@ -90,13 +117,16 @@ impl Transform {
                     let result = Parser::new(inp).parse()?;
                     map.insert(key.clone(), result);
                 }
-                Ok(Self::Map(MapTransform { inputs, map }))
+                Ok(Self::Map(MapTransform {
+                    inputs: TransformInputs::new(inputs),
+                    map,
+                }))
             }
             TransformInput::Flatten(raw) => {
                 let inp = Token::lexer(&raw.transform);
                 let result = Parser::new(inp).parse()?;
                 Ok(Self::Flatten(FlattenTransform {
-                    inputs,
+                    inputs: TransformInputs::new(inputs),
                     map: result,
                 }))
             }
@@ -156,12 +186,6 @@ impl Program {
                 "Transform ID may not be \"input\". It is reserved for the input to the pipeline"
                     .to_string(),
             ));
-        }
-        if raw.inputs().is_empty() {
-            return Err(CompileError::Config(format!(
-                "Transform with ID {} does not have any inputs",
-                raw.id()
-            )));
         }
         if visited.iter().any(|i| *i == raw.id()) {
             return Err(CompileError::Config(format!(
