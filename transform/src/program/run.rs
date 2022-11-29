@@ -9,7 +9,6 @@ use super::{input::TransformOrInput, Program};
 impl Program {
     pub fn execute(&self, input: Value) -> Result<Value, TransformError> {
         let mut result = HashMap::<TransformOrInput, ResolveResult>::new();
-        let mut cached_results = HashMap::<usize, Value>::new();
         result.insert(TransformOrInput::Input, ResolveResult::Reference(&input));
 
         let len = self.transforms.len();

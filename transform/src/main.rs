@@ -24,7 +24,8 @@ fn main() {
                 "externalId": "$input.id",
                 "value": "$input.value",
                 "timestamp": "$input.timestamp"
-            }
+            },
+            "type": "map"
         },
         {
             "id": "unused",
@@ -32,7 +33,8 @@ fn main() {
             "transform": {
                 "some-unused-transform": "This can contain syntax errors",
                 "since": "it won't be compiled"
-            }
+            },
+            "type": "map"
         },
         {
             "id": "step2",
@@ -40,7 +42,8 @@ fn main() {
             "transform": {
                 "externalId": "$input.id2",
                 "nested": "$step1"
-            }
+            },
+            "type": "map"
         }
     ]))
     .unwrap();

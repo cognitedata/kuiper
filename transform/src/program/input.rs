@@ -14,10 +14,42 @@ use crate::{
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TransformInput {
+pub struct MapTransformInput {
     pub id: String,
     pub inputs: Vec<String>,
     pub transform: HashMap<String, String>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(tag = "type")]
+pub enum TransformInput {
+    Map(MapTransformInput),
+    Flatten(FlattenTransformInput),
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FlattenTransformInput {
+    pub id: String,
+    pub inputs: Vec<String>,
+    pub transform: String,
+}
+
+impl TransformInput {
+    pub fn id(&self) -> &String {
+        match self {
+            Self::Map(x) => &x.id,
+            Self::Flatten(x) => &x.id,
+        }
+    }
+
+    pub fn inputs(&self) -> &Vec<String> {
+        match self {
+            Self::Map(x) => &x.inputs,
+            Self::Flatten(x) => &x.inputs,
+        }
+    }
 }
 
 #[derive(Hash, PartialEq, Eq, Debug)]
@@ -26,40 +58,81 @@ pub enum TransformOrInput {
     Transform(usize),
 }
 
-pub struct Transform {
+pub struct MapTransform {
     inputs: HashMap<String, TransformOrInput>,
     map: HashMap<String, ExpressionType>,
 }
 
+pub struct FlattenTransform {
+    inputs: HashMap<String, TransformOrInput>,
+    map: ExpressionType,
+}
+
+pub enum Transform {
+    Map(MapTransform),
+    Flatten(FlattenTransform),
+}
+
 impl Transform {
+    fn inputs(&self) -> &HashMap<String, TransformOrInput> {
+        match self {
+            Transform::Map(x) => &x.inputs,
+            Transform::Flatten(x) => &x.inputs,
+        }
+    }
+
     fn compile(
         inputs: HashMap<String, TransformOrInput>,
         raw: &TransformInput,
     ) -> Result<Self, CompileError> {
         let mut map = HashMap::new();
-        for (key, value) in &raw.transform {
-            let inp = Token::lexer(value);
-            let result = Parser::new(inp).parse()?;
-            map.insert(key.clone(), result);
+        match raw {
+            TransformInput::Map(raw) => {
+                for (key, value) in &raw.transform {
+                    let inp = Token::lexer(value);
+                    let result = Parser::new(inp).parse()?;
+                    map.insert(key.clone(), result);
+                }
+                Ok(Self::Map(MapTransform { inputs, map }))
+            }
+            TransformInput::Flatten(raw) => {
+                let inp = Token::lexer(&raw.transform);
+                let result = Parser::new(inp).parse()?;
+                Ok(Self::Flatten(FlattenTransform {
+                    inputs,
+                    map: result,
+                }))
+            }
         }
-        Ok(Self { inputs, map })
     }
 
     pub fn execute(
         &self,
         raw_data: &HashMap<TransformOrInput, ResolveResult>,
     ) -> Result<Value, TransformError> {
-        let state = ExpressionExecutionState::new(&raw_data, &self.inputs);
-        let mut map = serde_json::Map::new();
-        for (idx, (key, tf)) in self.map.iter().enumerate() {
-            let res = tf.resolve(&state)?;
-            let value = match res {
-                ResolveResult::Reference(r) => r.clone(),
-                ResolveResult::Value(r) => r,
-            };
-            map.insert(key.clone(), value);
+        let state = ExpressionExecutionState::new(&raw_data, self.inputs());
+        match self {
+            Self::Map(m) => {
+                let mut map = serde_json::Map::new();
+                for (key, tf) in m.map.iter() {
+                    let res = tf.resolve(&state)?;
+                    let value = match res {
+                        ResolveResult::Reference(r) => r.clone(),
+                        ResolveResult::Value(r) => r,
+                    };
+                    map.insert(key.clone(), value);
+                }
+                Ok(Value::Object(map))
+            }
+            Self::Flatten(m) => {
+                let res = m.map.resolve(&state)?;
+                let value = match res {
+                    ResolveResult::Reference(r) => r.clone(),
+                    ResolveResult::Value(r) => r,
+                };
+                Ok(value)
+            }
         }
-        Ok(Value::Object(map))
     }
 }
 
@@ -110,37 +183,37 @@ impl Program {
         state: &mut HashMap<String, usize>,
         visited: &Vec<&'a String>,
     ) -> Result<(), CompileError> {
-        if raw.id == "input" {
+        if raw.id() == "input" {
             return Err(CompileError::Config(
                 "Transform ID may not be \"input\". It is reserved for the input to the pipeline"
                     .to_string(),
             ));
         }
-        if raw.inputs.is_empty() {
+        if raw.inputs().is_empty() {
             return Err(CompileError::Config(format!(
                 "Transform with ID {} does not have any inputs",
-                raw.id
+                raw.id()
             )));
         }
-        if visited.iter().any(|i| *i == &raw.id) {
+        if visited.iter().any(|i| *i == raw.id()) {
             return Err(CompileError::Config(format!(
                 "Recursive transformations is not allowed, {} indirectly references itself",
-                raw.id
+                raw.id()
             )));
         }
-        if state.contains_key(&raw.id) {
+        if state.contains_key(raw.id()) {
             return Ok(());
         }
 
         let mut next_visited = visited.clone();
-        next_visited.push(&raw.id);
+        next_visited.push(raw.id());
         let mut final_inputs = HashMap::new();
-        for input in &raw.inputs {
+        for input in raw.inputs() {
             if input == "input" {
                 final_inputs.insert("input".to_string(), TransformOrInput::Input);
             } else {
-                let next = inp.iter().find(|i| &i.id == input).ok_or_else(|| {
-                    CompileError::Config(format!("Input {} to {} is not defined", &input, &raw.id))
+                let next = inp.iter().find(|i| i.id() == input).ok_or_else(|| {
+                    CompileError::Config(format!("Input {} to {} is not defined", &input, raw.id()))
                 })?;
 
                 Self::compile_rec(next, inp, build, state, &next_visited)?;
@@ -150,9 +223,9 @@ impl Program {
                 );
             }
         }
-        if !state.contains_key(&raw.id) {
+        if !state.contains_key(raw.id()) {
             build.push(Transform::compile(final_inputs, &raw)?);
-            state.insert(raw.id.clone(), build.len() - 1);
+            state.insert(raw.id().clone(), build.len() - 1);
         }
         Ok(())
     }
