@@ -28,10 +28,7 @@ macro_rules! consume_token {
         match token {
             $pt => (),
             _ => {
-                return Err(ParserError::incorrect_symbol(
-                    $slf.tokens.span(),
-                    token.to_string(),
-                ));
+                return Err(ParserError::incorrect_symbol($slf.tokens.span(), token));
             }
         }
         token
@@ -108,18 +105,10 @@ impl<'source> Parser<'source> {
             // println!("Investigate symbol {}", token);
             match token {
                 Token::Period => {
-                    return Err(ParserError::incorrect_symbol(
-                        self.tokens.span(),
-                        token.to_string(),
-                    ))
+                    return Err(ParserError::incorrect_symbol(self.tokens.span(), token))
                 }
                 Token::Comma => break ExprTerminator::Comma,
-                Token::Error => {
-                    return Err(ParserError::incorrect_symbol(
-                        self.tokens.span(),
-                        "WHITESPACE".to_string(),
-                    ))
-                }
+                Token::Error => return Err(ParserError::invalid_token(self.tokens.span())),
                 Token::Operator(o) => ops.push((o, self.tokens.span())),
                 Token::OpenParenthesis => {
                     let (expr, term) = self.parse_expression()?;
@@ -131,31 +120,33 @@ impl<'source> Parser<'source> {
                 }
                 Token::CloseParenthesis => break ExprTerminator::CloseParenthesis,
                 Token::Float(n) => exprs.push(ExpressionType::Constant(
-                    Constant::try_new_f64(n).ok_or_else(|| {
-                        ParserError::incorrect_symbol(self.tokens.span(), token.to_string())
-                    })?,
+                    Constant::try_new_f64(n)
+                        .ok_or_else(|| ParserError::incorrect_symbol(self.tokens.span(), token))?,
                 )),
                 Token::Integer(n) => exprs.push(ExpressionType::Constant(
-                    Constant::try_new_i64(n).ok_or_else(|| {
-                        ParserError::incorrect_symbol(self.tokens.span(), token.to_string())
-                    })?,
+                    Constant::try_new_i64(n)
+                        .ok_or_else(|| ParserError::incorrect_symbol(self.tokens.span(), token))?,
                 )),
                 Token::UInteger(n) => exprs.push(ExpressionType::Constant(
-                    Constant::try_new_u64(n).ok_or_else(|| {
-                        ParserError::incorrect_symbol(self.tokens.span(), token.to_string())
-                    })?,
+                    Constant::try_new_u64(n)
+                        .ok_or_else(|| ParserError::incorrect_symbol(self.tokens.span(), token))?,
                 )),
                 Token::String(ref s) => exprs.push(ExpressionType::Constant(
                     Constant::try_new_string(s.clone()),
                 )),
                 Token::BareString(f) => {
+                    let start = self.tokens.span();
                     consume_token!(self, Token::OpenParenthesis);
                     let (args, term) = self.parse_expression_list()?;
                     if !matches!(term, ExprTerminator::CloseParenthesis) {
                         return Err(ParserError::expected_symbol(self.tokens.span(), ")"));
                     }
 
-                    let func = get_function_expression(self.tokens.span(), &f, args)?;
+                    let span = Span {
+                        start: start.start,
+                        end: self.tokens.span().end,
+                    };
+                    let func = get_function_expression(span, &f, args)?;
                     exprs.push(func);
                 }
                 Token::SelectorStart => {
@@ -168,12 +159,17 @@ impl<'source> Parser<'source> {
                     continue;
                 }
                 Token::OpenBracket => {
+                    let start = self.tokens.span();
                     let (items, term) = self.parse_expression_list()?;
+                    let span = Span {
+                        start: start.start,
+                        end: self.tokens.span().end,
+                    };
                     if !matches!(term, ExprTerminator::CloseBracket) {
                         return Err(ParserError::expected_symbol(self.tokens.span(), "]"));
                     }
 
-                    let expr = ArrayExpression::new(items, self.tokens.span());
+                    let expr = ArrayExpression::new(items, span);
                     exprs.push(ExpressionType::Array(expr));
                 }
                 Token::CloseBracket => break ExprTerminator::CloseBracket,
@@ -183,10 +179,14 @@ impl<'source> Parser<'source> {
                 None => break ExprTerminator::End,
             };
         };
+        let span = Span {
+            start: start.start,
+            end: self.tokens.span().end,
+        };
 
         if exprs.len() != ops.len() + 1 {
             return Err(ParserError::invalid_expr(
-                start,
+                span,
                 "Failed to parse expression",
             ));
         }
@@ -216,6 +216,7 @@ impl<'source> Parser<'source> {
 
     fn parse_selector(&mut self) -> Result<(SelectorExpression, Option<Token>), ParserError> {
         let mut path = vec![];
+        let start = self.tokens.span();
 
         let mut require_symbol = true;
 
@@ -228,11 +229,9 @@ impl<'source> Parser<'source> {
             if require_symbol {
                 match next {
                     Token::BareString(s) => path.push(SelectorElement::Constant(s)),
+                    Token::UInteger(s) => path.push(SelectorElement::Constant(s.to_string())),
                     _ => {
-                        return Err(ParserError::incorrect_symbol(
-                            self.tokens.span(),
-                            next.to_string(),
-                        ));
+                        return Err(ParserError::incorrect_symbol(self.tokens.span(), next));
                     }
                 }
                 next = match self.tokens.next() {
@@ -261,10 +260,14 @@ impl<'source> Parser<'source> {
                 _ => break Some(next),
             }
         };
+        let span = Span {
+            start: start.start,
+            end: self.tokens.span().end,
+        };
         if path.is_empty() {
-            return Err(ParserError::empty_expression(self.tokens.span()));
+            return Err(ParserError::empty_expression(span));
         }
-        let expr = SelectorExpression::new(path.remove(0), path, self.tokens.span());
+        let expr = SelectorExpression::new(path.remove(0), path, span);
         // println!("Got selector {}", expr);
         Ok((expr, final_token))
     }
@@ -272,25 +275,109 @@ impl<'source> Parser<'source> {
 
 #[cfg(test)]
 pub mod test {
-    use std::collections::HashMap;
+    use logos::{Logos, Span};
 
-    use logos::Logos;
-    use serde_json::json;
-
-    use crate::lexer::Token;
+    use crate::{expressions::ExpressionType, lexer::Token, parse::ParserError};
 
     use super::Parser;
 
+    fn parse(inp: &str) -> Result<ExpressionType, ParserError> {
+        let lex = Token::lexer(inp);
+        Parser::new(lex).parse()
+    }
+
+    fn parse_fail(inp: &str) -> ParserError {
+        match parse(inp) {
+            Ok(_) => panic!("Expected parse to fail"),
+            Err(x) => x,
+        }
+    }
+
     #[test]
-    pub fn test_parser() {
-        let mut input = HashMap::new();
-        let inp = json!({
-            "elem": 3
-        });
-        input.insert("id".to_string(), &inp);
+    pub fn test_order_of_ops() {
+        let expr = parse("2 + 2 * $id.elem - 3 * 3 + pow(2, 2)").unwrap();
+        // The parentheses indicate the order of operations, i.e. this expression is valid even if you ignore
+        // normal order of operation rules.
+        assert_eq!(
+            "(((2 + (2 * $id.elem)) - (3 * 3)) + pow(2, 2))",
+            expr.to_string()
+        );
+    }
 
-        let lex = Token::lexer("2 + 2 * $id.elem - 3 * 3 + pow(2, 2)");
+    #[test]
+    pub fn test_bad_selector() {
+        let res = parse_fail("2 + $id.+");
+        match res {
+            ParserError::IncorrectSymbol(d) => {
+                assert_eq!(d.detail, Some("Unexpected symbol +".to_string()));
+                assert_eq!(d.position, Span { start: 8, end: 9 });
+            }
+            _ => panic!("Wrong type of response: {:?}", res),
+        }
+    }
 
-        Parser::new(lex).parse().unwrap();
+    #[test]
+    pub fn test_empty_expression() {
+        let res = parse_fail("2 + ()");
+        match res {
+            ParserError::InvalidExpression(d) => {
+                assert_eq!(d.detail, Some("Failed to parse expression".to_string()));
+                assert_eq!(d.position, Span { start: 4, end: 6 });
+            }
+            _ => panic!("Wrong type of response: {:?}", res),
+        }
+    }
+
+    #[test]
+    pub fn test_missing_terminator() {
+        let res = parse_fail("2 + (2 * ");
+        match res {
+            ParserError::InvalidExpression(d) => {
+                assert_eq!(d.detail, Some("Failed to parse expression".to_string()));
+                assert_eq!(d.position, Span { start: 4, end: 9 });
+            }
+            _ => panic!("Wrong type of response: {:?}", res),
+        }
+    }
+
+    #[test]
+    pub fn test_unterminated_string() {
+        let res = parse_fail("2 + 'test ");
+        match res {
+            ParserError::InvalidToken(d) => {
+                assert_eq!(d.position, Span { start: 4, end: 10 });
+            }
+            _ => panic!("Wrong type of response: {:?}", res),
+        }
+    }
+
+    #[test]
+    pub fn test_wrong_function_args() {
+        let res = parse_fail("2 + pow(2)");
+        match res {
+            ParserError::NFunctionArgs(d) => {
+                assert_eq!(
+                    d.detail,
+                    Some(
+                        "Incorrect number of function args: function pow takes 2 arguments"
+                            .to_string()
+                    )
+                );
+                assert_eq!(d.position, Span { start: 4, end: 10 });
+            }
+            _ => panic!("Wrong type of response: {:?}", res),
+        }
+    }
+
+    #[test]
+    pub fn test_unrecognized_function() {
+        let res = parse_fail("2 + bloop(34)");
+        match res {
+            ParserError::IncorrectSymbol(d) => {
+                assert_eq!(d.detail, Some("Unrecognized function: bloop".to_string()));
+                assert_eq!(d.position, Span { start: 4, end: 13 });
+            }
+            _ => panic!("Wrong type of response: {:?}", res),
+        }
     }
 }

@@ -69,7 +69,7 @@ pub fn get_function_expression(
         "atan2" => FunctionType::Atan2(Atan2Function::new(args, pos)?),
         "floor" => FunctionType::Floor(FloorFunction::new(args, pos)?),
         "ceil" => FunctionType::Ceil(CeilFunction::new(args, pos)?),
-        _ => return Err(ParserError::incorrect_symbol(pos, name.to_string())),
+        _ => return Err(ParserError::unrecognized_function(pos, name)),
     };
     Ok(ExpressionType::Function(expr))
 }
