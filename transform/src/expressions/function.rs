@@ -78,21 +78,27 @@ macro_rules! arg2_math_func {
                     Self::INFO.name,
                     self.lhs.resolve(state)?.as_ref(),
                     &self.span,
+                    state.id,
                 )?;
                 let rhs = get_number_from_value(
                     Self::INFO.name,
                     self.rhs.resolve(state)?.as_ref(),
                     &self.span,
+                    state.id,
                 )?;
 
                 let res = lhs.$rname(rhs);
 
                 Ok(ResolveResult::Value(Value::Number(
                     Number::from_f64(res).ok_or_else(|| {
-                        TransformError::ConversionFailed(format!(
-                            "Failed to convert result of operator {} to number at {}",
-                            $name, self.span.start
-                        ))
+                        TransformError::new_conversion_failed(
+                            format!(
+                                "Failed to convert result of operator {} to number at {}",
+                                $name, self.span.start
+                            ),
+                            &self.span,
+                            state.id,
+                        )
                     })?,
                 )))
             }
@@ -145,16 +151,21 @@ macro_rules! arg1_math_func {
                     Self::INFO.name,
                     self.arg.resolve(state)?.as_ref(),
                     &self.span,
+                    state.id,
                 )?;
 
                 let res = arg.$rname();
 
                 Ok(ResolveResult::Value(Value::Number(
                     Number::from_f64(res).ok_or_else(|| {
-                        TransformError::ConversionFailed(format!(
-                            "Failed to convert result of operator {} to number at {}",
-                            $name, self.span.start
-                        ))
+                        TransformError::new_conversion_failed(
+                            format!(
+                                "Failed to convert result of operator {} to number at {}",
+                                $name, self.span.start
+                            ),
+                            &self.span,
+                            state.id,
+                        )
                     })?,
                 )))
             }

@@ -29,7 +29,7 @@ impl Program {
                 value.into_iter().map(ResolveResult::Value).collect(),
             );
         }
-        Err(TransformError::SourceMissingError(
+        Err(TransformError::InvalidProgramError(
             "No transforms in program".to_string(),
         ))
     }
@@ -83,7 +83,7 @@ impl Transform {
         &self,
         data: &HashMap<TransformOrInput, ResolveResult>,
     ) -> Result<Vec<Value>, TransformError> {
-        let state = ExpressionExecutionState::new(&data, &self.inputs().inputs);
+        let state = ExpressionExecutionState::new(&data, &self.inputs().inputs, self.id());
         Ok(match self {
             Self::Map(m) => {
                 let mut map = serde_json::Map::new();

@@ -66,11 +66,13 @@ impl<'a> Expression<'a> for OpExpression {
             &self.descriptor,
             self.elements[0].resolve(state)?.as_ref(),
             &self.span,
+            state.id,
         )?;
         let rhs = get_number_from_value(
             &self.descriptor,
             self.elements[1].resolve(state)?.as_ref(),
             &self.span,
+            state.id,
         )?;
 
         let res = match &self.operator {
@@ -81,10 +83,14 @@ impl<'a> Expression<'a> for OpExpression {
         };
         Ok(ResolveResult::Value(Value::Number(
             Number::from_f64(res).ok_or_else(|| {
-                TransformError::ConversionFailed(format!(
-                    "Failed to convert result of operator {} to number",
-                    &self.descriptor
-                ))
+                TransformError::new_conversion_failed(
+                    format!(
+                        "Failed to convert result of operator {} to number",
+                        &self.descriptor
+                    ),
+                    &self.span,
+                    state.id,
+                )
             })?,
         )))
     }

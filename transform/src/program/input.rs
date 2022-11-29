@@ -84,11 +84,13 @@ impl Display for TransformOrInput {
 
 pub struct MapTransform {
     inputs: TransformInputs,
+    id: String,
     pub(crate) map: HashMap<String, ExpressionType>,
 }
 
 pub struct FlattenTransform {
     inputs: TransformInputs,
+    id: String,
     pub(crate) map: ExpressionType,
 }
 
@@ -102,6 +104,13 @@ impl Transform {
         match self {
             Transform::Map(x) => &x.inputs,
             Transform::Flatten(x) => &x.inputs,
+        }
+    }
+
+    pub(crate) fn id(&self) -> &str {
+        match self {
+            Transform::Map(x) => &x.id,
+            Transform::Flatten(x) => &x.id,
         }
     }
 
@@ -120,6 +129,7 @@ impl Transform {
                 Ok(Self::Map(MapTransform {
                     inputs: TransformInputs::new(inputs),
                     map,
+                    id: raw.id.clone(),
                 }))
             }
             TransformInput::Flatten(raw) => {
@@ -128,6 +138,7 @@ impl Transform {
                 Ok(Self::Flatten(FlattenTransform {
                     inputs: TransformInputs::new(inputs),
                     map: result,
+                    id: raw.id.clone(),
                 }))
             }
         }

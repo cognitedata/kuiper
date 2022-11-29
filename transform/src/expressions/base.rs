@@ -17,6 +17,7 @@ where
 {
     data: &'b HashMap<TransformOrInput, ResolveResult<'a>>,
     map: &'b HashMap<String, TransformOrInput>,
+    pub id: &'b str,
 }
 
 impl<'a, 'b> ExpressionExecutionState<'a, 'b> {
@@ -33,8 +34,9 @@ impl<'a, 'b> ExpressionExecutionState<'a, 'b> {
     pub fn new(
         data: &'b HashMap<TransformOrInput, ResolveResult<'a>>,
         map: &'b HashMap<String, TransformOrInput>,
+        id: &'b str,
     ) -> Self {
-        Self { data, map }
+        Self { data, map, id }
     }
 }
 
@@ -154,15 +156,29 @@ impl Constant {
     }
 }
 
-pub fn get_number_from_value(desc: &str, val: &Value, span: &Span) -> Result<f64, TransformError> {
+pub fn get_number_from_value(
+    desc: &str,
+    val: &Value,
+    span: &Span,
+    id: &str,
+) -> Result<f64, TransformError> {
     let v = match val {
         Value::Number(n) => n,
-        _ => return Err(TransformError::new_incorrect_type(desc, "number", &val)),
+        _ => {
+            return Err(TransformError::new_incorrect_type(
+                desc,
+                "number",
+                &TransformError::value_desc(val),
+                span,
+                id,
+            ))
+        }
     };
     v.as_f64().ok_or_else(|| {
-        TransformError::ConversionFailed(format!(
-            "Failed to convert field into number for operator {} at {}",
-            desc, span.start
-        ))
+        TransformError::new_conversion_failed(
+            format!("Failed to convert input into number for operator {}", desc),
+            span,
+            id,
+        )
     })
 }

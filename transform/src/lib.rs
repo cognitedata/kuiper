@@ -64,6 +64,5 @@ mod tests {
         for rs in res {
             println!("{}", rs);
         }
-        panic!("test");
     }
 }

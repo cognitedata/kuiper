@@ -6,10 +6,12 @@ use super::{
     base::{Expression, ExpressionExecutionState, ExpressionType, ResolveResult},
     transform_error::TransformError,
 };
+use logos::Span;
 
 pub struct SelectorExpression {
     source: SelectorElement,
     path: Vec<SelectorElement>,
+    span: Span,
 }
 
 pub enum SelectorElement {
@@ -44,7 +46,13 @@ impl<'a> Expression<'a> for SelectorExpression {
         let source = match &self.source {
             SelectorElement::Constant(x) => match state.get_value(x) {
                 Some(x) => x,
-                None => return Err(TransformError::SourceMissingError(self.source.to_string())),
+                None => {
+                    return Err(TransformError::new_source_missing(
+                        self.source.to_string(),
+                        &self.span,
+                        state.id,
+                    ))
+                }
             },
             SelectorElement::Expression(x) => {
                 let val = x.resolve(state)?;
@@ -52,21 +60,27 @@ impl<'a> Expression<'a> for SelectorExpression {
                     Value::String(s) => match state.get_value(s) {
                         Some(x) => x,
                         None => {
-                            return Err(TransformError::SourceMissingError(self.source.to_string()))
+                            return Err(TransformError::new_source_missing(
+                                self.source.to_string(),
+                                &self.span,
+                                state.id,
+                            ))
                         }
                     },
                     Value::Number(n) => match n.as_f64() {
                         _ => {
-                            return Err(TransformError::SourceMissingError(
+                            return Err(TransformError::InvalidProgramError(
                                 "Root selector must be string".to_string(),
                             ))
                         }
                     },
                     _ => {
                         return Err(TransformError::new_incorrect_type(
-                            "selector",
-                            "integer or string",
-                            &val.as_ref(),
+                            "Incorrect type in selector",
+                            "string",
+                            &TransformError::value_desc(val.as_ref()),
+                            &self.span,
+                            state.id,
                         ))
                     }
                 }
@@ -85,20 +99,34 @@ impl<'a> Expression<'a> for SelectorExpression {
                     match val.as_ref() {
                         Value::String(s) => match elem.as_object().and_then(|o| o.get(s)) {
                             Some(x) => x,
-                            None => return Ok(ResolveResult::Value(Value::Null))
+                            None => return Ok(ResolveResult::Value(Value::Null)),
                         },
                         Value::Number(n) => match n.as_u64() {
                             Some(x) => match elem.as_array().and_then(|a| a.get(x as usize)) {
                                 Some(x) => x,
-                                None => return Ok(ResolveResult::Value(Value::Null))
+                                None => return Ok(ResolveResult::Value(Value::Null)),
                             },
-                            _ => return Err(TransformError::IncorrectTypeInField("Incorrect type in selector. Expected positive integer, got floating point".to_string())),
+                            _ => {
+                                return Err(TransformError::new_incorrect_type(
+                                    "Incorrect type in selector",
+                                    "positive integer",
+                                    if n.is_f64() {
+                                        "floating point"
+                                    } else {
+                                        "negative integer"
+                                    },
+                                    &self.span,
+                                    &state.id,
+                                ))
+                            }
                         },
                         _ => {
                             return Err(TransformError::new_incorrect_type(
-                                "selector",
+                                "Incorrect type in selector",
                                 "integer or string",
-                                &val.as_ref(),
+                                &TransformError::value_desc(val.as_ref()),
+                                &self.span,
+                                &state.id,
                             ))
                         }
                     }
@@ -110,7 +138,7 @@ impl<'a> Expression<'a> for SelectorExpression {
 }
 
 impl SelectorExpression {
-    pub fn new(source: SelectorElement, path: Vec<SelectorElement>) -> Self {
-        Self { source, path }
+    pub fn new(source: SelectorElement, path: Vec<SelectorElement>, span: Span) -> Self {
+        Self { source, path, span }
     }
 }

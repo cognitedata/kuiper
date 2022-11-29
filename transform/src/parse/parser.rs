@@ -264,7 +264,7 @@ impl<'source> Parser<'source> {
         if path.is_empty() {
             return Err(ParserError::empty_expression(self.tokens.span()));
         }
-        let expr = SelectorExpression::new(path.remove(0), path);
+        let expr = SelectorExpression::new(path.remove(0), path, self.tokens.span());
         // println!("Got selector {}", expr);
         Ok((expr, final_token))
     }
