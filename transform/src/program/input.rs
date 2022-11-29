@@ -2,12 +2,9 @@ use std::collections::HashMap;
 
 use logos::Logos;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 use crate::{
-    expressions::{
-        Expression, ExpressionExecutionState, ExpressionType, ResolveResult, TransformError,
-    },
+    expressions::ExpressionType,
     lexer::Token,
     parse::{Parser, ParserError},
 };
@@ -52,7 +49,7 @@ impl TransformInput {
     }
 }
 
-#[derive(Hash, PartialEq, Eq, Debug)]
+#[derive(Hash, PartialEq, Eq, Debug, Clone)]
 pub enum TransformOrInput {
     Input,
     Transform(usize),
@@ -60,12 +57,12 @@ pub enum TransformOrInput {
 
 pub struct MapTransform {
     inputs: HashMap<String, TransformOrInput>,
-    map: HashMap<String, ExpressionType>,
+    pub(crate) map: HashMap<String, ExpressionType>,
 }
 
 pub struct FlattenTransform {
     inputs: HashMap<String, TransformOrInput>,
-    map: ExpressionType,
+    pub(crate) map: ExpressionType,
 }
 
 pub enum Transform {
@@ -74,7 +71,7 @@ pub enum Transform {
 }
 
 impl Transform {
-    fn inputs(&self) -> &HashMap<String, TransformOrInput> {
+    pub(crate) fn inputs(&self) -> &HashMap<String, TransformOrInput> {
         match self {
             Transform::Map(x) => &x.inputs,
             Transform::Flatten(x) => &x.inputs,
@@ -102,35 +99,6 @@ impl Transform {
                     inputs,
                     map: result,
                 }))
-            }
-        }
-    }
-
-    pub fn execute(
-        &self,
-        raw_data: &HashMap<TransformOrInput, ResolveResult>,
-    ) -> Result<Value, TransformError> {
-        let state = ExpressionExecutionState::new(&raw_data, self.inputs());
-        match self {
-            Self::Map(m) => {
-                let mut map = serde_json::Map::new();
-                for (key, tf) in m.map.iter() {
-                    let res = tf.resolve(&state)?;
-                    let value = match res {
-                        ResolveResult::Reference(r) => r.clone(),
-                        ResolveResult::Value(r) => r,
-                    };
-                    map.insert(key.clone(), value);
-                }
-                Ok(Value::Object(map))
-            }
-            Self::Flatten(m) => {
-                let res = m.map.resolve(&state)?;
-                let value = match res {
-                    ResolveResult::Reference(r) => r.clone(),
-                    ResolveResult::Value(r) => r,
-                };
-                Ok(value)
             }
         }
     }

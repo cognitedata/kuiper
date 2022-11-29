@@ -83,6 +83,7 @@ pub enum ExpressionType {
     Array(ArrayExpression),
 }
 
+#[derive(Clone)]
 pub enum ResolveResult<'a> {
     Reference(&'a Value),
     Value(Value),
@@ -93,6 +94,20 @@ impl<'a> ResolveResult<'a> {
         match self {
             Self::Reference(r) => r,
             Self::Value(v) => v,
+        }
+    }
+
+    pub fn as_value(self) -> Value {
+        match self {
+            Self::Reference(r) => r.clone(),
+            Self::Value(v) => v,
+        }
+    }
+
+    pub fn as_self_ref(&'a self) -> Self {
+        match self {
+            Self::Reference(r) => Self::Reference(r),
+            Self::Value(v) => Self::Reference(&v),
         }
     }
 }

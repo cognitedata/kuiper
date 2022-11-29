@@ -1,14 +1,5 @@
-use std::collections::HashMap;
-
-use logos::Logos;
 use program::{Program, TransformInput};
 use serde_json::json;
-
-use crate::{
-    expressions::{Expression, ExpressionExecutionState},
-    lexer::Token,
-    parse::Parser,
-};
 
 mod expressions;
 mod lexer;
@@ -20,12 +11,8 @@ fn main() {
         {
             "id": "step1",
             "inputs": ["input"],
-            "transform": {
-                "externalId": "$input.id",
-                "value": "$input.value",
-                "timestamp": "$input.timestamp"
-            },
-            "type": "map"
+            "transform": "$input.values",
+            "type": "flatten"
         },
         {
             "id": "unused",
@@ -40,8 +27,9 @@ fn main() {
             "id": "step2",
             "inputs": ["input", "step1"],
             "transform": {
-                "externalId": "$input.id2",
-                "nested": "$step1"
+                "externalId": "$input.id",
+                "value": "$step1.value * pow(10, $step1.valueExponent)",
+                "timestamp": "$step1.time"
             },
             "type": "map"
         }
@@ -51,12 +39,20 @@ fn main() {
     let program = Program::compile(raw).unwrap();
     let input = json!({
         "id": "my-id",
-        "id2": "my-other-id",
-        "value": 123.321,
-        "timestamp": 12395184235i64
+        "values": [{
+            "value": 123.123,
+            "valueExponent": 5,
+            "time": 123142812824u64
+        }, {
+            "value": 321.321,
+            "valueExponent": 5,
+            "time": 123901591231u64
+        }]
     });
     let res = program.execute(input).unwrap();
-    println!("{}", res);
+    for rs in res {
+        println!("{}", rs);
+    }
 
     /*let mut input = HashMap::new();
     let inp = json!({
