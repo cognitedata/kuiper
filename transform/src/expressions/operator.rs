@@ -30,6 +30,7 @@ impl Display for Operator {
 }
 
 impl Operator {
+    /// Get the operator priority. Higher numbers should be calculated last.
     pub fn priority(&self) -> i32 {
         match self {
             Self::Plus => 1,
@@ -40,6 +41,7 @@ impl Operator {
     }
 }
 
+/// Expression for an operator. Consists of two expressions, and an operator.
 pub struct OpExpression {
     operator: Operator,
     descriptor: String,

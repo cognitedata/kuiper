@@ -6,6 +6,10 @@ mod program;
 pub use program::CompileError;
 pub use program::{Program, TransformInput};
 
+pub use parse::{Parser, ParserError, ParserErrorData};
+
+pub use expressions::{TransformError, TransformErrorData};
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;

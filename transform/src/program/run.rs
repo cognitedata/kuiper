@@ -10,6 +10,7 @@ use super::{
 };
 
 impl Program {
+    /// Execute the program on a JSON value. The output is a list of values or a compile error.
     pub fn execute(&self, input: &Value) -> Result<Vec<Value>, TransformError> {
         let mut result = HashMap::<TransformOrInput, Vec<ResolveResult>>::new();
         result.insert(
@@ -36,6 +37,8 @@ impl Program {
 }
 
 impl Transform {
+    /// Compute the product of each input with each other, so if the input is
+    /// [1, 2, 3] and [1, 2], the result will be [1, 1], [1, 2], [2, 1], [2, 2], [3, 1] and [3, 2].
     fn compute_input_product<'a>(
         &self,
         it: &'a HashMap<TransformOrInput, Vec<ResolveResult<'a>>>,
@@ -79,22 +82,23 @@ impl Transform {
         res
     }
 
+    /// Execute a transform, internal method.
     fn execute_chunk(
         &self,
         data: &HashMap<TransformOrInput, ResolveResult>,
     ) -> Result<Vec<Value>, TransformError> {
-        let state = ExpressionExecutionState::new(&data, &self.inputs().inputs, self.id());
+        let state = ExpressionExecutionState::new(data, &self.inputs().inputs, self.id());
         Ok(match self {
             Self::Map(m) => {
                 let mut map = serde_json::Map::new();
                 for (key, tf) in m.map.iter() {
-                    let value = tf.resolve(&state)?.as_value();
+                    let value = tf.resolve(&state)?.into_value();
                     map.insert(key.clone(), value);
                 }
                 vec![Value::Object(map)]
             }
             Self::Flatten(m) => {
-                let value = m.map.resolve(&state)?.as_value();
+                let value = m.map.resolve(&state)?.into_value();
                 match value {
                     Value::Array(a) => a,
                     _ => vec![value],
@@ -103,11 +107,12 @@ impl Transform {
         })
     }
 
+    /// Execute the transform.
     pub fn execute(
         &self,
         raw_data: &HashMap<TransformOrInput, Vec<ResolveResult>>,
     ) -> Result<Vec<Value>, TransformError> {
-        let items = self.compute_input_product(&raw_data);
+        let items = self.compute_input_product(raw_data);
 
         let res = if items.is_empty() {
             let data = HashMap::new();

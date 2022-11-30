@@ -55,7 +55,7 @@ impl TransformError {
 
     pub fn new_source_missing(name: String, span: &Span, id: &str) -> Self {
         Self::SourceMissingError(TransformErrorData {
-            desc: name.to_string(),
+            desc: name,
             id: id.to_string(),
             span: span.clone(),
         })

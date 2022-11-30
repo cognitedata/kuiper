@@ -8,6 +8,7 @@ use super::{
 };
 use logos::Span;
 
+/// Selector expression, used to get a field from an input.
 pub struct SelectorExpression {
     source: SelectorElement,
     path: Vec<SelectorElement>,
@@ -67,18 +68,16 @@ impl<'a> Expression<'a> for SelectorExpression {
                             ))
                         }
                     },
-                    Value::Number(n) => match n.as_f64() {
-                        _ => {
-                            return Err(TransformError::InvalidProgramError(
-                                "Root selector must be string".to_string(),
-                            ))
-                        }
-                    },
+                    Value::Number(_) => {
+                        return Err(TransformError::InvalidProgramError(
+                            "Root selector must be string".to_string(),
+                        ))
+                    }
                     _ => {
                         return Err(TransformError::new_incorrect_type(
                             "Incorrect type in selector",
                             "string",
-                            &TransformError::value_desc(val.as_ref()),
+                            TransformError::value_desc(val.as_ref()),
                             &self.span,
                             state.id,
                         ))
@@ -116,7 +115,7 @@ impl<'a> Expression<'a> for SelectorExpression {
                                         "negative integer"
                                     },
                                     &self.span,
-                                    &state.id,
+                                    state.id,
                                 ))
                             }
                         },
@@ -124,9 +123,9 @@ impl<'a> Expression<'a> for SelectorExpression {
                             return Err(TransformError::new_incorrect_type(
                                 "Incorrect type in selector",
                                 "integer or string",
-                                &TransformError::value_desc(val.as_ref()),
+                                TransformError::value_desc(val.as_ref()),
                                 &self.span,
-                                &state.id,
+                                state.id,
                             ))
                         }
                     }

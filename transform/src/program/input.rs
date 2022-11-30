@@ -12,27 +12,38 @@ use crate::{
     parse::{Parser, ParserError},
 };
 
+/// Input to a "map" transform.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MapTransformInput {
+    /// A unique id for this transform. Verify that the ID is unique before passing to the compiler.
     pub id: String,
+    /// A list of inputs. May be empty. "input" is a magic input, it indicates the source of the transformation.
     pub inputs: Vec<String>,
+    /// The transformation, a map from output field name to expression.
     pub transform: HashMap<String, String>,
 }
 
+/// Input to a transform. A program consists of a list of these.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[serde(tag = "type")]
 pub enum TransformInput {
+    /// Map transform, outputs a JSON object.
     Map(MapTransformInput),
+    /// Flatten transform, outputs an array of JSON values.
     Flatten(FlattenTransformInput),
 }
 
+/// Input to a "flatten" transform.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FlattenTransformInput {
+    /// A unique id for this transform. Verify that the ID is unique before passing to the compiler.
     pub id: String,
+    /// A list of inputs. May be empty. "input" is a magic input, it indicates the source of the transformation.
     pub inputs: Vec<String>,
+    /// The transformation, a single expression. If the output is a JSON array it will be converted into an array of outputs.
     pub transform: String,
 }
 
@@ -52,8 +63,11 @@ impl TransformInput {
     }
 }
 
+/// Container for information about the input to the transform.
 pub(crate) struct TransformInputs {
+    /// The inputs to this transform, maps from a name to an index in the transform array, or to the input to the program.
     pub inputs: HashMap<String, TransformOrInput>,
+    /// For convenience, a set of the inputs used in this transform.
     pub used_inputs: HashSet<TransformOrInput>,
 }
 
@@ -114,6 +128,8 @@ impl Transform {
         }
     }
 
+    /// Compile a transform. The input is a map of the inputs, and the raw transform input.
+    /// This just builds lexer and parser for each step.
     fn compile(
         inputs: HashMap<String, TransformOrInput>,
         raw: &TransformInput,
@@ -145,6 +161,7 @@ impl Transform {
     }
 }
 
+/// The actual compiled program itself.
 pub struct Program {
     pub(crate) transforms: Vec<Transform>,
 }
@@ -162,6 +179,7 @@ impl From<ParserError> for CompileError {
 }
 
 impl Program {
+    /// Compile the program. The input is a list of raw transform inputs, which should have unique IDs.
     pub fn compile(inp: Vec<TransformInput>) -> Result<Self, CompileError> {
         if inp.is_empty() {
             return Ok(Program { transforms: vec![] });
@@ -171,26 +189,28 @@ impl Program {
 
         let output = inp.last().unwrap();
         let mut res = vec![];
-        Self::compile_rec(&output, &inp, &mut res, &mut transform_map, &vec![])?;
+        Self::compile_rec(output, &inp, &mut res, &mut transform_map, &[])?;
 
         Ok(Self { transforms: res })
-
-        /* for tf in inp {
-            if tf.id == "input" {
-                return Err(CompileError::Config("Transform ID may not be \"input\". It is reserved for the input to the pipeline".to_string()));
-            }
-            if tf.inputs.is_empty() {
-                return Err(CompileError::Config((""))
-            }
-        } */
     }
 
+    /// Recursive compilation. Instead of just compiling each transformation we recurse from the last transform,
+    /// which is the output. That way we avoid compiling transformations that will never be used.
+    ///
+    /// `raw` is the current transform
+    /// `inp` is the full list of transform inputs.
+    /// `build` is the built list of transforms
+    /// `state` is a map from transform ID to index in the build array.
+    /// `visited` is a dynamic list containing the IDs visited in this branch of the recursion tree.
+    ///
+    /// We do not want to allow recursion, since that can have some unpleasant effects and make it too easy
+    /// to create non-terminating programs.
     fn compile_rec<'a>(
         raw: &'a TransformInput,
         inp: &Vec<TransformInput>,
         build: &mut Vec<Transform>,
         state: &mut HashMap<String, usize>,
-        visited: &Vec<&'a String>,
+        visited: &[&'a String],
     ) -> Result<(), CompileError> {
         if raw.id() == "input" {
             return Err(CompileError::Config(
@@ -200,7 +220,7 @@ impl Program {
         }
         if visited.iter().any(|i| *i == raw.id()) {
             return Err(CompileError::Config(format!(
-                "Recursive transformations is not allowed, {} indirectly references itself",
+                "Recursive transformations are not allowed, {} indirectly references itself",
                 raw.id()
             )));
         }
@@ -208,7 +228,7 @@ impl Program {
             return Ok(());
         }
 
-        let mut next_visited = visited.clone();
+        let mut next_visited = visited.to_owned();
         next_visited.push(raw.id());
         let mut final_inputs = HashMap::new();
         for input in raw.inputs() {
@@ -227,7 +247,7 @@ impl Program {
             }
         }
         if !state.contains_key(raw.id()) {
-            build.push(Transform::compile(final_inputs, &raw)?);
+            build.push(Transform::compile(final_inputs, raw)?);
             state.insert(raw.id().clone(), build.len() - 1);
         }
         Ok(())

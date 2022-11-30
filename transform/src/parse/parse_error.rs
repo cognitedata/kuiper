@@ -5,11 +5,12 @@ use crate::lexer::Token;
 #[derive(Debug)]
 pub enum ParserError {
     EmptyExpression(ParserErrorData),
-    IncorrectSymbol(ParserErrorData),
+    UnexpectedSymbol(ParserErrorData),
     ExpectedSymbol(ParserErrorData),
     InvalidExpression(ParserErrorData),
     InvalidToken(ParserErrorData),
     NFunctionArgs(ParserErrorData),
+    ExpectExpression(ParserErrorData),
 }
 
 #[derive(Debug)]
@@ -25,17 +26,17 @@ impl ParserError {
             detail: None,
         })
     }
-    pub fn incorrect_symbol(position: Span, symbol: Token) -> Self {
+    pub fn unexpected_symbol(position: Span, symbol: Token) -> Self {
         match symbol {
             Token::Error => Self::invalid_token(position),
-            _ => Self::IncorrectSymbol(ParserErrorData {
+            _ => Self::UnexpectedSymbol(ParserErrorData {
                 position,
                 detail: Some(format!("Unexpected symbol {}", symbol)),
             }),
         }
     }
     pub fn unrecognized_function(position: Span, symbol: &str) -> Self {
-        Self::IncorrectSymbol(ParserErrorData {
+        Self::UnexpectedSymbol(ParserErrorData {
             position,
             detail: Some(format!("Unrecognized function: {}", symbol)),
         })
@@ -61,6 +62,12 @@ impl ParserError {
     }
     pub fn invalid_token(position: Span) -> Self {
         Self::InvalidToken(ParserErrorData {
+            position,
+            detail: None,
+        })
+    }
+    pub fn expect_expression(position: Span) -> Self {
+        Self::ExpectExpression(ParserErrorData {
             position,
             detail: None,
         })
