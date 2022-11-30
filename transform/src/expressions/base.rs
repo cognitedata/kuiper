@@ -149,10 +149,14 @@ impl Constant {
         val.map(|v| Self { val: v })
     }
 
-    pub fn try_new_string(v: String) -> Self {
+    pub fn new_string(v: String) -> Self {
         Self {
             val: Value::String(v),
         }
+    }
+
+    pub fn new_null() -> Self {
+        Self { val: Value::Null }
     }
 }
 

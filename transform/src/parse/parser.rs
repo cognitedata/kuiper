@@ -64,9 +64,21 @@ impl<'source> Parser<'source> {
         let (expr, term) = self.parse_expression()?;
         // Expect the terminator to be `End`, otherwise something like 1 + 1) + 1 would yield (1 + 1).
         if term == ExprTerminator::End {
-            Ok(expr)
+            if let Some(expr) = expr {
+                Ok(expr)
+            } else {
+                Err(ParserError::empty_expression(self.tokens.span()))
+            }
         } else {
-            Err(ParserError::empty_expression(self.tokens.span()))
+            Err(ParserError::unexpected_symbol(
+                self.tokens.span(),
+                match term {
+                    ExprTerminator::Comma => Token::Comma,
+                    ExprTerminator::CloseParenthesis => Token::CloseParenthesis,
+                    ExprTerminator::CloseBracket => Token::CloseBracket,
+                    ExprTerminator::End => unreachable!(),
+                },
+            ))
         }
     }
 
@@ -153,25 +165,28 @@ impl<'source> Parser<'source> {
     ///
     /// This method returns an expression, and an `ExprTerminator`, which is either `CloseParenthesis`, `CloseBracket`,
     /// `Comma`, or `End`, i.e. the valid symbols that may end an expression. When parsing a sub-expression
-    /// we always have to check that the terminator matches the opening token.
-    fn parse_expression(&mut self) -> Result<(ExpressionType, ExprTerminator), ParserError> {
+    /// we always have to check that the terminator matches the opening token. If the expression is empty it returns None,
+    /// leaving to the caller to handle the case where that's wrong. For example, [] is valid, but () is not (unless it's for a function)
+    fn parse_expression(
+        &mut self,
+    ) -> Result<(Option<ExpressionType>, ExprTerminator), ParserError> {
         let start = self.tokens.span();
         // The list of expressions and operators passed to `group_expressions`.
-        let mut exprs = vec![];
+        let mut exprs: Vec<ExpressionType> = vec![];
         let mut ops = vec![];
 
         let mut token = consume_token!(self);
 
         let mut expect_expression = true;
+        let mut initial = true;
         let term = loop {
             // Do a simple sanity check on the next token. After an operator, or at the start of an expression
             // only expression operators like `Token::OpenParenthesis`, `Float`, `Integer`, `String`, `SelectorStart`,
             // etc. are valid.
             // After an expression the only valid symbols are operators, or terminators.
-            if matches!(
-                token,
-                Token::Operator(_) | Token::Comma | Token::CloseParenthesis | Token::CloseBracket
-            ) {
+            if matches!(token, Token::Operator(_) | Token::Comma)
+                || !initial && matches!(token, Token::CloseParenthesis | Token::CloseBracket)
+            {
                 if expect_expression {
                     return Err(ParserError::expect_expression(self.tokens.span()));
                 }
@@ -181,6 +196,7 @@ impl<'source> Parser<'source> {
             } else {
                 expect_expression = false;
             }
+            initial = false;
 
             // println!("Investigate symbol {}", token);
             match token {
@@ -198,17 +214,22 @@ impl<'source> Parser<'source> {
                 // OpenParenthesis indicates the start of a new expression when encountered here.
                 // The terminator must be CloseParenthesis.
                 Token::OpenParenthesis => {
+                    let start = self.tokens.span();
                     let (expr, term) = self.parse_expression()?;
                     match term {
                         ExprTerminator::CloseParenthesis => (),
                         _ => return Err(ParserError::expected_symbol(self.tokens.span(), ")")),
-                    }
-                    exprs.push(expr)
+                    };
+                    let span = Span {
+                        start: start.start,
+                        end: self.tokens.span().end,
+                    };
+                    exprs.push(expr.ok_or_else(|| ParserError::empty_expression(span))?)
                 }
                 // CloseParenthesis terminates an expression. We don't care about what opened the expression here,
                 // if a terminator is encountered we stop, the parent expression can handle checking if it is valid.
                 Token::CloseParenthesis => break ExprTerminator::CloseParenthesis,
-                // Float, Integer, UInteger and String are all constants, which is a type of expression.
+                // Float, Integer, UInteger, Null and String are all constants, which is a type of expression.
                 Token::Float(n) => exprs.push(ExpressionType::Constant(
                     Constant::try_new_f64(n)
                         .ok_or_else(|| ParserError::unexpected_symbol(self.tokens.span(), token))?,
@@ -221,9 +242,8 @@ impl<'source> Parser<'source> {
                     Constant::try_new_u64(n)
                         .ok_or_else(|| ParserError::unexpected_symbol(self.tokens.span(), token))?,
                 )),
-                Token::String(ref s) => exprs.push(ExpressionType::Constant(
-                    Constant::try_new_string(s.clone()),
-                )),
+                Token::String(s) => exprs.push(ExpressionType::Constant(Constant::new_string(s))),
+                Token::Null => exprs.push(ExpressionType::Constant(Constant::new_null())),
                 // A BareString encountered here is a function call, it must be followed by OpenParenthesis,
                 // a (potentially empty) expression list, and a CloseParenthesis.
                 Token::BareString(f) => {
@@ -280,6 +300,10 @@ impl<'source> Parser<'source> {
             end: self.tokens.span().end,
         };
 
+        if exprs.is_empty() {
+            return Ok((None, term));
+        }
+
         if exprs.len() != ops.len() + 1 {
             return Err(ParserError::invalid_expr(
                 span,
@@ -288,23 +312,36 @@ impl<'source> Parser<'source> {
         }
 
         let expr = Self::group_expressions(ops, exprs);
-        Ok((expr, term))
+        Ok((Some(expr), term))
     }
 
-    // Parse comma separated list of expressions
+    // Parse comma separated list of expressions. The list may be empty, if the first returned expression is null.
     fn parse_expression_list(
         &mut self,
     ) -> Result<(Vec<ExpressionType>, ExprTerminator), ParserError> {
         let mut res = vec![];
+        let mut initial = true;
         let term = loop {
             let (expr, term) = self.parse_expression()?;
-            res.push(expr);
+            let is_some = expr.is_some();
+            if let Some(expr) = expr {
+                res.push(expr);
+            } else if !initial {
+                return Err(ParserError::expect_expression(self.tokens.span()));
+            }
+            initial = false;
             match term {
                 ExprTerminator::CloseParenthesis | ExprTerminator::CloseBracket => break term,
                 ExprTerminator::End => {
                     return Err(ParserError::empty_expression(self.tokens.span()))
                 }
-                ExprTerminator::Comma => (),
+                ExprTerminator::Comma if is_some => (),
+                ExprTerminator::Comma => {
+                    return Err(ParserError::unexpected_symbol(
+                        self.tokens.span(),
+                        Token::Comma,
+                    ))
+                }
             }
         };
         Ok((res, term))
@@ -326,6 +363,7 @@ impl<'source> Parser<'source> {
                 match next {
                     Token::BareString(s) => path.push(SelectorElement::Constant(s)),
                     Token::UInteger(s) => path.push(SelectorElement::Constant(s.to_string())),
+                    Token::Null => path.push(SelectorElement::Constant("null".to_string())),
                     _ => {
                         return Err(ParserError::unexpected_symbol(self.tokens.span(), next));
                     }
@@ -401,6 +439,11 @@ pub mod test {
     }
 
     #[test]
+    pub fn test_empty_array() {
+        parse("[] + []").unwrap();
+    }
+
+    #[test]
     pub fn test_bad_selector() {
         let res = parse_fail("2 + $id.+");
         match res {
@@ -413,11 +456,22 @@ pub mod test {
     }
 
     #[test]
+    pub fn test_weird_list() {
+        let res = parse_fail("[1, 2,]");
+        match res {
+            ParserError::ExpectExpression(d) => {
+                assert_eq!(d.position, Span { start: 6, end: 7 });
+            }
+            _ => panic!("Wrong type of response: {:?}", res),
+        }
+    }
+
+    #[test]
     pub fn test_empty_expression() {
         let res = parse_fail("2 + ()");
         match res {
-            ParserError::ExpectExpression(d) => {
-                assert_eq!(d.position, Span { start: 5, end: 6 });
+            ParserError::EmptyExpression(d) => {
+                assert_eq!(d.position, Span { start: 4, end: 6 });
             }
             _ => panic!("Wrong type of response: {:?}", res),
         }

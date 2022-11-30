@@ -72,6 +72,9 @@ pub enum Token {
     #[regex(r#"'(?:[^'\\]|\\.)*'"#, parse_string)]
     String(String),
 
+    #[token("null")]
+    Null,
+
     /// A bare string, which is either part of a selector, or a function call.
     #[regex(r#"[a-zA-Z0-9_]+"#, |s| s.slice().to_string())]
     #[regex(r#"`(?:[^`\\]|\\.)*`"#, parse_bare_string)]
@@ -113,6 +116,7 @@ impl Display for Token {
             Token::Error => write!(f, "unknown token"),
             Token::Integer(x) => write!(f, "{}", x),
             Token::UInteger(x) => write!(f, "{}", x),
+            Token::Null => write!(f, "null"),
         }
     }
 }
