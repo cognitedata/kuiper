@@ -8,6 +8,7 @@ use super::{
 };
 use logos::Span;
 
+/// Selector expression, used to get a field from an input.
 pub struct SelectorExpression {
     source: SelectorElement,
     path: Vec<SelectorElement>,

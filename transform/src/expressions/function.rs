@@ -12,9 +12,13 @@ use super::{
 
 use logos::Span;
 
+/// Static information about a function type.
 pub struct FunctionInfo {
+    /// Minimum number of arguments
     pub minargs: usize,
+    /// Maximum number of arguments, or None if the function can accept any number.
     pub maxargs: Option<usize>,
+    /// Function name.
     pub name: &'static str,
 }
 
@@ -46,15 +50,20 @@ impl FunctionInfo {
     }
 }
 
+/// An expansion of Expression especially for functions, contains a `new` method, and `INFO`.
 pub trait FunctionExpression<'a>: Expression<'a>
 where
     Self: Sized,
 {
+    /// Static information about this function.
     const INFO: FunctionInfo;
 
+    /// Create a new function from a list of expressions.
     fn new(args: Vec<ExpressionType>, span: Span) -> Result<Self, ParserError>;
 }
 
+/// Macro that creates a math function of the type `my_float.func(arg)`, which becomes `func(my_float, arg)`
+/// in the expression language.
 macro_rules! arg2_math_func {
     ($typ:ident, $name:expr, $rname:ident) => {
         pub struct $typ {
@@ -129,6 +138,8 @@ macro_rules! arg2_math_func {
     };
 }
 
+/// Macro that creates a math function of the type `my_float.func()`, which becomes `func(my_float)`
+/// in the expression language.
 macro_rules! arg1_math_func {
     ($typ:ident, $name:expr, $rname:ident) => {
         pub struct $typ {

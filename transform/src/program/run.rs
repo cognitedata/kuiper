@@ -10,6 +10,7 @@ use super::{
 };
 
 impl Program {
+    /// Execute the program on a JSON value. The output is a list of values or a compile error.
     pub fn execute(&self, input: &Value) -> Result<Vec<Value>, TransformError> {
         let mut result = HashMap::<TransformOrInput, Vec<ResolveResult>>::new();
         result.insert(
@@ -36,6 +37,8 @@ impl Program {
 }
 
 impl Transform {
+    /// Compute the product of each input with each other, so if the input is
+    /// [1, 2, 3] and [1, 2], the result will be [1, 1], [1, 2], [2, 1], [2, 2], [3, 1] and [3, 2].
     fn compute_input_product<'a>(
         &self,
         it: &'a HashMap<TransformOrInput, Vec<ResolveResult<'a>>>,
@@ -79,6 +82,7 @@ impl Transform {
         res
     }
 
+    /// Execute a transform, internal method.
     fn execute_chunk(
         &self,
         data: &HashMap<TransformOrInput, ResolveResult>,
@@ -103,6 +107,7 @@ impl Transform {
         })
     }
 
+    /// Execute the transform.
     pub fn execute(
         &self,
         raw_data: &HashMap<TransformOrInput, Vec<ResolveResult>>,
