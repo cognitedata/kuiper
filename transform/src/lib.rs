@@ -3,19 +3,16 @@ mod lexer;
 mod parse;
 mod program;
 
-pub use program::CompileError;
-pub use program::{Program, TransformInput};
-
-pub use parse::{Parser, ParserError, ParserErrorData};
-
 pub use expressions::{TransformError, TransformErrorData};
+pub use parse::{Parser, ParserError, ParserErrorData};
+pub use program::{CompileError, ConfigCompileError, ParserCompileError, Program, TransformInput};
 
 #[cfg(test)]
 mod tests {
     use logos::Span;
     use serde_json::{json, Value};
 
-    use crate::{CompileError, ParserError, Program};
+    use crate::{CompileError, ParserError, Program, TransformError};
 
     fn compile(value: Value) -> Result<Program, CompileError> {
         Program::compile(serde_json::from_value(value).unwrap())
@@ -332,6 +329,69 @@ mod tests {
                 assert_eq!(d.desc, "Input step2 to step is not defined")
             }
             _ => panic!("Wrong type of error {:?}", err),
+        }
+    }
+
+    // Numbers
+    #[test]
+    pub fn test_add_different_types() {
+        let result = compile(json!([{
+            "id": "step",
+            "inputs": ["input"],
+            "transform": "$input.val + 5.5",
+            "type": "flatten"
+        }]))
+        .unwrap();
+        let res = result.execute(&json!({ "val": 5 })).unwrap();
+        let res = res.get(0).unwrap();
+        assert_eq!(10.5, res.as_f64().unwrap());
+    }
+
+    #[test]
+    pub fn test_add_keeps_type() {
+        let result = compile(json!([{
+            "id": "step",
+            "inputs": ["input"],
+            "transform": "$input.val + 5",
+            "type": "flatten"
+        }]))
+        .unwrap();
+        let res = result.execute(&json!({ "val": 5 })).unwrap();
+        let res = res.get(0).unwrap();
+        assert_eq!(10, res.as_u64().unwrap());
+    }
+
+    #[test]
+    pub fn test_negative_result() {
+        let result = compile(json!([{
+            "id": "step",
+            "inputs": ["input"],
+            "transform": "$input.val - 10",
+            "type": "flatten"
+        }]))
+        .unwrap();
+        let res = result.execute(&json!({ "val": 5 })).unwrap();
+        let res = res.get(0).unwrap();
+        assert_eq!(-5, res.as_i64().unwrap());
+    }
+
+    #[test]
+    pub fn test_divide_by_zero() {
+        let result = compile(json!([{
+            "id": "step",
+            "inputs": ["input"],
+            "transform": "10 / $input.val",
+            "type": "flatten"
+        }]))
+        .unwrap();
+        let res = result.execute(&json!({ "val": 0 })).unwrap_err();
+        match res {
+            TransformError::InvalidOperation(d) => {
+                assert_eq!(d.id, "step");
+                assert_eq!(d.desc, "Divide by zero");
+                assert_eq!(d.span, Span { start: 3, end: 4 });
+            }
+            _ => panic!("Wrong type of error {:?}", res),
         }
     }
 }

@@ -20,7 +20,7 @@ pub enum CompileError {
 }
 
 impl CompileError {
-    pub fn from_parser_err(err: ParserError, id: &str, field: Option<&str>) -> Self {
+    pub(crate) fn from_parser_err(err: ParserError, id: &str, field: Option<&str>) -> Self {
         Self::Parser(ParserCompileError {
             err,
             id: id.to_string(),
@@ -28,7 +28,7 @@ impl CompileError {
         })
     }
 
-    pub fn config_err(desc: &str, id: Option<&str>) -> Self {
+    pub(crate) fn config_err(desc: &str, id: Option<&str>) -> Self {
         Self::Config(ConfigCompileError {
             desc: desc.to_string(),
             id: id.map(|i| i.to_string()),
