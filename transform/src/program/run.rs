@@ -44,7 +44,7 @@ impl Transform {
         it: &'a HashMap<TransformOrInput, Vec<ResolveResult<'a>>>,
     ) -> Vec<HashMap<TransformOrInput, ResolveResult<'a>>> {
         let mut res_len = 1usize;
-        let mut len = 1usize;
+        let mut len = 0usize;
         for (k, v) in it.iter() {
             if self.inputs().used_inputs.contains(k) && !v.is_empty() {
                 len += 1;
@@ -82,6 +82,54 @@ impl Transform {
         res
     }
 
+    fn compute_input_merge<'a>(
+        &self,
+        it: &'a HashMap<TransformOrInput, Vec<ResolveResult<'a>>>,
+    ) -> Vec<HashMap<TransformOrInput, ResolveResult<'a>>> {
+        let mut res: Vec<HashMap<TransformOrInput, ResolveResult<'a>>> = Vec::new();
+
+        for (key, value) in it.iter() {
+            if !self.inputs().used_inputs.contains(key) {
+                continue;
+            }
+            for v in value {
+                let mut map = HashMap::with_capacity(1);
+                map.insert(TransformOrInput::Merge, v.as_self_ref());
+                res.push(map);
+            }
+        }
+        res
+    }
+
+    fn compute_input_zip<'a>(
+        &self,
+        it: &'a HashMap<TransformOrInput, Vec<ResolveResult<'a>>>,
+    ) -> Vec<HashMap<TransformOrInput, ResolveResult<'a>>> {
+        let mut res_len = 0usize;
+        for (k, v) in it.iter() {
+            if self.inputs().used_inputs.contains(k) && v.len() > res_len {
+                res_len = v.len();
+            }
+        }
+        let mut res: Vec<HashMap<TransformOrInput, ResolveResult<'a>>> =
+            Vec::with_capacity(res_len);
+        for _ in 0..res_len {
+            res.push(HashMap::new());
+        }
+
+        for (key, value) in it.iter() {
+            for i in 0..res_len {
+                let el = res.get_mut(i).unwrap();
+                if i >= value.len() {
+                    el.insert(key.clone(), ResolveResult::Value(Value::Null));
+                } else {
+                    el.insert(key.clone(), value.get(i).unwrap().as_self_ref());
+                }
+            }
+        }
+        res
+    }
+
     /// Execute a transform, internal method.
     fn execute_chunk(
         &self,
@@ -112,7 +160,13 @@ impl Transform {
         &self,
         raw_data: &HashMap<TransformOrInput, Vec<ResolveResult>>,
     ) -> Result<Vec<Value>, TransformError> {
-        let items = self.compute_input_product(raw_data);
+        let inputs = self.inputs();
+
+        let items = match inputs.mode {
+            super::input::TransformInputType::Product => self.compute_input_product(raw_data),
+            super::input::TransformInputType::Merge => self.compute_input_merge(raw_data),
+            super::input::TransformInputType::Zip => self.compute_input_zip(raw_data),
+        };
 
         let res = if items.is_empty() {
             let data = HashMap::new();

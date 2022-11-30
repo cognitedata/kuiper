@@ -22,6 +22,31 @@ pub struct MapTransformInput {
     pub inputs: Vec<String>,
     /// The transformation, a map from output field name to expression.
     pub transform: HashMap<String, String>,
+    /// How the inputs are combined
+    #[serde(default)]
+    pub mode: TransformInputType,
+}
+
+/// How multiple inputs are handled in transformations.
+#[derive(Serialize, Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub enum TransformInputType {
+    /// Default, a cross product is produced of the inputs. So [1, 2], [3, 4] becomes
+    /// [1, 3], [1, 4], [2, 3], [2, 4]
+    Product,
+    /// Merge, all inputs are chained after each other, so [1, 2] and [3, 4] becomes
+    /// [1, 2, 3, 4]. The new input name is `merge`, so $merge will resolve to 1, 2, 3, 4 for each run of the
+    /// transformation respectively.
+    Merge,
+    /// Zip, inputs are grouped by index, so [1, 2] and [3, 4] becomes [1, 3] and [2, 4].
+    /// Requires all inputs to be the same length.
+    Zip,
+}
+
+impl Default for TransformInputType {
+    fn default() -> Self {
+        Self::Product
+    }
 }
 
 /// Input to a transform. A program consists of a list of these.
@@ -45,6 +70,9 @@ pub struct FlattenTransformInput {
     pub inputs: Vec<String>,
     /// The transformation, a single expression. If the output is a JSON array it will be converted into an array of outputs.
     pub transform: String,
+    /// How the inputs are combined
+    #[serde(default)]
+    pub mode: TransformInputType,
 }
 
 impl TransformInput {
@@ -61,6 +89,13 @@ impl TransformInput {
             Self::Flatten(x) => &x.inputs,
         }
     }
+
+    pub fn mode(&self) -> TransformInputType {
+        match self {
+            Self::Map(x) => x.mode,
+            Self::Flatten(x) => x.mode,
+        }
+    }
 }
 
 /// Container for information about the input to the transform.
@@ -69,14 +104,17 @@ pub(crate) struct TransformInputs {
     pub inputs: HashMap<String, TransformOrInput>,
     /// For convenience, a set of the inputs used in this transform.
     pub used_inputs: HashSet<TransformOrInput>,
+    /// Type of transform input.
+    pub mode: TransformInputType,
 }
 
 impl TransformInputs {
-    pub fn new(inputs: HashMap<String, TransformOrInput>) -> Self {
+    pub fn new(inputs: HashMap<String, TransformOrInput>, mode: TransformInputType) -> Self {
         let set = HashSet::from_iter(inputs.iter().map(|(_, v)| v.clone()));
         Self {
             inputs,
             used_inputs: set,
+            mode,
         }
     }
 }
@@ -85,6 +123,7 @@ impl TransformInputs {
 pub enum TransformOrInput {
     Input,
     Transform(usize),
+    Merge,
 }
 
 impl Display for TransformOrInput {
@@ -92,6 +131,7 @@ impl Display for TransformOrInput {
         match self {
             Self::Input => write!(f, "input"),
             Self::Transform(u) => write!(f, "{}", u),
+            Self::Merge => write!(f, "merge"),
         }
     }
 }
@@ -143,7 +183,7 @@ impl Transform {
                     map.insert(key.clone(), result);
                 }
                 Ok(Self::Map(MapTransform {
-                    inputs: TransformInputs::new(inputs),
+                    inputs: TransformInputs::new(inputs, raw.mode),
                     map,
                     id: raw.id.clone(),
                 }))
@@ -152,7 +192,7 @@ impl Transform {
                 let inp = Token::lexer(&raw.transform);
                 let result = Parser::new(inp).parse()?;
                 Ok(Self::Flatten(FlattenTransform {
-                    inputs: TransformInputs::new(inputs),
+                    inputs: TransformInputs::new(inputs, raw.mode),
                     map: result,
                     id: raw.id.clone(),
                 }))
@@ -212,9 +252,9 @@ impl Program {
         state: &mut HashMap<String, usize>,
         visited: &[&'a String],
     ) -> Result<(), CompileError> {
-        if raw.id() == "input" {
+        if raw.id() == "input" || raw.id() == "merge" {
             return Err(CompileError::Config(
-                "Transform ID may not be \"input\". It is reserved for the input to the pipeline"
+                "Transform ID may not be \"input\" or \"merge\". They are reserved for special inputs to the pipeline"
                     .to_string(),
             ));
         }
@@ -245,6 +285,9 @@ impl Program {
                     TransformOrInput::Transform(*state.get(input).unwrap()),
                 );
             }
+        }
+        if matches!(raw.mode(), TransformInputType::Merge) {
+            final_inputs.insert("merge".to_string(), TransformOrInput::Merge);
         }
         if !state.contains_key(raw.id()) {
             build.push(Transform::compile(final_inputs, raw)?);
