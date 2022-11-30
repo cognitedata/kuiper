@@ -6,11 +6,9 @@ use std::{
 use logos::Logos;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    expressions::ExpressionType,
-    lexer::Token,
-    parse::{Parser, ParserError},
-};
+use crate::{expressions::ExpressionType, lexer::Token, parse::Parser};
+
+use super::compile_err::CompileError;
 
 /// Input to a "map" transform.
 #[derive(Serialize, Deserialize)]
@@ -179,7 +177,9 @@ impl Transform {
             TransformInput::Map(raw) => {
                 for (key, value) in &raw.transform {
                     let inp = Token::lexer(value);
-                    let result = Parser::new(inp).parse()?;
+                    let result = Parser::new(inp)
+                        .parse()
+                        .map_err(|e| CompileError::from_parser_err(e, &raw.id, Some(key)))?;
                     map.insert(key.clone(), result);
                 }
                 Ok(Self::Map(MapTransform {
@@ -190,7 +190,9 @@ impl Transform {
             }
             TransformInput::Flatten(raw) => {
                 let inp = Token::lexer(&raw.transform);
-                let result = Parser::new(inp).parse()?;
+                let result = Parser::new(inp)
+                    .parse()
+                    .map_err(|e| CompileError::from_parser_err(e, &raw.id, None))?;
                 Ok(Self::Flatten(FlattenTransform {
                     inputs: TransformInputs::new(inputs, raw.mode),
                     map: result,
@@ -204,18 +206,6 @@ impl Transform {
 /// The actual compiled program itself.
 pub struct Program {
     pub(crate) transforms: Vec<Transform>,
-}
-
-#[derive(Debug)]
-pub enum CompileError {
-    Parser(ParserError),
-    Config(String),
-}
-
-impl From<ParserError> for CompileError {
-    fn from(err: ParserError) -> Self {
-        Self::Parser(err)
-    }
 }
 
 impl Program {
@@ -253,16 +243,19 @@ impl Program {
         visited: &[&'a String],
     ) -> Result<(), CompileError> {
         if raw.id() == "input" || raw.id() == "merge" {
-            return Err(CompileError::Config(
-                "Transform ID may not be \"input\" or \"merge\". They are reserved for special inputs to the pipeline"
-                    .to_string(),
+            return Err(CompileError::config_err(
+                "Transform ID may not be \"input\" or \"merge\". They are reserved for special inputs to the pipeline",
+                Some(raw.id())
             ));
         }
         if visited.iter().any(|i| *i == raw.id()) {
-            return Err(CompileError::Config(format!(
-                "Recursive transformations are not allowed, {} indirectly references itself",
-                raw.id()
-            )));
+            return Err(CompileError::config_err(
+                &format!(
+                    "Recursive transformations are not allowed, {} indirectly references itself",
+                    raw.id()
+                ),
+                Some(raw.id()),
+            ));
         }
         if state.contains_key(raw.id()) {
             return Ok(());
@@ -276,7 +269,10 @@ impl Program {
                 final_inputs.insert("input".to_string(), TransformOrInput::Input);
             } else {
                 let next = inp.iter().find(|i| i.id() == input).ok_or_else(|| {
-                    CompileError::Config(format!("Input {} to {} is not defined", &input, raw.id()))
+                    CompileError::config_err(
+                        &format!("Input {} to {} is not defined", &input, raw.id()),
+                        Some(raw.id()),
+                    )
                 })?;
 
                 Self::compile_rec(next, inp, build, state, &next_visited)?;
