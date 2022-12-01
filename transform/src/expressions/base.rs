@@ -5,7 +5,7 @@ use std::{collections::HashMap, fmt::Display};
 use crate::{parse::ParserError, program::TransformOrInput};
 
 use super::{
-    function::*, transform_error::TransformError, ArrayExpression, OpExpression, PowFunction,
+    functions::*, transform_error::TransformError, ArrayExpression, OpExpression,
     SelectorExpression,
 };
 
