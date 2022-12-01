@@ -450,11 +450,40 @@ pub mod test {
     }
 
     #[test]
+    pub fn test_complex_selector() {
+        parse("$['test'][0].foo.bar[0]").unwrap();
+    }
+
+    #[test]
     pub fn test_bad_selector() {
         let res = parse_fail("2 + $id.+");
         match res {
             ParserError::UnexpectedSymbol(d) => {
                 assert_eq!(d.detail, Some("Unexpected symbol +".to_string()));
+                assert_eq!(d.position, Span { start: 8, end: 9 });
+            }
+            _ => panic!("Wrong type of response: {:?}", res),
+        }
+    }
+
+    #[test]
+    pub fn test_bad_selector_2() {
+        let res = parse_fail("2 + $id..");
+        match res {
+            ParserError::UnexpectedSymbol(d) => {
+                assert_eq!(d.detail, Some("Unexpected symbol .".to_string()));
+                assert_eq!(d.position, Span { start: 8, end: 9 });
+            }
+            _ => panic!("Wrong type of response: {:?}", res),
+        }
+    }
+
+    #[test]
+    pub fn test_bad_selector_3() {
+        let res = parse_fail("2 + $id.[0]");
+        match res {
+            ParserError::UnexpectedSymbol(d) => {
+                assert_eq!(d.detail, Some("Unexpected symbol [".to_string()));
                 assert_eq!(d.position, Span { start: 8, end: 9 });
             }
             _ => panic!("Wrong type of response: {:?}", res),
