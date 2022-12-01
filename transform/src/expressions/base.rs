@@ -174,13 +174,98 @@ impl Constant {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum JsonNumber {
+    NegInteger(i64),
+    PosInteger(u64),
+    Float(f64),
+}
+
+impl JsonNumber {
+    pub fn as_f64(self) -> f64 {
+        match self {
+            Self::NegInteger(x) => x as f64,
+            Self::PosInteger(x) => x as f64,
+            Self::Float(x) => x,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn try_as_u64(self, span: &Span, id: &str) -> Result<u64, TransformError> {
+        match self {
+            Self::NegInteger(x) => x.try_into().map_err(|e| {
+                TransformError::new_conversion_failed(
+                    format!("Failed to convert negative integer to unsigned: {}", e),
+                    span,
+                    id,
+                )
+            }),
+            Self::PosInteger(x) => Ok(x),
+            Self::Float(x) => {
+                if x.fract() != 0.0f64 {
+                    Err(TransformError::new_conversion_failed(
+                        "Failed to convert floating point number to integer: not a whole number"
+                            .to_string(),
+                        span,
+                        id,
+                    ))
+                } else if x <= u64::MAX as f64 && x >= u64::MIN as f64 {
+                    Ok(x as u64)
+                } else {
+                    Err(TransformError::new_conversion_failed(
+                        "Failed to convert floating point number to positive integer: number does not fit within (0, 18446744073709551615)".to_string(), span, id))
+                }
+            }
+        }
+    }
+
+    pub fn try_as_i64(self, span: &Span, id: &str) -> Result<i64, TransformError> {
+        match self {
+            Self::PosInteger(x) => x.try_into().map_err(|e| {
+                TransformError::new_conversion_failed(
+                    format!(
+                        "Failed to convert positive integer to signed integer: {}",
+                        e
+                    ),
+                    span,
+                    id,
+                )
+            }),
+            Self::NegInteger(x) => Ok(x),
+            Self::Float(x) => {
+                if x.fract() != 0.0f64 {
+                    Err(TransformError::new_conversion_failed(
+                        "Failed to convert floating point number to integer: not a whole number"
+                            .to_string(),
+                        span,
+                        id,
+                    ))
+                } else if x <= i64::MAX as f64 && x >= i64::MIN as f64 {
+                    Ok(x as i64)
+                } else {
+                    Err(TransformError::new_conversion_failed(
+                        "Failed to convert floating point number to integer: number does not fit within (-9223372036854775808, 9223372036854775807)".to_string(), span, id))
+                }
+            }
+        }
+    }
+
+    pub fn try_into_json(self) -> Option<Value> {
+        match self {
+            Self::NegInteger(x) => Some(Value::Number(x.into())),
+            Self::PosInteger(x) => Some(Value::Number(x.into())),
+            Self::Float(x) => Number::from_f64(x).map(Value::Number),
+        }
+    }
+}
+
 /// Convenient method to convert a Value into a f64. Used in some math functions.
-pub fn get_number_from_value(
+pub(crate) fn get_number_from_value(
     desc: &str,
     val: &Value,
     span: &Span,
     id: &str,
-) -> Result<f64, TransformError> {
+) -> Result<JsonNumber, TransformError> {
     let v = match val {
         Value::Number(n) => n,
         _ => {
@@ -193,11 +278,15 @@ pub fn get_number_from_value(
             ))
         }
     };
-    v.as_f64().ok_or_else(|| {
-        TransformError::new_conversion_failed(
-            format!("Failed to convert input into number for operator {}", desc),
-            span,
-            id,
-        )
-    })
+    v.as_u64()
+        .map(JsonNumber::PosInteger)
+        .or_else(|| v.as_i64().map(JsonNumber::NegInteger))
+        .or_else(|| v.as_f64().map(JsonNumber::Float))
+        .ok_or_else(|| {
+            TransformError::new_conversion_failed(
+                format!("Failed to convert input into number for operator {}", desc),
+                span,
+                id,
+            )
+        })
 }

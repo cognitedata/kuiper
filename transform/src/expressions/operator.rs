@@ -1,11 +1,11 @@
 use std::fmt::Display;
 
 use logos::Span;
-use serde_json::{Number, Value};
 
 use super::{
     base::{
-        get_number_from_value, Expression, ExpressionExecutionState, ExpressionType, ResolveResult,
+        get_number_from_value, Expression, ExpressionExecutionState, ExpressionType, JsonNumber,
+        ResolveResult,
     },
     transform_error::TransformError,
 };
@@ -78,13 +78,13 @@ impl<'a> Expression<'a> for OpExpression {
         )?;
 
         let res = match &self.operator {
-            Operator::Plus => lhs + rhs,
-            Operator::Minus => lhs - rhs,
-            Operator::Multiply => lhs * rhs,
-            Operator::Divide => lhs / rhs,
+            Operator::Plus => lhs.try_add(rhs, &self.span, state.id)?,
+            Operator::Minus => lhs.try_sub(rhs, &self.span, state.id)?,
+            Operator::Multiply => lhs.try_mul(rhs, &self.span, state.id)?,
+            Operator::Divide => lhs.try_div(rhs, &self.span, state.id)?,
         };
-        Ok(ResolveResult::Value(Value::Number(
-            Number::from_f64(res).ok_or_else(|| {
+        Ok(ResolveResult::Value(res.try_into_json().ok_or_else(
+            || {
                 TransformError::new_conversion_failed(
                     format!(
                         "Failed to convert result of operator {} to number",
@@ -93,8 +93,81 @@ impl<'a> Expression<'a> for OpExpression {
                     &self.span,
                     state.id,
                 )
-            })?,
-        )))
+            },
+        )?))
+    }
+}
+
+impl JsonNumber {
+    fn try_add(self, rhs: JsonNumber, span: &Span, id: &str) -> Result<JsonNumber, TransformError> {
+        match (self, rhs) {
+            (JsonNumber::PosInteger(x), JsonNumber::PosInteger(y)) => {
+                Ok(JsonNumber::PosInteger(x + y))
+            }
+            (JsonNumber::NegInteger(x), JsonNumber::NegInteger(y)) => {
+                Ok(JsonNumber::NegInteger(x + y))
+            }
+            (JsonNumber::Float(x), _) => Ok(JsonNumber::Float(x + rhs.as_f64())),
+            (JsonNumber::NegInteger(x), JsonNumber::PosInteger(_)) => {
+                Ok(JsonNumber::NegInteger(x + rhs.try_as_i64(span, id)?))
+            }
+            (_, JsonNumber::Float(y)) => Ok(JsonNumber::Float(self.as_f64() + y)),
+            (JsonNumber::PosInteger(_), JsonNumber::NegInteger(y)) => {
+                Ok(JsonNumber::NegInteger(self.try_as_i64(span, id)? + y))
+            }
+        }
+    }
+    fn try_sub(self, rhs: JsonNumber, span: &Span, id: &str) -> Result<JsonNumber, TransformError> {
+        match (self, rhs) {
+            (JsonNumber::PosInteger(x), JsonNumber::PosInteger(y)) => {
+                if x >= y {
+                    Ok(JsonNumber::PosInteger(x - y))
+                } else {
+                    Ok(JsonNumber::NegInteger(-((y - x).try_into()
+                        .map_err(|_| TransformError::new_conversion_failed(
+                            "Failed to convert result into negative integer, cannot produce a negative integer smaller than -9223372036854775808".to_string(), span, id))?)))
+                }
+            }
+            (JsonNumber::NegInteger(x), JsonNumber::NegInteger(y)) => {
+                Ok(JsonNumber::NegInteger(x - y))
+            }
+            (JsonNumber::Float(x), _) => Ok(JsonNumber::Float(x - rhs.as_f64())),
+            (JsonNumber::NegInteger(x), JsonNumber::PosInteger(_)) => {
+                Ok(JsonNumber::NegInteger(x - rhs.try_as_i64(span, id)?))
+            }
+            (_, JsonNumber::Float(y)) => Ok(JsonNumber::Float(self.as_f64() - y)),
+            (JsonNumber::PosInteger(_), JsonNumber::NegInteger(y)) => {
+                Ok(JsonNumber::NegInteger(self.try_as_i64(span, id)? - y))
+            }
+        }
+    }
+    fn try_mul(self, rhs: JsonNumber, span: &Span, id: &str) -> Result<JsonNumber, TransformError> {
+        match (self, rhs) {
+            (JsonNumber::PosInteger(x), JsonNumber::PosInteger(y)) => {
+                Ok(JsonNumber::PosInteger(x * y))
+            }
+            (JsonNumber::NegInteger(x), JsonNumber::NegInteger(y)) => {
+                Ok(JsonNumber::NegInteger(x * y))
+            }
+            (JsonNumber::Float(x), _) => Ok(JsonNumber::Float(x * rhs.as_f64())),
+            (JsonNumber::NegInteger(x), JsonNumber::PosInteger(_)) => {
+                Ok(JsonNumber::NegInteger(x * rhs.try_as_i64(span, id)?))
+            }
+            (_, JsonNumber::Float(y)) => Ok(JsonNumber::Float(self.as_f64() * y)),
+            (JsonNumber::PosInteger(_), JsonNumber::NegInteger(y)) => {
+                Ok(JsonNumber::NegInteger(self.try_as_i64(span, id)? * y))
+            }
+        }
+    }
+    fn try_div(self, rhs: JsonNumber, span: &Span, id: &str) -> Result<JsonNumber, TransformError> {
+        if rhs.as_f64() == 0.0f64 {
+            return Err(TransformError::new_invalid_operation(
+                "Divide by zero".to_string(),
+                span,
+                id,
+            ));
+        }
+        Ok(JsonNumber::Float(self.as_f64() / rhs.as_f64()))
     }
 }
 

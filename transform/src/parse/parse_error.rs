@@ -20,13 +20,13 @@ pub struct ParserErrorData {
 }
 
 impl ParserError {
-    pub fn empty_expression(position: Span) -> Self {
+    pub(crate) fn empty_expression(position: Span) -> Self {
         Self::EmptyExpression(ParserErrorData {
             position,
             detail: None,
         })
     }
-    pub fn unexpected_symbol(position: Span, symbol: Token) -> Self {
+    pub(crate) fn unexpected_symbol(position: Span, symbol: Token) -> Self {
         match symbol {
             Token::Error => Self::invalid_token(position),
             _ => Self::UnexpectedSymbol(ParserErrorData {
@@ -35,38 +35,38 @@ impl ParserError {
             }),
         }
     }
-    pub fn unrecognized_function(position: Span, symbol: &str) -> Self {
+    pub(crate) fn unrecognized_function(position: Span, symbol: &str) -> Self {
         Self::UnexpectedSymbol(ParserErrorData {
             position,
             detail: Some(format!("Unrecognized function: {}", symbol)),
         })
     }
 
-    pub fn expected_symbol(position: Span, symbol: &str) -> Self {
+    pub(crate) fn expected_symbol(position: Span, symbol: &str) -> Self {
         Self::ExpectedSymbol(ParserErrorData {
             position,
             detail: Some(format!("Expected {}", symbol)),
         })
     }
-    pub fn invalid_expr(position: Span, detail: &str) -> Self {
+    pub(crate) fn invalid_expr(position: Span, detail: &str) -> Self {
         Self::InvalidExpression(ParserErrorData {
             position,
             detail: Some(detail.to_string()),
         })
     }
-    pub fn n_function_args(position: Span, detail: &str) -> Self {
+    pub(crate) fn n_function_args(position: Span, detail: &str) -> Self {
         Self::NFunctionArgs(ParserErrorData {
             position,
             detail: Some(format!("Incorrect number of function args: {}", detail)),
         })
     }
-    pub fn invalid_token(position: Span) -> Self {
+    pub(crate) fn invalid_token(position: Span) -> Self {
         Self::InvalidToken(ParserErrorData {
             position,
             detail: None,
         })
     }
-    pub fn expect_expression(position: Span) -> Self {
+    pub(crate) fn expect_expression(position: Span) -> Self {
         Self::ExpectExpression(ParserErrorData {
             position,
             detail: None,
