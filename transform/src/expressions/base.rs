@@ -54,7 +54,7 @@ pub trait Expression<'a>: Display {
 }
 
 /// A function expression, new functions must be added here.
-#[derive(PassThrough)]
+#[derive(PassThrough, Debug)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
 #[pass_through(fn resolve(&'a self, state: &'a ExpressionExecutionState) -> Result<ResolveResult<'a>, TransformError>, "", Expression<'a>)]
 pub enum FunctionType {
@@ -84,7 +84,7 @@ pub fn get_function_expression(
 }
 
 /// The main expression type. All expressions must be included here.
-#[derive(PassThrough)]
+#[derive(PassThrough, Debug)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
 #[pass_through(fn resolve(&'a self, state: &'a ExpressionExecutionState) -> Result<ResolveResult<'a>, TransformError>, "", Expression<'a>)]
 pub enum ExpressionType {
@@ -127,6 +127,7 @@ impl<'a> ResolveResult<'a> {
     }
 }
 
+#[derive(Debug)]
 /// A constant expression. This always resolves to a reference to its value.
 pub struct Constant {
     val: Value,

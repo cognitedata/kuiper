@@ -6,8 +6,9 @@ use super::{
     base::{Expression, ExpressionExecutionState, ExpressionType, ResolveResult},
     transform_error::TransformError,
 };
-use logos::Span;
 
+use logos::Span;
+#[derive(Debug)]
 /// Selector expression, used to get a field from an input.
 pub struct SelectorExpression {
     source: SelectorElement,
@@ -15,6 +16,7 @@ pub struct SelectorExpression {
     span: Span,
 }
 
+#[derive(Debug)]
 pub enum SelectorElement {
     Constant(String),
     Expression(Box<ExpressionType>),

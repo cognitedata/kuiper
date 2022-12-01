@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 use serde_json::{Number, Value};
 
 use crate::parse::ParserError;
@@ -54,29 +52,110 @@ impl FunctionInfo {
 pub trait FunctionExpression<'a>: Expression<'a>
 where
     Self: Sized,
+    Self: 'a,
 {
+    type Iter<'b>: Iterator<Item = &'b ExpressionType>
+    where
+        Self: 'b;
     /// Static information about this function.
     const INFO: FunctionInfo;
 
     /// Create a new function from a list of expressions.
     fn new(args: Vec<ExpressionType>, span: Span) -> Result<Self, ParserError>;
+
+    fn get_args(&'a self) -> Self::Iter<'a>;
+}
+
+macro_rules! function_def {
+    // Base, should have defined the struct
+    (_display $typ:ident) => {
+        impl std::fmt::Display for $typ {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}(", Self::INFO.name)?;
+                let mut is_first = true;
+                for expr in self.get_args() {
+                    if !is_first {
+                        write!(f, ", ")?;
+                    }
+                    is_first = false;
+                    write!(f, "{}", expr)?;
+                }
+                write!(f, ")")
+            }
+        }
+    };
+    ($typ:ident, $name:expr, $nargs:expr) => {
+        #[derive(Debug)]
+        pub struct $typ {
+            args: [Box<ExpressionType>; $nargs],
+            span: logos::Span,
+        }
+
+        function_def!(_display $typ);
+
+        impl<'a> FunctionExpression<'a> for $typ {
+            type Iter<'b> = std::iter::Map<std::slice::Iter<'b, Box<ExpressionType>>, fn(&'b Box<ExpressionType>) -> &'b ExpressionType>;// std::iter::Map<std::slice::Iter<'_, &ExpressionType>>;
+            const INFO: FunctionInfo = FunctionInfo {
+                minargs: $nargs,
+                maxargs: Some($nargs),
+                name: $name
+            };
+
+            fn new(args: Vec<ExpressionType>, span: logos::Span) -> Result<Self, crate::parse::ParserError> {
+                if !Self::INFO.validate(args.len()) {
+                    return Err(ParserError::n_function_args(
+                        span,
+                        &Self::INFO.num_args_desc(),
+                    ));
+                }
+                Ok(Self {
+                    span,
+                    args: args.into_iter().map(|a| Box::new(a)).collect::<Vec<_>>().try_into().unwrap()
+                })
+            }
+
+            fn get_args(&'a self) -> Self::Iter<'a> {
+                self.args.iter().map(|a| &a)
+            }
+        }
+    };
+    ($typ:ident, $name:expr, $minargs:expr, $maxargs:expr) => {
+        #[derive(Debug)]
+        pub struct $typ {
+            args: Vec<ExpressionType>,
+            span: logos::Span
+        }
+
+        function_def!(_display $typ);
+
+        impl<'a> FunctionExpression<'a> for $typ {
+            const INFO: FunctionInfo = FunctionInfo {
+                minargs: $minargs,
+                maxargs: $maxargs,
+                name: $name
+            };
+
+            fn new(args: Vec<ExpressionType>, span: logos::Span) -> Result<Self, crate::parse::ParserError> {
+                if !Self::INFO.validate(args.len()) {
+                    return Err(ParserError::n_function_args(
+                        span,
+                        &Self::INFO.num_args_desc(),
+                    ));
+                }
+                Self {
+                    span,
+                    args,
+                }
+            }
+        }
+    }
 }
 
 /// Macro that creates a math function of the type `my_float.func(arg)`, which becomes `func(my_float, arg)`
 /// in the expression language.
 macro_rules! arg2_math_func {
     ($typ:ident, $name:expr, $rname:ident) => {
-        pub struct $typ {
-            lhs: Box<ExpressionType>,
-            rhs: Box<ExpressionType>,
-            span: Span,
-        }
-
-        impl Display for $typ {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "{}({}, {})", $name, self.lhs, self.rhs)
-            }
-        }
+        function_def!($typ, $name, 2);
 
         impl<'a> Expression<'a> for $typ {
             fn resolve(
@@ -85,14 +164,14 @@ macro_rules! arg2_math_func {
             ) -> Result<ResolveResult<'a>, super::transform_error::TransformError> {
                 let lhs = get_number_from_value(
                     &format!("{} argument 1", Self::INFO.name),
-                    self.lhs.resolve(state)?.as_ref(),
+                    self.args[0].resolve(state)?.as_ref(),
                     &self.span,
                     state.id,
                 )?
                 .as_f64();
                 let rhs = get_number_from_value(
                     &format!("{} argument 2", Self::INFO.name),
-                    self.rhs.resolve(state)?.as_ref(),
+                    self.args[1].resolve(state)?.as_ref(),
                     &self.span,
                     state.id,
                 )?
@@ -114,29 +193,6 @@ macro_rules! arg2_math_func {
                 )))
             }
         }
-
-        impl<'a> FunctionExpression<'a> for $typ {
-            const INFO: FunctionInfo = FunctionInfo {
-                minargs: 2,
-                maxargs: Some(2),
-                name: $name,
-            };
-
-            fn new(args: Vec<ExpressionType>, span: Span) -> Result<Self, ParserError> {
-                if !Self::INFO.validate(args.len()) {
-                    return Err(ParserError::n_function_args(
-                        span,
-                        &Self::INFO.num_args_desc(),
-                    ));
-                }
-                let mut iter = args.into_iter();
-                Ok(Self {
-                    lhs: Box::new(iter.next().unwrap()),
-                    rhs: Box::new(iter.next().unwrap()),
-                    span,
-                })
-            }
-        }
     };
 }
 
@@ -144,16 +200,7 @@ macro_rules! arg2_math_func {
 /// in the expression language.
 macro_rules! arg1_math_func {
     ($typ:ident, $name:expr, $rname:ident) => {
-        pub struct $typ {
-            arg: Box<ExpressionType>,
-            span: Span,
-        }
-
-        impl Display for $typ {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "{}({})", $name, self.arg)
-            }
-        }
+        function_def!($typ, $name, 1);
 
         impl<'a> Expression<'a> for $typ {
             fn resolve(
@@ -162,7 +209,7 @@ macro_rules! arg1_math_func {
             ) -> Result<ResolveResult<'a>, super::transform_error::TransformError> {
                 let arg = get_number_from_value(
                     Self::INFO.name,
-                    self.arg.resolve(state)?.as_ref(),
+                    self.args[0].resolve(state)?.as_ref(),
                     &self.span,
                     state.id,
                 )?
@@ -182,28 +229,6 @@ macro_rules! arg1_math_func {
                         )
                     })?,
                 )))
-            }
-        }
-
-        impl<'a> FunctionExpression<'a> for $typ {
-            const INFO: FunctionInfo = FunctionInfo {
-                minargs: 1,
-                maxargs: Some(1),
-                name: $name,
-            };
-
-            fn new(args: Vec<ExpressionType>, span: Span) -> Result<Self, ParserError> {
-                if !Self::INFO.validate(args.len()) {
-                    return Err(ParserError::n_function_args(
-                        span,
-                        &Self::INFO.num_args_desc(),
-                    ));
-                }
-                let mut iter = args.into_iter();
-                Ok(Self {
-                    arg: Box::new(iter.next().unwrap()),
-                    span,
-                })
             }
         }
     };
