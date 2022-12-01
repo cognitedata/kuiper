@@ -394,4 +394,84 @@ mod tests {
             _ => panic!("Wrong type of error {:?}", res),
         }
     }
+
+    #[test]
+    pub fn test_non_numeric_input() {
+        let result = compile(json!([{
+            "id": "step",
+            "inputs": ["input"],
+            "transform": "10 * $input.val",
+            "type": "flatten"
+        }]))
+        .unwrap();
+        let res = result.execute(&json!({ "val": "test" })).unwrap_err();
+        match res {
+            TransformError::IncorrectTypeInField(d) => {
+                assert_eq!(d.id, "step");
+                assert_eq!(d.desc, "'*'. Got string, expected number");
+                assert_eq!(d.span, Span { start: 3, end: 4 });
+            }
+            _ => panic!("Wrong type of error {:?}", res),
+        }
+    }
+
+    #[test]
+    pub fn test_wrong_function_input() {
+        let result = compile(json!([{
+            "id": "step",
+            "inputs": ["input"],
+            "transform": "pow(10, $input.val)",
+            "type": "flatten"
+        }]))
+        .unwrap();
+        let res = result.execute(&json!({ "val": "test" })).unwrap_err();
+        match res {
+            TransformError::IncorrectTypeInField(d) => {
+                assert_eq!(d.id, "step");
+                assert_eq!(d.desc, "pow argument 2. Got string, expected number");
+                assert_eq!(d.span, Span { start: 0, end: 19 });
+            }
+            _ => panic!("Wrong type of error {:?}", res),
+        }
+    }
+
+    #[test]
+    pub fn test_source_missing_error() {
+        let result = compile(json!([{
+            "id": "step",
+            "inputs": ["input"],
+            "transform": "pow(10, $foo.val)",
+            "type": "flatten"
+        }]))
+        .unwrap();
+        let res = result.execute(&json!({ "val": "test" })).unwrap_err();
+        match res {
+            TransformError::SourceMissingError(d) => {
+                assert_eq!(d.id, "step");
+                assert_eq!(d.desc, "foo");
+                assert_eq!(d.span, Span { start: 8, end: 17 });
+            }
+            _ => panic!("Wrong type of error {:?}", res),
+        }
+    }
+
+    #[test]
+    pub fn test_wrong_source_selector() {
+        let result = compile(json!([{
+            "id": "step",
+            "inputs": ["input"],
+            "transform": "$[0]",
+            "type": "flatten"
+        }]))
+        .unwrap();
+        let res = result.execute(&json!({ "val": "test" })).unwrap_err();
+        match res {
+            TransformError::InvalidOperation(d) => {
+                assert_eq!(d.id, "step");
+                assert_eq!(d.desc, "Root selector must be string");
+                assert_eq!(d.span, Span { start: 0, end: 4 });
+            }
+            _ => panic!("Wrong type of error {:?}", res),
+        }
+    }
 }

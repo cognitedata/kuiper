@@ -69,8 +69,10 @@ impl<'a> Expression<'a> for SelectorExpression {
                         }
                     },
                     Value::Number(_) => {
-                        return Err(TransformError::InvalidProgramError(
+                        return Err(TransformError::new_invalid_operation(
                             "Root selector must be string".to_string(),
+                            &self.span,
+                            state.id,
                         ))
                     }
                     _ => {

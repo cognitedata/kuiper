@@ -84,14 +84,14 @@ macro_rules! arg2_math_func {
                 state: &super::base::ExpressionExecutionState,
             ) -> Result<ResolveResult<'a>, super::transform_error::TransformError> {
                 let lhs = get_number_from_value(
-                    Self::INFO.name,
+                    &format!("{} argument 1", Self::INFO.name),
                     self.lhs.resolve(state)?.as_ref(),
                     &self.span,
                     state.id,
                 )?
                 .as_f64();
                 let rhs = get_number_from_value(
-                    Self::INFO.name,
+                    &format!("{} argument 2", Self::INFO.name),
                     self.rhs.resolve(state)?.as_ref(),
                     &self.span,
                     state.id,

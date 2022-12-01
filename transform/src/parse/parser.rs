@@ -347,37 +347,37 @@ impl<'source> Parser<'source> {
         Ok((res, term))
     }
 
+    // Parse a selector, on the form `$id.some.json.path` or `$id.array[0][1]`, or `$['dynamic']['selectors'][1 + 1].field`
     fn parse_selector(&mut self) -> Result<(SelectorExpression, Option<Token>), ParserError> {
         let mut path = vec![];
         let start = self.tokens.span();
 
-        let mut require_symbol = true;
+        let mut last_period = false;
+        let mut initial = true;
 
         let final_token = loop {
-            let mut next = match self.tokens.next() {
+            let next = match self.tokens.next() {
                 Some(x) => x,
                 None => break None,
             };
-            // println!("Investigate selector symbol {}", next);
-            if require_symbol {
-                match next {
-                    Token::BareString(s) => path.push(SelectorElement::Constant(s)),
-                    Token::UInteger(s) => path.push(SelectorElement::Constant(s.to_string())),
-                    Token::Null => path.push(SelectorElement::Constant("null".to_string())),
-                    _ => {
-                        return Err(ParserError::unexpected_symbol(self.tokens.span(), next));
-                    }
-                }
-                next = match self.tokens.next() {
-                    Some(x) => x,
-                    None => break None,
-                };
-            }
 
             match next {
-                Token::Period => require_symbol = true,
-                Token::OpenBracket => {
-                    require_symbol = false;
+                Token::BareString(s) if last_period || initial => {
+                    last_period = false;
+                    path.push(SelectorElement::Constant(s));
+                }
+                Token::UInteger(s) if last_period || initial => {
+                    last_period = false;
+                    path.push(SelectorElement::Constant(s.to_string()));
+                }
+                Token::Null if last_period || initial => {
+                    last_period = false;
+                    path.push(SelectorElement::Constant("null".to_string()))
+                }
+                Token::Period if !last_period && !initial => {
+                    last_period = true;
+                }
+                Token::OpenBracket if !last_period => {
                     let (exprs, term) = self.parse_expression_list()?;
                     if exprs.len() != 1 {
                         return Err(ParserError::invalid_expr(
@@ -391,8 +391,14 @@ impl<'source> Parser<'source> {
                     let expr = exprs.into_iter().next().unwrap();
                     path.push(SelectorElement::Expression(Box::new(expr)));
                 }
-                _ => break Some(next),
+                _ => {
+                    if last_period {
+                        return Err(ParserError::unexpected_symbol(self.tokens.span(), next));
+                    }
+                    break Some(next);
+                }
             }
+            initial = false;
         };
         let span = Span {
             start: start.start,
