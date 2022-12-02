@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use logos::{Lexer, Logos};
 
-use crate::expressions::Operator;
+use crate::expressions::{Operator, UnaryOperator};
 
 fn parse_string(lexer: &mut Lexer<Token>) -> String {
     let mut raw = lexer.slice();
@@ -68,6 +68,9 @@ pub enum Token {
     #[token("*", |_| Operator::Multiply)]
     Operator(Operator),
 
+    #[token("!", |_| UnaryOperator::Negate)]
+    UnaryOperator(UnaryOperator),
+
     /// A quoted string. We use single quotes for string literals.
     #[regex(r#"'(?:[^'\\]|\\.)*'"#, parse_string)]
     String(String),
@@ -108,6 +111,7 @@ impl Display for Token {
             Token::Comma => write!(f, ","),
             Token::Float(x) => write!(f, "{}", x),
             Token::Operator(x) => write!(f, "{}", x),
+            Token::UnaryOperator(x) => write!(f, "{}", x),
             Token::String(x) => write!(f, "'{}'", x),
             Token::BareString(x) => write!(f, "`{}`", x),
             Token::SelectorStart => write!(f, "$"),
@@ -125,7 +129,7 @@ impl Display for Token {
 mod test {
     use logos::Logos;
 
-    use crate::expressions::Operator;
+    use crate::expressions::{Operator, UnaryOperator};
 
     use super::Token;
 
@@ -202,5 +206,32 @@ mod test {
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
         assert_eq!(lex.next(), Some(Token::UInteger(1)));
         assert_eq!(lex.next(), Some(Token::CloseBracket));
+    }
+
+    #[test]
+    pub fn test_operators() {
+        let mut lex = Token::lexer("1 + !!!2 - 3 * 4 / 5");
+
+        assert_eq!(lex.next(), Some(Token::UInteger(1)));
+        assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
+        assert_eq!(
+            lex.next(),
+            Some(Token::UnaryOperator(UnaryOperator::Negate))
+        );
+        assert_eq!(
+            lex.next(),
+            Some(Token::UnaryOperator(UnaryOperator::Negate))
+        );
+        assert_eq!(
+            lex.next(),
+            Some(Token::UnaryOperator(UnaryOperator::Negate))
+        );
+        assert_eq!(lex.next(), Some(Token::UInteger(2)));
+        assert_eq!(lex.next(), Some(Token::Operator(Operator::Minus)));
+        assert_eq!(lex.next(), Some(Token::UInteger(3)));
+        assert_eq!(lex.next(), Some(Token::Operator(Operator::Multiply)));
+        assert_eq!(lex.next(), Some(Token::UInteger(4)));
+        assert_eq!(lex.next(), Some(Token::Operator(Operator::Divide)));
+        assert_eq!(lex.next(), Some(Token::UInteger(5)));
     }
 }

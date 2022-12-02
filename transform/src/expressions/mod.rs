@@ -11,6 +11,6 @@ pub use base::{
     FunctionType, ResolveResult,
 };
 pub use functions::FunctionExpression;
-pub use operator::{OpExpression, Operator};
+pub use operator::{OpExpression, Operator, UnaryOpExpression, UnaryOperator};
 pub use selector::{SelectorElement, SelectorExpression};
 pub use transform_error::{TransformError, TransformErrorData};

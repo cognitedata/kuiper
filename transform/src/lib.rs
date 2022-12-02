@@ -548,4 +548,27 @@ mod tests {
             _ => panic!("Wrong type of error {:?}", err),
         }
     }
+
+    #[test]
+    pub fn test_negate_op() {
+        let program = compile(json!([{
+            "id": "parse",
+            "inputs": ["input"],
+            "transform": {
+                "v1": "!$input.v1",
+                "v2": "!!!$input.v2"
+            },
+            "type": "map"
+        }]))
+        .unwrap();
+        let input = json!({
+            "v1": "test",
+            "v2": null
+        });
+        let res = program.execute(&input).unwrap();
+        assert_eq!(res.len(), 1);
+        let res = res.first().unwrap();
+        assert_eq!(false, res.get("v1").unwrap().as_bool().unwrap());
+        assert_eq!(true, res.get("v2").unwrap().as_bool().unwrap());
+    }
 }

@@ -1,11 +1,12 @@
 use std::fmt::Display;
 
 use logos::Span;
+use serde_json::Value;
 
 use super::{
     base::{
-        get_number_from_value, Expression, ExpressionExecutionState, ExpressionType, JsonNumber,
-        ResolveResult,
+        get_boolean_from_value, get_number_from_value, Expression, ExpressionExecutionState,
+        ExpressionType, JsonNumber, ResolveResult,
     },
     transform_error::TransformError,
 };
@@ -37,6 +38,19 @@ impl Operator {
             Self::Minus => 1,
             Self::Multiply => 2,
             Self::Divide => 2,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum UnaryOperator {
+    Negate,
+}
+
+impl Display for UnaryOperator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Negate => write!(f, "!"),
         }
     }
 }
@@ -96,6 +110,56 @@ impl<'a> Expression<'a> for OpExpression {
                 )
             },
         )?))
+    }
+}
+
+impl OpExpression {
+    pub fn new(op: Operator, lhs: ExpressionType, rhs: ExpressionType, span: Span) -> Self {
+        Self {
+            operator: op,
+            descriptor: format!("'{}'", &op),
+            elements: [Box::new(lhs), Box::new(rhs)],
+            span,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct UnaryOpExpression {
+    operator: UnaryOperator,
+    #[allow(dead_code)]
+    descriptor: String,
+    element: Box<ExpressionType>,
+    #[allow(dead_code)]
+    span: Span,
+}
+
+impl Display for UnaryOpExpression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}{}", self.operator, self.element)
+    }
+}
+
+impl<'a> Expression<'a> for UnaryOpExpression {
+    fn resolve(
+        &'a self,
+        state: &'a ExpressionExecutionState,
+    ) -> Result<ResolveResult<'a>, TransformError> {
+        let val = get_boolean_from_value(self.element.resolve(state)?.as_ref());
+        match self.operator {
+            UnaryOperator::Negate => Ok(ResolveResult::Value(Value::Bool(!val))),
+        }
+    }
+}
+
+impl UnaryOpExpression {
+    pub fn new(op: UnaryOperator, el: ExpressionType, span: Span) -> Self {
+        Self {
+            operator: op,
+            descriptor: format!("'{}'", &op),
+            element: Box::new(el),
+            span,
+        }
     }
 }
 
@@ -169,16 +233,5 @@ impl JsonNumber {
             ));
         }
         Ok(JsonNumber::Float(self.as_f64() / rhs.as_f64()))
-    }
-}
-
-impl OpExpression {
-    pub fn new(op: Operator, lhs: ExpressionType, rhs: ExpressionType, span: Span) -> Self {
-        Self {
-            operator: op,
-            descriptor: format!("'{}'", &op),
-            elements: [Box::new(lhs), Box::new(rhs)],
-            span,
-        }
     }
 }

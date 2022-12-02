@@ -3,7 +3,7 @@ use logos::{Lexer, Span};
 use crate::{
     expressions::{
         get_function_expression, ArrayExpression, Constant, ExpressionType, OpExpression, Operator,
-        SelectorElement, SelectorExpression,
+        SelectorElement, SelectorExpression, UnaryOpExpression,
     },
     lexer::Token,
 };
@@ -125,6 +125,35 @@ impl<'source> Parser<'source> {
             // We have already checked that an operator is valid in this position, so just add it to the operator list
             // along with the "span": where it was encountered.
             Token::Operator(o) => Ok(ParseTokenResult::Operator((o, self.tokens.span()))),
+
+            Token::UnaryOperator(o) => {
+                let token = consume_token!(self);
+                let span = self.tokens.span();
+                let expr = self.next_expression(true, false, token)?;
+                match expr {
+                    ParseTokenResult::Expression(x) => Ok(ParseTokenResult::Expression(
+                        ExpressionType::UnaryOperator(UnaryOpExpression::new(o, x, span)),
+                    )),
+                    ParseTokenResult::ExpressionAndNext((x, next)) => {
+                        Ok(ParseTokenResult::ExpressionAndNext((
+                            ExpressionType::UnaryOperator(UnaryOpExpression::new(o, x, span)),
+                            next,
+                        )))
+                    }
+                    ParseTokenResult::Terminator(_) => {
+                        Err(ParserError::expect_expression(self.tokens.span()))
+                    }
+                    ParseTokenResult::ExpressionAndTerminator((x, term)) => {
+                        Ok(ParseTokenResult::ExpressionAndTerminator((
+                            ExpressionType::UnaryOperator(UnaryOpExpression::new(o, x, span)),
+                            term,
+                        )))
+                    }
+                    ParseTokenResult::Operator(_) => {
+                        Err(ParserError::expect_expression(self.tokens.span()))
+                    }
+                }
+            }
             // OpenParenthesis indicates the start of a new expression when encountered here.
             // The terminator must be CloseParenthesis.
             Token::OpenParenthesis => {
@@ -630,6 +659,30 @@ pub mod test {
             ParserError::UnexpectedSymbol(d) => {
                 assert_eq!(d.detail, Some("Unrecognized function: bloop".to_string()));
                 assert_eq!(d.position, Span { start: 4, end: 13 });
+            }
+            _ => panic!("Wrong type of response: {:?}", res),
+        }
+    }
+
+    #[test]
+    pub fn test_negate_op() {
+        let res = parse("2 + !!3").unwrap();
+        assert_eq!("(2 + !!3)", res.to_string());
+    }
+
+    #[test]
+    pub fn test_negate_expr() {
+        let res = parse("2 + !(1 + !3 - 5)").unwrap();
+        assert_eq!("(2 + !((1 + !3) - 5))", res.to_string());
+    }
+
+    #[test]
+    pub fn test_misplaced_negate() {
+        let res = parse_fail("2 + 3!");
+        match res {
+            ParserError::UnexpectedSymbol(d) => {
+                assert_eq!(d.detail, Some("Unexpected symbol !".to_string()));
+                assert_eq!(d.position, Span { start: 5, end: 6 });
             }
             _ => panic!("Wrong type of response: {:?}", res),
         }
