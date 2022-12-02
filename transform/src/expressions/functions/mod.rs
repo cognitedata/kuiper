@@ -1,9 +1,11 @@
 #[macro_use]
 mod macros;
 mod math;
+mod string;
 
 use crate::parse::ParserError;
 pub use math::*;
+pub use string::*;
 
 use super::{base::ExpressionType, Expression};
 

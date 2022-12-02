@@ -55,30 +55,36 @@ macro_rules! function_def {
     ($typ:ident, $name:expr, $minargs:expr, $maxargs:expr) => {
         #[derive(Debug)]
         pub struct $typ {
-            args: Vec<ExpressionType>,
+            args: Vec<$crate::expressions::base::ExpressionType>,
+            #[allow(dead_code)]
             span: logos::Span
         }
 
         function_def!(_display $typ);
 
-        impl<'a> FunctionExpression<'a> for $typ {
-            const INFO: FunctionInfo = FunctionInfo {
+        impl<'a> $crate::expressions::functions::FunctionExpression<'a> for $typ {
+            type Iter<'b> = std::slice::Iter<'b, $crate::expressions::base::ExpressionType>;
+            const INFO: $crate::expressions::functions::FunctionInfo = $crate::expressions::functions::FunctionInfo {
                 minargs: $minargs,
                 maxargs: $maxargs,
                 name: $name
             };
 
-            fn new(args: Vec<ExpressionType>, span: logos::Span) -> Result<Self, $crate::parse::ParserError> {
+            fn new(args: Vec<$crate::expressions::base::ExpressionType>, span: logos::Span) -> Result<Self, $crate::parse::ParserError> {
                 if !Self::INFO.validate(args.len()) {
-                    return Err(ParserError::n_function_args(
+                    return Err($crate::ParserError::n_function_args(
                         span,
                         &Self::INFO.num_args_desc(),
                     ));
                 }
-                Self {
+                Ok(Self {
                     span,
                     args,
-                }
+                })
+            }
+
+            fn get_args(&'a self) -> Self::Iter<'a> {
+                self.args.iter()
             }
         }
     }

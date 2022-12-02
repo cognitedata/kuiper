@@ -63,6 +63,7 @@ pub enum FunctionType {
     Atan2(Atan2Function),
     Floor(FloorFunction),
     Ceil(CeilFunction),
+    Concat(ConcatFunction),
 }
 
 /// Create a function expression from its name, or return a parser exception if it has the wrong number of arguments,
@@ -78,6 +79,7 @@ pub fn get_function_expression(
         "atan2" => FunctionType::Atan2(Atan2Function::new(args, pos)?),
         "floor" => FunctionType::Floor(FloorFunction::new(args, pos)?),
         "ceil" => FunctionType::Ceil(CeilFunction::new(args, pos)?),
+        "concat" => FunctionType::Concat(ConcatFunction::new(args, pos)?),
         _ => return Err(ParserError::unrecognized_function(pos, name)),
     };
     Ok(ExpressionType::Function(expr))
@@ -95,18 +97,26 @@ pub enum ExpressionType {
     Array(ArrayExpression),
 }
 
+#[derive(Clone)]
+pub enum ReferenceOrValue<'a, T>
+where
+    T: Sized + Clone,
+{
+    Reference(&'a T),
+    Value(T),
+}
+
 /// The result of an expression resolution. The signature is a little weird.
 /// An expression may either return a reference to the source, or an actual value.
 /// By returning references as often as possible we reduce the number of clones.
-#[derive(Clone)]
-pub enum ResolveResult<'a> {
-    Reference(&'a Value),
-    Value(Value),
-}
+pub type ResolveResult<'a> = ReferenceOrValue<'a, Value>;
 
-impl<'a> ResolveResult<'a> {
+impl<'a, T> ReferenceOrValue<'a, T>
+where
+    T: Sized + Clone,
+{
     /// Return the internal reference or a reference to the internal value.
-    pub fn as_ref(&self) -> &Value {
+    pub fn as_ref(&self) -> &T {
         match self {
             Self::Reference(r) => r,
             Self::Value(v) => v,
@@ -114,7 +124,7 @@ impl<'a> ResolveResult<'a> {
     }
 
     /// Create a value from this, either returning the internal value, or cloning the internal reference.
-    pub fn into_value(self) -> Value {
+    pub fn into_value(self) -> T {
         match self {
             Self::Reference(r) => r.clone(),
             Self::Value(v) => v,
@@ -290,4 +300,30 @@ pub(crate) fn get_number_from_value(
                 id,
             )
         })
+}
+
+pub(crate) fn get_string_from_value<'a>(
+    desc: &str,
+    val: &'a Value,
+    span: &Span,
+    id: &str,
+) -> Result<ReferenceOrValue<'a, String>, TransformError> {
+    match val {
+        Value::Null => Ok(ReferenceOrValue::Value("".to_string())),
+        Value::Bool(n) => Ok(ReferenceOrValue::Value(match n {
+            true => "true".to_string(),
+            false => "false".to_string(),
+        })),
+        Value::Number(n) => Ok(ReferenceOrValue::Value(n.to_string())),
+        Value::String(s) => Ok(ReferenceOrValue::Reference(s)),
+        _ => {
+            return Err(TransformError::new_incorrect_type(
+                desc,
+                "string or number",
+                TransformError::value_desc(val),
+                span,
+                id,
+            ))
+        }
+    }
 }
