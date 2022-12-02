@@ -68,6 +68,7 @@ pub enum FunctionType {
     String(StringFunction),
     Int(IntFunction),
     Float(FloatFunction),
+    If(IfFunction),
 }
 
 /// Create a function expression from its name, or return a parser exception if it has the wrong number of arguments,
@@ -88,6 +89,7 @@ pub fn get_function_expression(
         "string" => FunctionType::String(StringFunction::new(args, pos)?),
         "int" => FunctionType::Int(IntFunction::new(args, pos)?),
         "float" => FunctionType::Float(FloatFunction::new(args, pos)?),
+        "if" => FunctionType::If(IfFunction::new(args, pos)?),
         _ => return Err(ParserError::unrecognized_function(pos, name)),
     };
     Ok(ExpressionType::Function(expr))
@@ -364,7 +366,6 @@ pub(crate) fn get_string_from_value<'a>(
 pub(crate) fn get_boolean_from_value(val: &Value) -> bool {
     match val {
         Value::Null => false,
-        Value::Number(n) => n.as_f64().map(|v| v != 0.0f64).unwrap_or(true),
         Value::Bool(b) => *b,
         _ => true,
     }

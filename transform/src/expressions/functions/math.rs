@@ -151,7 +151,7 @@ impl<'a> Expression<'a> for IntFunction {
                 if s.starts_with("-") {
                     let res: i64 = s.parse().map_err(|e| {
                         TransformError::new_conversion_failed(
-                            format!("Failed to convert string to integer: {}", e),
+                            format!("Failed to convert string {} to integer: {}", s, e),
                             &self.span,
                             state.id,
                         )
@@ -160,7 +160,7 @@ impl<'a> Expression<'a> for IntFunction {
                 } else {
                     let res: u64 = s.parse().map_err(|e| {
                         TransformError::new_conversion_failed(
-                            format!("Failed to convert string to integer: {}", e),
+                            format!("Failed to convert string {} to integer: {}", s, e),
                             &self.span,
                             state.id,
                         )
@@ -216,7 +216,7 @@ impl<'a> Expression<'a> for FloatFunction {
             .as_f64(),
             Value::String(s) => s.parse().map_err(|e| {
                 TransformError::new_conversion_failed(
-                    format!("Failed to convert string to float: {}", e),
+                    format!("Failed to convert string {} to float: {}", s, e),
                     &self.span,
                     state.id,
                 )
