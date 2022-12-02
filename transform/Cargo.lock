@@ -231,7 +231,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "json-transform"
+name = "json_transform"
 version = "0.1.0"
 dependencies = [
  "criterion",
