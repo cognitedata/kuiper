@@ -63,7 +63,11 @@ pub enum FunctionType {
     Atan2(Atan2Function),
     Floor(FloorFunction),
     Ceil(CeilFunction),
+    Round(RoundFunction),
     Concat(ConcatFunction),
+    String(StringFunction),
+    Int(IntFunction),
+    Float(FloatFunction),
 }
 
 /// Create a function expression from its name, or return a parser exception if it has the wrong number of arguments,
@@ -79,7 +83,11 @@ pub fn get_function_expression(
         "atan2" => FunctionType::Atan2(Atan2Function::new(args, pos)?),
         "floor" => FunctionType::Floor(FloorFunction::new(args, pos)?),
         "ceil" => FunctionType::Ceil(CeilFunction::new(args, pos)?),
+        "round" => FunctionType::Round(RoundFunction::new(args, pos)?),
         "concat" => FunctionType::Concat(ConcatFunction::new(args, pos)?),
+        "string" => FunctionType::String(StringFunction::new(args, pos)?),
+        "int" => FunctionType::Int(IntFunction::new(args, pos)?),
+        "float" => FunctionType::Float(FloatFunction::new(args, pos)?),
         _ => return Err(ParserError::unrecognized_function(pos, name)),
     };
     Ok(ExpressionType::Function(expr))
@@ -207,7 +215,10 @@ impl JsonNumber {
         match self {
             Self::NegInteger(x) => x.try_into().map_err(|e| {
                 TransformError::new_conversion_failed(
-                    format!("Failed to convert negative integer to unsigned: {}", e),
+                    format!(
+                        "Failed to convert negative integer {} to unsigned: {}",
+                        x, e
+                    ),
                     span,
                     id,
                 )
@@ -216,8 +227,7 @@ impl JsonNumber {
             Self::Float(x) => {
                 if x.fract() != 0.0f64 {
                     Err(TransformError::new_conversion_failed(
-                        "Failed to convert floating point number to integer: not a whole number"
-                            .to_string(),
+                        format!("Failed to convert floating point number {} to integer: not a whole number", x),
                         span,
                         id,
                     ))
@@ -225,7 +235,7 @@ impl JsonNumber {
                     Ok(x as u64)
                 } else {
                     Err(TransformError::new_conversion_failed(
-                        "Failed to convert floating point number to positive integer: number does not fit within (0, 18446744073709551615)".to_string(), span, id))
+                        format!("Failed to convert floating point number {} to positive integer: number does not fit within (0, 18446744073709551615)", x), span, id))
                 }
             }
         }
@@ -267,6 +277,28 @@ impl JsonNumber {
             Self::NegInteger(x) => Some(Value::Number(x.into())),
             Self::PosInteger(x) => Some(Value::Number(x.into())),
             Self::Float(x) => Number::from_f64(x).map(Value::Number),
+        }
+    }
+
+    pub fn try_cast_integer(self, span: &Span, id: &str) -> Result<JsonNumber, TransformError> {
+        match self {
+            JsonNumber::NegInteger(_) | JsonNumber::PosInteger(_) => Ok(self),
+            JsonNumber::Float(x) => {
+                if x >= 0.0 && x <= u64::MAX as f64 {
+                    Ok(JsonNumber::PosInteger(x as u64))
+                } else if x < 0.0 && x >= i64::MIN as f64 {
+                    Ok(JsonNumber::NegInteger(x as i64))
+                } else {
+                    return Err(TransformError::new_conversion_failed(
+                        format!(
+                            "Failed to convert floating point number {} to integer, too large.",
+                            x
+                        ),
+                        span,
+                        id,
+                    ));
+                }
+            }
         }
     }
 }
