@@ -474,4 +474,78 @@ mod tests {
             _ => panic!("Wrong type of error {:?}", res),
         }
     }
+    // Filter
+
+    #[test]
+    pub fn test_filter() {
+        let program = compile(json!([{
+            "id": "gen",
+            "inputs": [],
+            "transform": "[1, 2, null, 3, null, 4]",
+            "type": "flatten"
+        }, {
+            "id": "filter",
+            "inputs": ["gen"],
+            "transform": "$gen",
+            "type": "filter"
+        }]))
+        .unwrap();
+        let input = Value::Null;
+        let res = program.execute(&input).unwrap();
+        assert_eq!(res.len(), 4);
+        let rs = serde_json::to_string(&Value::Array(res)).unwrap();
+        println!("{}", &rs);
+        assert_eq!(rs, "[1,2,3,4]");
+    }
+
+    #[test]
+    pub fn test_merge_filter() {
+        let program = compile(json!([{
+            "id": "gen",
+            "inputs": [],
+            "transform": "[1, 2, null, 3, null, 4]",
+            "type": "flatten"
+        }, {
+            "id": "gen2",
+            "inputs": [],
+            "transform": "[5, 6, null, 7, null, 8]",
+            "type": "flatten"
+        }, {
+            "id": "filter",
+            "inputs": ["gen", "gen2"],
+            "transform": "$merge",
+            "type": "filter",
+            "mode": "merge"
+        }]))
+        .unwrap();
+        let input = Value::Null;
+        let res = program.execute(&input).unwrap();
+
+        assert_eq!(res.len(), 8);
+    }
+
+    #[test]
+    pub fn test_too_many_inputs_filter() {
+        let err = compile_err(json!([{
+            "id": "gen",
+            "inputs": [],
+            "transform": "[1, 2, null, 3, null, 4]",
+            "type": "flatten"
+        }, {
+            "id": "filter",
+            "inputs": ["gen", "input"],
+            "transform": "$merge",
+            "type": "filter"
+        }]));
+        match err {
+            CompileError::Config(d) => {
+                assert_eq!(d.id, Some("filter".to_string()));
+                assert_eq!(
+                    d.desc,
+                    "Filter operations must have exactly one input or use input mode \"merge\""
+                );
+            }
+            _ => panic!("Wrong type of error {:?}", err),
+        }
+    }
 }
