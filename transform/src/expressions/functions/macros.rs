@@ -21,6 +21,7 @@ macro_rules! function_def {
         #[derive(Debug)]
         pub struct $typ {
             args: [Box<$crate::expressions::base::ExpressionType>; $nargs],
+            #[allow(dead_code)]
             span: logos::Span,
         }
 

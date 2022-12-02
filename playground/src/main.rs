@@ -34,7 +34,7 @@ async fn main() {
             "transform": {
                 "externalId": "concat($input.stationName, 'temperature')",
                 "time": "$input.datetime",
-                "value": "$input.temperature",
+                "value": "if($input.temperature, float($input.temperature))",
             }
         }, {
             "id": "cloudcover",
@@ -52,7 +52,7 @@ async fn main() {
             "transform": {
                 "externalId": "concat($input.stationName, 'windspeed')",
                 "time": "$input.datetime",
-                "value": "$input.wintSpeed",
+                "value": "if($input.wintSpeed, float($input.wintSpeed))",
             }
         }, {
             "id": "combine",

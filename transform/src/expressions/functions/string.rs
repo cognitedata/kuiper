@@ -31,9 +31,35 @@ impl<'a> Expression<'a> for ConcatFunction {
     }
 }
 
+// other functions follow...
+function_def!(StringFunction, "string", 1);
+
+impl<'a> Expression<'a> for StringFunction {
+    fn resolve(
+        &'a self,
+        state: &'a crate::expressions::ExpressionExecutionState,
+    ) -> Result<crate::expressions::ResolveResult<'a>, crate::TransformError> {
+        let dat = self.args[0].resolve(state)?;
+        let val = dat.as_ref();
+        let res = match val {
+            Value::Null => "".to_string(),
+            Value::Bool(x) => {
+                if *x {
+                    "true".to_string()
+                } else {
+                    "false".to_string()
+                }
+            }
+            Value::Number(x) => x.to_string(),
+            Value::String(s) => s.to_string(),
+            Value::Array(_) | Value::Object(_) => val.to_string(),
+        };
+        Ok(ReferenceOrValue::Value(Value::String(res)))
+    }
+}
+
 // Once the function is defined it should be added to the main function enum in expressions/base.rs, and to the get_function_expression function.
 // We can just add a test in this file:
-
 #[cfg(test)]
 mod tests {
     use serde_json::json;
@@ -66,5 +92,37 @@ mod tests {
         let val = res.get(0).unwrap();
         assert_eq!("foobar", val.get("concat2").unwrap().as_str().unwrap());
         assert_eq!("foo123bar", val.get("concat3").unwrap().as_str().unwrap());
+    }
+
+    #[test]
+    pub fn test_string_function() {
+        let program = Program::compile(
+            serde_json::from_value(json!([{
+                "id": "tostring",
+                "inputs": ["input"],
+                "transform": {
+                    "s1": "string('foo')",
+                    "s2": "string(123)",
+                    "s3": "string(null)",
+                    "s4": "string($input.val)"
+                },
+                "type": "map"
+            }]))
+            .unwrap(),
+        )
+        .unwrap();
+
+        let res = program
+            .execute(&json!({
+                "val": 123.123
+            }))
+            .unwrap();
+
+        assert_eq!(res.len(), 1);
+        let val = res.first().unwrap();
+        assert_eq!("foo", val.get("s1").unwrap().as_str().unwrap());
+        assert_eq!("123", val.get("s2").unwrap().as_str().unwrap());
+        assert_eq!("", val.get("s3").unwrap().as_str().unwrap());
+        assert_eq!("123.123", val.get("s4").unwrap().as_str().unwrap());
     }
 }

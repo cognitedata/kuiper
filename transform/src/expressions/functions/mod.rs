@@ -1,9 +1,11 @@
 #[macro_use]
 mod macros;
+mod logic;
 mod math;
 mod string;
 
 use crate::parse::ParserError;
+pub use logic::*;
 pub use math::*;
 pub use string::*;
 
