@@ -152,6 +152,38 @@ impl Transform {
                     _ => vec![value],
                 }
             }
+            Self::Filter(m) => {
+                let value = m.map.resolve(&state)?;
+                let filter_output = match value.as_ref() {
+                    Value::Null => false,
+                    Value::Bool(x) => *x,
+                    _ => true,
+                };
+                if filter_output {
+                    if data.contains_key(&TransformOrInput::Merge) {
+                        vec![data
+                            .get(&TransformOrInput::Merge)
+                            .unwrap()
+                            .clone()
+                            .into_value()]
+                    } else {
+                        vec![data
+                            .iter()
+                            .next()
+                            .ok_or_else(|| {
+                                TransformError::InvalidProgramError(
+                                    "Filter was expected to have at least one input, this is a bug"
+                                        .to_string(),
+                                )
+                            })?
+                            .1
+                            .clone()
+                            .into_value()]
+                    }
+                } else {
+                    vec![]
+                }
+            }
         })
     }
 

@@ -3,7 +3,7 @@ use logos::{Lexer, Span};
 use crate::{
     expressions::{
         get_function_expression, ArrayExpression, Constant, ExpressionType, OpExpression, Operator,
-        SelectorElement, SelectorExpression,
+        SelectorElement, SelectorExpression, UnaryOpExpression,
     },
     lexer::Token,
 };
@@ -53,6 +53,14 @@ macro_rules! consume_token {
     }};
 }
 
+enum ParseTokenResult {
+    Expression(ExpressionType),
+    ExpressionAndNext((ExpressionType, Token)),
+    Terminator(ExprTerminator),
+    ExpressionAndTerminator((ExpressionType, ExprTerminator)),
+    Operator((Operator, Span)),
+}
+
 impl<'source> Parser<'source> {
     /// Construct a new parser from a token stream.
     pub fn new(stream: Lexer<'source, Token>) -> Self {
@@ -79,6 +87,156 @@ impl<'source> Parser<'source> {
                     ExprTerminator::End => unreachable!(),
                 },
             ))
+        }
+    }
+
+    fn next_expression(
+        &mut self,
+        expect_expression: bool,
+        is_initial: bool,
+        token: Token,
+    ) -> Result<ParseTokenResult, ParserError> {
+        // Do a simple sanity check on the next token. After an operator, or at the start of an expression
+        // only expression operators like `Token::OpenParenthesis`, `Float`, `Integer`, `String`, `SelectorStart`,
+        // etc. are valid.
+        // After an expression the only valid symbols are operators, or terminators.
+        if matches!(token, Token::Operator(_) | Token::Comma)
+            || !is_initial && matches!(token, Token::CloseParenthesis | Token::CloseBracket)
+        {
+            if expect_expression {
+                return Err(ParserError::expect_expression(self.tokens.span()));
+            }
+        } else if !expect_expression {
+            return Err(ParserError::unexpected_symbol(self.tokens.span(), token));
+        }
+
+        // println!("Investigate symbol {}", token);
+        match token {
+            // A period is invalid in an expression on its own.
+            Token::Period => Err(ParserError::unexpected_symbol(self.tokens.span(), token)),
+            // A comma should always terminate an expression.
+            Token::Comma => Ok(ParseTokenResult::Terminator(ExprTerminator::Comma)),
+            // An error is never valid.
+            Token::Error => Err(ParserError::invalid_token(self.tokens.span())),
+            // We have already checked that an operator is valid in this position, so just add it to the operator list
+            // along with the "span": where it was encountered.
+            Token::Operator(o) => Ok(ParseTokenResult::Operator((o, self.tokens.span()))),
+
+            Token::UnaryOperator(o) => {
+                let token = consume_token!(self);
+                let span = self.tokens.span();
+                let expr = self.next_expression(true, false, token)?;
+                match expr {
+                    ParseTokenResult::Expression(x) => Ok(ParseTokenResult::Expression(
+                        ExpressionType::UnaryOperator(UnaryOpExpression::new(o, x, span)),
+                    )),
+                    ParseTokenResult::ExpressionAndNext((x, next)) => {
+                        Ok(ParseTokenResult::ExpressionAndNext((
+                            ExpressionType::UnaryOperator(UnaryOpExpression::new(o, x, span)),
+                            next,
+                        )))
+                    }
+                    ParseTokenResult::Terminator(_) => {
+                        Err(ParserError::expect_expression(self.tokens.span()))
+                    }
+                    ParseTokenResult::ExpressionAndTerminator((x, term)) => {
+                        Ok(ParseTokenResult::ExpressionAndTerminator((
+                            ExpressionType::UnaryOperator(UnaryOpExpression::new(o, x, span)),
+                            term,
+                        )))
+                    }
+                    ParseTokenResult::Operator(_) => {
+                        Err(ParserError::expect_expression(self.tokens.span()))
+                    }
+                }
+            }
+            // OpenParenthesis indicates the start of a new expression when encountered here.
+            // The terminator must be CloseParenthesis.
+            Token::OpenParenthesis => {
+                let start = self.tokens.span();
+                let (expr, term) = self.parse_expression()?;
+                match term {
+                    ExprTerminator::CloseParenthesis => (),
+                    _ => return Err(ParserError::expected_symbol(self.tokens.span(), ")")),
+                };
+                let span = Span {
+                    start: start.start,
+                    end: self.tokens.span().end,
+                };
+                expr.map(ParseTokenResult::Expression)
+                    .ok_or_else(|| ParserError::empty_expression(span))
+            }
+            // CloseParenthesis terminates an expression. We don't care about what opened the expression here,
+            // if a terminator is encountered we stop, the parent expression can handle checking if it is valid.
+            Token::CloseParenthesis => Ok(ParseTokenResult::Terminator(
+                ExprTerminator::CloseParenthesis,
+            )),
+            // Float, Integer, UInteger, Null and String are all constants, which is a type of expression.
+            Token::Float(n) => Ok(ParseTokenResult::Expression(ExpressionType::Constant(
+                Constant::try_new_f64(n)
+                    .ok_or_else(|| ParserError::unexpected_symbol(self.tokens.span(), token))?,
+            ))),
+            Token::Integer(n) => Ok(ParseTokenResult::Expression(ExpressionType::Constant(
+                Constant::try_new_i64(n)
+                    .ok_or_else(|| ParserError::unexpected_symbol(self.tokens.span(), token))?,
+            ))),
+            Token::UInteger(n) => Ok(ParseTokenResult::Expression(ExpressionType::Constant(
+                Constant::try_new_u64(n)
+                    .ok_or_else(|| ParserError::unexpected_symbol(self.tokens.span(), token))?,
+            ))),
+            Token::String(s) => Ok(ParseTokenResult::Expression(ExpressionType::Constant(
+                Constant::new_string(s),
+            ))),
+            Token::Null => Ok(ParseTokenResult::Expression(ExpressionType::Constant(
+                Constant::new_null(),
+            ))),
+            // A BareString encountered here is a function call, it must be followed by OpenParenthesis,
+            // a (potentially empty) expression list, and a CloseParenthesis.
+            Token::BareString(f) => {
+                let start = self.tokens.span();
+                consume_token!(self, Token::OpenParenthesis);
+                let (args, term) = self.parse_expression_list()?;
+                if !matches!(term, ExprTerminator::CloseParenthesis) {
+                    return Err(ParserError::expected_symbol(self.tokens.span(), ")"));
+                }
+
+                let span = Span {
+                    start: start.start,
+                    end: self.tokens.span().end,
+                };
+                let func = get_function_expression(span, &f, args)?;
+                Ok(ParseTokenResult::Expression(func))
+            }
+            // SelectorStart indicates the start of an expression, which has its own method for parsing.
+            Token::SelectorStart => {
+                let (expr, next) = self.parse_selector()?;
+                let expr = ExpressionType::Selector(expr);
+                match next {
+                    Some(x) => Ok(ParseTokenResult::ExpressionAndNext((expr, x))),
+                    None => Ok(ParseTokenResult::ExpressionAndTerminator((
+                        expr,
+                        ExprTerminator::End,
+                    ))),
+                }
+            }
+            // OpenBracket indicates the start of an array, which contains a (potentially empty) expression list,
+            // and a CloseBracket.
+            Token::OpenBracket => {
+                let start = self.tokens.span();
+                let (items, term) = self.parse_expression_list()?;
+                let span = Span {
+                    start: start.start,
+                    end: self.tokens.span().end,
+                };
+                if !matches!(term, ExprTerminator::CloseBracket) {
+                    return Err(ParserError::expected_symbol(self.tokens.span(), "]"));
+                }
+
+                let expr = ArrayExpression::new(items, span);
+                Ok(ParseTokenResult::Expression(ExpressionType::Array(expr)))
+            }
+            // CloseBracket is a terminator for arrays.
+            Token::CloseBracket => Ok(ParseTokenResult::Terminator(ExprTerminator::CloseBracket)),
         }
     }
 
@@ -180,116 +338,30 @@ impl<'source> Parser<'source> {
         let mut expect_expression = true;
         let mut initial = true;
         let term = loop {
-            // Do a simple sanity check on the next token. After an operator, or at the start of an expression
-            // only expression operators like `Token::OpenParenthesis`, `Float`, `Integer`, `String`, `SelectorStart`,
-            // etc. are valid.
-            // After an expression the only valid symbols are operators, or terminators.
-            if matches!(token, Token::Operator(_) | Token::Comma)
-                || !initial && matches!(token, Token::CloseParenthesis | Token::CloseBracket)
-            {
-                if expect_expression {
-                    return Err(ParserError::expect_expression(self.tokens.span()));
+            match self.next_expression(expect_expression, initial, token)? {
+                ParseTokenResult::Expression(x) => {
+                    exprs.push(x);
+                    expect_expression = false;
                 }
-                expect_expression = true;
-            } else if !expect_expression {
-                return Err(ParserError::unexpected_symbol(self.tokens.span(), token));
-            } else {
-                expect_expression = false;
+                ParseTokenResult::ExpressionAndNext((x, next)) => {
+                    exprs.push(x);
+                    token = next;
+                    expect_expression = false;
+                    initial = false;
+                    continue;
+                }
+                ParseTokenResult::Terminator(t) => break t,
+                ParseTokenResult::Operator(p) => {
+                    ops.push(p);
+                    expect_expression = true;
+                }
+                ParseTokenResult::ExpressionAndTerminator((x, t)) => {
+                    exprs.push(x);
+                    break t;
+                }
             }
             initial = false;
 
-            // println!("Investigate symbol {}", token);
-            match token {
-                // A period is invalid in an expression on its own.
-                Token::Period => {
-                    return Err(ParserError::unexpected_symbol(self.tokens.span(), token))
-                }
-                // A comma should always terminate an expression.
-                Token::Comma => break ExprTerminator::Comma,
-                // An error is never valid.
-                Token::Error => return Err(ParserError::invalid_token(self.tokens.span())),
-                // We have already checked that an operator is valid in this position, so just add it to the operator list
-                // along with the "span": where it was encountered.
-                Token::Operator(o) => ops.push((o, self.tokens.span())),
-                // OpenParenthesis indicates the start of a new expression when encountered here.
-                // The terminator must be CloseParenthesis.
-                Token::OpenParenthesis => {
-                    let start = self.tokens.span();
-                    let (expr, term) = self.parse_expression()?;
-                    match term {
-                        ExprTerminator::CloseParenthesis => (),
-                        _ => return Err(ParserError::expected_symbol(self.tokens.span(), ")")),
-                    };
-                    let span = Span {
-                        start: start.start,
-                        end: self.tokens.span().end,
-                    };
-                    exprs.push(expr.ok_or_else(|| ParserError::empty_expression(span))?)
-                }
-                // CloseParenthesis terminates an expression. We don't care about what opened the expression here,
-                // if a terminator is encountered we stop, the parent expression can handle checking if it is valid.
-                Token::CloseParenthesis => break ExprTerminator::CloseParenthesis,
-                // Float, Integer, UInteger, Null and String are all constants, which is a type of expression.
-                Token::Float(n) => exprs.push(ExpressionType::Constant(
-                    Constant::try_new_f64(n)
-                        .ok_or_else(|| ParserError::unexpected_symbol(self.tokens.span(), token))?,
-                )),
-                Token::Integer(n) => exprs.push(ExpressionType::Constant(
-                    Constant::try_new_i64(n)
-                        .ok_or_else(|| ParserError::unexpected_symbol(self.tokens.span(), token))?,
-                )),
-                Token::UInteger(n) => exprs.push(ExpressionType::Constant(
-                    Constant::try_new_u64(n)
-                        .ok_or_else(|| ParserError::unexpected_symbol(self.tokens.span(), token))?,
-                )),
-                Token::String(s) => exprs.push(ExpressionType::Constant(Constant::new_string(s))),
-                Token::Null => exprs.push(ExpressionType::Constant(Constant::new_null())),
-                // A BareString encountered here is a function call, it must be followed by OpenParenthesis,
-                // a (potentially empty) expression list, and a CloseParenthesis.
-                Token::BareString(f) => {
-                    let start = self.tokens.span();
-                    consume_token!(self, Token::OpenParenthesis);
-                    let (args, term) = self.parse_expression_list()?;
-                    if !matches!(term, ExprTerminator::CloseParenthesis) {
-                        return Err(ParserError::expected_symbol(self.tokens.span(), ")"));
-                    }
-
-                    let span = Span {
-                        start: start.start,
-                        end: self.tokens.span().end,
-                    };
-                    let func = get_function_expression(span, &f, args)?;
-                    exprs.push(func);
-                }
-                // SelectorStart indicates the start of an expression, which has its own method for parsing.
-                Token::SelectorStart => {
-                    let (expr, next) = self.parse_selector()?;
-                    exprs.push(ExpressionType::Selector(expr));
-                    match next {
-                        Some(x) => token = x,
-                        None => break ExprTerminator::End,
-                    }
-                    continue;
-                }
-                // OpenBracket indicates the start of an array, which contains a (potentially empty) expression list,
-                // and a CloseBracket.
-                Token::OpenBracket => {
-                    let start = self.tokens.span();
-                    let (items, term) = self.parse_expression_list()?;
-                    let span = Span {
-                        start: start.start,
-                        end: self.tokens.span().end,
-                    };
-                    if !matches!(term, ExprTerminator::CloseBracket) {
-                        return Err(ParserError::expected_symbol(self.tokens.span(), "]"));
-                    }
-
-                    let expr = ArrayExpression::new(items, span);
-                    exprs.push(ExpressionType::Array(expr));
-                }
-                // CloseBracket is a terminator for arrays.
-                Token::CloseBracket => break ExprTerminator::CloseBracket,
-            }
             token = match self.tokens.next() {
                 Some(x) => x,
                 None => break ExprTerminator::End,
@@ -583,6 +655,30 @@ pub mod test {
             ParserError::UnexpectedSymbol(d) => {
                 assert_eq!(d.detail, Some("Unrecognized function: bloop".to_string()));
                 assert_eq!(d.position, Span { start: 4, end: 13 });
+            }
+            _ => panic!("Wrong type of response: {:?}", res),
+        }
+    }
+
+    #[test]
+    pub fn test_negate_op() {
+        let res = parse("2 + !!3").unwrap();
+        assert_eq!("(2 + !!3)", res.to_string());
+    }
+
+    #[test]
+    pub fn test_negate_expr() {
+        let res = parse("2 + !(1 + !3 - 5)").unwrap();
+        assert_eq!("(2 + !((1 + !3) - 5))", res.to_string());
+    }
+
+    #[test]
+    pub fn test_misplaced_negate() {
+        let res = parse_fail("2 + 3!");
+        match res {
+            ParserError::UnexpectedSymbol(d) => {
+                assert_eq!(d.detail, Some("Unexpected symbol !".to_string()));
+                assert_eq!(d.position, Span { start: 5, end: 6 });
             }
             _ => panic!("Wrong type of response: {:?}", res),
         }

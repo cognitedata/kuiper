@@ -5,8 +5,8 @@ use std::{collections::HashMap, fmt::Display};
 use crate::{parse::ParserError, program::TransformOrInput};
 
 use super::{
-    functions::*, transform_error::TransformError, ArrayExpression, OpExpression,
-    SelectorExpression,
+    functions::*, operator::UnaryOpExpression, transform_error::TransformError, ArrayExpression,
+    OpExpression, SelectorExpression,
 };
 
 use transform_macros::{pass_through, PassThrough};
@@ -92,6 +92,7 @@ pub fn get_function_expression(
 pub enum ExpressionType {
     Constant(Constant),
     Operator(OpExpression),
+    UnaryOperator(UnaryOpExpression),
     Selector(SelectorExpression),
     Function(FunctionType),
     Array(ArrayExpression),
@@ -185,7 +186,7 @@ impl Constant {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum JsonNumber {
     NegInteger(i64),
     PosInteger(u64),
@@ -325,5 +326,14 @@ pub(crate) fn get_string_from_value<'a>(
                 id,
             ))
         }
+    }
+}
+
+pub(crate) fn get_boolean_from_value(val: &Value) -> bool {
+    match val {
+        Value::Null => false,
+        Value::Number(n) => n.as_f64().map(|v| v != 0.0f64).unwrap_or(true),
+        Value::Bool(b) => *b,
+        _ => true,
     }
 }

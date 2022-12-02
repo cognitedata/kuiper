@@ -474,4 +474,184 @@ mod tests {
             _ => panic!("Wrong type of error {:?}", res),
         }
     }
+    // Filter
+
+    #[test]
+    pub fn test_filter() {
+        let program = compile(json!([{
+            "id": "gen",
+            "inputs": [],
+            "transform": "[1, 2, null, 3, null, 4]",
+            "type": "flatten"
+        }, {
+            "id": "filter",
+            "inputs": ["gen"],
+            "transform": "$gen",
+            "type": "filter"
+        }]))
+        .unwrap();
+        let input = Value::Null;
+        let res = program.execute(&input).unwrap();
+        assert_eq!(res.len(), 4);
+        let rs = serde_json::to_string(&Value::Array(res)).unwrap();
+        println!("{}", &rs);
+        assert_eq!(rs, "[1,2,3,4]");
+    }
+
+    #[test]
+    pub fn test_merge_filter() {
+        let program = compile(json!([{
+            "id": "gen",
+            "inputs": [],
+            "transform": "[1, 2, null, 3, null, 4]",
+            "type": "flatten"
+        }, {
+            "id": "gen2",
+            "inputs": [],
+            "transform": "[5, 6, null, 7, null, 8]",
+            "type": "flatten"
+        }, {
+            "id": "filter",
+            "inputs": ["gen", "gen2"],
+            "transform": "$merge",
+            "type": "filter",
+            "mode": "merge"
+        }]))
+        .unwrap();
+        let input = Value::Null;
+        let res = program.execute(&input).unwrap();
+
+        assert_eq!(res.len(), 8);
+    }
+
+    #[test]
+    pub fn test_too_many_inputs_filter() {
+        let err = compile_err(json!([{
+            "id": "gen",
+            "inputs": [],
+            "transform": "[1, 2, null, 3, null, 4]",
+            "type": "flatten"
+        }, {
+            "id": "filter",
+            "inputs": ["gen", "input"],
+            "transform": "$merge",
+            "type": "filter"
+        }]));
+        match err {
+            CompileError::Config(d) => {
+                assert_eq!(d.id, Some("filter".to_string()));
+                assert_eq!(
+                    d.desc,
+                    "Filter operations must have exactly one input or use input mode \"merge\""
+                );
+            }
+            _ => panic!("Wrong type of error {:?}", err),
+        }
+    }
+
+    #[test]
+    pub fn test_negate_op() {
+        let program = compile(json!([{
+            "id": "parse",
+            "inputs": ["input"],
+            "transform": {
+                "v1": "!$input.v1",
+                "v2": "!!!$input.v2"
+            },
+            "type": "map"
+        }]))
+        .unwrap();
+        let input = json!({
+            "v1": "test",
+            "v2": null
+        });
+        let res = program.execute(&input).unwrap();
+        assert_eq!(res.len(), 1);
+        let res = res.first().unwrap();
+        assert_eq!(false, res.get("v1").unwrap().as_bool().unwrap());
+        assert_eq!(true, res.get("v2").unwrap().as_bool().unwrap());
+    }
+
+    #[test]
+    pub fn test_compare_operators() {
+        let program = compile(json!([{
+            "id": "cmp",
+            "inputs": ["input"],
+            "transform": {
+                "gt": "$input.v1 > $input.v2",
+                "gte": "$input.v1 >= $input.v2",
+                "lt": "$input.v1 < $input.v2",
+                "lte": "$input.v1 <= $input.v2",
+                "eq": "$input.v1 == $input.v2",
+                "neq": "$input.v1 != $input.v2",
+            },
+            "type": "map"
+        }]))
+        .unwrap();
+        let input = json!({
+            "v1": 1,
+            "v2": 1.5
+        });
+        let res = program.execute(&input).unwrap();
+        assert_eq!(res.len(), 1);
+        let res = res.first().unwrap();
+        assert!(!res.get("gt").unwrap().as_bool().unwrap());
+        assert!(!res.get("gte").unwrap().as_bool().unwrap());
+        assert!(res.get("lt").unwrap().as_bool().unwrap());
+        assert!(res.get("lte").unwrap().as_bool().unwrap());
+        assert!(!res.get("eq").unwrap().as_bool().unwrap());
+        assert!(res.get("neq").unwrap().as_bool().unwrap());
+    }
+    #[test]
+    pub fn test_compare_operators_eq() {
+        let program = compile(json!([{
+            "id": "cmp",
+            "inputs": ["input"],
+            "transform": {
+                "gt": "$input.v1 > $input.v2",
+                "gte": "$input.v1 >= $input.v2",
+                "lt": "$input.v1 < $input.v2",
+                "lte": "$input.v1 <= $input.v2",
+                "eq": "$input.v1 == $input.v2",
+                "neq": "$input.v1 != $input.v2",
+            },
+            "type": "map"
+        }]))
+        .unwrap();
+        let input = json!({
+            "v1": 1,
+            "v2": 1.0
+        });
+        let res = program.execute(&input).unwrap();
+        assert_eq!(res.len(), 1);
+        let res = res.first().unwrap();
+        assert!(!res.get("gt").unwrap().as_bool().unwrap());
+        assert!(res.get("gte").unwrap().as_bool().unwrap());
+        assert!(!res.get("lt").unwrap().as_bool().unwrap());
+        assert!(res.get("lte").unwrap().as_bool().unwrap());
+        assert!(res.get("eq").unwrap().as_bool().unwrap());
+        assert!(!res.get("neq").unwrap().as_bool().unwrap());
+    }
+
+    #[test]
+    pub fn test_boolean_operators() {
+        let program = compile(json!([{
+            "id": "cmp",
+            "inputs": ["input"],
+            "transform": {
+                "v1": "$input.v1 && $input.v2 || $input.v3"
+            },
+            "type": "map"
+        }]))
+        .unwrap();
+        let input = json!({
+            "v1": true,
+            "v2": "test",
+            "v3": null
+        });
+        let res = program.execute(&input).unwrap();
+        assert_eq!(res.len(), 1);
+        let res = res.first().unwrap();
+        assert!(res.get("v1").unwrap().as_bool().unwrap());
+    }
 }

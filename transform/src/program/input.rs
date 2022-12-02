@@ -55,13 +55,15 @@ pub enum TransformInput {
     /// Map transform, outputs a JSON object.
     Map(MapTransformInput),
     /// Flatten transform, outputs an array of JSON values.
-    Flatten(FlattenTransformInput),
+    Flatten(FlatTransformInput),
+    /// Filters transform input, returns input values if the output is "true", skips if "false" or "null".
+    Filter(FlatTransformInput),
 }
 
-/// Input to a "flatten" transform.
+/// Input to a "flat" transform.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct FlattenTransformInput {
+pub struct FlatTransformInput {
     /// A unique id for this transform. Verify that the ID is unique before passing to the compiler.
     pub id: String,
     /// A list of inputs. May be empty. "input" is a magic input, it indicates the source of the transformation.
@@ -78,6 +80,7 @@ impl TransformInput {
         match self {
             Self::Map(x) => &x.id,
             Self::Flatten(x) => &x.id,
+            Self::Filter(x) => &x.id,
         }
     }
 
@@ -85,6 +88,7 @@ impl TransformInput {
         match self {
             Self::Map(x) => &x.inputs,
             Self::Flatten(x) => &x.inputs,
+            Self::Filter(x) => &x.inputs,
         }
     }
 
@@ -92,6 +96,7 @@ impl TransformInput {
         match self {
             Self::Map(x) => x.mode,
             Self::Flatten(x) => x.mode,
+            Self::Filter(x) => x.mode,
         }
     }
 }
@@ -140,7 +145,7 @@ pub struct MapTransform {
     pub(crate) map: HashMap<String, ExpressionType>,
 }
 
-pub struct FlattenTransform {
+pub struct FlatTransform {
     inputs: TransformInputs,
     id: String,
     pub(crate) map: ExpressionType,
@@ -148,7 +153,8 @@ pub struct FlattenTransform {
 
 pub enum Transform {
     Map(MapTransform),
-    Flatten(FlattenTransform),
+    Flatten(FlatTransform),
+    Filter(FlatTransform),
 }
 
 impl Transform {
@@ -156,6 +162,7 @@ impl Transform {
         match self {
             Transform::Map(x) => &x.inputs,
             Transform::Flatten(x) => &x.inputs,
+            Transform::Filter(x) => &x.inputs,
         }
     }
 
@@ -163,6 +170,7 @@ impl Transform {
         match self {
             Transform::Map(x) => &x.id,
             Transform::Flatten(x) => &x.id,
+            Transform::Filter(x) => &x.id,
         }
     }
 
@@ -193,10 +201,29 @@ impl Transform {
                 let result = Parser::new(inp)
                     .parse()
                     .map_err(|e| CompileError::from_parser_err(e, &raw.id, None))?;
-                Ok(Self::Flatten(FlattenTransform {
+                Ok(Self::Flatten(FlatTransform {
                     inputs: TransformInputs::new(inputs, raw.mode),
                     map: result,
                     id: raw.id.clone(),
+                }))
+            }
+            TransformInput::Filter(raw) => {
+                let inp = Token::lexer(&raw.transform);
+                let result = Parser::new(inp)
+                    .parse()
+                    .map_err(|e| CompileError::from_parser_err(e, &raw.id, None))?;
+                if inputs.len() != 1
+                    && (inputs.is_empty() || !matches!(raw.mode, TransformInputType::Merge))
+                {
+                    return Err(CompileError::config_err(
+                        "Filter operations must have exactly one input or use input mode \"merge\"",
+                        Some(&raw.id),
+                    ));
+                }
+                Ok(Self::Filter(FlatTransform {
+                    inputs: TransformInputs::new(inputs, raw.mode),
+                    id: raw.id.clone(),
+                    map: result,
                 }))
             }
         }
