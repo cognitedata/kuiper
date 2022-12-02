@@ -571,4 +571,87 @@ mod tests {
         assert_eq!(false, res.get("v1").unwrap().as_bool().unwrap());
         assert_eq!(true, res.get("v2").unwrap().as_bool().unwrap());
     }
+
+    #[test]
+    pub fn test_compare_operators() {
+        let program = compile(json!([{
+            "id": "cmp",
+            "inputs": ["input"],
+            "transform": {
+                "gt": "$input.v1 > $input.v2",
+                "gte": "$input.v1 >= $input.v2",
+                "lt": "$input.v1 < $input.v2",
+                "lte": "$input.v1 <= $input.v2",
+                "eq": "$input.v1 == $input.v2",
+                "neq": "$input.v1 != $input.v2",
+            },
+            "type": "map"
+        }]))
+        .unwrap();
+        let input = json!({
+            "v1": 1,
+            "v2": 1.5
+        });
+        let res = program.execute(&input).unwrap();
+        assert_eq!(res.len(), 1);
+        let res = res.first().unwrap();
+        assert!(!res.get("gt").unwrap().as_bool().unwrap());
+        assert!(!res.get("gte").unwrap().as_bool().unwrap());
+        assert!(res.get("lt").unwrap().as_bool().unwrap());
+        assert!(res.get("lte").unwrap().as_bool().unwrap());
+        assert!(!res.get("eq").unwrap().as_bool().unwrap());
+        assert!(res.get("neq").unwrap().as_bool().unwrap());
+    }
+    #[test]
+    pub fn test_compare_operators_eq() {
+        let program = compile(json!([{
+            "id": "cmp",
+            "inputs": ["input"],
+            "transform": {
+                "gt": "$input.v1 > $input.v2",
+                "gte": "$input.v1 >= $input.v2",
+                "lt": "$input.v1 < $input.v2",
+                "lte": "$input.v1 <= $input.v2",
+                "eq": "$input.v1 == $input.v2",
+                "neq": "$input.v1 != $input.v2",
+            },
+            "type": "map"
+        }]))
+        .unwrap();
+        let input = json!({
+            "v1": 1,
+            "v2": 1.0
+        });
+        let res = program.execute(&input).unwrap();
+        assert_eq!(res.len(), 1);
+        let res = res.first().unwrap();
+        assert!(!res.get("gt").unwrap().as_bool().unwrap());
+        assert!(res.get("gte").unwrap().as_bool().unwrap());
+        assert!(!res.get("lt").unwrap().as_bool().unwrap());
+        assert!(res.get("lte").unwrap().as_bool().unwrap());
+        assert!(res.get("eq").unwrap().as_bool().unwrap());
+        assert!(!res.get("neq").unwrap().as_bool().unwrap());
+    }
+
+    #[test]
+    pub fn test_boolean_operators() {
+        let program = compile(json!([{
+            "id": "cmp",
+            "inputs": ["input"],
+            "transform": {
+                "v1": "$input.v1 && $input.v2 || $input.v3"
+            },
+            "type": "map"
+        }]))
+        .unwrap();
+        let input = json!({
+            "v1": true,
+            "v2": "test",
+            "v3": null
+        });
+        let res = program.execute(&input).unwrap();
+        assert_eq!(res.len(), 1);
+        let res = res.first().unwrap();
+        assert!(res.get("v1").unwrap().as_bool().unwrap());
+    }
 }

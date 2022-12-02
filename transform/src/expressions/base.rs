@@ -186,7 +186,7 @@ impl Constant {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum JsonNumber {
     NegInteger(i64),
     PosInteger(u64),

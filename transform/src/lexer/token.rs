@@ -66,6 +66,14 @@ pub enum Token {
     #[token("-", |_| Operator::Minus)]
     #[token("/", |_| Operator::Divide)]
     #[token("*", |_| Operator::Multiply)]
+    #[token(">", |_| Operator::GreaterThan)]
+    #[token("<", |_| Operator::LessThan)]
+    #[token(">=", |_| Operator::GreaterThanEquals)]
+    #[token("<=", |_| Operator::LessThanEquals)]
+    #[token("==", |_| Operator::Equals)]
+    #[token("!=", |_| Operator::NotEquals)]
+    #[token("&&", |_| Operator::And)]
+    #[token("||", |_| Operator::Or)]
     Operator(Operator),
 
     #[token("!", |_| UnaryOperator::Negate)]

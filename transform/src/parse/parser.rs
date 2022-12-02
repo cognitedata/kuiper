@@ -96,10 +96,6 @@ impl<'source> Parser<'source> {
         is_initial: bool,
         token: Token,
     ) -> Result<ParseTokenResult, ParserError> {
-        println!(
-            "Investigate token {}: {}, {}",
-            token, is_initial, expect_expression
-        );
         // Do a simple sanity check on the next token. After an operator, or at the start of an expression
         // only expression operators like `Token::OpenParenthesis`, `Float`, `Integer`, `String`, `SelectorStart`,
         // etc. are valid.
