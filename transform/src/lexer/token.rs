@@ -61,6 +61,10 @@ pub enum Token {
     #[regex(r#"(\d)+"#, |lex| lex.slice().parse(), priority = 4)]
     UInteger(u64),
 
+    #[token("true", |_| true)]
+    #[token("false", |_| false)]
+    Boolean(bool),
+
     /// An operator. Each new operator should be added as a special token here.
     #[token("+", |_| Operator::Plus)]
     #[token("-", |_| Operator::Minus)]
@@ -129,6 +133,7 @@ impl Display for Token {
             Token::Integer(x) => write!(f, "{}", x),
             Token::UInteger(x) => write!(f, "{}", x),
             Token::Null => write!(f, "null"),
+            Token::Boolean(b) => write!(f, "{}", if *b { "true" } else { "false" }),
         }
     }
 }
