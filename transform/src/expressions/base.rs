@@ -69,6 +69,7 @@ pub enum FunctionType {
     Int(IntFunction),
     Float(FloatFunction),
     If(IfFunction),
+    ToUnixTime(ToUnixTimeFunction),
 }
 
 /// Create a function expression from its name, or return a parser exception if it has the wrong number of arguments,
@@ -90,6 +91,7 @@ pub fn get_function_expression(
         "int" => FunctionType::Int(IntFunction::new(args, pos)?),
         "float" => FunctionType::Float(FloatFunction::new(args, pos)?),
         "if" => FunctionType::If(IfFunction::new(args, pos)?),
+        "to_unix_timestamp" => FunctionType::ToUnixTime(ToUnixTimeFunction::new(args, pos)?),
         _ => return Err(ParserError::unrecognized_function(pos, name)),
     };
     Ok(ExpressionType::Function(expr))
@@ -193,6 +195,12 @@ impl Constant {
 
     pub fn new_null() -> Self {
         Self { val: Value::Null }
+    }
+
+    pub fn new_bool(val: bool) -> Self {
+        Self {
+            val: Value::Bool(val),
+        }
     }
 }
 

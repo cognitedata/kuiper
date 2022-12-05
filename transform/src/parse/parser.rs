@@ -190,6 +190,9 @@ impl<'source> Parser<'source> {
             Token::Null => Ok(ParseTokenResult::Expression(ExpressionType::Constant(
                 Constant::new_null(),
             ))),
+            Token::Boolean(b) => Ok(ParseTokenResult::Expression(ExpressionType::Constant(
+                Constant::new_bool(b),
+            ))),
             // A BareString encountered here is a function call, it must be followed by OpenParenthesis,
             // a (potentially empty) expression list, and a CloseParenthesis.
             Token::BareString(f) => {
