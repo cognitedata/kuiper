@@ -338,14 +338,14 @@ impl JsonNumber {
                 } else if x < 0.0 && x >= i64::MIN as f64 {
                     Ok(JsonNumber::NegInteger(x as i64))
                 } else {
-                    return Err(TransformError::new_conversion_failed(
+                    Err(TransformError::new_conversion_failed(
                         format!(
                             "Failed to convert floating point number {} to integer, too large.",
                             x
                         ),
                         span,
                         id,
-                    ));
+                    ))
                 }
             }
         }

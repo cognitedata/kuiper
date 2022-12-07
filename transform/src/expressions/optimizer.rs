@@ -12,7 +12,7 @@ fn resolve_constants(
     if root.num_children() == 0 {
         return Ok(None);
     }
-    match root.resolve(&empty_state) {
+    match root.resolve(empty_state) {
         // If resolution succeeds, we can replace this operator with a constant
         Ok(x) => Ok(Some(ExpressionType::Constant(Constant::new(
             x.into_value(),
@@ -91,6 +91,12 @@ mod tests {
     pub fn test_fancy_expression() {
         let expr = parse("2 + if(2 > 1, 3, 'uh oh')").unwrap();
         assert_eq!("5", expr.to_string());
+    }
+
+    #[test]
+    pub fn test_cast() {
+        let expr = parse("2 + int('-2')").unwrap();
+        assert_eq!("0", expr.to_string());
     }
 
     #[test]
