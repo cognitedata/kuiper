@@ -5,8 +5,8 @@ use serde_json::Value;
 
 use super::{
     base::{
-        get_boolean_from_value, get_number_from_value, Expression, ExpressionExecutionState,
-        ExpressionMeta, ExpressionType, JsonNumber, ResolveResult,
+        get_boolean_from_value, get_number_from_value, get_string_from_value, Expression,
+        ExpressionExecutionState, ExpressionMeta, ExpressionType, JsonNumber, ResolveResult,
     },
     transform_error::TransformError,
 };
@@ -108,6 +108,8 @@ impl<'a> Expression<'a> for OpExpression {
         let lhs = res.as_ref();
         if lhs.is_number() {
             self.resolve_numeric_operator(lhs, state)
+        } else if lhs.is_string() && !matches!(self.operator, Operator::And | Operator::Or) {
+            self.resolve_string_operator(lhs, state)
         } else if matches!(
             self.operator,
             Operator::And | Operator::Or | Operator::Equals | Operator::NotEquals
@@ -188,6 +190,33 @@ impl OpExpression {
             }
         };
 
+        Ok(ResolveResult::Value(Value::Bool(res)))
+    }
+
+    fn resolve_string_operator<'a>(
+        &self,
+        lhs: &Value,
+        state: &ExpressionExecutionState,
+    ) -> Result<ResolveResult<'a>, TransformError> {
+        let lhs = get_string_from_value(&self.descriptor, lhs, &self.span, state.id)?;
+        let rhs = self.elements[1].resolve(state)?;
+        let rhs = get_string_from_value(&self.descriptor, rhs.as_ref(), &self.span, state.id)?;
+
+        let res = match &self.operator {
+            Operator::Equals => lhs.as_ref() == rhs.as_ref(),
+            Operator::NotEquals => lhs.as_ref() != rhs.as_ref(),
+            Operator::GreaterThan => lhs.as_ref() > rhs.as_ref(),
+            Operator::LessThan => lhs.as_ref() < rhs.as_ref(),
+            Operator::GreaterThanEquals => lhs.as_ref() >= rhs.as_ref(),
+            Operator::LessThanEquals => lhs.as_ref() <= rhs.as_ref(),
+            _ => {
+                return Err(TransformError::new_invalid_operation(
+                    format!("Operator {} not applicable to strings", &self.operator),
+                    &self.span,
+                    state.id,
+                ))
+            }
+        };
         Ok(ResolveResult::Value(Value::Bool(res)))
     }
 
@@ -454,7 +483,7 @@ impl JsonNumber {
         }
     }
 
-    fn eq(self, rhs: JsonNumber, span: &Span, id: &str) -> bool {
+    pub fn eq(self, rhs: JsonNumber, span: &Span, id: &str) -> bool {
         match (self, rhs) {
             (JsonNumber::PosInteger(x), JsonNumber::PosInteger(y)) => x == y,
             (JsonNumber::NegInteger(x), JsonNumber::NegInteger(y)) => x == y,

@@ -85,6 +85,7 @@ pub enum FunctionType {
     Float(FloatFunction),
     If(IfFunction),
     ToUnixTime(ToUnixTimeFunction),
+    Case(CaseFunction),
 }
 
 /// Create a function expression from its name, or return a parser exception if it has the wrong number of arguments,
@@ -107,6 +108,7 @@ pub fn get_function_expression(
         "float" => FunctionType::Float(FloatFunction::new(args, pos)?),
         "if" => FunctionType::If(IfFunction::new(args, pos)?),
         "to_unix_timestamp" => FunctionType::ToUnixTime(ToUnixTimeFunction::new(args, pos)?),
+        "case" => FunctionType::Case(CaseFunction::new(args, pos)?),
         _ => return Err(ParserError::unrecognized_function(pos, name)),
     };
     Ok(ExpressionType::Function(expr))
