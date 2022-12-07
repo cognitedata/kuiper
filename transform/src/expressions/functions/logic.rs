@@ -14,12 +14,10 @@ impl<'a> Expression<'a> for IfFunction {
 
         if cond {
             Ok(self.args.get(1).unwrap().resolve(state)?)
+        } else if self.args.len() == 2 {
+            Ok(ResolveResult::Value(Value::Null))
         } else {
-            if self.args.len() == 2 {
-                Ok(ResolveResult::Value(Value::Null))
-            } else {
-                Ok(self.args.get(2).unwrap().resolve(state)?)
-            }
+            Ok(self.args.get(2).unwrap().resolve(state)?)
         }
     }
 }

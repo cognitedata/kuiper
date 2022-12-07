@@ -6,7 +6,11 @@ use std::{
 use logos::Logos;
 use serde::{Deserialize, Serialize};
 
-use crate::{expressions::ExpressionType, lexer::Token, parse::Parser};
+use crate::{
+    expressions::{optimize, ExpressionType},
+    lexer::Token,
+    parse::Parser,
+};
 
 use super::compile_err::CompileError;
 
@@ -188,6 +192,8 @@ impl Transform {
                     let result = Parser::new(inp)
                         .parse()
                         .map_err(|e| CompileError::from_parser_err(e, &raw.id, Some(key)))?;
+                    let result = optimize(result)
+                        .map_err(|e| CompileError::optimizer_err(e, &raw.id, Some(key)))?;
                     map.insert(key.clone(), result);
                 }
                 Ok(Self::Map(MapTransform {
@@ -201,6 +207,8 @@ impl Transform {
                 let result = Parser::new(inp)
                     .parse()
                     .map_err(|e| CompileError::from_parser_err(e, &raw.id, None))?;
+                let result =
+                    optimize(result).map_err(|e| CompileError::optimizer_err(e, &raw.id, None))?;
                 Ok(Self::Flatten(FlatTransform {
                     inputs: TransformInputs::new(inputs, raw.mode),
                     map: result,
@@ -212,6 +220,8 @@ impl Transform {
                 let result = Parser::new(inp)
                     .parse()
                     .map_err(|e| CompileError::from_parser_err(e, &raw.id, None))?;
+                let result =
+                    optimize(result).map_err(|e| CompileError::optimizer_err(e, &raw.id, None))?;
                 if inputs.len() != 1
                     && (inputs.is_empty() || !matches!(raw.mode, TransformInputType::Merge))
                 {

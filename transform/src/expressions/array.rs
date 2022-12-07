@@ -4,11 +4,12 @@ use logos::Span;
 use serde_json::Value;
 
 use super::{
-    base::ResolveResult, transform_error::TransformError, Expression, ExpressionExecutionState,
-    ExpressionType,
+    base::{ExpressionMeta, ResolveResult},
+    transform_error::TransformError,
+    Expression, ExpressionExecutionState, ExpressionType,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Array expression. This contains a list of expressions and returns an array.
 pub struct ArrayExpression {
     items: Vec<ExpressionType>,
@@ -40,6 +41,27 @@ impl<'a> Expression<'a> for ArrayExpression {
             arr.push(expr.resolve(state)?.as_ref().clone());
         }
         Ok(ResolveResult::Value(Value::Array(arr)))
+    }
+}
+
+impl<'a> ExpressionMeta<'a> for ArrayExpression {
+    fn num_children(&self) -> usize {
+        self.items.len()
+    }
+
+    fn get_child(&self, idx: usize) -> Option<&ExpressionType> {
+        self.items.get(idx)
+    }
+
+    fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType> {
+        self.items.get_mut(idx)
+    }
+
+    fn set_child(&mut self, idx: usize, item: ExpressionType) {
+        if idx >= self.items.len() {
+            return;
+        }
+        self.items[idx] = item;
     }
 }
 

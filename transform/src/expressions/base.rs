@@ -9,7 +9,7 @@ use super::{
     OpExpression, SelectorExpression,
 };
 
-use transform_macros::{pass_through, PassThrough};
+use transform_macros::PassThrough;
 
 /// State for expression execution. This struct is constructed for each expression.
 /// Notably lifetime heavy. `'a` is the lifetime of the input data.
@@ -53,10 +53,25 @@ pub trait Expression<'a>: Display {
     ) -> Result<ResolveResult<'a>, TransformError>;
 }
 
+/// Additional trait for expressions, separate from Expression to make it easier to implement in macros
+pub trait ExpressionMeta<'a>: Expression<'a> {
+    fn num_children(&self) -> usize;
+
+    fn get_child(&self, idx: usize) -> Option<&ExpressionType>;
+
+    fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType>;
+
+    fn set_child(&mut self, idx: usize, item: ExpressionType);
+}
+
 /// A function expression, new functions must be added here.
-#[derive(PassThrough, Debug)]
+#[derive(PassThrough, Debug, Clone)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
 #[pass_through(fn resolve(&'a self, state: &'a ExpressionExecutionState) -> Result<ResolveResult<'a>, TransformError>, "", Expression<'a>)]
+#[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta<'a>)]
+#[pass_through(fn get_child(&self, idx: usize) -> Option<&ExpressionType>, "", ExpressionMeta<'a>)]
+#[pass_through(fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType>, "", ExpressionMeta<'a>)]
+#[pass_through(fn set_child(&mut self, idx: usize, item: ExpressionType), "", ExpressionMeta<'a>)]
 pub enum FunctionType {
     Pow(PowFunction),
     Log(LogFunction),
@@ -98,9 +113,13 @@ pub fn get_function_expression(
 }
 
 /// The main expression type. All expressions must be included here.
-#[derive(PassThrough, Debug)]
+#[derive(PassThrough, Debug, Clone)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
 #[pass_through(fn resolve(&'a self, state: &'a ExpressionExecutionState) -> Result<ResolveResult<'a>, TransformError>, "", Expression<'a>)]
+#[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta<'a>)]
+#[pass_through(fn get_child(&self, idx: usize) -> Option<&ExpressionType>, "", ExpressionMeta<'a>)]
+#[pass_through(fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType>, "", ExpressionMeta<'a>)]
+#[pass_through(fn set_child(&mut self, idx: usize, item: ExpressionType), "", ExpressionMeta<'a>)]
 pub enum ExpressionType {
     Constant(Constant),
     Operator(OpExpression),
@@ -150,7 +169,7 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// A constant expression. This always resolves to a reference to its value.
 pub struct Constant {
     val: Value,
@@ -171,6 +190,22 @@ impl<'a> Expression<'a> for Constant {
     }
 }
 
+impl<'a> ExpressionMeta<'a> for Constant {
+    fn num_children(&self) -> usize {
+        0
+    }
+
+    fn get_child(&self, _idx: usize) -> Option<&ExpressionType> {
+        None
+    }
+
+    fn get_child_mut(&mut self, _idx: usize) -> Option<&mut ExpressionType> {
+        None
+    }
+
+    fn set_child(&mut self, _idx: usize, _item: ExpressionType) {}
+}
+
 impl Constant {
     pub fn try_new_f64(v: f64) -> Option<Self> {
         let val = Number::from_f64(v).map(Value::Number);
@@ -185,6 +220,10 @@ impl Constant {
     pub fn try_new_u64(v: u64) -> Option<Self> {
         let val = Number::try_from(v).map(Value::Number).ok();
         val.map(|v| Self { val: v })
+    }
+
+    pub fn new(val: Value) -> Self {
+        Self { val }
     }
 
     pub fn new_string(v: String) -> Self {
@@ -299,14 +338,14 @@ impl JsonNumber {
                 } else if x < 0.0 && x >= i64::MIN as f64 {
                     Ok(JsonNumber::NegInteger(x as i64))
                 } else {
-                    return Err(TransformError::new_conversion_failed(
+                    Err(TransformError::new_conversion_failed(
                         format!(
                             "Failed to convert floating point number {} to integer, too large.",
                             x
                         ),
                         span,
                         id,
-                    ));
+                    ))
                 }
             }
         }

@@ -148,7 +148,7 @@ impl<'a> Expression<'a> for IntFunction {
                 )
             })?,
             Value::String(s) => {
-                if s.starts_with("-") {
+                if s.starts_with('-') {
                     let res: i64 = s.parse().map_err(|e| {
                         TransformError::new_conversion_failed(
                             format!("Failed to convert string {} to integer: {}", s, e),
@@ -233,7 +233,7 @@ impl<'a> Expression<'a> for FloatFunction {
             }
         };
         Ok(ResolveResult::Value(Value::Number(
-            Number::from_f64(res).unwrap_or(Number::from_f64(0.0).unwrap()),
+            Number::from_f64(res).unwrap_or_else(|| Number::from_f64(0.0).unwrap()),
         )))
     }
 }

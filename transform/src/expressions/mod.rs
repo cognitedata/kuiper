@@ -2,6 +2,7 @@ mod array;
 mod base;
 mod functions;
 mod operator;
+mod optimizer;
 mod selector;
 mod transform_error;
 
@@ -12,5 +13,6 @@ pub use base::{
 };
 pub use functions::FunctionExpression;
 pub use operator::{OpExpression, Operator, UnaryOpExpression, UnaryOperator};
+pub use optimizer::optimize;
 pub use selector::{SelectorElement, SelectorExpression};
 pub use transform_error::{TransformError, TransformErrorData};

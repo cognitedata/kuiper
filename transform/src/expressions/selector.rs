@@ -3,12 +3,12 @@ use std::fmt::Display;
 use serde_json::Value;
 
 use super::{
-    base::{Expression, ExpressionExecutionState, ExpressionType, ResolveResult},
+    base::{Expression, ExpressionExecutionState, ExpressionMeta, ExpressionType, ResolveResult},
     transform_error::TransformError,
 };
 
 use logos::Span;
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Selector expression, used to get a field from an input.
 pub struct SelectorExpression {
     source: SelectorElement,
@@ -16,7 +16,7 @@ pub struct SelectorExpression {
     span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum SelectorElement {
     Constant(String),
     Expression(Box<ExpressionType>),
@@ -138,6 +138,22 @@ impl<'a> Expression<'a> for SelectorExpression {
         }
         Ok(ResolveResult::Reference(elem))
     }
+}
+
+impl<'a> ExpressionMeta<'a> for SelectorExpression {
+    fn num_children(&self) -> usize {
+        0
+    }
+
+    fn get_child(&self, _idx: usize) -> Option<&ExpressionType> {
+        None
+    }
+
+    fn get_child_mut(&mut self, _idx: usize) -> Option<&mut ExpressionType> {
+        None
+    }
+
+    fn set_child(&mut self, _idx: usize, _item: ExpressionType) {}
 }
 
 impl SelectorExpression {

@@ -1,14 +1,126 @@
+use std::collections::HashMap;
+
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use quote::{quote, ToTokens};
+use quote::quote;
 use syn::{
     parse::Parse, parse_macro_input, DeriveInput, Generics, Ident, LitStr, Pat, Result, Signature,
     Token,
 };
 
-#[proc_macro_derive(PassThrough, attributes(pass_through_exclude))]
-pub fn pass_through_derive(_: TokenStream) -> TokenStream {
-    TokenStream::new()
+#[proc_macro_derive(PassThrough, attributes(pass_through_exclude, pass_through))]
+pub fn pass_through_derive(d: TokenStream) -> TokenStream {
+    let en = parse_macro_input!(d as DeriveInput);
+    let data = match &en.data {
+        syn::Data::Enum(x) => x,
+        syn::Data::Union(_) | syn::Data::Struct(_) => panic!("Input must be an enum"),
+    };
+    let name = en.ident.clone();
+
+    let mut by_trait_or_none = HashMap::<Option<String>, Vec<FuncAndError>>::new();
+    for attr in en.attrs {
+        if attr.path.get_ident().map(|i| i.to_string()) == Some("pass_through".to_string()) {
+            let args: FuncAndError = attr.parse_args().unwrap();
+            let key = args.trt.clone().map(|i| i.to_string());
+            if let Some(funcs) = by_trait_or_none.get_mut(&key) {
+                funcs.push(args)
+            } else {
+                by_trait_or_none.insert(key, vec![args]);
+            }
+        }
+    }
+
+    let mut output = quote! {};
+    for (_, funcs) in by_trait_or_none {
+        let trt = funcs.first().unwrap().trt.clone();
+        let generics = funcs.first().unwrap().generics.clone();
+        let mut methods = quote! {};
+        for func in funcs {
+            let sign: Signature = func.sign;
+            let funcname = sign.ident.clone();
+            let funcargs = &sign.inputs;
+            let has_self = funcargs.iter().any(|f| match f {
+                syn::FnArg::Receiver(_) => true,
+                syn::FnArg::Typed(_) => false,
+            });
+            if !has_self {
+                panic!("Function {} must have self for pass through", funcname);
+            }
+
+            let mapped_funcargs: Vec<&Box<Pat>> = funcargs
+                .iter()
+                .filter_map(|f| match f {
+                    syn::FnArg::Receiver(_) => None,
+                    syn::FnArg::Typed(x) => Some(&x.pat),
+                })
+                .collect();
+
+            let mut arms = quote! {};
+            let mut any_excluded = false;
+            for variant in &data.variants {
+                let exclude = variant
+                    .attrs
+                    .iter()
+                    .find(|a| {
+                        let seg = a.path.segments.last();
+                        match seg {
+                            None => false,
+                            Some(seg) => seg.ident.to_string() == "pass_through_exclude",
+                        }
+                    })
+                    .map(|ex| {
+                        let to_exclude: IdentList = ex.parse_args().unwrap();
+                        to_exclude
+                            .items
+                            .iter()
+                            .any(|idt| idt.to_string() == funcname.to_string())
+                    })
+                    .unwrap_or(false);
+                any_excluded |= exclude;
+                if exclude {
+                    continue;
+                }
+                let itemident = Ident::new("a", Span::call_site());
+                let path = &variant.ident;
+                arms.extend(
+                    quote! { #name::#path(a) => #itemident.#funcname(#(#mapped_funcargs),*), },
+                );
+            }
+
+            if any_excluded {
+                let err = func.err;
+                arms.extend(quote! { _ => panic!(#err)})
+            }
+
+            let pb = match &trt {
+                Some(_) => quote! {},
+                None => quote! { pub },
+            };
+
+            methods.extend(quote! {
+                #pb #sign {
+                    match self {
+                        #arms
+                    }
+                }
+            });
+        }
+        let imp = match trt {
+            Some(x) => {
+                let generics = generics.unwrap();
+                quote! { impl #generics #x #generics for #name }
+            }
+            None => quote! { impl #name },
+        };
+
+        output.extend(quote! {
+            #imp {
+                #methods
+            }
+        })
+    }
+
+    output.into()
 }
 
 struct IdentList {
@@ -62,110 +174,4 @@ impl Parse for FuncAndError {
             generics: Some(input.parse().unwrap()),
         })
     }
-}
-
-#[proc_macro_attribute]
-pub fn pass_through(args: TokenStream, input: TokenStream) -> TokenStream {
-    let en = parse_macro_input!(input as DeriveInput);
-    let data = match &en.data {
-        syn::Data::Enum(x) => x,
-        syn::Data::Union(_) | syn::Data::Struct(_) => panic!("Input must be an enum"),
-    };
-
-    let args: FuncAndError = parse_macro_input!(args);
-    let func: Signature = args.sign;
-
-    let name = en.ident.clone();
-    let funcname = func.ident.clone();
-
-    let funcargs = &func.inputs;
-    let has_self = funcargs.iter().any(|f| match f {
-        syn::FnArg::Receiver(_) => true,
-        syn::FnArg::Typed(_) => false,
-    });
-    let mapped_funcargs: Vec<&Box<Pat>> = funcargs
-        .iter()
-        .filter_map(|f| match f {
-            syn::FnArg::Receiver(_) => None,
-            syn::FnArg::Typed(x) => Some(&x.pat),
-        })
-        .collect();
-
-    if !has_self {
-        panic!("Functions must have self for pass through");
-    }
-
-    let mut arms = quote! {};
-    let mut any_excluded = false;
-    for variant in &data.variants {
-        let exclude = variant.attrs.iter().find(|a| {
-            let seg = a.path.segments.last();
-            match seg {
-                None => false,
-                Some(seg) => seg.ident.to_string() == "pass_through_exclude",
-            }
-        });
-
-        if let Some(exclude) = exclude {
-            let to_exclude: IdentList = exclude.parse_args().unwrap();
-            if to_exclude
-                .items
-                .iter()
-                .any(|idt| idt.to_string() == funcname.to_string())
-            {
-                any_excluded = true;
-                continue;
-            }
-
-            // let ident: Ident = parse_macro_input!(tokens);
-        }
-
-        let itemident = Ident::new("a", Span::call_site());
-        let path = &variant.ident;
-        arms.extend(quote! { #name::#path(a) => #itemident.#funcname(#(#mapped_funcargs),*), });
-    }
-
-    let err = args.err;
-
-    let pb = match &args.trt {
-        Some(_) => quote! {},
-        None => quote! { pub },
-    };
-
-    let imp = match args.trt {
-        Some(x) => {
-            let generics = args.generics;
-            let generics = generics.unwrap();
-            quote! { impl #generics #x #generics for #name }
-        }
-        None => quote! { impl #name },
-    };
-
-    let mut res: proc_macro2::TokenStream = if any_excluded {
-        quote! {
-            #imp {
-                #pb #func {
-                    match self {
-                        #arms
-                        _ => panic!(#err)
-                    }
-                }
-            }
-        }
-        .into()
-    } else {
-        quote! {
-            #imp {
-                #pb #func {
-                    match self {
-                        #arms
-                    }
-                }
-            }
-        }
-        .into()
-    };
-
-    res.extend(en.into_token_stream());
-    res.into()
 }
