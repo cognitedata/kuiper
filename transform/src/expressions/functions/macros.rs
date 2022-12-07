@@ -6,7 +6,8 @@ macro_rules! function_def {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(f, "{}(", <Self as $crate::expressions::functions::FunctionExpression<'_>>::INFO.name)?;
                 let mut is_first = true;
-                for expr in $crate::expressions::functions::FunctionExpression::<'_>::get_args(self) {
+                for idx in 0..$crate::expressions::base::ExpressionMeta::<'_>::num_children(self) {
+                    let expr = $crate::expressions::base::ExpressionMeta::<'_>::get_child(self, idx).unwrap();
                     if !is_first {
                         write!(f, ", ")?;
                     }
@@ -28,7 +29,6 @@ macro_rules! function_def {
         function_def!(_display $typ);
 
         impl<'a> $crate::expressions::functions::FunctionExpression<'a> for $typ {
-            type Iter<'b> = std::iter::Map<std::slice::Iter<'b, Box<$crate::expressions::base::ExpressionType>>, fn(&'b Box<$crate::expressions::base::ExpressionType>) -> &'b $crate::expressions::base::ExpressionType>;// std::iter::Map<std::slice::Iter<'_, &ExpressionType>>;
             const INFO: $crate::expressions::functions::FunctionInfo = $crate::expressions::functions::FunctionInfo {
                 minargs: $nargs,
                 maxargs: Some($nargs),
@@ -47,9 +47,34 @@ macro_rules! function_def {
                     args: args.into_iter().map(|a| Box::new(a)).collect::<Vec<_>>().try_into().unwrap()
                 })
             }
+        }
 
-            fn get_args(&'a self) -> Self::Iter<'a> {
-                self.args.iter().map(|a| &a)
+        impl<'a> $crate::expressions::base::ExpressionMeta<'a> for $typ {
+            fn num_children(&self) -> usize {
+                $nargs
+            }
+
+            fn get_child(&self, idx: usize) -> Option<&$crate::expressions::base::ExpressionType> {
+                if idx > $nargs - 1 {
+                    None
+                } else {
+                    Some(&self.args[idx])
+                }
+            }
+
+            fn get_child_mut(&mut self, idx: usize) -> Option<&mut $crate::expressions::base::ExpressionType> {
+                if idx > $nargs - 1 {
+                    None
+                } else {
+                    Some(&mut self.args[idx])
+                }
+            }
+
+            fn set_child(&mut self, idx: usize, item: $crate::expressions::base::ExpressionType) {
+                if idx >= $nargs {
+                    return;
+                }
+                self.args[idx] = Box::new(item);
             }
         }
     };
@@ -64,7 +89,6 @@ macro_rules! function_def {
         function_def!(_display $typ);
 
         impl<'a> $crate::expressions::functions::FunctionExpression<'a> for $typ {
-            type Iter<'b> = std::slice::Iter<'b, $crate::expressions::base::ExpressionType>;
             const INFO: $crate::expressions::functions::FunctionInfo = $crate::expressions::functions::FunctionInfo {
                 minargs: $minargs,
                 maxargs: $maxargs,
@@ -83,9 +107,26 @@ macro_rules! function_def {
                     args,
                 })
             }
+        }
 
-            fn get_args(&'a self) -> Self::Iter<'a> {
-                self.args.iter()
+        impl<'a> $crate::expressions::base::ExpressionMeta<'a> for $typ {
+            fn num_children(&self) -> usize {
+                self.args.len()
+            }
+
+            fn get_child(&self, idx: usize) -> Option<&$crate::expressions::base::ExpressionType> {
+                self.args.get(idx)
+            }
+
+            fn get_child_mut(&mut self, idx: usize) -> Option<&mut $crate::expressions::base::ExpressionType> {
+                self.args.get_mut(idx)
+            }
+
+            fn set_child(&mut self, idx: usize, item: $crate::expressions::base::ExpressionType) {
+                if idx >= self.args.len() {
+                    return;
+                }
+                self.args[idx] = item;
             }
         }
     }

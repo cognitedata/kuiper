@@ -2,6 +2,7 @@ mod array;
 mod base;
 mod functions;
 mod operator;
+mod optimizer;
 mod selector;
 mod transform_error;
 

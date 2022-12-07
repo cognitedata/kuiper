@@ -6,7 +6,7 @@ use serde_json::Value;
 use super::{
     base::{
         get_boolean_from_value, get_number_from_value, Expression, ExpressionExecutionState,
-        ExpressionType, JsonNumber, ResolveResult,
+        ExpressionMeta, ExpressionType, JsonNumber, ResolveResult,
     },
     transform_error::TransformError,
 };
@@ -124,6 +124,35 @@ impl<'a> Expression<'a> for OpExpression {
                 state.id,
             ))
         }
+    }
+}
+
+impl<'a> ExpressionMeta<'a> for OpExpression {
+    fn num_children(&self) -> usize {
+        1
+    }
+
+    fn get_child(&self, idx: usize) -> Option<&ExpressionType> {
+        if idx > 1 {
+            None
+        } else {
+            Some(&self.elements[idx])
+        }
+    }
+
+    fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType> {
+        if idx > 1 {
+            None
+        } else {
+            Some(&mut self.elements[idx])
+        }
+    }
+
+    fn set_child(&mut self, idx: usize, item: ExpressionType) {
+        if idx > 1 {
+            return;
+        }
+        self.elements[idx] = Box::new(item);
     }
 }
 
@@ -249,6 +278,35 @@ impl<'a> Expression<'a> for UnaryOpExpression {
         match self.operator {
             UnaryOperator::Negate => Ok(ResolveResult::Value(Value::Bool(!val))),
         }
+    }
+}
+
+impl<'a> ExpressionMeta<'a> for UnaryOpExpression {
+    fn num_children(&self) -> usize {
+        1
+    }
+
+    fn get_child(&self, idx: usize) -> Option<&ExpressionType> {
+        if idx > 0 {
+            None
+        } else {
+            Some(&self.element)
+        }
+    }
+
+    fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType> {
+        if idx > 0 {
+            None
+        } else {
+            Some(&mut self.element)
+        }
+    }
+
+    fn set_child(&mut self, idx: usize, item: ExpressionType) {
+        if idx > 0 {
+            return;
+        }
+        self.element = Box::new(item);
     }
 }
 

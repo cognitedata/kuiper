@@ -9,7 +9,7 @@ use super::{
     OpExpression, SelectorExpression,
 };
 
-use transform_macros::{pass_through, PassThrough};
+use transform_macros::PassThrough;
 
 /// State for expression execution. This struct is constructed for each expression.
 /// Notably lifetime heavy. `'a` is the lifetime of the input data.
@@ -53,10 +53,25 @@ pub trait Expression<'a>: Display {
     ) -> Result<ResolveResult<'a>, TransformError>;
 }
 
+/// Additional trait for expressions, separate from Expression to make it easier to implement in macros
+pub trait ExpressionMeta<'a>: Expression<'a> {
+    fn num_children(&self) -> usize;
+
+    fn get_child(&self, idx: usize) -> Option<&ExpressionType>;
+
+    fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType>;
+
+    fn set_child(&mut self, idx: usize, item: ExpressionType);
+}
+
 /// A function expression, new functions must be added here.
 #[derive(PassThrough, Debug)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
 #[pass_through(fn resolve(&'a self, state: &'a ExpressionExecutionState) -> Result<ResolveResult<'a>, TransformError>, "", Expression<'a>)]
+#[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta<'a>)]
+#[pass_through(fn get_child(&self, idx: usize) -> Option<&ExpressionType>, "", ExpressionMeta<'a>)]
+#[pass_through(fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType>, "", ExpressionMeta<'a>)]
+#[pass_through(fn set_child(&mut self, idx: usize, item: ExpressionType), "", ExpressionMeta<'a>)]
 pub enum FunctionType {
     Pow(PowFunction),
     Log(LogFunction),
@@ -101,6 +116,10 @@ pub fn get_function_expression(
 #[derive(PassThrough, Debug)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
 #[pass_through(fn resolve(&'a self, state: &'a ExpressionExecutionState) -> Result<ResolveResult<'a>, TransformError>, "", Expression<'a>)]
+#[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta<'a>)]
+#[pass_through(fn get_child(&self, idx: usize) -> Option<&ExpressionType>, "", ExpressionMeta<'a>)]
+#[pass_through(fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType>, "", ExpressionMeta<'a>)]
+#[pass_through(fn set_child(&mut self, idx: usize, item: ExpressionType), "", ExpressionMeta<'a>)]
 pub enum ExpressionType {
     Constant(Constant),
     Operator(OpExpression),
@@ -169,6 +188,22 @@ impl<'a> Expression<'a> for Constant {
     ) -> Result<ResolveResult<'a>, TransformError> {
         Ok(ResolveResult::Reference(&self.val))
     }
+}
+
+impl<'a> ExpressionMeta<'a> for Constant {
+    fn num_children(&self) -> usize {
+        0
+    }
+
+    fn get_child(&self, _idx: usize) -> Option<&ExpressionType> {
+        None
+    }
+
+    fn get_child_mut(&mut self, _idx: usize) -> Option<&mut ExpressionType> {
+        None
+    }
+
+    fn set_child(&mut self, _idx: usize, _item: ExpressionType) {}
 }
 
 impl Constant {

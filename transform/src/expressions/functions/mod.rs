@@ -59,14 +59,9 @@ where
     Self: Sized,
     Self: 'a,
 {
-    type Iter<'b>: Iterator<Item = &'b ExpressionType>
-    where
-        Self: 'b;
     /// Static information about this function.
     const INFO: FunctionInfo;
 
     /// Create a new function from a list of expressions.
     fn new(args: Vec<ExpressionType>, span: Span) -> Result<Self, ParserError>;
-
-    fn get_args(&'a self) -> Self::Iter<'a>;
 }
