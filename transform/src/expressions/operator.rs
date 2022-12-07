@@ -80,7 +80,7 @@ impl Display for UnaryOperator {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Expression for an operator. Consists of two expressions, and an operator.
 pub struct OpExpression {
     operator: Operator,
@@ -253,7 +253,7 @@ impl OpExpression {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UnaryOpExpression {
     operator: UnaryOperator,
     #[allow(dead_code)]

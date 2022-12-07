@@ -1,4 +1,4 @@
-use crate::ParserError;
+use crate::{ParserError, TransformError};
 
 #[derive(Debug)]
 pub struct ParserCompileError {
@@ -14,9 +14,17 @@ pub struct ConfigCompileError {
 }
 
 #[derive(Debug)]
+pub struct OptimizerCompileError {
+    pub err: TransformError,
+    pub id: String,
+    pub field: Option<String>,
+}
+
+#[derive(Debug)]
 pub enum CompileError {
     Parser(ParserCompileError),
     Config(ConfigCompileError),
+    Optimizer(OptimizerCompileError),
 }
 
 impl CompileError {
@@ -32,6 +40,14 @@ impl CompileError {
         Self::Config(ConfigCompileError {
             desc: desc.to_string(),
             id: id.map(|i| i.to_string()),
+        })
+    }
+
+    pub(crate) fn optimizer_err(err: TransformError, id: &str, field: Option<&str>) -> Self {
+        Self::Optimizer(OptimizerCompileError {
+            err,
+            id: id.to_string(),
+            field: field.map(|s| s.to_string()),
         })
     }
 }

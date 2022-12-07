@@ -9,7 +9,7 @@ use super::{
     Expression, ExpressionExecutionState, ExpressionType,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Array expression. This contains a list of expressions and returns an array.
 pub struct ArrayExpression {
     items: Vec<ExpressionType>,

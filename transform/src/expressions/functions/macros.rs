@@ -19,7 +19,7 @@ macro_rules! function_def {
         }
     };
     ($typ:ident, $name:expr, $nargs:expr) => {
-        #[derive(Debug)]
+        #[derive(Debug, Clone)]
         pub struct $typ {
             args: [Box<$crate::expressions::base::ExpressionType>; $nargs],
             #[allow(dead_code)]
@@ -79,7 +79,7 @@ macro_rules! function_def {
         }
     };
     ($typ:ident, $name:expr, $minargs:expr, $maxargs:expr) => {
-        #[derive(Debug)]
+        #[derive(Debug, Clone)]
         pub struct $typ {
             args: Vec<$crate::expressions::base::ExpressionType>,
             #[allow(dead_code)]

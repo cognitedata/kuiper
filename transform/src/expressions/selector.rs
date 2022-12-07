@@ -8,7 +8,7 @@ use super::{
 };
 
 use logos::Span;
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Selector expression, used to get a field from an input.
 pub struct SelectorExpression {
     source: SelectorElement,
@@ -16,7 +16,7 @@ pub struct SelectorExpression {
     span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum SelectorElement {
     Constant(String),
     Expression(Box<ExpressionType>),

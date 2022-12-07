@@ -65,7 +65,7 @@ pub trait ExpressionMeta<'a>: Expression<'a> {
 }
 
 /// A function expression, new functions must be added here.
-#[derive(PassThrough, Debug)]
+#[derive(PassThrough, Debug, Clone)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
 #[pass_through(fn resolve(&'a self, state: &'a ExpressionExecutionState) -> Result<ResolveResult<'a>, TransformError>, "", Expression<'a>)]
 #[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta<'a>)]
@@ -113,7 +113,7 @@ pub fn get_function_expression(
 }
 
 /// The main expression type. All expressions must be included here.
-#[derive(PassThrough, Debug)]
+#[derive(PassThrough, Debug, Clone)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
 #[pass_through(fn resolve(&'a self, state: &'a ExpressionExecutionState) -> Result<ResolveResult<'a>, TransformError>, "", Expression<'a>)]
 #[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta<'a>)]
@@ -169,7 +169,7 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// A constant expression. This always resolves to a reference to its value.
 pub struct Constant {
     val: Value,
@@ -220,6 +220,10 @@ impl Constant {
     pub fn try_new_u64(v: u64) -> Option<Self> {
         let val = Number::try_from(v).map(Value::Number).ok();
         val.map(|v| Self { val: v })
+    }
+
+    pub fn new(val: Value) -> Self {
+        Self { val }
     }
 
     pub fn new_string(v: String) -> Self {
