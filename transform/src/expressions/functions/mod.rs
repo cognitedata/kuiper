@@ -4,12 +4,14 @@ mod logic;
 mod math;
 mod string;
 mod time;
+mod transforms;
 
 use crate::parse::ParserError;
 pub use logic::*;
 pub use math::*;
 pub use string::*;
 pub use time::*;
+pub use transforms::*;
 
 use super::{base::ExpressionType, Expression};
 
