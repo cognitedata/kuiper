@@ -86,6 +86,7 @@ pub enum FunctionType {
     If(IfFunction),
     ToUnixTime(ToUnixTimeFunction),
     Case(CaseFunction),
+    Pairs(PairsFunction),
 }
 
 /// Create a function expression from its name, or return a parser exception if it has the wrong number of arguments,
@@ -109,6 +110,7 @@ pub fn get_function_expression(
         "if" => FunctionType::If(IfFunction::new(args, pos)?),
         "to_unix_timestamp" => FunctionType::ToUnixTime(ToUnixTimeFunction::new(args, pos)?),
         "case" => FunctionType::Case(CaseFunction::new(args, pos)?),
+        "pairs" => FunctionType::Pairs(PairsFunction::new(args, pos)?),
         _ => return Err(ParserError::unrecognized_function(pos, name)),
     };
     Ok(ExpressionType::Function(expr))
