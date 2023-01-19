@@ -31,11 +31,11 @@ impl Display for ArrayExpression {
     }
 }
 
-impl<'a> Expression<'a> for ArrayExpression {
+impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ArrayExpression {
     fn resolve(
         &self,
-        state: &ExpressionExecutionState,
-    ) -> Result<ResolveResult<'a>, TransformError> {
+        state: &'b ExpressionExecutionState<'c, 'b>,
+    ) -> Result<ResolveResult<'c>, TransformError> {
         let mut arr = vec![];
         for expr in self.items.iter() {
             arr.push(expr.resolve(state)?.as_ref().clone());
@@ -44,7 +44,7 @@ impl<'a> Expression<'a> for ArrayExpression {
     }
 }
 
-impl<'a> ExpressionMeta<'a> for ArrayExpression {
+impl<'a: 'c, 'b, 'c> ExpressionMeta<'a, 'b, 'c> for ArrayExpression {
     fn num_children(&self) -> usize {
         self.items.len()
     }

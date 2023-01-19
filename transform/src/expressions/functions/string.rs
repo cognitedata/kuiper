@@ -10,12 +10,21 @@ use crate::expressions::{
 // Define a variadic function with type ConcatFunction, name "concat" in code, at least 2 arguments, any number of max arguments.
 function_def!(ConcatFunction, "concat", 2, None);
 
-// You need to implement Expression. The lifetime 'a refers to the source data we are working with.
-impl<'a> Expression<'a> for ConcatFunction {
+// You need to implement Expression.
+// There are three lifetimes here. 'a refers to the transform itself, 'b is the current expression execution, 'c is the current program execution.
+// The result must outlive the execution, but does not need to outlive the program execution.
+// The expression itself of course lives longer than the data, so 'a: 'c, and the return type has lifetime equal to the
+// input data, which is 'c. So we can return data with lifetime 'c or 'a.
+//
+// For programs, we usually compute a new result based on the child expressions, so we either return a reference with lifetime 'c,
+// or an owned value, like we do here.
+// In theory we could have a function like `pi()`, which returns the constant PI, this could return a reference with lifetime 'a.
+// Typically returning references with lifetime 'a is used for constants, see Constant in base.rs.
+impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ConcatFunction {
     fn resolve(
         &'a self,
-        state: &'a crate::expressions::ExpressionExecutionState,
-    ) -> Result<crate::expressions::ResolveResult<'a>, crate::TransformError> {
+        state: &'b crate::expressions::ExpressionExecutionState<'c, 'b>,
+    ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         // Create a mutable string we can write to, in rust this is fast, a string is just Vec<u8>
         let mut res = "".to_string();
         // Iterate over the arguments to the function
@@ -34,11 +43,11 @@ impl<'a> Expression<'a> for ConcatFunction {
 // other functions follow...
 function_def!(StringFunction, "string", 1);
 
-impl<'a> Expression<'a> for StringFunction {
+impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for StringFunction {
     fn resolve(
         &'a self,
-        state: &'a crate::expressions::ExpressionExecutionState,
-    ) -> Result<crate::expressions::ResolveResult<'a>, crate::TransformError> {
+        state: &'b crate::expressions::ExpressionExecutionState<'c, 'b>,
+    ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let dat = self.args[0].resolve(state)?;
         let val = dat.as_ref();
         let res = match val {

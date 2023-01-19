@@ -5,7 +5,7 @@ use proc_macro2::Span;
 use quote::quote;
 use syn::{
     parse::Parse, parse_macro_input, DeriveInput, Generics, Ident, LitStr, Pat, Result, Signature,
-    Token,
+    Token, WhereClause,
 };
 
 #[proc_macro_derive(PassThrough, attributes(pass_through_exclude, pass_through))]
@@ -34,6 +34,7 @@ pub fn pass_through_derive(d: TokenStream) -> TokenStream {
     for (_, funcs) in by_trait_or_none {
         let trt = funcs.first().unwrap().trt.clone();
         let generics = funcs.first().unwrap().generics.clone();
+        let wh = funcs.first().unwrap().where_clause.clone();
         let mut methods = quote! {};
         for func in funcs {
             let sign: Signature = func.sign;
@@ -105,13 +106,17 @@ pub fn pass_through_derive(d: TokenStream) -> TokenStream {
                 }
             });
         }
-        let imp = match trt {
+        let mut imp = match trt {
             Some(x) => {
                 let generics = generics.unwrap();
                 quote! { impl #generics #x #generics for #name }
             }
             None => quote! { impl #name },
         };
+
+        if let Some(wh) = wh {
+            imp = quote! { #imp #wh };
+        }
 
         output.extend(quote! {
             #imp {
@@ -148,6 +153,7 @@ struct FuncAndError {
     err: String,
     trt: Option<Ident>,
     generics: Option<Generics>,
+    where_clause: Option<WhereClause>,
 }
 
 impl Parse for FuncAndError {
@@ -163,15 +169,31 @@ impl Parse for FuncAndError {
                     err: errit.value(),
                     trt: None,
                     generics: None,
+                    where_clause: None,
                 })
             }
         }
         let trt: Ident = input.parse()?;
+        let generics: Generics = input.parse().unwrap();
+        match input.parse::<Token![,]>() {
+            Ok(_) => (),
+            Err(_) => {
+                return Ok(FuncAndError {
+                    sign,
+                    err: errit.value(),
+                    trt: Some(trt),
+                    generics: Some(generics),
+                    where_clause: None,
+                })
+            }
+        }
+        let wh: WhereClause = input.parse()?;
         Ok(FuncAndError {
             sign,
             err: errit.value(),
             trt: Some(trt),
-            generics: Some(input.parse().unwrap()),
+            generics: Some(generics),
+            where_clause: Some(wh),
         })
     }
 }

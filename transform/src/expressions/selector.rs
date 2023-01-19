@@ -41,11 +41,11 @@ impl Display for SelectorExpression {
     }
 }
 
-impl<'a> Expression<'a> for SelectorExpression {
+impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for SelectorExpression {
     fn resolve(
         &'a self,
-        state: &'a ExpressionExecutionState,
-    ) -> Result<ResolveResult<'a>, TransformError> {
+        state: &'b ExpressionExecutionState<'c, 'b>,
+    ) -> Result<ResolveResult<'c>, TransformError> {
         let source = match &self.source {
             SelectorElement::Constant(x) => match state.get_value(x) {
                 Some(x) => x,
@@ -140,7 +140,7 @@ impl<'a> Expression<'a> for SelectorExpression {
     }
 }
 
-impl<'a> ExpressionMeta<'a> for SelectorExpression {
+impl<'a: 'c, 'b, 'c> ExpressionMeta<'a, 'b, 'c> for SelectorExpression {
     fn num_children(&self) -> usize {
         0
     }

@@ -1,34 +1,100 @@
-use std::collections::HashMap;
+use std::{
+    cell::{RefCell, UnsafeCell},
+    collections::HashMap,
+    ops::AddAssign,
+};
 
 use serde_json::Value;
 
-use crate::expressions::{Expression, ExpressionExecutionState, ResolveResult, TransformError};
+use crate::expressions::{
+    Expression, ExpressionExecutionState, ReferenceOrValue, ResolveResult, TransformError,
+};
 
 use super::{
     input::{Transform, TransformOrInput},
     Program,
 };
 
+// State for the transform as a whole.
+// Number of entries is known from the start
+// Must be able to:
+//   Add new entries
+//   Reference old entries
+//   Reference new entries as they are added
+// Do not need to
+//   Reference new entries before they are added
+//   Modify old entries
+pub struct TransformState<'inp> {
+    data: UnsafeCell<Vec<Vec<ResolveResult<'inp>>>>,
+    map: RefCell<HashMap<TransformOrInput, usize>>,
+    idx_c: RefCell<usize>,
+    null_const: Value,
+}
+
+impl<'inp> TransformState<'inp> {
+    pub fn new(total_num: usize) -> Self {
+        let mut dat = Vec::with_capacity(total_num);
+        for _ in 0..total_num {
+            dat.push(Vec::new());
+        }
+        Self {
+            data: UnsafeCell::new(dat),
+            map: RefCell::new(HashMap::new()),
+            idx_c: RefCell::new(0),
+            null_const: Value::Null,
+        }
+    }
+
+    pub fn get_elem<'a>(&'a self, key: &TransformOrInput) -> Option<&Vec<ResolveResult<'a>>>
+    where
+        'inp: 'a,
+    {
+        let idx = *self.map.borrow().get(key)?;
+        assert!(idx < *self.idx_c.borrow());
+
+        // SAFETY: If an entry is in the map, it must be in the part of the vector
+        // that we are not allowed to modify. Hence it must be safe to reference.
+        unsafe {
+            let dt = &*self.data.get();
+            dt.get(idx)
+        }
+    }
+
+    pub fn insert_elem<'a>(&'a self, key: TransformOrInput, value: Vec<ResolveResult<'inp>>) {
+        let idx = *self.idx_c.borrow();
+        // SAFETY: Since idx_c is monotonically increasing, and we only ever reference
+        // values with index below idx_c. We must be mutating a non-referenced value.
+        unsafe {
+            let dt = &mut *self.data.get();
+            dt[idx] = value;
+        }
+        self.map.borrow_mut().insert(key, idx);
+
+        self.idx_c.borrow_mut().add_assign(1);
+    }
+
+    pub fn null_const(&self) -> &Value {
+        &self.null_const
+    }
+}
+
 impl Program {
     /// Execute the program on a JSON value. The output is a list of values or a compile error.
     pub fn execute(&self, input: &Value) -> Result<Vec<Value>, TransformError> {
-        let mut result = HashMap::<TransformOrInput, Vec<ResolveResult>>::new();
-        result.insert(
+        let data = TransformState::new(self.transforms.len() + 1);
+        data.insert_elem(
             TransformOrInput::Input,
             vec![ResolveResult::Reference(input)],
         );
 
         let len = self.transforms.len();
         for (idx, tf) in self.transforms.iter().enumerate() {
-            let value = tf.execute(&result)?;
+            let value = tf.execute(&data)?;
             if idx == len - 1 {
-                return Ok(value);
+                return Ok(value.into_iter().map(|r| r.into_value()).collect());
             }
             // cached_results.insert(idx, value);
-            result.insert(
-                TransformOrInput::Transform(idx),
-                value.into_iter().map(ResolveResult::Value).collect(),
-            );
+            data.insert_elem(TransformOrInput::Transform(idx), value);
         }
         Err(TransformError::InvalidProgramError(
             "No transforms in program".to_string(),
@@ -41,29 +107,27 @@ impl Transform {
     /// [1, 2, 3] and [1, 2], the result will be [1, 1], [1, 2], [2, 1], [2, 2], [3, 1] and [3, 2].
     fn compute_input_product<'a>(
         &self,
-        it: &'a HashMap<TransformOrInput, Vec<ResolveResult<'a>>>,
-    ) -> Vec<HashMap<TransformOrInput, ResolveResult<'a>>> {
+        it: &'a TransformState,
+    ) -> Vec<HashMap<TransformOrInput, &'a Value>> {
         let mut res_len = 1usize;
         let mut len = 0usize;
-        for (k, v) in it.iter() {
-            if self.inputs().used_inputs.contains(k) && !v.is_empty() {
+        for key in self.inputs().used_inputs.iter() {
+            let v = it.get_elem(key).unwrap();
+            if self.inputs().used_inputs.contains(key) && !v.is_empty() {
                 len += 1;
                 res_len *= v.len();
             }
         }
 
-        let mut res: Vec<HashMap<TransformOrInput, ResolveResult<'a>>> =
-            Vec::with_capacity(res_len);
+        let mut res: Vec<HashMap<TransformOrInput, &'a Value>> = Vec::with_capacity(res_len);
 
         let mut first = true;
-        for (key, value) in it.iter() {
-            if !self.inputs().used_inputs.contains(key) || value.is_empty() {
-                continue;
-            }
+        for key in self.inputs().used_inputs.iter() {
+            let value = it.get_elem(key).unwrap();
             if first {
                 for el in value {
                     let mut chunk = HashMap::with_capacity(len);
-                    chunk.insert(key.clone(), el.as_self_ref());
+                    chunk.insert(key.clone(), el.as_ref());
                     res.push(chunk);
                 }
                 first = false;
@@ -72,29 +136,31 @@ impl Transform {
                 for el in value {
                     for nested_vec in res.iter() {
                         let mut new_vec = nested_vec.clone();
-                        new_vec.insert(key.clone(), el.as_self_ref());
+                        new_vec.insert(key.clone(), el.as_ref());
                         next_res.push(new_vec);
                     }
                 }
                 res = next_res;
             }
         }
+
         res
     }
 
     fn compute_input_merge<'a>(
         &self,
-        it: &'a HashMap<TransformOrInput, Vec<ResolveResult<'a>>>,
-    ) -> Vec<HashMap<TransformOrInput, ResolveResult<'a>>> {
-        let mut res: Vec<HashMap<TransformOrInput, ResolveResult<'a>>> = Vec::new();
+        it: &'a TransformState,
+    ) -> Vec<HashMap<TransformOrInput, &'a Value>> {
+        let mut res: Vec<HashMap<TransformOrInput, &'a Value>> = Vec::new();
 
-        for (key, value) in it.iter() {
-            if !self.inputs().used_inputs.contains(key) {
+        for key in self.inputs().used_inputs.iter() {
+            if key == &TransformOrInput::Merge {
                 continue;
             }
-            for v in value {
+            let dat = it.get_elem(key).unwrap();
+            for v in dat {
                 let mut map = HashMap::with_capacity(1);
-                map.insert(TransformOrInput::Merge, v.as_self_ref());
+                map.insert(TransformOrInput::Merge, v.as_ref());
                 res.push(map);
             }
         }
@@ -103,39 +169,42 @@ impl Transform {
 
     fn compute_input_zip<'a>(
         &self,
-        it: &'a HashMap<TransformOrInput, Vec<ResolveResult<'a>>>,
-    ) -> Vec<HashMap<TransformOrInput, ResolveResult<'a>>> {
+        it: &'a TransformState,
+    ) -> Vec<HashMap<TransformOrInput, &'a Value>> {
         let mut res_len = 0usize;
-        for (k, v) in it.iter() {
-            if self.inputs().used_inputs.contains(k) && v.len() > res_len {
+        for key in self.inputs().used_inputs.iter() {
+            let v = it.get_elem(key).unwrap();
+            if v.len() > res_len {
                 res_len = v.len();
             }
         }
-        let mut res: Vec<HashMap<TransformOrInput, ResolveResult<'a>>> =
-            Vec::with_capacity(res_len);
+
+        let mut res: Vec<HashMap<TransformOrInput, &'a Value>> = Vec::with_capacity(res_len);
         for _ in 0..res_len {
             res.push(HashMap::new());
         }
 
-        for (key, value) in it.iter() {
+        for key in self.inputs().used_inputs.iter() {
+            let dat = it.get_elem(key).unwrap();
             for i in 0..res_len {
                 let el = res.get_mut(i).unwrap();
-                if i >= value.len() {
-                    el.insert(key.clone(), ResolveResult::Value(Value::Null));
+                if i >= dat.len() {
+                    el.insert(key.clone(), it.null_const());
                 } else {
-                    el.insert(key.clone(), value.get(i).unwrap().as_self_ref());
+                    el.insert(key.clone(), dat.get(i).unwrap().as_ref());
                 }
             }
         }
+
         res
     }
 
     /// Execute a transform, internal method.
-    fn execute_chunk(
-        &self,
-        data: &HashMap<TransformOrInput, ResolveResult>,
-    ) -> Result<Vec<Value>, TransformError> {
-        let state = ExpressionExecutionState::new(data, &self.inputs().inputs, self.id());
+    fn execute_chunk<'a, 'd>(
+        &'d self,
+        data: &'a HashMap<TransformOrInput, &'d Value>,
+    ) -> Result<Vec<ResolveResult<'d>>, TransformError> {
+        let state = ExpressionExecutionState::<'d, 'a>::new(data, &self.inputs().inputs, self.id());
         Ok(match self {
             Self::Map(m) => {
                 let mut map = serde_json::Map::new();
@@ -143,13 +212,20 @@ impl Transform {
                     let value = tf.resolve(&state)?.into_value();
                     map.insert(key.clone(), value);
                 }
-                vec![Value::Object(map)]
+                vec![ResolveResult::Value(Value::Object(map))]
             }
+
             Self::Flatten(m) => {
-                let value = m.map.resolve(&state)?.into_value();
-                match value {
-                    Value::Array(a) => a,
-                    _ => vec![value],
+                let res: ResolveResult<'d> = m.map.resolve(&state)?;
+                match res {
+                    ReferenceOrValue::Reference(r) => match r {
+                        Value::Array(a) => a.iter().map(ResolveResult::Reference).collect(),
+                        x => vec![ResolveResult::Reference(x)],
+                    },
+                    ReferenceOrValue::Value(r) => match r {
+                        Value::Array(a) => a.into_iter().map(ResolveResult::Value).collect(),
+                        x => vec![ResolveResult::Value(x)],
+                    },
                 }
             }
             Self::Filter(m) => {
@@ -161,24 +237,21 @@ impl Transform {
                 };
                 if filter_output {
                     if data.contains_key(&TransformOrInput::Merge) {
-                        vec![data
-                            .get(&TransformOrInput::Merge)
-                            .unwrap()
-                            .clone()
-                            .into_value()]
+                        vec![ResolveResult::Reference(
+                            data.get(&TransformOrInput::Merge).unwrap(),
+                        )]
                     } else {
-                        vec![data
-                            .iter()
-                            .next()
-                            .ok_or_else(|| {
-                                TransformError::InvalidProgramError(
+                        vec![ResolveResult::Reference(
+                            data.iter()
+                                .next()
+                                .ok_or_else(|| {
+                                    TransformError::InvalidProgramError(
                                     "Filter was expected to have at least one input, this is a bug"
                                         .to_string(),
                                 )
-                            })?
-                            .1
-                            .clone()
-                            .into_value()]
+                                })?
+                                .1,
+                        )]
                     }
                 } else {
                     vec![]
@@ -188,10 +261,10 @@ impl Transform {
     }
 
     /// Execute the transform.
-    pub fn execute(
-        &self,
-        raw_data: &HashMap<TransformOrInput, Vec<ResolveResult>>,
-    ) -> Result<Vec<Value>, TransformError> {
+    pub fn execute<'a, 'b: 'a>(
+        &'b self,
+        raw_data: &'b TransformState<'b>,
+    ) -> Result<Vec<ResolveResult<'b>>, TransformError> {
         let inputs = self.inputs();
 
         let items = match inputs.mode {
