@@ -56,7 +56,7 @@ impl FunctionInfo {
 }
 
 /// An expansion of Expression especially for functions, contains a `new` method, and `INFO`.
-pub trait FunctionExpression<'a>: Expression<'a>
+pub trait FunctionExpression<'a: 'c, 'b, 'c>: Expression<'a, 'b, 'c>
 where
     Self: Sized,
     Self: 'a,

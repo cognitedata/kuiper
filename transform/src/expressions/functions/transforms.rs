@@ -7,11 +7,11 @@ use crate::{
 
 function_def!(PairsFunction, "pairs", 1);
 
-impl<'a> Expression<'a> for PairsFunction {
+impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for PairsFunction {
     fn resolve(
         &'a self,
-        state: &'a crate::expressions::ExpressionExecutionState,
-    ) -> Result<ResolveResult<'a>, TransformError> {
+        state: &'b crate::expressions::ExpressionExecutionState<'c, 'b>,
+    ) -> Result<ResolveResult<'c>, TransformError> {
         let inp = self.args[0].resolve(state)?;
         let obj = match inp.into_value() {
             Value::Object(o) => o,
@@ -21,7 +21,7 @@ impl<'a> Expression<'a> for PairsFunction {
                     "obj",
                     TransformError::value_desc(&x),
                     &self.span,
-                    &state.id,
+                    state.id,
                 ));
             }
         };

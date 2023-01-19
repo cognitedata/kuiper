@@ -14,47 +14,51 @@ use transform_macros::PassThrough;
 /// State for expression execution. This struct is constructed for each expression.
 /// Notably lifetime heavy. `'a` is the lifetime of the input data.
 /// `'b` is the lifetime of the transform execution, so the temporary data in the transform.
-pub struct ExpressionExecutionState<'a, 'b>
-where
-    'b: 'a,
-{
-    data: &'b HashMap<TransformOrInput, ResolveResult<'a>>,
-    map: &'b HashMap<String, TransformOrInput>,
-    pub id: &'b str,
+pub struct ExpressionExecutionState<'data, 'exec> {
+    data: &'exec HashMap<TransformOrInput, &'data Value>,
+    map: &'exec HashMap<String, TransformOrInput>,
+    pub id: &'exec str,
 }
 
-impl<'a, 'b> ExpressionExecutionState<'a, 'b> {
+impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
     /// Try to obtain a value with the given key from the state.
-    pub fn get_value(&self, key: &str) -> Option<&'a Value> {
-        self.map
-            .get(key)
-            .and_then(|k| self.data.get(k))
-            .map(|r| match r {
-                ResolveResult::Reference(rf) => *rf,
-                ResolveResult::Value(v) => v,
-            })
+    pub fn get_value(&self, key: &str) -> Option<&'data Value> {
+        self.map.get(key).and_then(|k| self.data.get(k)).copied()
     }
 
     pub fn new(
-        data: &'b HashMap<TransformOrInput, ResolveResult<'a>>,
-        map: &'b HashMap<String, TransformOrInput>,
-        id: &'b str,
+        data: &'exec HashMap<TransformOrInput, &'data Value>,
+        map: &'exec HashMap<String, TransformOrInput>,
+        id: &'exec str,
     ) -> Self {
         Self { data, map, id }
     }
 }
 
 /// Trait for top-level expressions.
-pub trait Expression<'a>: Display {
+/// The three lifetimes represent the three separate lifetimes in transform execution:
+/// 'a is the lifetime of the transform itself
+/// 'b is the lifetime of the current execution of the transform.
+/// 'c is the lifetime of the execution of the program itself, so it goes beyond this transform.
+///
+/// In simple terms
+///
+/// 'a
+/// start program execution
+///     'c
+///     for transform in program
+///         for entry in inputs
+///             'b
+pub trait Expression<'a: 'c, 'b, 'c>: Display {
     /// Resolve an expression.
     fn resolve(
         &'a self,
-        state: &'a ExpressionExecutionState,
-    ) -> Result<ResolveResult<'a>, TransformError>;
+        state: &'b ExpressionExecutionState<'c, 'b>,
+    ) -> Result<ResolveResult<'c>, TransformError>;
 }
 
 /// Additional trait for expressions, separate from Expression to make it easier to implement in macros
-pub trait ExpressionMeta<'a>: Expression<'a> {
+pub trait ExpressionMeta<'a: 'c, 'b, 'c>: Expression<'a, 'b, 'c> {
     fn num_children(&self) -> usize;
 
     fn get_child(&self, idx: usize) -> Option<&ExpressionType>;
@@ -67,8 +71,8 @@ pub trait ExpressionMeta<'a>: Expression<'a> {
 /// A function expression, new functions must be added here.
 #[derive(PassThrough, Debug, Clone)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
-#[pass_through(fn resolve(&'a self, state: &'a ExpressionExecutionState) -> Result<ResolveResult<'a>, TransformError>, "", Expression<'a>)]
-#[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta<'a>)]
+#[pass_through(fn resolve(&'a self, state: &'b ExpressionExecutionState<'c, 'b>) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'b, 'c>, where 'a: 'c)]
+#[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta<'a, 'b, 'c>, where 'a: 'c)]
 #[pass_through(fn get_child(&self, idx: usize) -> Option<&ExpressionType>, "", ExpressionMeta<'a>)]
 #[pass_through(fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType>, "", ExpressionMeta<'a>)]
 #[pass_through(fn set_child(&mut self, idx: usize, item: ExpressionType), "", ExpressionMeta<'a>)]
@@ -119,8 +123,8 @@ pub fn get_function_expression(
 /// The main expression type. All expressions must be included here.
 #[derive(PassThrough, Debug, Clone)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
-#[pass_through(fn resolve(&'a self, state: &'a ExpressionExecutionState) -> Result<ResolveResult<'a>, TransformError>, "", Expression<'a>)]
-#[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta<'a>)]
+#[pass_through(fn resolve(&'a self, state: &'b ExpressionExecutionState<'c, 'b>) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'b, 'c>, where 'a: 'c)]
+#[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta<'a, 'b, 'c>, where 'a: 'c)]
 #[pass_through(fn get_child(&self, idx: usize) -> Option<&ExpressionType>, "", ExpressionMeta<'a>)]
 #[pass_through(fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType>, "", ExpressionMeta<'a>)]
 #[pass_through(fn set_child(&mut self, idx: usize, item: ExpressionType), "", ExpressionMeta<'a>)]
@@ -166,11 +170,6 @@ where
             Self::Value(v) => v,
         }
     }
-
-    /// Convert into a ResolveResult::Reference.
-    pub fn as_self_ref(&'a self) -> Self {
-        Self::Reference(self.as_ref())
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -185,16 +184,16 @@ impl Display for Constant {
     }
 }
 
-impl<'a> Expression<'a> for Constant {
+impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for Constant {
     fn resolve(
         &'a self,
-        _state: &ExpressionExecutionState,
-    ) -> Result<ResolveResult<'a>, TransformError> {
+        _state: &'b ExpressionExecutionState<'c, 'b>,
+    ) -> Result<ResolveResult<'c>, TransformError> {
         Ok(ResolveResult::Reference(&self.val))
     }
 }
 
-impl<'a> ExpressionMeta<'a> for Constant {
+impl<'a: 'c, 'b, 'c> ExpressionMeta<'a, 'b, 'c> for Constant {
     fn num_children(&self) -> usize {
         0
     }

@@ -9,7 +9,7 @@ mod transform_error;
 pub use array::ArrayExpression;
 pub use base::{
     get_function_expression, Constant, Expression, ExpressionExecutionState, ExpressionType,
-    FunctionType, ResolveResult,
+    FunctionType, ReferenceOrValue, ResolveResult,
 };
 pub use functions::FunctionExpression;
 pub use operator::{OpExpression, Operator, UnaryOpExpression, UnaryOperator};
