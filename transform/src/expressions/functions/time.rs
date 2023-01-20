@@ -54,7 +54,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ToUnixTimeFunction {
             if self.args.len() == 3 {
                 let off_val = get_number_from_value(
                     Self::INFO.name,
-                    self.args.get(2).unwrap().resolve(state).unwrap().as_ref(),
+                    self.args.get(2).unwrap().resolve(state)?.as_ref(),
                     &self.span,
                     state.id,
                 )?

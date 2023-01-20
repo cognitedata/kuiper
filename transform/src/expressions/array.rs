@@ -38,7 +38,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ArrayExpression {
     ) -> Result<ResolveResult<'c>, TransformError> {
         let mut arr = vec![];
         for expr in self.items.iter() {
-            arr.push(expr.resolve(state)?.as_ref().clone());
+            arr.push(expr.resolve(state)?.into_value());
         }
         Ok(ResolveResult::Value(Value::Array(arr)))
     }

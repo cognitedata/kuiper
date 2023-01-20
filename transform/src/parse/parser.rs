@@ -265,12 +265,12 @@ impl<'source> Parser<'source> {
     ///
     /// The resulting tree is
     /// ```ignore
-    ///       +
+    ///       -
     ///    +     *
     ///   + 1   1 1
     ///  1 (1/1)
     /// ```
-    /// Which we would typically express as ((1 + (1 / 1) + 1) - (1 * 1)). Note how if you calculate that
+    /// Which we would typically express as (((1 + (1 / 1)) + 1) - (1 * 1)). Note how if you calculate that
     /// expression, ignoring normal operator priority rules except for parentheses, it still comes out correct.
     fn group_expressions(ops: Vec<(Operator, Span)>, exprs: Vec<ExpressionType>) -> ExpressionType {
         let mut lowest = 1000;

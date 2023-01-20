@@ -5,8 +5,8 @@ use std::{collections::HashMap, fmt::Display};
 use crate::{parse::ParserError, program::TransformOrInput};
 
 use super::{
-    functions::*, operator::UnaryOpExpression, transform_error::TransformError, ArrayExpression,
-    OpExpression, SelectorExpression,
+    functions::*, numbers::JsonNumber, operator::UnaryOpExpression,
+    transform_error::TransformError, ArrayExpression, OpExpression, SelectorExpression,
 };
 
 use transform_macros::PassThrough;
@@ -246,116 +246,13 @@ impl Constant {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) enum JsonNumber {
-    NegInteger(i64),
-    PosInteger(u64),
-    Float(f64),
-}
-
-impl JsonNumber {
-    pub fn as_f64(self) -> f64 {
-        match self {
-            Self::NegInteger(x) => x as f64,
-            Self::PosInteger(x) => x as f64,
-            Self::Float(x) => x,
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn try_as_u64(self, span: &Span, id: &str) -> Result<u64, TransformError> {
-        match self {
-            Self::NegInteger(x) => x.try_into().map_err(|e| {
-                TransformError::new_conversion_failed(
-                    format!(
-                        "Failed to convert negative integer {} to unsigned: {}",
-                        x, e
-                    ),
-                    span,
-                    id,
-                )
-            }),
-            Self::PosInteger(x) => Ok(x),
-            Self::Float(x) => {
-                if x.fract() != 0.0f64 {
-                    Err(TransformError::new_conversion_failed(
-                        format!("Failed to convert floating point number {} to integer: not a whole number", x),
-                        span,
-                        id,
-                    ))
-                } else if x <= u64::MAX as f64 && x >= u64::MIN as f64 {
-                    Ok(x as u64)
-                } else {
-                    Err(TransformError::new_conversion_failed(
-                        format!("Failed to convert floating point number {} to positive integer: number does not fit within (0, 18446744073709551615)", x), span, id))
-                }
-            }
-        }
-    }
-
-    pub fn try_as_i64(self, span: &Span, id: &str) -> Result<i64, TransformError> {
-        match self {
-            Self::PosInteger(x) => x.try_into().map_err(|e| {
-                TransformError::new_conversion_failed(
-                    format!(
-                        "Failed to convert positive integer to signed integer: {}",
-                        e
-                    ),
-                    span,
-                    id,
-                )
-            }),
-            Self::NegInteger(x) => Ok(x),
-            Self::Float(x) => {
-                if x.fract() != 0.0f64 {
-                    Err(TransformError::new_conversion_failed(
-                        "Failed to convert floating point number to integer: not a whole number"
-                            .to_string(),
-                        span,
-                        id,
-                    ))
-                } else if x <= i64::MAX as f64 && x >= i64::MIN as f64 {
-                    Ok(x as i64)
-                } else {
-                    Err(TransformError::new_conversion_failed(
-                        "Failed to convert floating point number to integer: number does not fit within (-9223372036854775808, 9223372036854775807)".to_string(), span, id))
-                }
-            }
-        }
-    }
-
-    pub fn try_into_json(self) -> Option<Value> {
-        match self {
-            Self::NegInteger(x) => Some(Value::Number(x.into())),
-            Self::PosInteger(x) => Some(Value::Number(x.into())),
-            Self::Float(x) => Number::from_f64(x).map(Value::Number),
-        }
-    }
-
-    pub fn try_cast_integer(self, span: &Span, id: &str) -> Result<JsonNumber, TransformError> {
-        match self {
-            JsonNumber::NegInteger(_) | JsonNumber::PosInteger(_) => Ok(self),
-            JsonNumber::Float(x) => {
-                if x >= 0.0 && x <= u64::MAX as f64 {
-                    Ok(JsonNumber::PosInteger(x as u64))
-                } else if x < 0.0 && x >= i64::MIN as f64 {
-                    Ok(JsonNumber::NegInteger(x as i64))
-                } else {
-                    Err(TransformError::new_conversion_failed(
-                        format!(
-                            "Failed to convert floating point number {} to integer, too large.",
-                            x
-                        ),
-                        span,
-                        id,
-                    ))
-                }
-            }
-        }
-    }
-}
-
-/// Convenient method to convert a Value into a f64. Used in some math functions.
+/// Convenient method to convert a Value into a JsonNumber, our internal representation of numbers in JSON. Used in some math functions.
+/// `desc` is a description of the expression executing this, typically the name of a function or operator.
+/// `val` is the value to be converted.
+/// `span` is the span of the expression executing this, all expressions should store their own span.
+/// `id` is the ID of the upper level transform running this, passed along with the state.
+///
+/// We use these to construct errors if the transform fails.
 pub(crate) fn get_number_from_value(
     desc: &str,
     val: &Value,
@@ -387,6 +284,13 @@ pub(crate) fn get_number_from_value(
         })
 }
 
+/// Convert a JSON value into a string. May return a direct reference to the JSON string itself if it is already a string.
+/// `desc` is a description of the expression executing this, typically the name of a function or operator.
+/// `val` is the value to be converted.
+/// `span` is the span of the expression executing this, all expressions should store their own span.
+/// `id` is the ID of the upper level transform running this, passed along with the state.
+///
+/// We use these to construct errors if the transform fails.
 pub(crate) fn get_string_from_value<'a>(
     desc: &str,
     val: &'a Value,
@@ -413,6 +317,7 @@ pub(crate) fn get_string_from_value<'a>(
     }
 }
 
+/// Convert the JSON value into a boolean. Cannot fail, `null` and `false` are falsy, all others are true.
 pub(crate) fn get_boolean_from_value(val: &Value) -> bool {
     match val {
         Value::Null => false,

@@ -1,9 +1,6 @@
 use serde_json::Value;
 
-use crate::expressions::{
-    base::{get_string_from_value, ReferenceOrValue},
-    Expression,
-};
+use crate::expressions::{base::get_string_from_value, Expression, ResolveResult};
 
 // Example function definition
 
@@ -16,7 +13,7 @@ function_def!(ConcatFunction, "concat", 2, None);
 // The expression itself of course lives longer than the data, so 'a: 'c, and the return type has lifetime equal to the
 // input data, which is 'c. So we can return data with lifetime 'c or 'a.
 //
-// For programs, we usually compute a new result based on the child expressions, so we either return a reference with lifetime 'c,
+// For functions, we usually compute a new result based on the child expressions, so we either return a reference with lifetime 'c,
 // or an owned value, like we do here.
 // In theory we could have a function like `pi()`, which returns the constant PI, this could return a reference with lifetime 'a.
 // Typically returning references with lifetime 'a is used for constants, see Constant in base.rs.
@@ -24,7 +21,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ConcatFunction {
     fn resolve(
         &'a self,
         state: &'b crate::expressions::ExpressionExecutionState<'c, 'b>,
-    ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
+    ) -> Result<ResolveResult<'c>, crate::TransformError> {
         // Create a mutable string we can write to, in rust this is fast, a string is just Vec<u8>
         let mut res = "".to_string();
         // Iterate over the arguments to the function
@@ -36,18 +33,20 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ConcatFunction {
             // Push the resulting string to the result vector.
             res.push_str(dat.as_ref());
         }
-        Ok(ReferenceOrValue::Value(Value::String(res)))
+        // Since we own the data we want to return here, return ResolveResult::Value. If we had built a reference
+        // to a previous result (which itself might be a reference to input data!), we could have returned a reference here instead.
+        Ok(ResolveResult::Value(Value::String(res)))
     }
 }
 
-// other functions follow...
+// other functions follow... This function converts the input to a string.
 function_def!(StringFunction, "string", 1);
 
 impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for StringFunction {
     fn resolve(
         &'a self,
         state: &'b crate::expressions::ExpressionExecutionState<'c, 'b>,
-    ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
+    ) -> Result<ResolveResult<'c>, crate::TransformError> {
         let dat = self.args[0].resolve(state)?;
         let val = dat.as_ref();
         let res = match val {
@@ -63,7 +62,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for StringFunction {
             Value::String(s) => s.to_string(),
             Value::Array(_) | Value::Object(_) => val.to_string(),
         };
-        Ok(ReferenceOrValue::Value(Value::String(res)))
+        Ok(ResolveResult::Value(Value::String(res)))
     }
 }
 

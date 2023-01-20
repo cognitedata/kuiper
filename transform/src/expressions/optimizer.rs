@@ -35,7 +35,7 @@ fn resolve_constants(
     }
 }
 
-// Run the optimizer. For now this only catches a few consistency errors and resolves any constant expressions.
+/// Run the optimizer. For now this only catches a few consistency errors and resolves any constant expressions.
 pub fn optimize(mut root: ExpressionType) -> Result<ExpressionType, TransformError> {
     let data = HashMap::new();
     let map = HashMap::new();

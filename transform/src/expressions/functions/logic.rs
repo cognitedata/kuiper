@@ -46,14 +46,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for CaseFunction {
         } else if lhs_ref.is_string() {
             self.resolve_string(state, lhs_ref, pairs)?
         } else {
-            return Err(TransformError::new_invalid_operation(
-                format!(
-                    "case function not applicable to {}",
-                    TransformError::value_desc(lhs_ref)
-                ),
-                &self.span,
-                state.id,
-            ));
+            self.resolve_generic(state, lhs_ref, pairs)?
         };
 
         if let Some(idx) = result {
@@ -67,6 +60,22 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for CaseFunction {
 }
 
 impl CaseFunction {
+    fn resolve_generic<'a>(
+        &'a self,
+        state: &'a crate::expressions::ExpressionExecutionState,
+        lhs: &Value,
+        pairs: usize,
+    ) -> Result<Option<usize>, TransformError> {
+        for idx in 0..pairs {
+            let cmp = self.args[idx * 2 + 1].resolve(state)?;
+            let rhs = cmp.as_ref();
+            if lhs.eq(rhs) {
+                return Ok(Some(idx * 2 + 2));
+            }
+        }
+        Ok(None)
+    }
+
     fn resolve_number<'a>(
         &'a self,
         state: &'a crate::expressions::ExpressionExecutionState,

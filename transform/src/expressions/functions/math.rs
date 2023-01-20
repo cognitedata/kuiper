@@ -106,7 +106,7 @@ function_def!(IntFunction, "int", 1);
 
 // Cast and math functions tend to get a bit involved, the reason is that
 // we want to be able to handle fairly large numbers, since those will be involved in timestamps. If we just cast to float, we might not be able to handle
-// timestamp - timestamp that well, for example, which is important. So we have to carefully track the type of number, and do conversions where possible.
+// (timestamp - timestamp) that well, for example, which is important. So we have to carefully track the type of number, and do conversions where possible.
 impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for IntFunction {
     fn resolve(
         &'a self,

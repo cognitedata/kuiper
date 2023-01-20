@@ -6,7 +6,7 @@ use serde_json::Value;
 use super::{
     base::{
         get_boolean_from_value, get_number_from_value, get_string_from_value, Expression,
-        ExpressionExecutionState, ExpressionMeta, ExpressionType, JsonNumber, ResolveResult,
+        ExpressionExecutionState, ExpressionMeta, ExpressionType, ResolveResult,
     },
     transform_error::TransformError,
 };
@@ -108,23 +108,17 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for OpExpression {
         let lhs = res.as_ref();
         if lhs.is_number() {
             self.resolve_numeric_operator(lhs, state)
-        } else if lhs.is_string() && !matches!(self.operator, Operator::And | Operator::Or) {
+        } else if lhs.is_string()
+            && !matches!(
+                self.operator,
+                Operator::And | Operator::Or | Operator::Equals | Operator::NotEquals
+            )
+        {
             self.resolve_string_operator(lhs, state)
-        } else if matches!(
-            self.operator,
-            Operator::And | Operator::Or | Operator::Equals | Operator::NotEquals
-        ) {
+        } else if matches!(self.operator, Operator::And | Operator::Or) {
             self.resolve_boolean_operator(lhs, state)
         } else {
-            Err(TransformError::new_invalid_operation(
-                format!(
-                    "Operator {} not applicable to {}",
-                    &self.operator,
-                    TransformError::value_desc(lhs)
-                ),
-                &self.span,
-                state.id,
-            ))
+            self.resolve_generic_operator(lhs, state)
         }
     }
 }
@@ -168,6 +162,34 @@ impl OpExpression {
         }
     }
 
+    fn resolve_generic_operator<'a>(
+        &self,
+        lhs: &Value,
+        state: &ExpressionExecutionState,
+    ) -> Result<ResolveResult<'a>, TransformError> {
+        let rhs = self.elements[1].resolve(state)?;
+        let rhs_ref = rhs.as_ref();
+
+        let res = match &self.operator {
+            Operator::Equals => lhs.eq(rhs_ref),
+            Operator::NotEquals => !lhs.eq(rhs_ref),
+            _ => {
+                return Err(TransformError::new_invalid_operation(
+                    format!(
+                        "Operator {} not applicable to {} and {}",
+                        &self.operator,
+                        TransformError::value_desc(lhs),
+                        TransformError::value_desc(rhs_ref)
+                    ),
+                    &self.span,
+                    state.id,
+                ))
+            }
+        };
+
+        Ok(ResolveResult::Value(Value::Bool(res)))
+    }
+
     fn resolve_boolean_operator<'a>(
         &self,
         lhs: &Value,
@@ -179,8 +201,6 @@ impl OpExpression {
         let res = match &self.operator {
             Operator::And => lhs && rhs,
             Operator::Or => lhs || rhs,
-            Operator::Equals => lhs == rhs,
-            Operator::NotEquals => lhs != rhs,
             _ => {
                 return Err(TransformError::new_invalid_operation(
                     format!("Operator {} not applicable to booleans", &self.operator),
@@ -346,161 +366,6 @@ impl UnaryOpExpression {
             descriptor: format!("'{}'", &op),
             element: Box::new(el),
             span,
-        }
-    }
-}
-
-impl JsonNumber {
-    fn try_add(self, rhs: JsonNumber, span: &Span, id: &str) -> Result<JsonNumber, TransformError> {
-        match (self, rhs) {
-            (JsonNumber::PosInteger(x), JsonNumber::PosInteger(y)) => {
-                Ok(JsonNumber::PosInteger(x + y))
-            }
-            (JsonNumber::NegInteger(x), JsonNumber::NegInteger(y)) => {
-                Ok(JsonNumber::NegInteger(x + y))
-            }
-            (JsonNumber::Float(x), _) => Ok(JsonNumber::Float(x + rhs.as_f64())),
-            (JsonNumber::NegInteger(x), JsonNumber::PosInteger(_)) => {
-                Ok(JsonNumber::NegInteger(x + rhs.try_as_i64(span, id)?))
-            }
-            (_, JsonNumber::Float(y)) => Ok(JsonNumber::Float(self.as_f64() + y)),
-            (JsonNumber::PosInteger(_), JsonNumber::NegInteger(y)) => {
-                Ok(JsonNumber::NegInteger(self.try_as_i64(span, id)? + y))
-            }
-        }
-    }
-    fn try_sub(self, rhs: JsonNumber, span: &Span, id: &str) -> Result<JsonNumber, TransformError> {
-        match (self, rhs) {
-            (JsonNumber::PosInteger(x), JsonNumber::PosInteger(y)) => {
-                if x >= y {
-                    Ok(JsonNumber::PosInteger(x - y))
-                } else {
-                    Ok(JsonNumber::NegInteger(-((y - x).try_into()
-                        .map_err(|_| TransformError::new_conversion_failed(
-                            "Failed to convert result into negative integer, cannot produce a negative integer smaller than -9223372036854775808".to_string(), span, id))?)))
-                }
-            }
-            (JsonNumber::NegInteger(x), JsonNumber::NegInteger(y)) => {
-                Ok(JsonNumber::NegInteger(x - y))
-            }
-            (JsonNumber::Float(x), _) => Ok(JsonNumber::Float(x - rhs.as_f64())),
-            (JsonNumber::NegInteger(x), JsonNumber::PosInteger(_)) => {
-                Ok(JsonNumber::NegInteger(x - rhs.try_as_i64(span, id)?))
-            }
-            (_, JsonNumber::Float(y)) => Ok(JsonNumber::Float(self.as_f64() - y)),
-            (JsonNumber::PosInteger(_), JsonNumber::NegInteger(y)) => {
-                Ok(JsonNumber::NegInteger(self.try_as_i64(span, id)? - y))
-            }
-        }
-    }
-    fn try_mul(self, rhs: JsonNumber, span: &Span, id: &str) -> Result<JsonNumber, TransformError> {
-        match (self, rhs) {
-            (JsonNumber::PosInteger(x), JsonNumber::PosInteger(y)) => {
-                Ok(JsonNumber::PosInteger(x * y))
-            }
-            (JsonNumber::NegInteger(x), JsonNumber::NegInteger(y)) => {
-                Ok(JsonNumber::NegInteger(x * y))
-            }
-            (JsonNumber::Float(x), _) => Ok(JsonNumber::Float(x * rhs.as_f64())),
-            (JsonNumber::NegInteger(x), JsonNumber::PosInteger(_)) => {
-                Ok(JsonNumber::NegInteger(x * rhs.try_as_i64(span, id)?))
-            }
-            (_, JsonNumber::Float(y)) => Ok(JsonNumber::Float(self.as_f64() * y)),
-            (JsonNumber::PosInteger(_), JsonNumber::NegInteger(y)) => {
-                Ok(JsonNumber::NegInteger(self.try_as_i64(span, id)? * y))
-            }
-        }
-    }
-    fn try_div(self, rhs: JsonNumber, span: &Span, id: &str) -> Result<JsonNumber, TransformError> {
-        if rhs.as_f64() == 0.0f64 {
-            return Err(TransformError::new_invalid_operation(
-                "Divide by zero".to_string(),
-                span,
-                id,
-            ));
-        }
-        Ok(JsonNumber::Float(self.as_f64() / rhs.as_f64()))
-    }
-
-    fn cmp(self, op: Operator, rhs: JsonNumber, span: &Span, id: &str) -> bool {
-        match (self, rhs) {
-            (JsonNumber::PosInteger(x), JsonNumber::PosInteger(y)) => match op {
-                Operator::LessThan => x < y,
-                Operator::GreaterThan => x > y,
-                Operator::LessThanEquals => x <= y,
-                Operator::GreaterThanEquals => x >= y,
-                _ => unreachable!(),
-            },
-            (JsonNumber::NegInteger(x), JsonNumber::NegInteger(y)) => match op {
-                Operator::LessThan => x < y,
-                Operator::GreaterThan => x > y,
-                Operator::LessThanEquals => x <= y,
-                Operator::GreaterThanEquals => x >= y,
-                _ => unreachable!(),
-            },
-            (JsonNumber::Float(x), _) => match op {
-                Operator::LessThan => x < rhs.as_f64(),
-                Operator::GreaterThan => x > rhs.as_f64(),
-                Operator::LessThanEquals => x <= rhs.as_f64(),
-                Operator::GreaterThanEquals => x >= rhs.as_f64(),
-                _ => unreachable!(),
-            },
-            (JsonNumber::NegInteger(x), JsonNumber::PosInteger(_)) => {
-                let y = match rhs.try_as_i64(span, id) {
-                    Ok(y) => y,
-                    Err(_) => return matches!(op, Operator::LessThan | Operator::LessThanEquals),
-                };
-                match op {
-                    Operator::LessThan => x < y,
-                    Operator::GreaterThan => x > y,
-                    Operator::LessThanEquals => x <= y,
-                    Operator::GreaterThanEquals => x >= y,
-                    _ => unreachable!(),
-                }
-            }
-            (_, JsonNumber::Float(y)) => match op {
-                Operator::LessThan => self.as_f64() < y,
-                Operator::GreaterThan => self.as_f64() > y,
-                Operator::LessThanEquals => self.as_f64() <= y,
-                Operator::GreaterThanEquals => self.as_f64() >= y,
-                _ => unreachable!(),
-            },
-            (JsonNumber::PosInteger(_), JsonNumber::NegInteger(y)) => {
-                let x = match self.try_as_i64(span, id) {
-                    Ok(x) => x,
-                    Err(_) => {
-                        return matches!(op, Operator::GreaterThan | Operator::GreaterThanEquals)
-                    }
-                };
-                match op {
-                    Operator::LessThan => x < y,
-                    Operator::GreaterThan => x > y,
-                    Operator::LessThanEquals => x <= y,
-                    Operator::GreaterThanEquals => x >= y,
-                    _ => unreachable!(),
-                }
-            }
-        }
-    }
-
-    pub fn eq(self, rhs: JsonNumber, span: &Span, id: &str) -> bool {
-        match (self, rhs) {
-            (JsonNumber::PosInteger(x), JsonNumber::PosInteger(y)) => x == y,
-            (JsonNumber::NegInteger(x), JsonNumber::NegInteger(y)) => x == y,
-            (JsonNumber::Float(x), _) => x == rhs.as_f64(),
-            (JsonNumber::NegInteger(x), JsonNumber::PosInteger(_)) => {
-                match rhs.try_as_i64(span, id) {
-                    Ok(y) => x == y,
-                    Err(_) => false,
-                }
-            }
-            (_, JsonNumber::Float(y)) => self.as_f64() == y,
-            (JsonNumber::PosInteger(_), JsonNumber::NegInteger(y)) => {
-                match self.try_as_i64(span, id) {
-                    Ok(x) => x == y,
-                    Err(_) => false,
-                }
-            }
         }
     }
 }
