@@ -80,6 +80,7 @@ pub enum Token {
     #[token("||", |_| Operator::Or)]
     Operator(Operator),
 
+    /// A unary operator, takes the following expression as argument.
     #[token("!", |_| UnaryOperator::Negate)]
     UnaryOperator(UnaryOperator),
 
@@ -87,6 +88,7 @@ pub enum Token {
     #[regex(r#"'(?:[^'\\]|\\.)*'"#, parse_string)]
     String(String),
 
+    /// A literal null
     #[token("null")]
     Null,
 
@@ -223,7 +225,7 @@ mod test {
 
     #[test]
     pub fn test_operators() {
-        let mut lex = Token::lexer("1 + !!!2 - 3 * 4 / 5");
+        let mut lex = Token::lexer("1 + !!!2 - 3 * 4 / 5 != 6");
 
         assert_eq!(lex.next(), Some(Token::UInteger(1)));
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
@@ -246,5 +248,7 @@ mod test {
         assert_eq!(lex.next(), Some(Token::UInteger(4)));
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Divide)));
         assert_eq!(lex.next(), Some(Token::UInteger(5)));
+        assert_eq!(lex.next(), Some(Token::Operator(Operator::NotEquals)));
+        assert_eq!(lex.next(), Some(Token::UInteger(6)));
     }
 }
