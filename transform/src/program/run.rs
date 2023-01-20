@@ -1,8 +1,6 @@
-use std::{
-    cell::{RefCell, UnsafeCell},
-    collections::HashMap,
-    ops::AddAssign,
-};
+use std::{cell::RefCell, collections::HashMap, ops::AddAssign};
+
+use once_cell::unsync::OnceCell;
 
 use serde_json::Value;
 
@@ -25,7 +23,7 @@ use super::{
 //   Reference new entries before they are added
 //   Modify old entries
 pub struct TransformState<'inp> {
-    data: UnsafeCell<Vec<Vec<ResolveResult<'inp>>>>,
+    data: Vec<OnceCell<Vec<ResolveResult<'inp>>>>,
     map: RefCell<HashMap<TransformOrInput, usize>>,
     idx_c: RefCell<usize>,
     null_const: Value,
@@ -35,10 +33,10 @@ impl<'inp> TransformState<'inp> {
     pub fn new(total_num: usize) -> Self {
         let mut dat = Vec::with_capacity(total_num);
         for _ in 0..total_num {
-            dat.push(Vec::new());
+            dat.push(OnceCell::new());
         }
         Self {
-            data: UnsafeCell::new(dat),
+            data: dat,
             map: RefCell::new(HashMap::new()),
             idx_c: RefCell::new(0),
             null_const: Value::Null,
@@ -52,24 +50,18 @@ impl<'inp> TransformState<'inp> {
         let idx = *self.map.borrow().get(key)?;
         assert!(idx < *self.idx_c.borrow());
 
-        // SAFETY: If an entry is in the map, it must be in the part of the vector
-        // that we are not allowed to modify. Hence it must be safe to reference.
-        unsafe {
-            let dt = &*self.data.get();
-            dt.get(idx)
-        }
+        self.data.get(idx)?.get()
     }
 
     pub fn insert_elem<'a>(&'a self, key: TransformOrInput, value: Vec<ResolveResult<'inp>>) {
         let idx = *self.idx_c.borrow();
-        // SAFETY: Since idx_c is monotonically increasing, and we only ever reference
-        // values with index below idx_c. We must be mutating a non-referenced value.
-        unsafe {
-            let dt = &mut *self.data.get();
-            dt[idx] = value;
-        }
-        self.map.borrow_mut().insert(key, idx);
 
+        self.data
+            .get(idx)
+            .unwrap()
+            .set(value)
+            .unwrap_or_else(|_| panic!("OnceCell already set!"));
+        self.map.borrow_mut().insert(key, idx);
         self.idx_c.borrow_mut().add_assign(1);
     }
 
