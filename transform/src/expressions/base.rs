@@ -1,6 +1,6 @@
 use logos::Span;
 use serde_json::{Number, Value};
-use std::{collections::HashMap, fmt::Display};
+use std::{borrow::Cow, collections::HashMap, fmt::Display};
 
 use crate::{parse::ParserError, program::TransformOrInput};
 
@@ -137,40 +137,10 @@ pub enum ExpressionType {
     Array(ArrayExpression),
 }
 
-#[derive(Clone)]
-pub enum ReferenceOrValue<'a, T>
-where
-    T: Sized + Clone,
-{
-    Reference(&'a T),
-    Value(T),
-}
-
 /// The result of an expression resolution. The signature is a little weird.
 /// An expression may either return a reference to the source, or an actual value.
 /// By returning references as often as possible we reduce the number of clones.
-pub type ResolveResult<'a> = ReferenceOrValue<'a, Value>;
-
-impl<'a, T> ReferenceOrValue<'a, T>
-where
-    T: Sized + Clone,
-{
-    /// Return the internal reference or a reference to the internal value.
-    pub fn as_ref(&self) -> &T {
-        match self {
-            Self::Reference(r) => r,
-            Self::Value(v) => v,
-        }
-    }
-
-    /// Create a value from this, either returning the internal value, or cloning the internal reference.
-    pub fn into_value(self) -> T {
-        match self {
-            Self::Reference(r) => r.clone(),
-            Self::Value(v) => v,
-        }
-    }
-}
+pub type ResolveResult<'a> = Cow<'a, Value>;
 
 #[derive(Debug, Clone)]
 /// A constant expression. This always resolves to a reference to its value.
@@ -189,7 +159,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for Constant {
         &'a self,
         _state: &'b ExpressionExecutionState<'c, 'b>,
     ) -> Result<ResolveResult<'c>, TransformError> {
-        Ok(ResolveResult::Reference(&self.val))
+        Ok(ResolveResult::Borrowed(&self.val))
     }
 }
 
@@ -296,15 +266,15 @@ pub(crate) fn get_string_from_value<'a>(
     val: &'a Value,
     span: &Span,
     id: &str,
-) -> Result<ReferenceOrValue<'a, String>, TransformError> {
+) -> Result<Cow<'a, String>, TransformError> {
     match val {
-        Value::Null => Ok(ReferenceOrValue::Value("".to_string())),
-        Value::Bool(n) => Ok(ReferenceOrValue::Value(match n {
+        Value::Null => Ok(Cow::Owned("".to_string())),
+        Value::Bool(n) => Ok(Cow::Owned(match n {
             true => "true".to_string(),
             false => "false".to_string(),
         })),
-        Value::Number(n) => Ok(ReferenceOrValue::Value(n.to_string())),
-        Value::String(s) => Ok(ReferenceOrValue::Reference(s)),
+        Value::Number(n) => Ok(Cow::Owned(n.to_string())),
+        Value::String(s) => Ok(Cow::Borrowed(s)),
         _ => {
             return Err(TransformError::new_incorrect_type(
                 desc,

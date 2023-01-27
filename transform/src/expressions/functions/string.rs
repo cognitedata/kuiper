@@ -29,13 +29,13 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ConcatFunction {
             // Resolve each argument by passing the state, then return any errors if they occur.
             let resolved = expr.resolve(state)?;
             // Convert the value to string
-            let dat = get_string_from_value("concat", resolved.as_ref(), &self.span, state.id)?;
+            let dat = get_string_from_value("concat", &resolved, &self.span, state.id)?;
             // Push the resulting string to the result vector.
-            res.push_str(dat.as_ref());
+            res.push_str(&dat);
         }
         // Since we own the data we want to return here, return ResolveResult::Value. If we had built a reference
         // to a previous result (which itself might be a reference to input data!), we could have returned a reference here instead.
-        Ok(ResolveResult::Value(Value::String(res)))
+        Ok(ResolveResult::Owned(Value::String(res)))
     }
 }
 
@@ -62,7 +62,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for StringFunction {
             Value::String(s) => s.to_string(),
             Value::Array(_) | Value::Object(_) => val.to_string(),
         };
-        Ok(ResolveResult::Value(Value::String(res)))
+        Ok(ResolveResult::Owned(Value::String(res)))
     }
 }
 

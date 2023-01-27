@@ -1,7 +1,7 @@
 use serde_json::{Map, Value};
 
 use crate::{
-    expressions::{base::ReferenceOrValue, Expression, ResolveResult},
+    expressions::{Expression, ResolveResult},
     TransformError,
 };
 
@@ -13,7 +13,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for PairsFunction {
         state: &'b crate::expressions::ExpressionExecutionState<'c, 'b>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         let inp = self.args[0].resolve(state)?;
-        let obj = match inp.into_value() {
+        let obj = match inp.into_owned() {
             Value::Object(o) => o,
             x => {
                 return Err(TransformError::new_incorrect_type(
@@ -32,7 +32,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for PairsFunction {
             map.insert("value".to_string(), val);
             res.push(Value::Object(map));
         }
-        return Ok(ReferenceOrValue::Value(Value::Array(res)));
+        return Ok(ResolveResult::Owned(Value::Array(res)));
     }
 }
 

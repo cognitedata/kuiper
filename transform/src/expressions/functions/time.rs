@@ -18,10 +18,10 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ToUnixTimeFunction {
         state: &'b crate::expressions::ExpressionExecutionState<'c, 'b>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let dat = self.args.get(0).unwrap().resolve(state)?;
-        let val = get_string_from_value(Self::INFO.name, dat.as_ref(), &self.span, state.id)?;
+        let val = get_string_from_value(Self::INFO.name, &dat, &self.span, state.id)?;
         let val_ref = val.as_ref();
         let fmt = self.args.get(1).unwrap().resolve(state)?;
-        let fmt_val = get_string_from_value(Self::INFO.name, fmt.as_ref(), &self.span, state.id)?;
+        let fmt_val = get_string_from_value(Self::INFO.name, &fmt, &self.span, state.id)?;
         let fmt_ref = fmt_val.as_ref();
         // If the format string contains timezone, create a timestamp with timezone directly
         if fmt_ref.contains("%z") {
@@ -35,7 +35,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ToUnixTimeFunction {
                     state.id,
                 )
             })?;
-            Ok(ResolveResult::Value(Value::Number(Number::from(
+            Ok(ResolveResult::Owned(Value::Number(Number::from(
                 time.timestamp_millis(),
             ))))
         // If not, first create a naive datetime from the input...
@@ -75,7 +75,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ToUnixTimeFunction {
                     )
                 })?;
                 match offset.from_local_datetime(&time) {
-                    chrono::LocalResult::Single(x) => Ok(ResolveResult::Value(Value::Number(
+                    chrono::LocalResult::Single(x) => Ok(ResolveResult::Owned(Value::Number(
                         Number::from(x.timestamp_millis()),
                     ))),
                     _ => Err(TransformError::new_conversion_failed(
@@ -85,7 +85,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ToUnixTimeFunction {
                     )),
                 }
             } else {
-                Ok(ResolveResult::Value(Value::Number(Number::from(
+                Ok(ResolveResult::Owned(Value::Number(Number::from(
                     time.timestamp_millis(),
                 ))))
             }

@@ -21,7 +21,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for IfFunction {
         if cond {
             Ok(self.args.get(1).unwrap().resolve(state)?)
         } else if self.args.len() == 2 {
-            Ok(ResolveResult::Value(Value::Null))
+            Ok(ResolveResult::Owned(Value::Null))
         } else {
             Ok(self.args.get(2).unwrap().resolve(state)?)
         }
@@ -37,16 +37,15 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for CaseFunction {
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
         let lhs = &self.args[0];
         let lhs = lhs.resolve(state)?;
-        let lhs_ref = lhs.as_ref();
         // If length is odd, no else arg, so 5 / 2 - (1 - 1) = 2 groups
         // If length is even, else arg, so 6 / 2 - (1 - 0) = 2 groups
         let pairs = (self.args.len() / 2) - (1 - self.args.len() % 2);
-        let result = if lhs_ref.is_number() {
-            self.resolve_number(state, lhs_ref, pairs)?
-        } else if lhs_ref.is_string() {
-            self.resolve_string(state, lhs_ref, pairs)?
+        let result = if lhs.is_number() {
+            self.resolve_number(state, &lhs, pairs)?
+        } else if lhs.is_string() {
+            self.resolve_string(state, &lhs, pairs)?
         } else {
-            self.resolve_generic(state, lhs_ref, pairs)?
+            self.resolve_generic(state, &lhs, pairs)?
         };
 
         if let Some(idx) = result {
@@ -54,7 +53,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for CaseFunction {
         } else if self.args.len() % 2 == 0 {
             Ok(self.args[self.args.len() - 1].resolve(state)?)
         } else {
-            Ok(ResolveResult::Value(Value::Null))
+            Ok(ResolveResult::Owned(Value::Null))
         }
     }
 }
@@ -68,8 +67,7 @@ impl CaseFunction {
     ) -> Result<Option<usize>, TransformError> {
         for idx in 0..pairs {
             let cmp = self.args[idx * 2 + 1].resolve(state)?;
-            let rhs = cmp.as_ref();
-            if lhs.eq(rhs) {
+            if lhs == cmp.as_ref() {
                 return Ok(Some(idx * 2 + 2));
             }
         }
@@ -103,9 +101,9 @@ impl CaseFunction {
         let lhs_val = get_string_from_value("case", lhs, &self.span, state.id)?;
         for idx in 0..pairs {
             let cmp = self.args[idx * 2 + 1].resolve(state)?;
-            let rhs = cmp.as_ref();
-            let rhs_val = get_string_from_value("case", rhs, &self.span, state.id)?;
-            if lhs_val.as_ref() == rhs_val.as_ref() {
+            let rhs = cmp;
+            let rhs_val = get_string_from_value("case", &rhs, &self.span, state.id)?;
+            if lhs_val == rhs_val {
                 return Ok(Some(idx * 2 + 2));
             }
         }

@@ -81,7 +81,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for SelectorExpression {
                         return Err(TransformError::new_incorrect_type(
                             "Incorrect type in selector",
                             "string",
-                            TransformError::value_desc(val.as_ref()),
+                            TransformError::value_desc(&val),
                             &self.span,
                             state.id,
                         ))
@@ -95,19 +95,19 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for SelectorExpression {
             elem = match p {
                 SelectorElement::Constant(x) => match elem.as_object().and_then(|o| o.get(x)) {
                     Some(x) => x,
-                    None => return Ok(ResolveResult::Value(Value::Null)),
+                    None => return Ok(ResolveResult::Owned(Value::Null)),
                 },
                 SelectorElement::Expression(x) => {
                     let val = x.resolve(state)?;
                     match val.as_ref() {
                         Value::String(s) => match elem.as_object().and_then(|o| o.get(s)) {
                             Some(x) => x,
-                            None => return Ok(ResolveResult::Value(Value::Null)),
+                            None => return Ok(ResolveResult::Owned(Value::Null)),
                         },
                         Value::Number(n) => match n.as_u64() {
                             Some(x) => match elem.as_array().and_then(|a| a.get(x as usize)) {
                                 Some(x) => x,
-                                None => return Ok(ResolveResult::Value(Value::Null)),
+                                None => return Ok(ResolveResult::Owned(Value::Null)),
                             },
                             _ => {
                                 return Err(TransformError::new_incorrect_type(
@@ -127,7 +127,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for SelectorExpression {
                             return Err(TransformError::new_incorrect_type(
                                 "Incorrect type in selector",
                                 "integer or string",
-                                TransformError::value_desc(val.as_ref()),
+                                TransformError::value_desc(&val),
                                 &self.span,
                                 state.id,
                             ))
@@ -136,7 +136,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for SelectorExpression {
                 }
             };
         }
-        Ok(ResolveResult::Reference(elem))
+        Ok(ResolveResult::Borrowed(elem))
     }
 }
 
