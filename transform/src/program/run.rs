@@ -4,9 +4,7 @@ use once_cell::unsync::OnceCell;
 
 use serde_json::Value;
 
-use crate::expressions::{
-    Expression, ExpressionExecutionState, ReferenceOrValue, ResolveResult, TransformError,
-};
+use crate::expressions::{Expression, ExpressionExecutionState, ResolveResult, TransformError};
 
 use super::{
     input::{Transform, TransformOrInput},
@@ -76,14 +74,14 @@ impl Program {
         let data = TransformState::new(self.transforms.len() + 1);
         data.insert_elem(
             TransformOrInput::Input,
-            vec![ResolveResult::Reference(input)],
+            vec![ResolveResult::Borrowed(input)],
         );
 
         let len = self.transforms.len();
         for (idx, tf) in self.transforms.iter().enumerate() {
             let value = tf.execute(&data)?;
             if idx == len - 1 {
-                return Ok(value.into_iter().map(|r| r.into_value()).collect());
+                return Ok(value.into_iter().map(|r| r.into_owned()).collect());
             }
             // cached_results.insert(idx, value);
             data.insert_elem(TransformOrInput::Transform(idx), value);
@@ -201,22 +199,22 @@ impl Transform {
             Self::Map(m) => {
                 let mut map = serde_json::Map::new();
                 for (key, tf) in m.map.iter() {
-                    let value = tf.resolve(&state)?.into_value();
+                    let value = tf.resolve(&state)?.into_owned();
                     map.insert(key.clone(), value);
                 }
-                vec![ResolveResult::Value(Value::Object(map))]
+                vec![ResolveResult::Owned(Value::Object(map))]
             }
 
             Self::Flatten(m) => {
                 let res: ResolveResult<'d> = m.map.resolve(&state)?;
                 match res {
-                    ReferenceOrValue::Reference(r) => match r {
-                        Value::Array(a) => a.iter().map(ResolveResult::Reference).collect(),
-                        x => vec![ResolveResult::Reference(x)],
+                    ResolveResult::Borrowed(r) => match r {
+                        Value::Array(a) => a.iter().map(ResolveResult::Borrowed).collect(),
+                        x => vec![ResolveResult::Borrowed(x)],
                     },
-                    ReferenceOrValue::Value(r) => match r {
-                        Value::Array(a) => a.into_iter().map(ResolveResult::Value).collect(),
-                        x => vec![ResolveResult::Value(x)],
+                    ResolveResult::Owned(r) => match r {
+                        Value::Array(a) => a.into_iter().map(ResolveResult::Owned).collect(),
+                        x => vec![ResolveResult::Owned(x)],
                     },
                 }
             }
@@ -229,11 +227,11 @@ impl Transform {
                 };
                 if filter_output {
                     if data.contains_key(&TransformOrInput::Merge) {
-                        vec![ResolveResult::Reference(
+                        vec![ResolveResult::Borrowed(
                             data.get(&TransformOrInput::Merge).unwrap(),
                         )]
                     } else {
-                        vec![ResolveResult::Reference(
+                        vec![ResolveResult::Borrowed(
                             data.iter()
                                 .next()
                                 .ok_or_else(|| {

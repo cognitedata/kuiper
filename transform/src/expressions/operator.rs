@@ -104,21 +104,20 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for OpExpression {
         &self,
         state: &'b ExpressionExecutionState<'c, 'b>,
     ) -> Result<ResolveResult<'c>, TransformError> {
-        let res = self.elements[0].resolve(state)?;
-        let lhs = res.as_ref();
+        let lhs = self.elements[0].resolve(state)?;
         if lhs.is_number() {
-            self.resolve_numeric_operator(lhs, state)
+            self.resolve_numeric_operator(&lhs, state)
         } else if lhs.is_string()
             && !matches!(
                 self.operator,
                 Operator::And | Operator::Or | Operator::Equals | Operator::NotEquals
             )
         {
-            self.resolve_string_operator(lhs, state)
+            self.resolve_string_operator(&lhs, state)
         } else if matches!(self.operator, Operator::And | Operator::Or) {
-            self.resolve_boolean_operator(lhs, state)
+            self.resolve_boolean_operator(&lhs, state)
         } else {
-            self.resolve_generic_operator(lhs, state)
+            self.resolve_generic_operator(&lhs, state)
         }
     }
 }
@@ -187,7 +186,7 @@ impl OpExpression {
             }
         };
 
-        Ok(ResolveResult::Value(Value::Bool(res)))
+        Ok(ResolveResult::Owned(Value::Bool(res)))
     }
 
     fn resolve_boolean_operator<'a>(
@@ -210,7 +209,7 @@ impl OpExpression {
             }
         };
 
-        Ok(ResolveResult::Value(Value::Bool(res)))
+        Ok(ResolveResult::Owned(Value::Bool(res)))
     }
 
     fn resolve_string_operator<'a>(
@@ -220,15 +219,15 @@ impl OpExpression {
     ) -> Result<ResolveResult<'a>, TransformError> {
         let lhs = get_string_from_value(&self.descriptor, lhs, &self.span, state.id)?;
         let rhs = self.elements[1].resolve(state)?;
-        let rhs = get_string_from_value(&self.descriptor, rhs.as_ref(), &self.span, state.id)?;
+        let rhs = get_string_from_value(&self.descriptor, &rhs, &self.span, state.id)?;
 
         let res = match &self.operator {
-            Operator::Equals => lhs.as_ref() == rhs.as_ref(),
-            Operator::NotEquals => lhs.as_ref() != rhs.as_ref(),
-            Operator::GreaterThan => lhs.as_ref() > rhs.as_ref(),
-            Operator::LessThan => lhs.as_ref() < rhs.as_ref(),
-            Operator::GreaterThanEquals => lhs.as_ref() >= rhs.as_ref(),
-            Operator::LessThanEquals => lhs.as_ref() <= rhs.as_ref(),
+            Operator::Equals => lhs == rhs,
+            Operator::NotEquals => lhs != rhs,
+            Operator::GreaterThan => lhs > rhs,
+            Operator::LessThan => lhs < rhs,
+            Operator::GreaterThanEquals => lhs >= rhs,
+            Operator::LessThanEquals => lhs <= rhs,
             _ => {
                 return Err(TransformError::new_invalid_operation(
                     format!("Operator {} not applicable to strings", &self.operator),
@@ -237,7 +236,7 @@ impl OpExpression {
                 ))
             }
         };
-        Ok(ResolveResult::Value(Value::Bool(res)))
+        Ok(ResolveResult::Owned(Value::Bool(res)))
     }
 
     fn resolve_numeric_operator<'a>(
@@ -262,7 +261,7 @@ impl OpExpression {
             | Operator::LessThan
             | Operator::GreaterThanEquals
             | Operator::LessThanEquals => {
-                return Ok(ResolveResult::Value(Value::Bool(lhs.cmp(
+                return Ok(ResolveResult::Owned(Value::Bool(lhs.cmp(
                     self.operator,
                     rhs,
                     &self.span,
@@ -270,12 +269,12 @@ impl OpExpression {
                 ))))
             }
             Operator::Equals => {
-                return Ok(ResolveResult::Value(Value::Bool(
+                return Ok(ResolveResult::Owned(Value::Bool(
                     lhs.eq(rhs, &self.span, state.id),
                 )))
             }
             Operator::NotEquals => {
-                return Ok(ResolveResult::Value(Value::Bool(
+                return Ok(ResolveResult::Owned(Value::Bool(
                     !lhs.eq(rhs, &self.span, state.id),
                 )))
             }
@@ -287,7 +286,7 @@ impl OpExpression {
                 ))
             }
         };
-        Ok(ResolveResult::Value(res.try_into_json().ok_or_else(
+        Ok(ResolveResult::Owned(res.try_into_json().ok_or_else(
             || {
                 TransformError::new_conversion_failed(
                     format!(
@@ -325,7 +324,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for UnaryOpExpression {
     ) -> Result<ResolveResult<'c>, TransformError> {
         let val = get_boolean_from_value(self.element.resolve(state)?.as_ref());
         match self.operator {
-            UnaryOperator::Negate => Ok(ResolveResult::Value(Value::Bool(!val))),
+            UnaryOperator::Negate => Ok(ResolveResult::Owned(Value::Bool(!val))),
         }
     }
 }

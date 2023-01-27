@@ -35,7 +35,7 @@ macro_rules! arg2_math_func {
 
                 let res = lhs.$rname(rhs);
 
-                Ok($crate::expressions::base::ResolveResult::Value(
+                Ok($crate::expressions::base::ResolveResult::Owned(
                     serde_json::Value::Number(serde_json::Number::from_f64(res).ok_or_else(
                         || {
                             $crate::expressions::transform_error::TransformError::new_conversion_failed(
@@ -78,7 +78,7 @@ macro_rules! arg1_math_func {
 
                 let res = arg.$rname();
 
-                Ok($crate::expressions::base::ResolveResult::Value(
+                Ok($crate::expressions::base::ResolveResult::Owned(
                     serde_json::Value::Number(serde_json::Number::from_f64(res).ok_or_else(|| {
                         $crate::expressions::transform_error::TransformError::new_conversion_failed(
                             format!(
@@ -179,7 +179,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for IntFunction {
                 ))
             }
         };
-        Ok(ResolveResult::Value(res))
+        Ok(ResolveResult::Owned(res))
     }
 }
 
@@ -232,7 +232,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for FloatFunction {
                 ))
             }
         };
-        Ok(ResolveResult::Value(Value::Number(
+        Ok(ResolveResult::Owned(Value::Number(
             Number::from_f64(res).unwrap_or_else(|| Number::from_f64(0.0).unwrap()),
         )))
     }

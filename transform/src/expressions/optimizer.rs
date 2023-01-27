@@ -15,7 +15,7 @@ fn resolve_constants(
     match root.resolve(empty_state) {
         // If resolution succeeds, we can replace this operator with a constant
         Ok(x) => Ok(Some(ExpressionType::Constant(Constant::new(
-            x.into_value(),
+            x.into_owned(),
         )))),
         Err(e) => match e {
             // Any error that is not a source missing error would be a bug in this position,
