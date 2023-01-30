@@ -91,6 +91,7 @@ pub enum FunctionType {
     ToUnixTime(ToUnixTimeFunction),
     Case(CaseFunction),
     Pairs(PairsFunction),
+    Flatten(FlattenFunction),
 }
 
 /// Create a function expression from its name, or return a parser exception if it has the wrong number of arguments,
@@ -115,6 +116,7 @@ pub fn get_function_expression(
         "to_unix_timestamp" => FunctionType::ToUnixTime(ToUnixTimeFunction::new(args, pos)?),
         "case" => FunctionType::Case(CaseFunction::new(args, pos)?),
         "pairs" => FunctionType::Pairs(PairsFunction::new(args, pos)?),
+        "flatten" => FunctionType::Flatten(FlattenFunction::new(args, pos)?),
         _ => return Err(ParserError::unrecognized_function(pos, name)),
     };
     Ok(ExpressionType::Function(expr))
@@ -247,7 +249,7 @@ pub(crate) fn get_number_from_value(
         .or_else(|| v.as_f64().map(JsonNumber::Float))
         .ok_or_else(|| {
             TransformError::new_conversion_failed(
-                format!("Failed to convert input into number for operator {}", desc),
+                format!("Failed to convert input into number for operator {desc}"),
                 span,
                 id,
             )

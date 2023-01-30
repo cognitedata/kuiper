@@ -537,7 +537,7 @@ pub mod test {
                 assert_eq!(d.detail, Some("Unexpected symbol +".to_string()));
                 assert_eq!(d.position, Span { start: 8, end: 9 });
             }
-            _ => panic!("Wrong type of response: {:?}", res),
+            _ => panic!("Wrong type of response: {res:?}"),
         }
     }
 
@@ -549,7 +549,7 @@ pub mod test {
                 assert_eq!(d.detail, Some("Unexpected symbol .".to_string()));
                 assert_eq!(d.position, Span { start: 8, end: 9 });
             }
-            _ => panic!("Wrong type of response: {:?}", res),
+            _ => panic!("Wrong type of response: {res:?}"),
         }
     }
 
@@ -561,7 +561,7 @@ pub mod test {
                 assert_eq!(d.detail, Some("Unexpected symbol [".to_string()));
                 assert_eq!(d.position, Span { start: 8, end: 9 });
             }
-            _ => panic!("Wrong type of response: {:?}", res),
+            _ => panic!("Wrong type of response: {res:?}"),
         }
     }
 
@@ -572,7 +572,7 @@ pub mod test {
             ParserError::ExpectExpression(d) => {
                 assert_eq!(d.position, Span { start: 6, end: 7 });
             }
-            _ => panic!("Wrong type of response: {:?}", res),
+            _ => panic!("Wrong type of response: {res:?}"),
         }
     }
 
@@ -583,7 +583,7 @@ pub mod test {
             ParserError::EmptyExpression(d) => {
                 assert_eq!(d.position, Span { start: 4, end: 6 });
             }
-            _ => panic!("Wrong type of response: {:?}", res),
+            _ => panic!("Wrong type of response: {res:?}"),
         }
     }
 
@@ -595,7 +595,7 @@ pub mod test {
                 assert_eq!(d.detail, Some("Failed to parse expression".to_string()));
                 assert_eq!(d.position, Span { start: 4, end: 9 });
             }
-            _ => panic!("Wrong type of response: {:?}", res),
+            _ => panic!("Wrong type of response: {res:?}"),
         }
     }
 
@@ -606,7 +606,7 @@ pub mod test {
             ParserError::InvalidToken(d) => {
                 assert_eq!(d.position, Span { start: 4, end: 10 });
             }
-            _ => panic!("Wrong type of response: {:?}", res),
+            _ => panic!("Wrong type of response: {res:?}"),
         }
     }
 
@@ -617,7 +617,7 @@ pub mod test {
             ParserError::ExpectExpression(d) => {
                 assert_eq!(d.position, Span { start: 4, end: 5 });
             }
-            _ => panic!("Wrong type of response: {:?}", res),
+            _ => panic!("Wrong type of response: {res:?}"),
         }
     }
 
@@ -629,7 +629,7 @@ pub mod test {
                 assert_eq!(d.detail, Some("Unexpected symbol 'test'".to_string()));
                 assert_eq!(d.position, Span { start: 11, end: 17 });
             }
-            _ => panic!("Wrong type of response: {:?}", res),
+            _ => panic!("Wrong type of response: {res:?}"),
         }
     }
 
@@ -647,7 +647,7 @@ pub mod test {
                 );
                 assert_eq!(d.position, Span { start: 4, end: 10 });
             }
-            _ => panic!("Wrong type of response: {:?}", res),
+            _ => panic!("Wrong type of response: {res:?}"),
         }
     }
 
@@ -659,7 +659,7 @@ pub mod test {
                 assert_eq!(d.detail, Some("Unrecognized function: bloop".to_string()));
                 assert_eq!(d.position, Span { start: 4, end: 13 });
             }
-            _ => panic!("Wrong type of response: {:?}", res),
+            _ => panic!("Wrong type of response: {res:?}"),
         }
     }
 
@@ -683,7 +683,7 @@ pub mod test {
                 assert_eq!(d.detail, Some("Unexpected symbol !".to_string()));
                 assert_eq!(d.position, Span { start: 5, end: 6 });
             }
-            _ => panic!("Wrong type of response: {:?}", res),
+            _ => panic!("Wrong type of response: {res:?}"),
         }
     }
 }

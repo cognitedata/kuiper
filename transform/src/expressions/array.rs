@@ -25,7 +25,7 @@ impl Display for ArrayExpression {
                 write!(f, ", ")?;
             }
             needs_comma = true;
-            write!(f, "{}", it)?;
+            write!(f, "{it}")?;
         }
         Ok(())
     }

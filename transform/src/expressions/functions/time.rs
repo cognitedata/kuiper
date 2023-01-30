@@ -28,8 +28,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ToUnixTimeFunction {
             let time = DateTime::parse_from_str(val_ref, fmt_ref).map_err(|e| {
                 TransformError::new_conversion_failed(
                     format!(
-                        "Failed to convert '{}' to datetime using '{}': {}",
-                        val_ref, fmt_ref, e
+                        "Failed to convert '{val_ref}' to datetime using '{fmt_ref}': {e}"
                     ),
                     &self.span,
                     state.id,
@@ -43,8 +42,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ToUnixTimeFunction {
             let time = NaiveDateTime::parse_from_str(val_ref, fmt_ref).map_err(|e| {
                 TransformError::new_conversion_failed(
                     format!(
-                        "Failed to convert '{}' to datetime using '{}': {}",
-                        val_ref, fmt_ref, e
+                        "Failed to convert '{val_ref}' to datetime using '{fmt_ref}': {e}"
                     ),
                     &self.span,
                     state.id,
@@ -61,7 +59,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ToUnixTimeFunction {
                 .try_as_i64(&self.span, state.id)?;
                 if off_val < i32::MIN as i64 || off_val > i32::MAX as i64 {
                     return Err(TransformError::new_invalid_operation(
-                        format!("Offset {} out of bounds for to_unix_timestamp", off_val),
+                        format!("Offset {off_val} out of bounds for to_unix_timestamp"),
                         &self.span,
                         state.id,
                     ));
@@ -69,7 +67,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ToUnixTimeFunction {
 
                 let offset = FixedOffset::east_opt(off_val as i32).ok_or_else(|| {
                     TransformError::new_invalid_operation(
-                        format!("Offset {} out of bounds for to_unix_timestamp", off_val),
+                        format!("Offset {off_val} out of bounds for to_unix_timestamp"),
                         &self.span,
                         state.id,
                     )
