@@ -108,7 +108,7 @@ mod tests {
                 assert_eq!(d.desc, "pow argument 2. Got string, expected number");
                 assert_eq!(d.span, Span { start: 4, end: 18 });
             }
-            _ => panic!("Wrong type of error {:?}", err),
+            _ => panic!("Wrong type of error {err:?}"),
         }
     }
 
@@ -121,7 +121,7 @@ mod tests {
                 assert_eq!(d.desc, "Divide by zero");
                 assert_eq!(d.span, Span { start: 2, end: 3 });
             }
-            _ => panic!("Wrong type of error {:?}", err),
+            _ => panic!("Wrong type of error {err:?}"),
         }
     }
 }

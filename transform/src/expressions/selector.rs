@@ -25,8 +25,8 @@ pub enum SelectorElement {
 impl Display for SelectorElement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SelectorElement::Constant(x) => write!(f, "{}", x),
-            SelectorElement::Expression(x) => write!(f, "[{}]", x),
+            SelectorElement::Constant(x) => write!(f, "{x}"),
+            SelectorElement::Expression(x) => write!(f, "[{x}]"),
         }
     }
 }
@@ -35,7 +35,7 @@ impl Display for SelectorExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "${}", self.source)?;
         for el in &self.path {
-            write!(f, ".{}", el)?;
+            write!(f, ".{el}")?;
         }
         Ok(())
     }

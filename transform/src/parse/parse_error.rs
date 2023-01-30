@@ -31,21 +31,21 @@ impl ParserError {
             Token::Error => Self::invalid_token(position),
             _ => Self::UnexpectedSymbol(ParserErrorData {
                 position,
-                detail: Some(format!("Unexpected symbol {}", symbol)),
+                detail: Some(format!("Unexpected symbol {symbol}")),
             }),
         }
     }
     pub(crate) fn unrecognized_function(position: Span, symbol: &str) -> Self {
         Self::UnexpectedSymbol(ParserErrorData {
             position,
-            detail: Some(format!("Unrecognized function: {}", symbol)),
+            detail: Some(format!("Unrecognized function: {symbol}")),
         })
     }
 
     pub(crate) fn expected_symbol(position: Span, symbol: &str) -> Self {
         Self::ExpectedSymbol(ParserErrorData {
             position,
-            detail: Some(format!("Expected {}", symbol)),
+            detail: Some(format!("Expected {symbol}")),
         })
     }
     pub(crate) fn invalid_expr(position: Span, detail: &str) -> Self {
@@ -57,7 +57,7 @@ impl ParserError {
     pub(crate) fn n_function_args(position: Span, detail: &str) -> Self {
         Self::NFunctionArgs(ParserErrorData {
             position,
-            detail: Some(format!("Incorrect number of function args: {}", detail)),
+            detail: Some(format!("Incorrect number of function args: {detail}")),
         })
     }
     pub(crate) fn invalid_token(position: Span) -> Self {

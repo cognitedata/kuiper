@@ -26,7 +26,7 @@ impl TransformError {
         id: &str,
     ) -> Self {
         Self::IncorrectTypeInField(TransformErrorData {
-            desc: format!("{}. Got {}, expected {}", desc, actual, expected),
+            desc: format!("{desc}. Got {actual}, expected {expected}"),
             id: id.to_string(),
             span: span.clone(),
         })

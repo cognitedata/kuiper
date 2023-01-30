@@ -31,8 +31,7 @@ impl JsonNumber {
             Self::NegInteger(x) => x.try_into().map_err(|e| {
                 TransformError::new_conversion_failed(
                     format!(
-                        "Failed to convert negative integer {} to unsigned: {}",
-                        x, e
+                        "Failed to convert negative integer {x} to unsigned: {e}"
                     ),
                     span,
                     id,
@@ -42,7 +41,7 @@ impl JsonNumber {
             Self::Float(x) => {
                 if x.fract() != 0.0f64 {
                     Err(TransformError::new_conversion_failed(
-                        format!("Failed to convert floating point number {} to integer: not a whole number", x),
+                        format!("Failed to convert floating point number {x} to integer: not a whole number"),
                         span,
                         id,
                     ))
@@ -50,7 +49,7 @@ impl JsonNumber {
                     Ok(x as u64)
                 } else {
                     Err(TransformError::new_conversion_failed(
-                        format!("Failed to convert floating point number {} to positive integer: number does not fit within (0, 18446744073709551615)", x), span, id))
+                        format!("Failed to convert floating point number {x} to positive integer: number does not fit within (0, 18446744073709551615)"), span, id))
                 }
             }
         }
@@ -63,8 +62,7 @@ impl JsonNumber {
             Self::PosInteger(x) => x.try_into().map_err(|e| {
                 TransformError::new_conversion_failed(
                     format!(
-                        "Failed to convert positive integer to signed integer: {}",
-                        e
+                        "Failed to convert positive integer to signed integer: {e}"
                     ),
                     span,
                     id,
@@ -112,8 +110,7 @@ impl JsonNumber {
                 } else {
                     Err(TransformError::new_conversion_failed(
                         format!(
-                            "Failed to convert floating point number {} to integer, too large.",
-                            x
+                            "Failed to convert floating point number {x} to integer, too large."
                         ),
                         span,
                         id,

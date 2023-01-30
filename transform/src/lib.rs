@@ -155,7 +155,7 @@ mod tests {
         let res = program.execute(&input).unwrap();
         assert_eq!(res.len(), 50);
         for rs in res {
-            println!("{}", rs);
+            println!("{rs}");
         }
     }
 
@@ -188,7 +188,7 @@ mod tests {
                 assert_eq!(d.field, None);
                 assert_eq!(d.id, "step1");
             }
-            _ => panic!("Wrong type of error {:?}", err),
+            _ => panic!("Wrong type of error {err:?}"),
         }
     }
 
@@ -220,7 +220,7 @@ mod tests {
                 assert_eq!(d.field, Some("f1".to_string()));
                 assert_eq!(d.id, "step1");
             }
-            _ => panic!("Wrong type of error {:?}", err),
+            _ => panic!("Wrong type of error {err:?}"),
         }
     }
 
@@ -239,7 +239,7 @@ mod tests {
                 assert_eq!(d.id, Some("input".to_string()));
                 assert_eq!(d.desc, "Transform ID may not be \"input\" or \"merge\". They are reserved for special inputs to the pipeline")
             }
-            _ => panic!("Wrong type of error {:?}", err),
+            _ => panic!("Wrong type of error {err:?}"),
         }
     }
 
@@ -258,7 +258,7 @@ mod tests {
                 assert_eq!(d.id, Some("merge".to_string()));
                 assert_eq!(d.desc, "Transform ID may not be \"input\" or \"merge\". They are reserved for special inputs to the pipeline")
             }
-            _ => panic!("Wrong type of error {:?}", err),
+            _ => panic!("Wrong type of error {err:?}"),
         }
     }
 
@@ -280,7 +280,7 @@ mod tests {
                     "Recursive transformations are not allowed, step indirectly references itself"
                 )
             }
-            _ => panic!("Wrong type of error {:?}", err),
+            _ => panic!("Wrong type of error {err:?}"),
         }
     }
 
@@ -309,7 +309,7 @@ mod tests {
                     "Recursive transformations are not allowed, step2 indirectly references itself"
                 )
             }
-            _ => panic!("Wrong type of error {:?}", err),
+            _ => panic!("Wrong type of error {err:?}"),
         }
     }
 
@@ -328,7 +328,7 @@ mod tests {
                 assert_eq!(d.id, Some("step".to_string()));
                 assert_eq!(d.desc, "Input step2 to step is not defined")
             }
-            _ => panic!("Wrong type of error {:?}", err),
+            _ => panic!("Wrong type of error {err:?}"),
         }
     }
 
@@ -391,7 +391,7 @@ mod tests {
                 assert_eq!(d.desc, "Divide by zero");
                 assert_eq!(d.span, Span { start: 3, end: 4 });
             }
-            _ => panic!("Wrong type of error {:?}", res),
+            _ => panic!("Wrong type of error {res:?}"),
         }
     }
 
@@ -411,7 +411,7 @@ mod tests {
                 assert_eq!(d.desc, "'*'. Got string, expected number");
                 assert_eq!(d.span, Span { start: 3, end: 4 });
             }
-            _ => panic!("Wrong type of error {:?}", res),
+            _ => panic!("Wrong type of error {res:?}"),
         }
     }
 
@@ -431,7 +431,7 @@ mod tests {
                 assert_eq!(d.desc, "pow argument 2. Got string, expected number");
                 assert_eq!(d.span, Span { start: 0, end: 19 });
             }
-            _ => panic!("Wrong type of error {:?}", res),
+            _ => panic!("Wrong type of error {res:?}"),
         }
     }
 
@@ -451,7 +451,7 @@ mod tests {
                 assert_eq!(d.desc, "foo");
                 assert_eq!(d.span, Span { start: 8, end: 17 });
             }
-            _ => panic!("Wrong type of error {:?}", res),
+            _ => panic!("Wrong type of error {res:?}"),
         }
     }
 
@@ -471,7 +471,7 @@ mod tests {
                 assert_eq!(d.desc, "Root selector must be string");
                 assert_eq!(d.span, Span { start: 0, end: 4 });
             }
-            _ => panic!("Wrong type of error {:?}", res),
+            _ => panic!("Wrong type of error {res:?}"),
         }
     }
     // Filter
@@ -545,7 +545,7 @@ mod tests {
                     "Filter operations must have exactly one input or use input mode \"merge\""
                 );
             }
-            _ => panic!("Wrong type of error {:?}", err),
+            _ => panic!("Wrong type of error {err:?}"),
         }
     }
 

@@ -151,7 +151,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for IntFunction {
                 if s.starts_with('-') {
                     let res: i64 = s.parse().map_err(|e| {
                         TransformError::new_conversion_failed(
-                            format!("Failed to convert string {} to integer: {}", s, e),
+                            format!("Failed to convert string {s} to integer: {e}"),
                             &self.span,
                             state.id,
                         )
@@ -160,7 +160,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for IntFunction {
                 } else {
                     let res: u64 = s.parse().map_err(|e| {
                         TransformError::new_conversion_failed(
-                            format!("Failed to convert string {} to integer: {}", s, e),
+                            format!("Failed to convert string {s} to integer: {e}"),
                             &self.span,
                             state.id,
                         )
@@ -216,7 +216,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for FloatFunction {
             .as_f64(),
             Value::String(s) => s.parse().map_err(|e| {
                 TransformError::new_conversion_failed(
-                    format!("Failed to convert string {} to float: {}", s, e),
+                    format!("Failed to convert string {s} to float: {e}"),
                     &self.span,
                     state.id,
                 )

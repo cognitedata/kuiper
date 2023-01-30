@@ -249,7 +249,7 @@ pub(crate) fn get_number_from_value(
         .or_else(|| v.as_f64().map(JsonNumber::Float))
         .ok_or_else(|| {
             TransformError::new_conversion_failed(
-                format!("Failed to convert input into number for operator {}", desc),
+                format!("Failed to convert input into number for operator {desc}"),
                 span,
                 id,
             )

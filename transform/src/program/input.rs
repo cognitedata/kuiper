@@ -117,7 +117,7 @@ pub(crate) struct TransformInputs {
 
 impl TransformInputs {
     pub fn new(inputs: HashMap<String, TransformOrInput>, mode: TransformInputType) -> Self {
-        let set = HashSet::from_iter(inputs.iter().map(|(_, v)| v.clone()));
+        let set = HashSet::from_iter(inputs.values().cloned());
         Self {
             inputs,
             used_inputs: set,
@@ -137,7 +137,7 @@ impl Display for TransformOrInput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Input => write!(f, "input"),
-            Self::Transform(u) => write!(f, "{}", u),
+            Self::Transform(u) => write!(f, "{u}"),
             Self::Merge => write!(f, "merge"),
         }
     }
