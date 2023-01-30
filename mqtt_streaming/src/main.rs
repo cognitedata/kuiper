@@ -9,7 +9,10 @@ use cognite::{
     Identity,
 };
 use json_transform::Program;
-use paho_mqtt::{ConnectOptionsBuilder, MessageBuilder};
+use rumqttc::v5::{
+    mqttbytes::{v5::Packet, QoS},
+    Event, MqttOptions,
+};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tokio::sync::RwLock;
@@ -26,14 +29,13 @@ async fn main() {
         }
     });
 
-    let mut client = paho_mqtt::AsyncClient::new("tcp://localhost:1881").unwrap();
-    let stream = client.get_stream(100);
-    let opts = ConnectOptionsBuilder::new()
-        .keep_alive_interval(Duration::from_secs(10))
-        .clean_session(true)
-        .finalize();
-    client.connect(opts).await.unwrap();
-    client.subscribe("mytopic", 2).await.unwrap();
+    let options = MqttOptions::new("testclient", "localhost", 1881);
+
+    let (mut client, mut event_loop) = rumqttc::v5::AsyncClient::new(options, 1000);
+    client
+        .subscribe("mytopic", rumqttc::v5::mqttbytes::QoS::AtLeastOnce)
+        .await
+        .unwrap();
 
     let transform = Program::compile(
         serde_json::from_value(json!([{
@@ -61,15 +63,30 @@ async fn main() {
     .unwrap();
 
     loop {
-        let msg = stream.recv().await.unwrap();
-        if let Some(msg) = msg {
-            let raw: Value = serde_json::from_slice(msg.payload()).unwrap();
+        let msg = event_loop.poll().await.unwrap();
+        let msg = match msg {
+            Event::Incoming(m) => m,
+            _ => continue,
+        };
+        println!("Received message {:?}", msg);
+
+        if let Packet::Publish(p, _opt) = msg.as_ref() {
+            let raw: Value = serde_json::from_slice(&p.payload).unwrap();
             let output = transform.execute(&raw).unwrap();
             let mut upl = queue.write().await;
             for msg in output {
                 upl.insert(msg).unwrap();
             }
         }
+
+        /*if let Some(msg) = msg {
+            let raw: Value = serde_json::from_slice(msg.payload()).unwrap();
+            let output = transform.execute(&raw).unwrap();
+            let mut upl = queue.write().await;
+            for msg in output {
+                upl.insert(msg).unwrap();
+            }
+        } */
     }
 }
 
@@ -233,12 +250,14 @@ async fn generate() {
         SimState::new("cos"),
         SimState::new("inc"),
     ];
-    let client = paho_mqtt::AsyncClient::new("tcp://localhost:1881").unwrap();
-    let opts = ConnectOptionsBuilder::new()
-        .keep_alive_interval(Duration::from_secs(10))
-        .clean_session(true)
-        .finalize();
-    client.connect(opts).await.unwrap();
+    let options = MqttOptions::new("testclientpub", "localhost", 1881);
+    let (mut client, mut event_loop) = rumqttc::v5::AsyncClient::new(options, 1000);
+
+    let loop_h = tokio::spawn(async move {
+        loop {
+            event_loop.poll().await.unwrap();
+        }
+    });
 
     let mut idx = 0;
     loop {
@@ -262,10 +281,10 @@ async fn generate() {
 
         client
             .publish(
-                MessageBuilder::new()
-                    .topic("mytopic")
-                    .payload(serde_json::to_vec(&msg).unwrap())
-                    .finalize(),
+                "mytopic",
+                QoS::AtLeastOnce,
+                false,
+                serde_json::to_vec(&msg).unwrap(),
             )
             .await
             .unwrap();
