@@ -9,6 +9,8 @@ pub use program::{CompileError, ConfigCompileError, ParserCompileError, Program,
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use logos::Span;
     use serde_json::{json, Value};
 
@@ -237,7 +239,7 @@ mod tests {
         match err {
             CompileError::Config(d) => {
                 assert_eq!(d.id, Some("input".to_string()));
-                assert_eq!(d.desc, "Transform ID may not be \"input\" or \"merge\". They are reserved for special inputs to the pipeline")
+                assert_eq!(d.desc, "Transform ID may not start with \"input\" or be equal to \"merge\". They are reserved for special inputs to the pipeline")
             }
             _ => panic!("Wrong type of error {err:?}"),
         }
@@ -256,7 +258,7 @@ mod tests {
         match err {
             CompileError::Config(d) => {
                 assert_eq!(d.id, Some("merge".to_string()));
-                assert_eq!(d.desc, "Transform ID may not be \"input\" or \"merge\". They are reserved for special inputs to the pipeline")
+                assert_eq!(d.desc, "Transform ID may not start with \"input\" or be equal to \"merge\". They are reserved for special inputs to the pipeline")
             }
             _ => panic!("Wrong type of error {err:?}"),
         }
@@ -653,5 +655,121 @@ mod tests {
         assert_eq!(res.len(), 1);
         let res = res.first().unwrap();
         assert!(res.get("v1").unwrap().as_bool().unwrap());
+    }
+
+    fn compile_aliased(
+        value: Value,
+        alias: HashMap<usize, Vec<String>>,
+    ) -> Result<Program, CompileError> {
+        Program::compile_map(serde_json::from_value(value).unwrap(), &alias)
+    }
+
+    fn compile_err_aliased(value: Value, alias: HashMap<usize, Vec<String>>) -> CompileError {
+        match compile_aliased(value, alias) {
+            Ok(_) => panic!("Expected compilation to fail"),
+            Err(x) => x,
+        }
+    }
+
+    #[test]
+    pub fn test_multiple_inputs() {
+        let program = compile(json!([{
+            "id": "test",
+            "inputs": ["input", "input1", "input2"],
+            "transform": {
+                "i1": "$input",
+                "i2": "$input1",
+                "i3": "$input2"
+            },
+            "type": "map"
+        }]))
+        .unwrap();
+        let i1 = json!(123);
+        let i2 = json!("test");
+        let i3 = json!({ "test": 123 });
+        let res = program.execute_multiple(&[&i1, &i2, &i3]).unwrap();
+        assert_eq!(res.len(), 1);
+        let res = res.first().unwrap();
+        assert_eq!(res.get("i1").unwrap().as_i64().unwrap(), 123);
+        assert_eq!(res.get("i2").unwrap().as_str().unwrap(), "test");
+        assert_eq!(
+            res.get("i3")
+                .unwrap()
+                .as_object()
+                .unwrap()
+                .get("test")
+                .unwrap()
+                .as_i64()
+                .unwrap(),
+            123
+        );
+    }
+
+    #[test]
+    pub fn test_multiple_inputs_aliased() {
+        let program = compile_aliased(
+            json!([{
+                "id": "test2",
+                "inputs": ["input", "mystery", "test"],
+                "transform": {
+                    "i1": "$input",
+                    "i2": "$mystery",
+                    "i3": "$input2"
+                },
+                "type": "map"
+            }]),
+            HashMap::from_iter([
+                (1, vec!["mystery".to_owned()]),
+                (2, vec!["test".to_owned()]),
+            ]),
+        )
+        .unwrap();
+
+        let i1 = json!(123);
+        let i2 = json!("test");
+        let i3 = json!({ "test": 123 });
+        let res = program.execute_multiple(&[&i1, &i2, &i3]).unwrap();
+        assert_eq!(res.len(), 1);
+        let res = res.first().unwrap();
+        assert_eq!(res.get("i1").unwrap().as_i64().unwrap(), 123);
+        assert_eq!(res.get("i2").unwrap().as_str().unwrap(), "test");
+        assert_eq!(
+            res.get("i3")
+                .unwrap()
+                .as_object()
+                .unwrap()
+                .get("test")
+                .unwrap()
+                .as_i64()
+                .unwrap(),
+            123
+        );
+    }
+
+    #[test]
+    pub fn test_multiple_inputs_aliased_err() {
+        let err = compile_err_aliased(
+            json!([{
+                "id": "test",
+                "inputs": ["input", "mystery", "test"],
+                "transform": {
+                    "i1": "$input",
+                    "i2": "$mystery",
+                    "i3": "$input2"
+                },
+                "type": "map"
+            }]),
+            HashMap::from_iter([
+                (1, vec!["mystery".to_owned()]),
+                (2, vec!["test".to_owned()]),
+            ]),
+        );
+
+        match err {
+            CompileError::Config(d) => {
+                assert_eq!(d.id, Some("test".to_string()));
+            }
+            _ => panic!("Wrong type of error {err:?}"),
+        }
     }
 }

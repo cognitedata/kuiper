@@ -28,9 +28,9 @@ pub struct TransformState<'inp> {
 }
 
 impl<'inp> TransformState<'inp> {
-    pub fn new(total_num: usize) -> Self {
-        let mut dat = Vec::with_capacity(total_num);
-        for _ in 0..total_num {
+    pub fn new(num_transforms: usize, num_inputs: usize) -> Self {
+        let mut dat = Vec::with_capacity(num_transforms + num_inputs);
+        for _ in 0..(num_transforms + num_inputs) {
             dat.push(OnceCell::new());
         }
         Self {
@@ -69,11 +69,37 @@ impl<'inp> TransformState<'inp> {
 }
 
 impl Program {
+    pub fn execute_multiple<'a>(
+        &self,
+        input: &'a [&'a Value],
+    ) -> Result<Vec<Value>, TransformError> {
+        let data = TransformState::new(self.transforms.len(), input.len());
+        for (idx, inp) in input.iter().enumerate() {
+            data.insert_elem(
+                TransformOrInput::Input(idx),
+                vec![ResolveResult::Borrowed(inp)],
+            );
+        }
+
+        let len = self.transforms.len();
+        for (idx, tf) in self.transforms.iter().enumerate() {
+            let value = tf.execute(&data)?;
+            if idx == len - 1 {
+                return Ok(value.into_iter().map(|r| r.into_owned()).collect());
+            }
+            // cached_results.insert(idx, value);
+            data.insert_elem(TransformOrInput::Transform(idx), value);
+        }
+        Err(TransformError::InvalidProgramError(
+            "No transforms in program".to_string(),
+        ))
+    }
+
     /// Execute the program on a JSON value. The output is a list of values or a compile error.
     pub fn execute(&self, input: &Value) -> Result<Vec<Value>, TransformError> {
-        let data = TransformState::new(self.transforms.len() + 1);
+        let data = TransformState::new(self.transforms.len(), 1);
         data.insert_elem(
-            TransformOrInput::Input,
+            TransformOrInput::Input(0),
             vec![ResolveResult::Borrowed(input)],
         );
 

@@ -4,6 +4,7 @@ use std::{
 };
 
 use logos::Logos;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -128,7 +129,7 @@ impl TransformInputs {
 
 #[derive(Hash, PartialEq, Eq, Debug, Clone)]
 pub enum TransformOrInput {
-    Input,
+    Input(usize),
     Transform(usize),
     Merge,
 }
@@ -136,7 +137,7 @@ pub enum TransformOrInput {
 impl Display for TransformOrInput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Input => write!(f, "input"),
+            Self::Input(u) => write!(f, "input{u}"),
             Self::Transform(u) => write!(f, "{u}"),
             Self::Merge => write!(f, "merge"),
         }
@@ -247,6 +248,41 @@ pub struct Program {
 
 impl Program {
     /// Compile the program. The input is a list of raw transform inputs, which should have unique IDs.
+    /// input_aliases are aliases in code for inputs in position given by the key. By default they have keys input0, input1, etc.
+    /// and the special "input" alias for input0. This list can add new aliases at each index. Make sure not to add an alias input or merge,
+    /// as that may have unpredictable effects.
+    pub fn compile_map(
+        inp: Vec<TransformInput>,
+        input_aliases: &HashMap<usize, Vec<String>>,
+    ) -> Result<Self, CompileError> {
+        if inp.is_empty() {
+            return Ok(Program { transforms: vec![] });
+        }
+
+        let mut transform_map: HashMap<String, usize> = HashMap::new();
+        let mut inv_input_map: HashMap<String, usize> = HashMap::new();
+        for (key, value) in input_aliases {
+            for alias in value {
+                inv_input_map.insert(alias.clone(), *key);
+            }
+        }
+
+        let output = inp.last().unwrap();
+        let mut res = vec![];
+        Self::compile_rec(
+            output,
+            &inp,
+            &mut res,
+            &mut transform_map,
+            &[],
+            &input_aliases,
+            &inv_input_map,
+        )?;
+
+        Ok(Self { transforms: res })
+    }
+
+    /// Compile the program. The input is a list of raw transform inputs, which should have unique IDs.
     pub fn compile(inp: Vec<TransformInput>) -> Result<Self, CompileError> {
         if inp.is_empty() {
             return Ok(Program { transforms: vec![] });
@@ -256,7 +292,15 @@ impl Program {
 
         let output = inp.last().unwrap();
         let mut res = vec![];
-        Self::compile_rec(output, &inp, &mut res, &mut transform_map, &[])?;
+        Self::compile_rec(
+            output,
+            &inp,
+            &mut res,
+            &mut transform_map,
+            &[],
+            &HashMap::new(),
+            &HashMap::new(),
+        )?;
 
         Ok(Self { transforms: res })
     }
@@ -278,10 +322,26 @@ impl Program {
         build: &mut Vec<Transform>,
         state: &mut HashMap<String, usize>,
         visited: &[&'a String],
+        input_map: &HashMap<usize, Vec<String>>,
+        inv_input_map: &HashMap<String, usize>,
     ) -> Result<(), CompileError> {
-        if raw.id() == "input" || raw.id() == "merge" {
+        lazy_static::lazy_static! {
+            static ref INPUT_RE: Regex = Regex::new("^input([0-9]*)$").unwrap();
+        }
+
+        if inv_input_map.contains_key(raw.id()) {
+            let values_str = input_map
+                .values()
+                .flat_map(|v| v)
+                .fold("\"merge\"".to_owned(), |a, b| {
+                    a + ", " + &format!("\"{b}\"")
+                });
+            return Err(CompileError::config_err(&format!("Transform ID may not start with \"input\" or be equal to any special inputs: {}", values_str), Some(raw.id())));
+        }
+
+        if raw.id().starts_with("input") || raw.id() == "merge" {
             return Err(CompileError::config_err(
-                "Transform ID may not be \"input\" or \"merge\". They are reserved for special inputs to the pipeline",
+                "Transform ID may not start with \"input\" or be equal to \"merge\". They are reserved for special inputs to the pipeline",
                 Some(raw.id())
             ));
         }
@@ -302,8 +362,42 @@ impl Program {
         next_visited.push(raw.id());
         let mut final_inputs = HashMap::new();
         for input in raw.inputs() {
-            if input == "input" {
-                final_inputs.insert("input".to_string(), TransformOrInput::Input);
+            if input.starts_with("input") {
+                let caps = INPUT_RE.captures(input);
+                let Some(caps) = caps else {
+                    return Err(CompileError::config_err("Transform inputs starting with \"input\" must be either just \"input\" or \"input123\"", Some(raw.id())));
+                };
+                let idx: usize = if caps.len() == 2 {
+                    let cap = caps.get(1).unwrap().as_str();
+                    if cap.is_empty() {
+                        0
+                    } else {
+                        cap.parse().map_err(|_| {
+                            CompileError::config_err(
+                                &format!("Invalid transform input: {input}"),
+                                Some(raw.id()),
+                            )
+                        })?
+                    }
+                } else {
+                    0
+                };
+
+                final_inputs.insert(format!("input{idx}"), TransformOrInput::Input(idx));
+                if idx == 0 {
+                    final_inputs.insert("input".to_string(), TransformOrInput::Input(0));
+                }
+                if let Some(aliases) = input_map.get(&idx) {
+                    for alias in aliases.iter() {
+                        final_inputs.insert(alias.clone(), TransformOrInput::Input(idx));
+                    }
+                }
+            } else if let Some(idx) = inv_input_map.get(input) {
+                final_inputs.insert(input.clone(), TransformOrInput::Input(*idx));
+                final_inputs.insert(format!("input{idx}"), TransformOrInput::Input(*idx));
+                if *idx == 0 {
+                    final_inputs.insert("input".to_string(), TransformOrInput::Input(0));
+                }
             } else {
                 let next = inp.iter().find(|i| i.id() == input).ok_or_else(|| {
                     CompileError::config_err(
@@ -312,7 +406,15 @@ impl Program {
                     )
                 })?;
 
-                Self::compile_rec(next, inp, build, state, &next_visited)?;
+                Self::compile_rec(
+                    next,
+                    inp,
+                    build,
+                    state,
+                    &next_visited,
+                    &input_map,
+                    &inv_input_map,
+                )?;
                 final_inputs.insert(
                     input.clone(),
                     TransformOrInput::Transform(*state.get(input).unwrap()),
