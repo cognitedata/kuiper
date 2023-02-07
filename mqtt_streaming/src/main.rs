@@ -31,7 +31,7 @@ async fn main() {
 
     let options = MqttOptions::new("testclient", "localhost", 1881);
 
-    let (mut client, mut event_loop) = rumqttc::v5::AsyncClient::new(options, 1000);
+    let (client, mut event_loop) = rumqttc::v5::AsyncClient::new(options, 1000);
     client
         .subscribe("mytopic", rumqttc::v5::mqttbytes::QoS::AtLeastOnce)
         .await
