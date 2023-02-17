@@ -1,0 +1,15 @@
+[package]
+name = "amqp_streaming"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.68"
+serde = "1.0.152"
+serde_json = "1.0.91"
+fe2o3-amqp = { version = "0.8.13", features = ["rustls"] }
+fe2o3-amqp-management = "0.2.1"
+tokio = { version = "1.24.2", features = ["full"] }
+json_transform = { path = "../transform" }
