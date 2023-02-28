@@ -814,4 +814,25 @@ mod tests {
         let obj = res.as_object().unwrap();
         assert_eq!(obj.get("i1").unwrap().as_u64().unwrap(), 8);
     }
+
+    #[test]
+    pub fn test_array_indexing() {
+        let program = compile(json!([{
+            "id": "test",
+            "inputs": ["input"],
+            "transform": {
+                "i1": r#"[[[1, 2, 3], [4], [5, 6], [7, [8]]]][0][3][1][0]"#
+            },
+            "type": "map"
+        }]))
+        .unwrap();
+
+        let inp = json!({ "val": 7 });
+        let res = program.execute(&inp).unwrap();
+        let res = res.into_iter().next().unwrap();
+
+        let obj = res.as_object().unwrap();
+        println!("{:?}", res);
+        assert_eq!(obj.get("i1").unwrap().as_u64().unwrap(), 8);
+    }
 }
