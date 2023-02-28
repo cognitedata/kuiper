@@ -772,4 +772,46 @@ mod tests {
             _ => panic!("Wrong type of error {err:?}"),
         }
     }
+
+    #[test]
+    pub fn test_object_creation() {
+        let program = compile(json!([{
+            "id": "test",
+            "inputs": ["input"],
+            "transform": {
+                "i1": r#"{ concat("test", "test"): 1 + 2 + 3, "val": $input.val }"#
+            },
+            "type": "map"
+        }]))
+        .unwrap();
+
+        let inp = json!({ "val": 7 });
+        let res = program.execute(&inp).unwrap();
+        let res = res.into_iter().next().unwrap();
+
+        let obj = res.as_object().unwrap();
+        let obj = obj.get("i1").unwrap().as_object().unwrap();
+        assert_eq!(obj.get("testtest").unwrap().as_u64().unwrap(), 6);
+        assert_eq!(obj.get("val").unwrap().as_u64().unwrap(), 7);
+    }
+
+    #[test]
+    pub fn test_object_indexing() {
+        let program = compile(json!([{
+            "id": "test",
+            "inputs": ["input"],
+            "transform": {
+                "i1": r#"{ concat("test", "test"): { "test": 8 }, "val": $input.val }["testtest"].test"#
+            },
+            "type": "map"
+        }]))
+        .unwrap();
+
+        let inp = json!({ "val": 7 });
+        let res = program.execute(&inp).unwrap();
+        let res = res.into_iter().next().unwrap();
+
+        let obj = res.as_object().unwrap();
+        assert_eq!(obj.get("i1").unwrap().as_u64().unwrap(), 8);
+    }
 }
