@@ -86,6 +86,7 @@ pub enum Token {
 
     /// A quoted string. We use single quotes for string literals.
     #[regex(r#"'(?:[^'\\]|\\.)*'"#, parse_string)]
+    #[regex(r#""(?:[^'\\]|\\.)*""#, parse_string)]
     String(String),
 
     /// A literal null
@@ -109,6 +110,15 @@ pub enum Token {
     /// End of a dynamic selector expression of an array.
     #[token("]")]
     CloseBracket,
+
+    #[token("{")]
+    OpenBrace,
+
+    #[token("}")]
+    CloseBrace,
+
+    #[token(":")]
+    Colon,
 
     /// Anything else, and whitespace. If it's whitespace it is skipped silently.
     #[error]
@@ -136,6 +146,9 @@ impl Display for Token {
             Token::UInteger(x) => write!(f, "{x}"),
             Token::Null => write!(f, "null"),
             Token::Boolean(b) => write!(f, "{}", if *b { "true" } else { "false" }),
+            Token::OpenBrace => write!(f, "{{"),
+            Token::CloseBrace => write!(f, "}}"),
+            Token::Colon => write!(f, ":"),
         }
     }
 }

@@ -3,7 +3,7 @@ use logos::{Lexer, Span};
 use crate::{
     expressions::{
         get_function_expression, ArrayExpression, Constant, ExpressionType, OpExpression, Operator,
-        SelectorElement, SelectorExpression, UnaryOpExpression,
+        SelectorElement, SelectorExpression, SourceElement, UnaryOpExpression,
     },
     lexer::Token,
 };
@@ -59,6 +59,7 @@ enum ParseTokenResult {
     Terminator(ExprTerminator),
     ExpressionAndTerminator((ExpressionType, ExprTerminator)),
     Operator((Operator, Span)),
+    Selector((Vec<SelectorElement>, Option<Token>, Span)),
 }
 
 impl<'source> Parser<'source> {
@@ -100,7 +101,7 @@ impl<'source> Parser<'source> {
         // only expression operators like `Token::OpenParenthesis`, `Float`, `Integer`, `String`, `SelectorStart`,
         // etc. are valid.
         // After an expression the only valid symbols are operators, or terminators.
-        if matches!(token, Token::Operator(_) | Token::Comma)
+        if matches!(token, Token::Operator(_) | Token::Comma | Token::Period)
             || !is_initial && matches!(token, Token::CloseParenthesis | Token::CloseBracket)
         {
             if expect_expression {
@@ -113,7 +114,17 @@ impl<'source> Parser<'source> {
         // println!("Investigate symbol {}", token);
         match token {
             // A period is invalid in an expression on its own.
-            Token::Period => Err(ParserError::unexpected_symbol(self.tokens.span(), token)),
+            Token::Period => {
+                if !expect_expression {
+                    Err(ParserError::unexpected_symbol(self.tokens.span(), token))
+                } else {
+                    Ok(ParseTokenResult::Selector(
+                        self.parse_selector(Token::Period, false)?,
+                    ))
+                }
+            }
+            // A colon is invalid outside of a map
+            Token::Colon => Err(ParserError::unexpected_symbol(self.tokens.span(), token)),
             // A comma should always terminate an expression.
             Token::Comma => Ok(ParseTokenResult::Terminator(ExprTerminator::Comma)),
             // An error is never valid.
@@ -145,7 +156,7 @@ impl<'source> Parser<'source> {
                             term,
                         )))
                     }
-                    ParseTokenResult::Operator(_) => {
+                    ParseTokenResult::Operator(_) | ParseTokenResult::Selector(_) => {
                         Err(ParserError::expect_expression(self.tokens.span()))
                     }
                 }
@@ -212,7 +223,8 @@ impl<'source> Parser<'source> {
             }
             // SelectorStart indicates the start of an expression, which has its own method for parsing.
             Token::SelectorStart => {
-                let (expr, next) = self.parse_selector()?;
+                let (selectors, next, span) = self.parse_selector(Token::SelectorStart, true)?;
+                let expr = SelectorExpression::new(SourceElement::Input, selectors, span);
                 let expr = ExpressionType::Selector(expr);
                 match next {
                     Some(x) => Ok(ParseTokenResult::ExpressionAndNext((expr, x))),
@@ -240,6 +252,8 @@ impl<'source> Parser<'source> {
             }
             // CloseBracket is a terminator for arrays.
             Token::CloseBracket => Ok(ParseTokenResult::Terminator(ExprTerminator::CloseBracket)),
+            Token::OpenBrace => todo!(),
+            Token::CloseBrace => todo!(),
         }
     }
 
@@ -341,6 +355,7 @@ impl<'source> Parser<'source> {
         let mut expect_expression = true;
         let mut initial = true;
         let term = loop {
+            let previous = self.tokens.span();
             match self.next_expression(expect_expression, initial, token)? {
                 ParseTokenResult::Expression(x) => {
                     exprs.push(x);
@@ -361,6 +376,30 @@ impl<'source> Parser<'source> {
                 ParseTokenResult::ExpressionAndTerminator((x, t)) => {
                     exprs.push(x);
                     break t;
+                }
+                ParseTokenResult::Selector((selectors, next, span)) => {
+                    if let Some(t) = next {
+                        token = t;
+                    } else {
+                        token = match self.tokens.next() {
+                            Some(x) => x,
+                            None => break ExprTerminator::End,
+                        };
+                    }
+                    let root_expr = exprs.pop();
+                    let Some(root) = root_expr else {
+                        return Err(ParserError::expect_expression(start));
+                    };
+                    exprs.push(ExpressionType::Selector(SelectorExpression::new(
+                        SourceElement::Expression(Box::new(root)),
+                        selectors,
+                        Span {
+                            start: previous.start,
+                            end: span.end,
+                        },
+                    )));
+                    initial = false;
+                    continue;
                 }
             }
             initial = false;
@@ -423,19 +462,31 @@ impl<'source> Parser<'source> {
     }
 
     // Parse a selector, on the form `$id.some.json.path` or `$id.array[0][1]`, or `$['dynamic']['selectors'][1 + 1].field`
-    fn parse_selector(&mut self) -> Result<(SelectorExpression, Option<Token>), ParserError> {
+    fn parse_selector(
+        &mut self,
+        token: Token,
+        no_initial_period: bool,
+    ) -> Result<(Vec<SelectorElement>, Option<Token>, Span), ParserError> {
         let mut path = vec![];
         let start = self.tokens.span();
 
         let mut last_period = false;
-        let mut initial = true;
+        let mut initial = no_initial_period;
+
+        let mut next = match token {
+            Token::SelectorStart => match self.tokens.next() {
+                Some(x) => x,
+                None => {
+                    return Err(ParserError::empty_expression(Span {
+                        start: start.start,
+                        end: self.tokens.span().end,
+                    }))
+                }
+            },
+            x => x,
+        };
 
         let final_token = loop {
-            let next = match self.tokens.next() {
-                Some(x) => x,
-                None => break None,
-            };
-
             match next {
                 Token::BareString(s) if last_period || initial => {
                     last_period = false;
@@ -474,6 +525,10 @@ impl<'source> Parser<'source> {
                 }
             }
             initial = false;
+            next = match self.tokens.next() {
+                Some(x) => x,
+                None => break None,
+            };
         };
         let span = Span {
             start: start.start,
@@ -482,9 +537,7 @@ impl<'source> Parser<'source> {
         if path.is_empty() {
             return Err(ParserError::empty_expression(span));
         }
-        let expr = SelectorExpression::new(path.remove(0), path, span);
-        // println!("Got selector {}", expr);
-        Ok((expr, final_token))
+        Ok((path, final_token, span))
     }
 }
 
