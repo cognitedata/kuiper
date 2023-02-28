@@ -13,3 +13,4 @@ fe2o3-amqp = { version = "0.8.13", features = ["rustls"] }
 fe2o3-amqp-management = "0.2.1"
 tokio = { version = "1.24.2", features = ["full"] }
 json_transform = { path = "../transform" }
+rumqttc = "0.20.0"
