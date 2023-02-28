@@ -49,12 +49,12 @@ impl Display for SourceElement {
 impl Display for SelectorExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.source)?;
-        let mut need_period = matches!(self.source, SourceElement::Expression(_));
+        let mut initial = true;
         for el in &self.path {
-            if need_period {
+            if matches!(el, SelectorElement::Constant(_)) && !initial {
                 write!(f, ".")?;
             }
-            need_period = true;
+            initial = false;
             write!(f, "{el}")?;
         }
         Ok(())

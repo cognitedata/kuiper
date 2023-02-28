@@ -107,7 +107,7 @@ impl<'source> Parser<'source> {
             if expect_expression {
                 return Err(ParserError::expect_expression(self.tokens.span()));
             }
-        } else if !expect_expression {
+        } else if !expect_expression && !matches!(token, Token::OpenBracket) {
             return Err(ParserError::unexpected_symbol(self.tokens.span(), token));
         }
 
@@ -237,18 +237,26 @@ impl<'source> Parser<'source> {
             // OpenBracket indicates the start of an array, which contains a (potentially empty) expression list,
             // and a CloseBracket.
             Token::OpenBracket => {
-                let start = self.tokens.span();
-                let (items, term) = self.parse_expression_list()?;
-                let span = Span {
-                    start: start.start,
-                    end: self.tokens.span().end,
-                };
-                if !matches!(term, ExprTerminator::CloseBracket) {
-                    return Err(ParserError::expected_symbol(self.tokens.span(), "]"));
-                }
+                println!("Open bracket!");
+                if !expect_expression {
+                    println!("Return selector");
+                    Ok(ParseTokenResult::Selector(
+                        self.parse_selector(Token::OpenBracket, false)?,
+                    ))
+                } else {
+                    let start = self.tokens.span();
+                    let (items, term) = self.parse_expression_list()?;
+                    let span = Span {
+                        start: start.start,
+                        end: self.tokens.span().end,
+                    };
+                    if !matches!(term, ExprTerminator::CloseBracket) {
+                        return Err(ParserError::expected_symbol(self.tokens.span(), "]"));
+                    }
 
-                let expr = ArrayExpression::new(items, span);
-                Ok(ParseTokenResult::Expression(ExpressionType::Array(expr)))
+                    let expr = ArrayExpression::new(items, span);
+                    Ok(ParseTokenResult::Expression(ExpressionType::Array(expr)))
+                }
             }
             // CloseBracket is a terminator for arrays.
             Token::CloseBracket => Ok(ParseTokenResult::Terminator(ExprTerminator::CloseBracket)),
@@ -378,14 +386,6 @@ impl<'source> Parser<'source> {
                     break t;
                 }
                 ParseTokenResult::Selector((selectors, next, span)) => {
-                    if let Some(t) = next {
-                        token = t;
-                    } else {
-                        token = match self.tokens.next() {
-                            Some(x) => x,
-                            None => break ExprTerminator::End,
-                        };
-                    }
                     let root_expr = exprs.pop();
                     let Some(root) = root_expr else {
                         return Err(ParserError::expect_expression(start));
@@ -399,6 +399,14 @@ impl<'source> Parser<'source> {
                         },
                     )));
                     initial = false;
+                    if let Some(t) = next {
+                        token = t;
+                    } else {
+                        token = match self.tokens.next() {
+                            Some(x) => x,
+                            None => break ExprTerminator::End,
+                        };
+                    }
                     continue;
                 }
             }
@@ -738,5 +746,11 @@ pub mod test {
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
+    }
+
+    #[test]
+    pub fn test_array_idx() {
+        let res = parse("$inp.test[0] + [0, 1, 2][2]").unwrap();
+        assert_eq!("($inp.test[0] + [0, 1, 2][2])", res.to_string());
     }
 }
