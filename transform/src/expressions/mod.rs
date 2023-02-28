@@ -15,6 +15,7 @@ pub use base::{
     FunctionType, ResolveResult,
 };
 pub use functions::FunctionExpression;
+pub use object::ObjectExpression;
 pub use operator::{OpExpression, Operator, UnaryOpExpression, UnaryOperator};
 pub use optimizer::optimize;
 pub use selector::{SelectorElement, SelectorExpression, SourceElement};

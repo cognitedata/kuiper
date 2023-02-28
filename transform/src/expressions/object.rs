@@ -8,6 +8,7 @@ use super::{
     Expression, ExpressionType, ResolveResult,
 };
 
+#[derive(Debug, Clone)]
 pub struct ObjectExpression {
     pairs: Vec<(ExpressionType, ExpressionType)>,
     span: Span,
@@ -24,6 +25,7 @@ impl Display for ObjectExpression {
             needs_comma = true;
             write!(f, "{key}: {value}")?;
         }
+        write!(f, "}}")?;
         Ok(())
     }
 }

@@ -5,15 +5,14 @@ use logos::{Lexer, Logos};
 use crate::expressions::{Operator, UnaryOperator};
 
 fn parse_string(lexer: &mut Lexer<Token>) -> String {
-    let mut raw = lexer.slice();
+    let raw = lexer.slice();
     if raw.starts_with('\'') {
-        raw = &raw[1..];
+        raw[1..raw.len() - 1].to_string()
+    } else if raw.starts_with('"') {
+        raw[1..raw.len() - 1].to_string()
+    } else {
+        raw.to_string()
     }
-    if raw.ends_with('\'') {
-        raw = &raw[..raw.len() - 1]
-    }
-
-    raw.to_string()
 }
 
 fn parse_bare_string(lexer: &mut Lexer<Token>) -> String {
@@ -86,7 +85,7 @@ pub enum Token {
 
     /// A quoted string. We use single quotes for string literals.
     #[regex(r#"'(?:[^'\\]|\\.)*'"#, parse_string)]
-    #[regex(r#""(?:[^'\\]|\\.)*""#, parse_string)]
+    #[regex(r#""(?:[^"\\]|\\.)*""#, parse_string)]
     String(String),
 
     /// A literal null
@@ -263,5 +262,19 @@ mod test {
         assert_eq!(lex.next(), Some(Token::UInteger(5)));
         assert_eq!(lex.next(), Some(Token::Operator(Operator::NotEquals)));
         assert_eq!(lex.next(), Some(Token::UInteger(6)));
+    }
+
+    #[test]
+    pub fn test_object() {
+        let mut lex = Token::lexer(r#"{ "test": "test", 123: 'test' }"#);
+        assert_eq!(lex.next(), Some(Token::OpenBrace));
+        assert_eq!(lex.next(), Some(Token::String("test".to_string())));
+        assert_eq!(lex.next(), Some(Token::Colon));
+        assert_eq!(lex.next(), Some(Token::String("test".to_string())));
+        assert_eq!(lex.next(), Some(Token::Comma));
+        assert_eq!(lex.next(), Some(Token::UInteger(123)));
+        assert_eq!(lex.next(), Some(Token::Colon));
+        assert_eq!(lex.next(), Some(Token::String("test".to_string())));
+        assert_eq!(lex.next(), Some(Token::CloseBrace));
     }
 }

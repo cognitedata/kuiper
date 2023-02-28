@@ -2,8 +2,9 @@ use logos::{Lexer, Span};
 
 use crate::{
     expressions::{
-        get_function_expression, ArrayExpression, Constant, ExpressionType, OpExpression, Operator,
-        SelectorElement, SelectorExpression, SourceElement, UnaryOpExpression,
+        get_function_expression, ArrayExpression, Constant, ExpressionType, ObjectExpression,
+        OpExpression, Operator, SelectorElement, SelectorExpression, SourceElement,
+        UnaryOpExpression,
     },
     lexer::Token,
 };
@@ -25,7 +26,22 @@ enum ExprTerminator {
     Comma,
     CloseParenthesis,
     CloseBracket,
+    CloseBrace,
     End,
+    Colon,
+}
+
+impl ExprTerminator {
+    pub fn to_token(&self) -> Token {
+        match self {
+            ExprTerminator::Comma => Token::Comma,
+            ExprTerminator::CloseParenthesis => Token::CloseParenthesis,
+            ExprTerminator::CloseBracket => Token::CloseBracket,
+            ExprTerminator::CloseBrace => Token::CloseBrace,
+            ExprTerminator::End => Token::Error,
+            ExprTerminator::Colon => Token::Colon,
+        }
+    }
 }
 
 /// Handy macro to consume a token, optionally expecting it to match a pattern.
@@ -81,12 +97,7 @@ impl<'source> Parser<'source> {
         } else {
             Err(ParserError::unexpected_symbol(
                 self.tokens.span(),
-                match term {
-                    ExprTerminator::Comma => Token::Comma,
-                    ExprTerminator::CloseParenthesis => Token::CloseParenthesis,
-                    ExprTerminator::CloseBracket => Token::CloseBracket,
-                    ExprTerminator::End => unreachable!(),
-                },
+                term.to_token(),
             ))
         }
     }
@@ -101,8 +112,14 @@ impl<'source> Parser<'source> {
         // only expression operators like `Token::OpenParenthesis`, `Float`, `Integer`, `String`, `SelectorStart`,
         // etc. are valid.
         // After an expression the only valid symbols are operators, or terminators.
-        if matches!(token, Token::Operator(_) | Token::Comma | Token::Period)
-            || !is_initial && matches!(token, Token::CloseParenthesis | Token::CloseBracket)
+        if matches!(
+            token,
+            Token::Operator(_) | Token::Comma | Token::Period | Token::Colon
+        ) || !is_initial
+            && matches!(
+                token,
+                Token::CloseParenthesis | Token::CloseBracket | Token::CloseBrace
+            )
         {
             if expect_expression {
                 return Err(ParserError::expect_expression(self.tokens.span()));
@@ -124,7 +141,7 @@ impl<'source> Parser<'source> {
                 }
             }
             // A colon is invalid outside of a map
-            Token::Colon => Err(ParserError::unexpected_symbol(self.tokens.span(), token)),
+            Token::Colon => Ok(ParseTokenResult::Terminator(ExprTerminator::Colon)),
             // A comma should always terminate an expression.
             Token::Comma => Ok(ParseTokenResult::Terminator(ExprTerminator::Comma)),
             // An error is never valid.
@@ -237,9 +254,7 @@ impl<'source> Parser<'source> {
             // OpenBracket indicates the start of an array, which contains a (potentially empty) expression list,
             // and a CloseBracket.
             Token::OpenBracket => {
-                println!("Open bracket!");
                 if !expect_expression {
-                    println!("Return selector");
                     Ok(ParseTokenResult::Selector(
                         self.parse_selector(Token::OpenBracket, false)?,
                     ))
@@ -260,8 +275,19 @@ impl<'source> Parser<'source> {
             }
             // CloseBracket is a terminator for arrays.
             Token::CloseBracket => Ok(ParseTokenResult::Terminator(ExprTerminator::CloseBracket)),
-            Token::OpenBrace => todo!(),
-            Token::CloseBrace => todo!(),
+            Token::OpenBrace => {
+                let start = self.tokens.span();
+                let pairs = self.parse_map_contents()?;
+                let expr = ObjectExpression::new(
+                    pairs,
+                    Span {
+                        start: start.start,
+                        end: self.tokens.span().end,
+                    },
+                );
+                Ok(ParseTokenResult::Expression(ExpressionType::Object(expr)))
+            }
+            Token::CloseBrace => Ok(ParseTokenResult::Terminator(ExprTerminator::CloseBrace)),
         }
     }
 
@@ -453,7 +479,6 @@ impl<'source> Parser<'source> {
             }
             initial = false;
             match term {
-                ExprTerminator::CloseParenthesis | ExprTerminator::CloseBracket => break term,
                 ExprTerminator::End => {
                     return Err(ParserError::empty_expression(self.tokens.span()))
                 }
@@ -464,9 +489,55 @@ impl<'source> Parser<'source> {
                         Token::Comma,
                     ))
                 }
+                term => break term,
             }
         };
         Ok((res, term))
+    }
+
+    fn parse_map_contents(&mut self) -> Result<Vec<(ExpressionType, ExpressionType)>, ParserError> {
+        let mut pairs = vec![];
+        let mut initial = true;
+        loop {
+            let (expr, term) = self.parse_expression()?;
+            let key = if let Some(expr) = expr {
+                expr
+            } else {
+                if initial && matches!(term, ExprTerminator::CloseBrace) {
+                    return Ok(pairs);
+                }
+                return Err(ParserError::expect_expression(self.tokens.span()));
+            };
+            initial = false;
+            println!("Got expression for key {}", key);
+
+            if !matches!(term, ExprTerminator::Colon) {
+                return Err(ParserError::unexpected_symbol(
+                    self.tokens.span(),
+                    term.to_token(),
+                ));
+            }
+
+            let (expr, term) = self.parse_expression()?;
+            let value = if let Some(expr) = expr {
+                expr
+            } else {
+                return Err(ParserError::expect_expression(self.tokens.span()));
+            };
+
+            pairs.push((key, value));
+
+            match term {
+                ExprTerminator::Comma => (),
+                ExprTerminator::CloseBrace => return Ok(pairs),
+                term => {
+                    return Err(ParserError::unexpected_symbol(
+                        self.tokens.span(),
+                        term.to_token(),
+                    ))
+                }
+            }
+        }
     }
 
     // Parse a selector, on the form `$id.some.json.path` or `$id.array[0][1]`, or `$['dynamic']['selectors'][1 + 1].field`
@@ -752,5 +823,26 @@ pub mod test {
     pub fn test_array_idx() {
         let res = parse("$inp.test[0] + [0, 1, 2][2]").unwrap();
         assert_eq!("($inp.test[0] + [0, 1, 2][2])", res.to_string());
+    }
+
+    #[test]
+    pub fn test_object_creation() {
+        let res = parse(r#"{ "test": 1 + 2 + 3, 'wow' + 1: 45 * 3 }"#).unwrap();
+        assert_eq!(
+            r#"{"test": ((1 + 2) + 3), ("wow" + 1): (45 * 3)}"#,
+            res.to_string()
+        );
+    }
+
+    #[test]
+    pub fn test_empty_object() {
+        let res = parse("{}").unwrap();
+        assert_eq!("{}", res.to_string());
+    }
+
+    #[test]
+    pub fn test_index_object() {
+        let res = parse("{ 'test': 'test' }['test']").unwrap();
+        assert_eq!(r#"{"test": "test"}["test"]"#, res.to_string())
     }
 }

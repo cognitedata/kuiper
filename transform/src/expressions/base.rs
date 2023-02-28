@@ -6,7 +6,8 @@ use crate::{parse::ParserError, program::TransformOrInput};
 
 use super::{
     functions::*, numbers::JsonNumber, operator::UnaryOpExpression,
-    transform_error::TransformError, ArrayExpression, OpExpression, SelectorExpression,
+    transform_error::TransformError, ArrayExpression, ObjectExpression, OpExpression,
+    SelectorExpression,
 };
 
 use transform_macros::PassThrough;
@@ -137,6 +138,7 @@ pub enum ExpressionType {
     Selector(SelectorExpression),
     Function(FunctionType),
     Array(ArrayExpression),
+    Object(ObjectExpression),
 }
 
 /// The result of an expression resolution. The signature is a little weird.
