@@ -103,7 +103,7 @@ mod tests {
                 "id": "pairs",
                 "inputs": ["input"],
                 "transform": "pairs($input)",
-                "type": "flatten"
+                "expandOutput": true
             }]))
             .unwrap(),
         )
@@ -137,7 +137,7 @@ mod tests {
                 "id": "flat",
                 "inputs": ["input"],
                 "transform": "flatten($input.data)",
-                "type": "flatten"
+                "expandOutput": true
             }]))
             .unwrap(),
         )
@@ -163,7 +163,7 @@ mod tests {
                 "id": "flat",
                 "inputs": ["input"],
                 "transform": "flatten($input.data, $input)",
-                "type": "flatten"
+                "expandOutput": true
             }]))
             .unwrap(),
         )
@@ -194,7 +194,7 @@ mod tests {
                 "id": "flat",
                 "inputs": ["input"],
                 "transform": "flatten($input.data, $input)",
-                "type": "flatten"
+                "expandOutput": true
             }]))
             .unwrap(),
         )

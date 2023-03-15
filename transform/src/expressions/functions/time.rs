@@ -27,9 +27,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ToUnixTimeFunction {
         if fmt_ref.contains("%z") {
             let time = DateTime::parse_from_str(val_ref, fmt_ref).map_err(|e| {
                 TransformError::new_conversion_failed(
-                    format!(
-                        "Failed to convert '{val_ref}' to datetime using '{fmt_ref}': {e}"
-                    ),
+                    format!("Failed to convert '{val_ref}' to datetime using '{fmt_ref}': {e}"),
                     &self.span,
                     state.id,
                 )
@@ -41,9 +39,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ToUnixTimeFunction {
         } else {
             let time = NaiveDateTime::parse_from_str(val_ref, fmt_ref).map_err(|e| {
                 TransformError::new_conversion_failed(
-                    format!(
-                        "Failed to convert '{val_ref}' to datetime using '{fmt_ref}': {e}"
-                    ),
+                    format!("Failed to convert '{val_ref}' to datetime using '{fmt_ref}': {e}"),
                     &self.span,
                     state.id,
                 )
@@ -103,14 +99,14 @@ mod tests {
             serde_json::from_value(json!([{
                 "id": "tostring",
                 "inputs": ["input"],
-                "transform": {
-                    "t1": "to_unix_timestamp($input.v1, '%Y-%m-%d %H:%M:%S')",
-                    "t2": "to_unix_timestamp($input.v2, '%Y-%m-%d %H:%M:%S %z')",
-                    "t12": "to_unix_timestamp($input.v1, '%Y-%m-%d %H:%M:%S', 3600)",
-                    "t13": "to_unix_timestamp($input.v1, '%Y-%m-%d %H:%M:%S%.f', -3600)",
-                    "t3": "to_unix_timestamp($input.v3, '%Y %b %d %H:%M')",
-                    "t4": "to_unix_timestamp($input.v4, '%Y %b %d %H:%M %z')",
-                },
+                "transform": r#"{
+                    "t1": to_unix_timestamp($input.v1, '%Y-%m-%d %H:%M:%S'),
+                    "t2": to_unix_timestamp($input.v2, '%Y-%m-%d %H:%M:%S %z'),
+                    "t12": to_unix_timestamp($input.v1, '%Y-%m-%d %H:%M:%S', 3600),
+                    "t13": to_unix_timestamp($input.v1, '%Y-%m-%d %H:%M:%S%.f', -3600),
+                    "t3": to_unix_timestamp($input.v3, '%Y %b %d %H:%M'),
+                    "t4": to_unix_timestamp($input.v4, '%Y %b %d %H:%M %z')
+                }"#,
                 "type": "map"
             }]))
             .unwrap(),
