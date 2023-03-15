@@ -30,30 +30,27 @@ async fn main() {
         serde_json::from_value(json!([{
             "id": "temperature",
             "inputs": ["input"],
-            "type": "map",
-            "transform": {
-                "externalId": "concat($input.stationName, '.', 'temperature')",
-                "time": "to_unix_timestamp($input.datetime, '%Y-%m-%d %H:%M:%S%.f')",
-                "value": "if($input.temperature, float($input.temperature))",
-            }
+            "transform": r#"{
+                "externalId": concat($input.stationName, '.', 'temperature'),
+                "time": to_unix_timestamp($input.datetime, '%Y-%m-%d %H:%M:%S%.f'),
+                "value": if($input.temperature, float($input.temperature)),
+            }"#
         }, {
             "id": "cloudcover",
             "inputs": ["input"],
-            "type": "map",
-            "transform": {
-                "externalId": "concat($input.stationName, '.', 'cloudCover')",
-                "time": "to_unix_timestamp($input.datetime, '%Y-%m-%d %H:%M:%S%.f')",
-                "value": "$input.cloudCoverage",
-            }
+            "transform": r#"{
+                "externalId": concat($input.stationName, '.', 'cloudCover'),
+                "time": to_unix_timestamp($input.datetime, '%Y-%m-%d %H:%M:%S%.f'),
+                "value": $input.cloudCoverage,
+            }"#
         }, {
             "id": "windspeed",
             "inputs": ["input"],
-            "type": "map",
-            "transform": {
-                "externalId": "concat($input.stationName, '.', 'windspeed')",
-                "time": "to_unix_timestamp($input.datetime, '%Y-%m-%d %H:%M:%S%.f')",
-                "value": "if($input.wintSpeed, float($input.wintSpeed))",
-            }
+            "transform": r#"{
+                "externalId": concat($input.stationName, '.', 'windspeed'),
+                "time": to_unix_timestamp($input.datetime, '%Y-%m-%d %H:%M:%S%.f'),
+                "value": if($input.wintSpeed, float($input.wintSpeed)),
+            }"#
         }, {
             "id": "combine",
             "inputs": ["temperature", "cloudcover", "windspeed"],
