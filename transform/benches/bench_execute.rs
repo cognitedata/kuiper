@@ -8,17 +8,16 @@ fn bench_flatten_map(c: &mut Criterion) {
             "id": "step1",
             "inputs": ["input"],
             "transform": "$input.values",
-            "type": "flatten"
+            "expandOutput": true
         },
         {
             "id": "step2",
             "inputs": ["input", "step1"],
-            "transform": {
-                "externalId": "$input.id",
-                "value": "$step1.value * pow(10, $step1.valueExponent)",
-                "timestamp": "$step1.time"
-            },
-            "type": "map"
+            "transform": r#"{
+                "externalId": $input.id,
+                "value": $step1.value * pow(10, $step1.valueExponent),
+                "timestamp": $step1.time
+            }"#
         }
     ]))
     .unwrap();
@@ -46,11 +45,10 @@ fn bench_trivial_map(c: &mut Criterion) {
         {
             "id": "step",
             "inputs": ["input"],
-            "transform": {
-                "externalId": "$input.id",
-                "value": "$input.val"
-            },
-            "type": "map"
+            "transform": r#"{
+                "externalId": $input.id,
+                "value": $input.val
+            }"#
         }
     ]))
     .unwrap();
@@ -71,44 +69,41 @@ fn bench_exponential_flatten(c: &mut Criterion) {
             "id": "step1",
             "inputs": ["input"],
             "transform": "$input.values",
-            "type": "flatten"
+            "expandOutput": true
         }, // 2
         {
             "id": "gen",
             "inputs": [],
             "transform": "[0, 1, 2, 3, 4]",
-            "type": "flatten"
+            "expandOutput": true
         }, // 5
         {
             "id": "explode1",
             "inputs": ["gen", "step1"],
-            "transform": {
+            "transform": r#"{
                 "v1": "$gen",
                 "v2": "$step1.value"
-            },
-            "type": "map"
+            }"#
         }, // 5 * 2
         {
             "id": "explode2",
             "inputs": ["gen", "explode1"],
-            "transform": {
-                "v1": "$gen",
-                "v21": "$explode1.v1",
-                "v22": "$explode1.v2"
-            },
-            "type": "map"
+            "transform": r#"{
+                "v1": $gen,
+                "v21": $explode1.v1,
+                "v22": $explode1.v2
+            }"#
         }, // 5 * (5 * 2) = 50
         {
             "id": "explode3",
             "inputs": ["explode1", "explode2"],
-            "transform": {
-                "v11": "$explode1.v1",
-                "v12": "$explode2.v1",
-                "v21": "$explode2.v21",
-                "v22": "$explode2.v22",
-                "v23": "$explode1.v2"
-            },
-            "type": "map"
+            "transform": r#"{
+                "v11": $explode1.v1,
+                "v12": $explode2.v1,
+                "v21": $explode2.v21,
+                "v22": $explode2.v22,
+                "v23": $explode1.v2
+            }"#
         } // (5 * 2) * (5 * (5 * 2)) = 500
     ]))
     .unwrap();

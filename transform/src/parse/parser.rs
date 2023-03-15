@@ -509,7 +509,6 @@ impl<'source> Parser<'source> {
                 return Err(ParserError::expect_expression(self.tokens.span()));
             };
             initial = false;
-            println!("Got expression for key {}", key);
 
             if !matches!(term, ExprTerminator::Colon) {
                 return Err(ParserError::unexpected_symbol(
