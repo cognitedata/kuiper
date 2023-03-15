@@ -250,10 +250,10 @@ mod tests {
             serde_json::from_value(json!([{
                 "id": "pow",
                 "inputs": ["input"],
-                "transform": {
-                    "res": "pow(2, 2)",
-                    "res2": "pow($input.val1, $input.val2)"
-                },
+                "transform": r#"{
+                    "res": pow(2, 2),
+                    "res2": pow($input.val1, $input.val2)
+                }"#,
                 "type": "map"
             }]))
             .unwrap(),
@@ -278,11 +278,10 @@ mod tests {
             serde_json::from_value(json!([{
                 "id": "pow",
                 "inputs": ["input"],
-                "transform": {
-                    "res": "log(2, 2)",
-                    "res2": "log($input.val1, $input.val2)"
-                },
-                "type": "map"
+                "transform": r#"{
+                    "res": log(2, 2),
+                    "res2": log($input.val1, $input.val2)
+                }"#
             }]))
             .unwrap(),
         )
@@ -307,11 +306,10 @@ mod tests {
             serde_json::from_value(json!([{
                 "id": "pow",
                 "inputs": ["input"],
-                "transform": {
-                    "res": "int('123')",
-                    "res2": "int('-1234')"
-                },
-                "type": "map"
+                "transform": r#"{
+                    "res": int('123'),
+                    "res2": int('-1234')
+                }"#
             }]))
             .unwrap(),
         )
@@ -335,13 +333,12 @@ mod tests {
             serde_json::from_value(json!([{
                 "id": "pow",
                 "inputs": ["input"],
-                "transform": {
-                    "res": "float('123')",
-                    "res2": "float('-1234')",
-                    "res3": "float('-1234.123')",
-                    "res4": "float('1234.1234')"
-                },
-                "type": "map"
+                "transform": r#"{
+                    "res": float('123'),
+                    "res2": float('-1234'),
+                    "res3": float('-1234.123'),
+                    "res4": float('1234.1234')
+                }"#
             }]))
             .unwrap(),
         )

@@ -7,7 +7,7 @@ use serde_json::Value;
 use crate::expressions::{Expression, ExpressionExecutionState, ResolveResult, TransformError};
 
 use super::{
-    input::{Transform, TransformOrInput},
+    input::{Transform, TransformOrInput, TransformType},
     Program,
 };
 
@@ -127,9 +127,9 @@ impl Transform {
     ) -> Vec<HashMap<TransformOrInput, &'a Value>> {
         let mut res_len = 1usize;
         let mut len = 0usize;
-        for key in self.inputs().used_inputs.iter() {
+        for key in self.inputs.used_inputs.iter() {
             let v = it.get_elem(key).unwrap();
-            if self.inputs().used_inputs.contains(key) && !v.is_empty() {
+            if self.inputs.used_inputs.contains(key) && !v.is_empty() {
                 len += 1;
                 res_len *= v.len();
             }
@@ -138,7 +138,7 @@ impl Transform {
         let mut res: Vec<HashMap<TransformOrInput, &'a Value>> = Vec::with_capacity(res_len);
 
         let mut first = true;
-        for key in self.inputs().used_inputs.iter() {
+        for key in self.inputs.used_inputs.iter() {
             let value = it.get_elem(key).unwrap();
             if first {
                 for el in value {
@@ -169,7 +169,7 @@ impl Transform {
     ) -> Vec<HashMap<TransformOrInput, &'a Value>> {
         let mut res: Vec<HashMap<TransformOrInput, &'a Value>> = Vec::new();
 
-        for key in self.inputs().used_inputs.iter() {
+        for key in self.inputs.used_inputs.iter() {
             if key == &TransformOrInput::Merge {
                 continue;
             }
@@ -188,7 +188,7 @@ impl Transform {
         it: &'a TransformState,
     ) -> Vec<HashMap<TransformOrInput, &'a Value>> {
         let mut res_len = 0usize;
-        for key in self.inputs().used_inputs.iter() {
+        for key in self.inputs.used_inputs.iter() {
             let v = it.get_elem(key).unwrap();
             if v.len() > res_len {
                 res_len = v.len();
@@ -200,7 +200,7 @@ impl Transform {
             res.push(HashMap::new());
         }
 
-        for key in self.inputs().used_inputs.iter() {
+        for key in self.inputs.used_inputs.iter() {
             let dat = it.get_elem(key).unwrap();
             for i in 0..res_len {
                 let el = res.get_mut(i).unwrap();
@@ -220,33 +220,28 @@ impl Transform {
         &'d self,
         data: &'a HashMap<TransformOrInput, &'d Value>,
     ) -> Result<Vec<ResolveResult<'d>>, TransformError> {
-        let state = ExpressionExecutionState::<'d, 'a>::new(data, &self.inputs().inputs, self.id());
-        Ok(match self {
-            Self::Map(m) => {
-                let mut map = serde_json::Map::new();
-                for (key, tf) in m.map.iter() {
-                    let value = tf.resolve(&state)?.into_owned();
-                    map.insert(key.clone(), value);
-                }
-                vec![ResolveResult::Owned(Value::Object(map))]
-            }
+        let state = ExpressionExecutionState::<'d, 'a>::new(data, &self.inputs.inputs, &self.id);
+        let res = self.map.resolve(&state)?;
 
-            Self::Flatten(m) => {
-                let res: ResolveResult<'d> = m.map.resolve(&state)?;
-                match res {
-                    ResolveResult::Borrowed(r) => match r {
-                        Value::Array(a) => a.iter().map(ResolveResult::Borrowed).collect(),
-                        x => vec![ResolveResult::Borrowed(x)],
-                    },
-                    ResolveResult::Owned(r) => match r {
-                        Value::Array(a) => a.into_iter().map(ResolveResult::Owned).collect(),
-                        x => vec![ResolveResult::Owned(x)],
-                    },
+        Ok(match self.transform_type {
+            TransformType::Map => {
+                if self.flatten {
+                    match res {
+                        ResolveResult::Borrowed(r) => match r {
+                            Value::Array(a) => a.iter().map(ResolveResult::Borrowed).collect(),
+                            x => vec![ResolveResult::Borrowed(x)],
+                        },
+                        ResolveResult::Owned(r) => match r {
+                            Value::Array(a) => a.into_iter().map(ResolveResult::Owned).collect(),
+                            x => vec![ResolveResult::Owned(x)],
+                        },
+                    }
+                } else {
+                    vec![res]
                 }
             }
-            Self::Filter(m) => {
-                let value = m.map.resolve(&state)?;
-                let filter_output = match value.as_ref() {
+            TransformType::Filter => {
+                let filter_output = match res.as_ref() {
                     Value::Null => false,
                     Value::Bool(x) => *x,
                     _ => true,
@@ -281,7 +276,7 @@ impl Transform {
         &'b self,
         raw_data: &'b TransformState<'b>,
     ) -> Result<Vec<ResolveResult<'b>>, TransformError> {
-        let inputs = self.inputs();
+        let inputs = &self.inputs;
 
         let items = match inputs.mode {
             super::input::TransformInputType::Product => self.compute_input_product(raw_data),

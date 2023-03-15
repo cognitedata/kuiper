@@ -80,10 +80,10 @@ mod tests {
             serde_json::from_value(json!([{
                 "id": "concat",
                 "inputs": ["input"],
-                "transform": {
-                    "concat2": "concat('foo', 'bar')",
-                    "concat3": "concat('foo', $input.val1 + $input.val2, 'bar')"
-                },
+                "transform": r#"{
+                    "concat2": concat('foo', 'bar'),
+                    "concat3": concat('foo', $input.val1 + $input.val2, 'bar')
+                }"#,
                 "type": "map"
             }]))
             .unwrap(),
@@ -108,12 +108,12 @@ mod tests {
             serde_json::from_value(json!([{
                 "id": "tostring",
                 "inputs": ["input"],
-                "transform": {
-                    "s1": "string('foo')",
-                    "s2": "string(123)",
-                    "s3": "string(null)",
-                    "s4": "string($input.val)"
-                },
+                "transform": r#"{
+                    "s1": string('foo'),
+                    "s2": string(123),
+                    "s3": string(null),
+                    "s4": string($input.val)
+                }"#,
                 "type": "map"
             }]))
             .unwrap(),

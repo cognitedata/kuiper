@@ -34,19 +34,18 @@ mod tests {
                 "id": "gen",
                 "inputs": [],
                 "transform": "[1, 2]",
-                "type": "flatten"
+                "expandOutput": true
             }, {
                 "id": "parse",
                 "inputs": ["input"],
                 "transform": "$input.values",
-                "type": "flatten"
+                "expandOutput": true
             }, {
                 "id": "finmerge",
                 "inputs": ["gen", "parse"],
-                "transform": {
-                    "val": "$merge",
-                },
-                "type": "map",
+                "transform": r#"{
+                    "val": $merge
+                }"#,
                 "mode": "merge"
             }
         ]))
@@ -74,20 +73,19 @@ mod tests {
                 "id": "gen",
                 "inputs": [],
                 "transform": "[1, 2]",
-                "type": "flatten"
+                "expandOutput": true
             }, {
                 "id": "parse",
                 "inputs": ["input"],
                 "transform": "$input.values",
-                "type": "flatten"
+                "expandOutput": true
             }, {
                 "id": "finmerge",
                 "inputs": ["gen", "parse"],
-                "transform": {
-                    "gen": "$gen",
-                    "parse": "$parse"
-                },
-                "type": "map",
+                "transform": r#"{
+                    "gen": $gen,
+                    "parse": $parse
+                }"#,
                 "mode": "zip"
             }
         ]))
@@ -115,32 +113,30 @@ mod tests {
                 "id": "step1",
                 "inputs": ["input"],
                 "transform": "$input.values",
-                "type": "flatten"
+                "expandOutput": true
             },
             {
                 "id": "gen",
                 "inputs": [],
                 "transform": "[0, 1, 2, 3, 4]",
-                "type": "flatten"
+                "expandOutput": true
             },
             {
                 "id": "explode1",
                 "inputs": ["gen", "step1"],
-                "transform": {
-                    "v1": "$gen",
-                    "v2": "$step1.value"
-                },
-                "type": "map"
+                "transform": r#"{
+                    "v1": $gen,
+                    "v2": $step1.value
+                }"#
             },
             {
                 "id": "explode2",
                 "inputs": ["gen", "explode1"],
-                "transform": {
-                    "v1": "$gen",
-                    "v21": "$explode1.v1",
-                    "v22": "$explode1.v2"
-                },
-                "type": "map"
+                "transform": r#"{
+                    "v1": $gen,
+                    "v21": $explode1.v1,
+                    "v22": $explode1.v2
+                }"#
             }
         ]))
         .unwrap();
@@ -169,7 +165,7 @@ mod tests {
                 "id": "step1",
                 "inputs": ["input"],
                 "transform": "pow($input.test)",
-                "type": "flatten"
+                "expandOutput": true
             }
         ]));
         match err {
@@ -199,10 +195,9 @@ mod tests {
         let err = compile_err(json!([{
             "id": "step1",
             "inputs": ["input"],
-            "transform": {
-                "f1": "pow($input.test)"
-            },
-            "type": "map"
+            "transform": r#"{
+                "f1": pow($input.test)
+            }"#
         }]));
         match err {
             CompileError::Parser(d) => {
@@ -215,11 +210,10 @@ mod tests {
                                     .to_string()
                             )
                         );
-                        assert_eq!(d.position, Span { start: 0, end: 16 });
+                        assert_eq!(d.position, Span { start: 24, end: 40 });
                     }
                     _ => panic!("Wrong type of parser error {:?}", &d.err),
                 }
-                assert_eq!(d.field, Some("f1".to_string()));
                 assert_eq!(d.id, "step1");
             }
             _ => panic!("Wrong type of error {err:?}"),
@@ -231,10 +225,9 @@ mod tests {
         let err = compile_err(json!([{
             "id": "input",
             "inputs": ["input"],
-            "transform": {
-                "f1": "$input.test"
-            },
-            "type": "map"
+            "transform": r#"{
+                "f1": $input.test
+            }"#
         }]));
         match err {
             CompileError::Config(d) => {
@@ -250,10 +243,9 @@ mod tests {
         let err = compile_err(json!([{
             "id": "merge",
             "inputs": ["input"],
-            "transform": {
-                "f1": "$input.test"
-            },
-            "type": "map"
+            "transform": r#"{
+                "f1": $input.test
+            }"#
         }]));
         match err {
             CompileError::Config(d) => {
@@ -269,10 +261,9 @@ mod tests {
         let err = compile_err(json!([{
             "id": "step",
             "inputs": ["input", "step"],
-            "transform": {
-                "f1": "$step.test"
-            },
-            "type": "map"
+            "transform": r#"{
+                "f1": $step.test
+            }"#
         }]));
         match err {
             CompileError::Config(d) => {
@@ -291,17 +282,15 @@ mod tests {
         let err = compile_err(json!([{
             "id": "step",
             "inputs": ["input", "step2"],
-            "transform": {
-                "f1": "$step2.test"
-            },
-            "type": "map"
+            "transform": r#"{
+                "f1": $step2.test
+            }"#
         }, {
             "id": "step2",
             "inputs": ["step"],
-            "transform": {
-                "f1": "$step.test"
-            },
-            "type": "map"
+            "transform": r#"{
+                "f1": $step.test
+            }"#
         }]));
         match err {
             CompileError::Config(d) => {
@@ -320,10 +309,9 @@ mod tests {
         let err = compile_err(json!([{
             "id": "step",
             "inputs": ["input", "step2"],
-            "transform": {
-                "f1": "$step2.test"
-            },
-            "type": "map"
+            "transform": r#"{
+                "f1": $step2.test
+            }"#
         }]));
         match err {
             CompileError::Config(d) => {
@@ -340,8 +328,7 @@ mod tests {
         let result = compile(json!([{
             "id": "step",
             "inputs": ["input"],
-            "transform": "$input.val + 5.5",
-            "type": "flatten"
+            "transform": "$input.val + 5.5"
         }]))
         .unwrap();
         let res = result.execute(&json!({ "val": 5 })).unwrap();
@@ -354,8 +341,7 @@ mod tests {
         let result = compile(json!([{
             "id": "step",
             "inputs": ["input"],
-            "transform": "$input.val + 5",
-            "type": "flatten"
+            "transform": "$input.val + 5"
         }]))
         .unwrap();
         let res = result.execute(&json!({ "val": 5 })).unwrap();
@@ -368,8 +354,7 @@ mod tests {
         let result = compile(json!([{
             "id": "step",
             "inputs": ["input"],
-            "transform": "$input.val - 10",
-            "type": "flatten"
+            "transform": "$input.val - 10"
         }]))
         .unwrap();
         let res = result.execute(&json!({ "val": 5 })).unwrap();
@@ -382,8 +367,7 @@ mod tests {
         let result = compile(json!([{
             "id": "step",
             "inputs": ["input"],
-            "transform": "10 / $input.val",
-            "type": "flatten"
+            "transform": "10 / $input.val"
         }]))
         .unwrap();
         let res = result.execute(&json!({ "val": 0 })).unwrap_err();
@@ -402,8 +386,7 @@ mod tests {
         let result = compile(json!([{
             "id": "step",
             "inputs": ["input"],
-            "transform": "10 * $input.val",
-            "type": "flatten"
+            "transform": "10 * $input.val"
         }]))
         .unwrap();
         let res = result.execute(&json!({ "val": "test" })).unwrap_err();
@@ -422,8 +405,7 @@ mod tests {
         let result = compile(json!([{
             "id": "step",
             "inputs": ["input"],
-            "transform": "pow(10, $input.val)",
-            "type": "flatten"
+            "transform": "pow(10, $input.val)"
         }]))
         .unwrap();
         let res = result.execute(&json!({ "val": "test" })).unwrap_err();
@@ -442,8 +424,7 @@ mod tests {
         let result = compile(json!([{
             "id": "step",
             "inputs": ["input"],
-            "transform": "pow(10, $foo.val)",
-            "type": "flatten"
+            "transform": "pow(10, $foo.val)"
         }]))
         .unwrap();
         let res = result.execute(&json!({ "val": "test" })).unwrap_err();
@@ -462,8 +443,7 @@ mod tests {
         let result = compile(json!([{
             "id": "step",
             "inputs": ["input"],
-            "transform": "$[0]",
-            "type": "flatten"
+            "transform": "$[0]"
         }]))
         .unwrap();
         let res = result.execute(&json!({ "val": "test" })).unwrap_err();
@@ -484,7 +464,7 @@ mod tests {
             "id": "gen",
             "inputs": [],
             "transform": "[1, 2, null, 3, null, 4]",
-            "type": "flatten"
+            "expandOutput": true
         }, {
             "id": "filter",
             "inputs": ["gen"],
@@ -506,12 +486,12 @@ mod tests {
             "id": "gen",
             "inputs": [],
             "transform": "[1, 2, null, 3, null, 4]",
-            "type": "flatten"
+            "expandOutput": true
         }, {
             "id": "gen2",
             "inputs": [],
             "transform": "[5, 6, null, 7, null, 8]",
-            "type": "flatten"
+            "expandOutput": true
         }, {
             "id": "filter",
             "inputs": ["gen", "gen2"],
@@ -532,7 +512,7 @@ mod tests {
             "id": "gen",
             "inputs": [],
             "transform": "[1, 2, null, 3, null, 4]",
-            "type": "flatten"
+            "expandOutput": true
         }, {
             "id": "filter",
             "inputs": ["gen", "input"],
@@ -556,11 +536,10 @@ mod tests {
         let program = compile(json!([{
             "id": "parse",
             "inputs": ["input"],
-            "transform": {
-                "v1": "!$input.v1",
-                "v2": "!!!$input.v2"
-            },
-            "type": "map"
+            "transform": r#"{
+                "v1": !$input.v1,
+                "v2": !!!$input.v2
+            }"#
         }]))
         .unwrap();
         let input = json!({
@@ -579,15 +558,14 @@ mod tests {
         let program = compile(json!([{
             "id": "cmp",
             "inputs": ["input"],
-            "transform": {
-                "gt": "$input.v1 > $input.v2",
-                "gte": "$input.v1 >= $input.v2",
-                "lt": "$input.v1 < $input.v2",
-                "lte": "$input.v1 <= $input.v2",
-                "eq": "$input.v1 == $input.v2",
-                "neq": "$input.v1 != $input.v2",
-            },
-            "type": "map"
+            "transform": r#"{
+                "gt": $input.v1 > $input.v2,
+                "gte": $input.v1 >= $input.v2,
+                "lt": $input.v1 < $input.v2,
+                "lte": $input.v1 <= $input.v2,
+                "eq": $input.v1 == $input.v2,
+                "neq": $input.v1 != $input.v2
+            }"#
         }]))
         .unwrap();
         let input = json!({
@@ -609,15 +587,14 @@ mod tests {
         let program = compile(json!([{
             "id": "cmp",
             "inputs": ["input"],
-            "transform": {
-                "gt": "$input.v1 > $input.v2",
-                "gte": "$input.v1 >= $input.v2",
-                "lt": "$input.v1 < $input.v2",
-                "lte": "$input.v1 <= $input.v2",
-                "eq": "$input.v1 == $input.v2",
-                "neq": "$input.v1 != $input.v2",
-            },
-            "type": "map"
+            "transform": r#"{
+                "gt": $input.v1 > $input.v2,
+                "gte": $input.v1 >= $input.v2,
+                "lt": $input.v1 < $input.v2,
+                "lte": $input.v1 <= $input.v2,
+                "eq": $input.v1 == $input.v2,
+                "neq": $input.v1 != $input.v2
+            }"#
         }]))
         .unwrap();
         let input = json!({
@@ -640,10 +617,9 @@ mod tests {
         let program = compile(json!([{
             "id": "cmp",
             "inputs": ["input"],
-            "transform": {
-                "v1": "$input.v1 && $input.v2 || $input.v3"
-            },
-            "type": "map"
+            "transform": r#"{
+                "v1": $input.v1 && $input.v2 || $input.v3
+            }"#
         }]))
         .unwrap();
         let input = json!({
@@ -676,12 +652,11 @@ mod tests {
         let program = compile(json!([{
             "id": "test",
             "inputs": ["input", "input1", "input2"],
-            "transform": {
-                "i1": "$input",
-                "i2": "$input1",
-                "i3": "$input2"
-            },
-            "type": "map"
+            "transform": r#"{
+                "i1": $input,
+                "i2": $input1,
+                "i3": $input2
+            }"#
         }]))
         .unwrap();
         let i1 = json!(123);
@@ -711,12 +686,11 @@ mod tests {
             json!([{
                 "id": "test2",
                 "inputs": ["input", "mystery", "test"],
-                "transform": {
-                    "i1": "$input",
-                    "i2": "$mystery",
-                    "i3": "$input2"
-                },
-                "type": "map"
+                "transform": r#"{
+                    "i1": $input,
+                    "i2": $mystery,
+                    "i3": $input2
+                }"#
             }]),
             HashMap::from_iter([
                 (1, vec!["mystery".to_owned()]),
@@ -752,12 +726,11 @@ mod tests {
             json!([{
                 "id": "test",
                 "inputs": ["input", "mystery", "test"],
-                "transform": {
-                    "i1": "$input",
-                    "i2": "$mystery",
-                    "i3": "$input2"
-                },
-                "type": "map"
+                "transform": r#"{
+                    "i1": $input,
+                    "i2": $mystery,
+                    "i3": $input2
+                }"#
             }]),
             HashMap::from_iter([
                 (1, vec!["mystery".to_owned()]),
@@ -778,10 +751,9 @@ mod tests {
         let program = compile(json!([{
             "id": "test",
             "inputs": ["input"],
-            "transform": {
-                "i1": r#"{ concat("test", "test"): 1 + 2 + 3, "val": $input.val }"#
-            },
-            "type": "map"
+            "transform": r#"{
+                "i1": { concat("test", "test"): 1 + 2 + 3, "val": $input.val }
+            }"#
         }]))
         .unwrap();
 
@@ -800,10 +772,9 @@ mod tests {
         let program = compile(json!([{
             "id": "test",
             "inputs": ["input"],
-            "transform": {
-                "i1": r#"{ concat("test", "test"): { "test": 8 }, "val": $input.val }["testtest"].test"#
-            },
-            "type": "map"
+            "transform": r#"{
+                "i1": { concat("test", "test"): { "test": 8 }, "val": $input.val }["testtest"].test
+            }"#
         }]))
         .unwrap();
 
@@ -820,10 +791,9 @@ mod tests {
         let program = compile(json!([{
             "id": "test",
             "inputs": ["input"],
-            "transform": {
-                "i1": r#"[[[1, 2, 3], [4], [5, 6], [7, [8]]]][0][3][1][0]"#
-            },
-            "type": "map"
+            "transform": r#"{
+                "i1": [[[1, 2, 3], [4], [5, 6], [7, [8]]]][0][3][1][0]
+            }"#
         }]))
         .unwrap();
 
@@ -834,5 +804,35 @@ mod tests {
         let obj = res.as_object().unwrap();
         println!("{:?}", res);
         assert_eq!(obj.get("i1").unwrap().as_u64().unwrap(), 8);
+    }
+
+    #[test]
+    pub fn test_object_return() {
+        let program = compile(json!([{
+            "id": "test",
+            "inputs": ["input"],
+            "transform": r#"{ "key": "value", "key2": $input.val, "key3": { "nested": [1, 2, 3] } }"#
+        }]))
+        .unwrap();
+
+        let inp = json!({ "val": 7 });
+        let res = program.execute(&inp).unwrap();
+        let res = res.into_iter().next().unwrap();
+
+        let obj = res.as_object().unwrap();
+        assert_eq!(obj.get("key").unwrap().as_str().unwrap(), "value");
+        assert_eq!(obj.get("key2").unwrap().as_u64().unwrap(), 7);
+        assert_eq!(
+            obj.get("key3")
+                .unwrap()
+                .as_object()
+                .unwrap()
+                .get("nested")
+                .unwrap()
+                .as_array()
+                .unwrap()
+                .len(),
+            3
+        );
     }
 }

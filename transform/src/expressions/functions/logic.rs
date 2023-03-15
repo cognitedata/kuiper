@@ -123,11 +123,11 @@ mod tests {
             serde_json::from_value(json!([{
                 "id": "tostring",
                 "inputs": [],
-                "transform": {
-                    "t1": "if(true, 'test')",
-                    "t2": "if(1 == 2, 'test2')",
-                    "t3": "if(1 > 2, 'test3', 'test4')"
-                },
+                "transform": r#"{
+                    "t1": if(true, 'test'),
+                    "t2": if(1 == 2, 'test2'),
+                    "t3": if(1 > 2, 'test3', 'test4')
+                }"#,
                 "type": "map"
             }]))
             .unwrap(),
@@ -149,12 +149,11 @@ mod tests {
             serde_json::from_value(json!([{
                 "id": "tostring",
                 "inputs": [],
-                "transform": {
-                    "t1": "case('foo', 'bar', 1, 'baz', 2, 'foo', 3)",
-                    "t2": "case('nope', 'bar', 1, 'baz', 2, 'foo', 3)",
-                    "t3": "case('foo', 'bar', 1, 'baz', 2, 4)"
-                },
-                "type": "map"
+                "transform": r#"{
+                    "t1": case('foo', 'bar', 1, 'baz', 2, 'foo', 3),
+                    "t2": case('nope', 'bar', 1, 'baz', 2, 'foo', 3),
+                    "t3": case('foo', 'bar', 1, 'baz', 2, 4)
+                }"#
             }]))
             .unwrap(),
         )
