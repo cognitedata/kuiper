@@ -16,23 +16,32 @@ use transform_macros::PassThrough;
 /// Notably lifetime heavy. `'a` is the lifetime of the input data.
 /// `'b` is the lifetime of the transform execution, so the temporary data in the transform.
 pub struct ExpressionExecutionState<'data, 'exec> {
-    data: &'exec HashMap<TransformOrInput, &'data Value>,
+    data: &'exec Vec<Option<&'data Value>>,
     map: &'exec HashMap<String, TransformOrInput>,
     pub id: &'exec str,
+    num_inputs: usize,
 }
 
 impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
     /// Try to obtain a value with the given key from the state.
+    #[inline]
     pub fn get_value(&self, key: &str) -> Option<&'data Value> {
-        self.map.get(key).and_then(|k| self.data.get(k)).copied()
+        let v = self.map.get(key)?;
+        Some(self.data.get(v.get_index(self.num_inputs))?.unwrap())
     }
 
     pub fn new(
-        data: &'exec HashMap<TransformOrInput, &'data Value>,
+        data: &'exec Vec<Option<&'data Value>>,
         map: &'exec HashMap<String, TransformOrInput>,
         id: &'exec str,
+        num_inputs: usize,
     ) -> Self {
-        Self { data, map, id }
+        Self {
+            data,
+            map,
+            id,
+            num_inputs,
+        }
     }
 }
 

@@ -412,7 +412,7 @@ mod tests {
         match res {
             TransformError::IncorrectTypeInField(d) => {
                 assert_eq!(d.id, "step");
-                assert_eq!(d.desc, "pow argument 2. Got string, expected number");
+                assert_eq!(d.desc, "pow. Got string, expected number");
                 assert_eq!(d.span, Span { start: 0, end: 19 });
             }
             _ => panic!("Wrong type of error {res:?}"),

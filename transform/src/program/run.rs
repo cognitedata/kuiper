@@ -1,5 +1,3 @@
-use std::{cell::RefCell, collections::HashMap, ops::AddAssign};
-
 use once_cell::unsync::OnceCell;
 
 use serde_json::Value;
@@ -7,7 +5,7 @@ use serde_json::Value;
 use crate::expressions::{Expression, ExpressionExecutionState, ResolveResult, TransformError};
 
 use super::{
-    input::{Transform, TransformOrInput, TransformType},
+    input::{Transform, TransformInputType, TransformOrInput, TransformType},
     Program,
 };
 
@@ -22,9 +20,8 @@ use super::{
 //   Modify old entries
 pub struct TransformState<'inp> {
     data: Vec<OnceCell<Vec<ResolveResult<'inp>>>>,
-    map: RefCell<HashMap<TransformOrInput, usize>>,
-    idx_c: RefCell<usize>,
     null_const: Value,
+    num_inputs: usize,
 }
 
 impl<'inp> TransformState<'inp> {
@@ -35,9 +32,8 @@ impl<'inp> TransformState<'inp> {
         }
         Self {
             data: dat,
-            map: RefCell::new(HashMap::new()),
-            idx_c: RefCell::new(0),
             null_const: Value::Null,
+            num_inputs,
         }
     }
 
@@ -45,22 +41,22 @@ impl<'inp> TransformState<'inp> {
     where
         'inp: 'a,
     {
-        let idx = *self.map.borrow().get(key)?;
-        assert!(idx < *self.idx_c.borrow());
-
+        let idx = key.get_index(self.num_inputs);
         self.data.get(idx)?.get()
     }
 
+    pub fn total_len(&self) -> usize {
+        self.data.len()
+    }
+
     pub fn insert_elem<'a>(&'a self, key: TransformOrInput, value: Vec<ResolveResult<'inp>>) {
-        let idx = *self.idx_c.borrow();
+        let idx = key.get_index(self.num_inputs);
 
         self.data
             .get(idx)
             .unwrap()
             .set(value)
             .unwrap_or_else(|_| panic!("OnceCell already set!"));
-        self.map.borrow_mut().insert(key, idx);
-        self.idx_c.borrow_mut().add_assign(1);
     }
 
     pub fn null_const(&self) -> &Value {
@@ -109,7 +105,6 @@ impl Program {
             if idx == len - 1 {
                 return Ok(value.into_iter().map(|r| r.into_owned()).collect());
             }
-            // cached_results.insert(idx, value);
             data.insert_elem(TransformOrInput::Transform(idx), value);
         }
         Err(TransformError::InvalidProgramError(
@@ -124,26 +119,32 @@ impl Transform {
     fn compute_input_product<'a>(
         &self,
         it: &'a TransformState,
-    ) -> Vec<HashMap<TransformOrInput, &'a Value>> {
+        total_len: usize,
+    ) -> (Vec<Vec<Option<&'a Value>>>, usize) {
         let mut res_len = 1usize;
-        let mut len = 0usize;
+        let mut num_inputs = 0usize;
         for key in self.inputs.used_inputs.iter() {
             let v = it.get_elem(key).unwrap();
-            if self.inputs.used_inputs.contains(key) && !v.is_empty() {
-                len += 1;
+            if !v.is_empty() {
                 res_len *= v.len();
+                if matches!(key, TransformOrInput::Input(_)) {
+                    num_inputs += 1;
+                }
             }
         }
 
-        let mut res: Vec<HashMap<TransformOrInput, &'a Value>> = Vec::with_capacity(res_len);
+        let mut res: Vec<Vec<Option<&'a Value>>> = Vec::with_capacity(res_len);
 
         let mut first = true;
         for key in self.inputs.used_inputs.iter() {
             let value = it.get_elem(key).unwrap();
+            if value.is_empty() {
+                continue;
+            }
             if first {
                 for el in value {
-                    let mut chunk = HashMap::with_capacity(len);
-                    chunk.insert(key.clone(), el.as_ref());
+                    let mut chunk = vec![None; total_len];
+                    chunk[key.get_index(num_inputs)] = Some(el.as_ref());
                     res.push(chunk);
                 }
                 first = false;
@@ -152,7 +153,7 @@ impl Transform {
                 for el in value {
                     for nested_vec in res.iter() {
                         let mut new_vec = nested_vec.clone();
-                        new_vec.insert(key.clone(), el.as_ref());
+                        new_vec[key.get_index(num_inputs)] = Some(el.as_ref());
                         next_res.push(new_vec);
                     }
                 }
@@ -160,14 +161,14 @@ impl Transform {
             }
         }
 
-        res
+        (res, num_inputs)
     }
 
     fn compute_input_merge<'a>(
         &self,
         it: &'a TransformState,
-    ) -> Vec<HashMap<TransformOrInput, &'a Value>> {
-        let mut res: Vec<HashMap<TransformOrInput, &'a Value>> = Vec::new();
+    ) -> (Vec<Vec<Option<&'a Value>>>, usize) {
+        let mut res: Vec<Vec<Option<&'a Value>>> = Vec::new();
 
         for key in self.inputs.used_inputs.iter() {
             if key == &TransformOrInput::Merge {
@@ -175,52 +176,64 @@ impl Transform {
             }
             let dat = it.get_elem(key).unwrap();
             for v in dat {
-                let mut map = HashMap::with_capacity(1);
-                map.insert(TransformOrInput::Merge, v.as_ref());
-                res.push(map);
+                let item = vec![Some(v.as_ref())];
+                res.push(item);
             }
         }
-        res
+        (res, 0)
     }
 
     fn compute_input_zip<'a>(
         &self,
         it: &'a TransformState,
-    ) -> Vec<HashMap<TransformOrInput, &'a Value>> {
+        total_len: usize,
+    ) -> (Vec<Vec<Option<&'a Value>>>, usize) {
         let mut res_len = 0usize;
+        let mut num_inputs = 0usize;
         for key in self.inputs.used_inputs.iter() {
             let v = it.get_elem(key).unwrap();
             if v.len() > res_len {
                 res_len = v.len();
             }
+            if matches!(key, TransformOrInput::Input(_)) {
+                num_inputs += 1;
+            }
         }
 
-        let mut res: Vec<HashMap<TransformOrInput, &'a Value>> = Vec::with_capacity(res_len);
+        let mut res: Vec<Vec<Option<&'a Value>>> = Vec::with_capacity(res_len);
         for _ in 0..res_len {
-            res.push(HashMap::new());
+            res.push(vec![None; total_len]);
         }
 
         for key in self.inputs.used_inputs.iter() {
             let dat = it.get_elem(key).unwrap();
             for i in 0..res_len {
                 let el = res.get_mut(i).unwrap();
+
                 if i >= dat.len() {
-                    el.insert(key.clone(), it.null_const());
+                    el[key.get_index(num_inputs)] = Some(it.null_const());
                 } else {
-                    el.insert(key.clone(), dat.get(i).unwrap().as_ref());
+                    el[key.get_index(num_inputs)] = Some(dat.get(i).unwrap().as_ref());
                 }
             }
         }
 
-        res
+        (res, num_inputs)
     }
 
     /// Execute a transform, internal method.
     fn execute_chunk<'a, 'd>(
         &'d self,
-        data: &'a HashMap<TransformOrInput, &'d Value>,
+        data: &'a Vec<Option<&'d Value>>,
+        num_inputs: usize,
+        is_merge: bool,
     ) -> Result<Vec<ResolveResult<'d>>, TransformError> {
-        let state = ExpressionExecutionState::<'d, 'a>::new(data, &self.inputs.inputs, &self.id);
+        let state = ExpressionExecutionState::<'d, 'a>::new(
+            data,
+            &self.inputs.inputs,
+            &self.id,
+            num_inputs,
+        );
         let res = self.map.resolve(&state)?;
 
         Ok(match self.transform_type {
@@ -247,10 +260,8 @@ impl Transform {
                     _ => true,
                 };
                 if filter_output {
-                    if data.contains_key(&TransformOrInput::Merge) {
-                        vec![ResolveResult::Borrowed(
-                            data.get(&TransformOrInput::Merge).unwrap(),
-                        )]
+                    if is_merge {
+                        vec![ResolveResult::Borrowed(data.get(0).unwrap().unwrap())]
                     } else {
                         vec![ResolveResult::Borrowed(
                             data.iter()
@@ -261,7 +272,7 @@ impl Transform {
                                         .to_string(),
                                 )
                                 })?
-                                .1,
+                                .unwrap(),
                         )]
                     }
                 } else {
@@ -278,19 +289,25 @@ impl Transform {
     ) -> Result<Vec<ResolveResult<'b>>, TransformError> {
         let inputs = &self.inputs;
 
-        let items = match inputs.mode {
-            super::input::TransformInputType::Product => self.compute_input_product(raw_data),
+        let (items, num_inputs) = match inputs.mode {
+            super::input::TransformInputType::Product => {
+                self.compute_input_product(raw_data, raw_data.total_len())
+            }
             super::input::TransformInputType::Merge => self.compute_input_merge(raw_data),
-            super::input::TransformInputType::Zip => self.compute_input_zip(raw_data),
+            super::input::TransformInputType::Zip => {
+                self.compute_input_zip(raw_data, raw_data.total_len())
+            }
         };
 
+        let is_merge = matches!(inputs.mode, TransformInputType::Merge);
+
         let res = if items.is_empty() {
-            let data = HashMap::new();
-            self.execute_chunk(&data)?
+            let data = Vec::new();
+            self.execute_chunk(&data, num_inputs, is_merge)?
         } else {
             let mut res = Vec::new();
             for data in items {
-                let next = self.execute_chunk(&data)?;
+                let next = self.execute_chunk(&data, num_inputs, is_merge)?;
                 for it in next {
                     res.push(it);
                 }

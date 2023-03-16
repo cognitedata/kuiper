@@ -35,7 +35,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ObjectExpression {
         &'a self,
         state: &'b super::ExpressionExecutionState<'c, 'b>,
     ) -> Result<super::ResolveResult<'c>, crate::TransformError> {
-        let mut output = Map::new();
+        let mut output = Map::with_capacity(self.pairs.len());
         for (key, value) in self.pairs.iter() {
             let key_res = key.resolve(state)?;
             let key_val = get_string_from_value("object", key_res.as_ref(), &self.span, state.id)?;

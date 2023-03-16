@@ -19,14 +19,14 @@ macro_rules! arg2_math_func {
                 state: &'b $crate::expressions::base::ExpressionExecutionState<'c, 'b>,
             ) -> Result<$crate::expressions::base::ResolveResult<'c>, $crate::expressions::transform_error::TransformError> {
                 let lhs = $crate::expressions::base::get_number_from_value(
-                    &format!("{} argument 1", <Self as $crate::expressions::functions::FunctionExpression<'a, 'b, 'c>>::INFO.name),
+                    &<Self as $crate::expressions::functions::FunctionExpression<'a, 'b, 'c>>::INFO.name,
                     self.args[0].resolve(state)?.as_ref(),
                     &self.span,
                     state.id,
                 )?
                 .as_f64();
                 let rhs = $crate::expressions::base::get_number_from_value(
-                    &format!("{} argument 2", <Self as $crate::expressions::functions::FunctionExpression<'a, 'b, 'c>>::INFO.name),
+                    &<Self as $crate::expressions::functions::FunctionExpression<'a, 'b, 'c>>::INFO.name,
                     self.args[1].resolve(state)?.as_ref(),
                     &self.span,
                     state.id,
