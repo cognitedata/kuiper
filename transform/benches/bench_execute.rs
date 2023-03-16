@@ -2,6 +2,8 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use json_transform::{Program, TransformInput};
 use serde_json::json;
 
+mod perf;
+
 fn bench_flatten_map(c: &mut Criterion) {
     let raw: Vec<TransformInput> = serde_json::from_value(json!([
         {
@@ -125,10 +127,9 @@ fn bench_exponential_flatten(c: &mut Criterion) {
     });
 }
 
-criterion_group!(
-    benches,
-    bench_flatten_map,
-    bench_trivial_map,
-    bench_exponential_flatten
-);
+criterion_group! {
+    name = benches;
+    config = Criterion::default().with_profiler(perf::FlamegraphProfiler::new(100));
+    targets = bench_flatten_map, bench_trivial_map, bench_exponential_flatten
+}
 criterion_main!(benches);

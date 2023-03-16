@@ -23,8 +23,13 @@ pub struct ExpressionExecutionState<'data, 'exec> {
 
 impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
     /// Try to obtain a value with the given key from the state.
+    #[inline]
     pub fn get_value(&self, key: &str) -> Option<&'data Value> {
-        self.map.get(key).and_then(|k| self.data.get(k)).copied()
+        let v = self.map.iter().find(|(k, _)| *k == key);
+        let Some((_, v)) = v else {
+            return None;
+        };
+        self.data.iter().find(|(k, _v)| *k == v).map(|(_, v)| *v)
     }
 
     pub fn new(

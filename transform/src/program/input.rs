@@ -103,6 +103,16 @@ impl Display for TransformOrInput {
     }
 }
 
+impl TransformOrInput {
+    pub fn get_index(&self, num_inputs: usize) -> usize {
+        match self {
+            TransformOrInput::Input(i) => *i,
+            TransformOrInput::Transform(i) => *i + num_inputs,
+            TransformOrInput::Merge => 0,
+        }
+    }
+}
+
 pub struct Transform {
     pub(crate) inputs: TransformInputs,
     pub(crate) id: String,

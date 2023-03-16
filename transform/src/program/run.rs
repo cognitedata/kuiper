@@ -22,9 +22,8 @@ use super::{
 //   Modify old entries
 pub struct TransformState<'inp> {
     data: Vec<OnceCell<Vec<ResolveResult<'inp>>>>,
-    map: RefCell<HashMap<TransformOrInput, usize>>,
-    idx_c: RefCell<usize>,
     null_const: Value,
+    num_inputs: usize,
 }
 
 impl<'inp> TransformState<'inp> {
@@ -35,9 +34,8 @@ impl<'inp> TransformState<'inp> {
         }
         Self {
             data: dat,
-            map: RefCell::new(HashMap::new()),
-            idx_c: RefCell::new(0),
             null_const: Value::Null,
+            num_inputs,
         }
     }
 
@@ -45,22 +43,18 @@ impl<'inp> TransformState<'inp> {
     where
         'inp: 'a,
     {
-        let idx = *self.map.borrow().get(key)?;
-        assert!(idx < *self.idx_c.borrow());
-
+        let idx = key.get_index(self.num_inputs);
         self.data.get(idx)?.get()
     }
 
     pub fn insert_elem<'a>(&'a self, key: TransformOrInput, value: Vec<ResolveResult<'inp>>) {
-        let idx = *self.idx_c.borrow();
+        let idx = key.get_index(self.num_inputs);
 
         self.data
             .get(idx)
             .unwrap()
             .set(value)
             .unwrap_or_else(|_| panic!("OnceCell already set!"));
-        self.map.borrow_mut().insert(key, idx);
-        self.idx_c.borrow_mut().add_assign(1);
     }
 
     pub fn null_const(&self) -> &Value {
@@ -109,7 +103,6 @@ impl Program {
             if idx == len - 1 {
                 return Ok(value.into_iter().map(|r| r.into_owned()).collect());
             }
-            // cached_results.insert(idx, value);
             data.insert_elem(TransformOrInput::Transform(idx), value);
         }
         Err(TransformError::InvalidProgramError(
@@ -127,23 +120,28 @@ impl Transform {
     ) -> Vec<HashMap<TransformOrInput, &'a Value>> {
         let mut res_len = 1usize;
         let mut len = 0usize;
+        let mut num_inputs = 0usize;
         for key in self.inputs.used_inputs.iter() {
             let v = it.get_elem(key).unwrap();
             if self.inputs.used_inputs.contains(key) && !v.is_empty() {
                 len += 1;
                 res_len *= v.len();
+                if matches!(key, TransformOrInput::Input(_)) {
+                    num_inputs += 1;
+                }
             }
         }
 
         let mut res: Vec<HashMap<TransformOrInput, &'a Value>> = Vec::with_capacity(res_len);
+        let mut res: Vec<Vec<Option<&'a Value>>> = Vec::with_capacity(res_len);
 
         let mut first = true;
         for key in self.inputs.used_inputs.iter() {
             let value = it.get_elem(key).unwrap();
             if first {
                 for el in value {
-                    let mut chunk = HashMap::with_capacity(len);
-                    chunk.insert(key.clone(), el.as_ref());
+                    let mut chunk = vec![None; len];
+                    chunk[key.get_index(num_inputs)] = Some(el.as_ref());
                     res.push(chunk);
                 }
                 first = false;
@@ -152,7 +150,7 @@ impl Transform {
                 for el in value {
                     for nested_vec in res.iter() {
                         let mut new_vec = nested_vec.clone();
-                        new_vec.insert(key.clone(), el.as_ref());
+                        new_vec[key.get_index(num_inputs)] = Some(el.as_ref());
                         next_res.push(new_vec);
                     }
                 }

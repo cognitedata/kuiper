@@ -16,6 +16,7 @@ serde_json = "1.0.89"
 transform_macros = { path = "../transform_macros" }
 
 [dev-dependencies]
+pprof = { version = "0.3", features = ["flamegraph"] }
 criterion = "0.3"
 
 [[bench]]
