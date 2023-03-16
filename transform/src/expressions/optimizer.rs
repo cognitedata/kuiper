@@ -37,9 +37,9 @@ fn resolve_constants(
 
 /// Run the optimizer. For now this only catches a few consistency errors and resolves any constant expressions.
 pub fn optimize(mut root: ExpressionType) -> Result<ExpressionType, TransformError> {
-    let data = HashMap::new();
+    let data = Vec::new();
     let map = HashMap::new();
-    let empty_state = ExpressionExecutionState::new(&data, &map, "optimizer");
+    let empty_state = ExpressionExecutionState::new(&data, &map, "optimizer", 0);
 
     let res = resolve_constants(&mut root, &empty_state)?;
     match res {
