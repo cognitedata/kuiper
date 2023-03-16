@@ -105,7 +105,7 @@ mod tests {
         match err {
             TransformError::IncorrectTypeInField(d) => {
                 assert_eq!(d.id, "optimizer");
-                assert_eq!(d.desc, "pow argument 2. Got string, expected number");
+                assert_eq!(d.desc, "pow. Got string, expected number");
                 assert_eq!(d.span, Span { start: 4, end: 18 });
             }
             _ => panic!("Wrong type of error {err:?}"),
