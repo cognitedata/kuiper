@@ -24,7 +24,7 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
     /// Try to obtain a value with the given key from the state.
     #[inline]
     pub fn get_value(&self, key: usize) -> Option<&'data Value> {
-        self.data.get(key).map(|o| *o)
+        self.data.get(key).copied()
     }
 
     pub fn new(data: &'exec Vec<&'data Value>, id: &'exec str) -> Self {

@@ -556,8 +556,8 @@ mod tests {
         let res = program.execute(&input).unwrap();
         assert_eq!(res.len(), 1);
         let res = res.first().unwrap();
-        assert_eq!(false, res.get("v1").unwrap().as_bool().unwrap());
-        assert_eq!(true, res.get("v2").unwrap().as_bool().unwrap());
+        assert!(!res.get("v1").unwrap().as_bool().unwrap());
+        assert!(res.get("v2").unwrap().as_bool().unwrap());
     }
 
     #[test]

@@ -6,9 +6,7 @@ use crate::expressions::{Operator, UnaryOperator};
 
 fn parse_string(lexer: &mut Lexer<Token>) -> String {
     let raw = lexer.slice();
-    if raw.starts_with('\'') {
-        raw[1..raw.len() - 1].to_string()
-    } else if raw.starts_with('"') {
+    if raw.starts_with('\'') || raw.starts_with('"') {
         raw[1..raw.len() - 1].to_string()
     } else {
         raw.to_string()

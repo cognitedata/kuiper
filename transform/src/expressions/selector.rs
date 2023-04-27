@@ -314,7 +314,7 @@ impl SelectorExpression {
                 TransformError::new_source_missing(x.to_string(), &self.span, state.id)
             })?,
             SelectorElement::CompiledConstant(_) => return Ok(()),
-            SelectorElement::Expression(x) => match x.resolve(&state) {
+            SelectorElement::Expression(x) => match x.resolve(state) {
                 Ok(r) => match r.as_ref() {
                     Value::String(s) => map.get(s).copied().ok_or_else(|| {
                         TransformError::new_source_missing(x.to_string(), &self.span, state.id)

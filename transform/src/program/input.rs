@@ -216,7 +216,7 @@ impl Program {
             &mut res,
             &mut transform_map,
             &[],
-            &input_aliases,
+            input_aliases,
             &inv_input_map,
         )?;
 
@@ -273,7 +273,7 @@ impl Program {
         if inv_input_map.contains_key(&raw.id) {
             let values_str = input_map
                 .values()
-                .flat_map(|v| v)
+                .flatten()
                 .fold("\"merge\"".to_owned(), |a, b| {
                     a + ", " + &format!("\"{b}\"")
                 });
@@ -353,8 +353,8 @@ impl Program {
                     build,
                     state,
                     &next_visited,
-                    &input_map,
-                    &inv_input_map,
+                    input_map,
+                    inv_input_map,
                 )?;
                 final_inputs.insert(
                     input.clone(),
