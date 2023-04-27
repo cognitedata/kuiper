@@ -124,7 +124,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for OpExpression {
 
 impl<'a: 'c, 'b, 'c> ExpressionMeta<'a, 'b, 'c> for OpExpression {
     fn num_children(&self) -> usize {
-        1
+        2
     }
 
     fn get_child(&self, idx: usize) -> Option<&ExpressionType> {

@@ -14,7 +14,9 @@ mod tests {
     use logos::Span;
     use serde_json::{json, Value};
 
-    use crate::{CompileError, ParserError, Program, TransformError};
+    use crate::{
+        program::OptimizerCompileError, CompileError, ParserError, Program, TransformError,
+    };
 
     fn compile(value: Value) -> Result<Program, CompileError> {
         Program::compile(serde_json::from_value(value).unwrap())
@@ -421,39 +423,44 @@ mod tests {
 
     #[test]
     pub fn test_source_missing_error() {
-        let result = compile(json!([{
+        let result = compile_err(json!([{
             "id": "step",
             "inputs": ["input"],
             "transform": "pow(10, $foo.val)"
-        }]))
-        .unwrap();
-        let res = result.execute(&json!({ "val": "test" })).unwrap_err();
-        match res {
-            TransformError::SourceMissingError(d) => {
-                assert_eq!(d.id, "step");
+        }]));
+        match result {
+            CompileError::Optimizer(OptimizerCompileError {
+                err: TransformError::SourceMissingError(d),
+                ..
+            }) => {
+                assert_eq!(d.id, "optimizer");
                 assert_eq!(d.desc, "foo");
                 assert_eq!(d.span, Span { start: 8, end: 17 });
             }
-            _ => panic!("Wrong type of error {res:?}"),
+            _ => panic!("Wrong type of error {result:?}"),
         }
     }
 
     #[test]
     pub fn test_wrong_source_selector() {
-        let result = compile(json!([{
+        let result = compile_err(json!([{
             "id": "step",
             "inputs": ["input"],
             "transform": "$[0]"
-        }]))
-        .unwrap();
-        let res = result.execute(&json!({ "val": "test" })).unwrap_err();
-        match res {
-            TransformError::InvalidOperation(d) => {
-                assert_eq!(d.id, "step");
-                assert_eq!(d.desc, "Root selector must be string");
+        }]));
+        match result {
+            CompileError::Optimizer(OptimizerCompileError {
+                err: TransformError::IncorrectTypeInField(d),
+                ..
+            }) => {
+                assert_eq!(d.id, "optimizer");
+                assert_eq!(
+                    d.desc,
+                    "First selector from input must be a string. Got number, expected String"
+                );
                 assert_eq!(d.span, Span { start: 0, end: 4 });
             }
-            _ => panic!("Wrong type of error {res:?}"),
+            _ => panic!("Wrong type of error {result:?}"),
         }
     }
     // Filter
@@ -549,8 +556,8 @@ mod tests {
         let res = program.execute(&input).unwrap();
         assert_eq!(res.len(), 1);
         let res = res.first().unwrap();
-        assert_eq!(false, res.get("v1").unwrap().as_bool().unwrap());
-        assert_eq!(true, res.get("v2").unwrap().as_bool().unwrap());
+        assert!(!res.get("v1").unwrap().as_bool().unwrap());
+        assert!(res.get("v2").unwrap().as_bool().unwrap());
     }
 
     #[test]

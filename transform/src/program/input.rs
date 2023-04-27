@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    fmt::Display,
-};
+use std::{collections::HashMap, fmt::Display};
 
 use logos::Logos;
 use regex::Regex;
@@ -68,19 +65,47 @@ pub struct TransformInput {
 /// Container for information about the input to the transform.
 pub(crate) struct TransformInputs {
     /// The inputs to this transform, maps from a name to an index in the transform array, or to the input to the program.
-    pub inputs: HashMap<String, TransformOrInput>,
+    pub inputs: HashMap<String, usize>,
     /// For convenience, a set of the inputs used in this transform.
-    pub used_inputs: HashSet<TransformOrInput>,
+    pub used_inputs: Vec<TransformOrInput>,
     /// Type of transform input.
     pub mode: TransformInputType,
 }
 
 impl TransformInputs {
-    pub fn new(inputs: HashMap<String, TransformOrInput>, mode: TransformInputType) -> Self {
-        let set = HashSet::from_iter(inputs.values().cloned());
+    pub fn new(
+        raw_inputs: &[String],
+        inputs: HashMap<String, TransformOrInput>,
+        mode: TransformInputType,
+    ) -> Self {
+        let used_inputs: Vec<_> = raw_inputs
+            .iter()
+            .map(|l| inputs.get(l).unwrap().clone())
+            .collect();
+        if matches!(mode, TransformInputType::Merge) {
+            let mut input_indexes = HashMap::new();
+            for (inp, id) in inputs {
+                if id == TransformOrInput::Merge {
+                    input_indexes.insert(inp, 0);
+                }
+            }
+            return Self {
+                inputs: input_indexes,
+                used_inputs,
+                mode,
+            };
+        }
+
+        let mut input_indexes = HashMap::with_capacity(inputs.len());
+        for (inp, id) in inputs {
+            let idx = used_inputs.iter().position(|i| i == &id);
+            if let Some(idx) = idx {
+                input_indexes.insert(inp, idx);
+            }
+        }
         Self {
-            inputs,
-            used_inputs: set,
+            inputs: input_indexes,
+            used_inputs,
             mode,
         }
     }
@@ -132,7 +157,6 @@ impl Transform {
         let result = Parser::new(inp)
             .parse()
             .map_err(|e| CompileError::from_parser_err(e, &raw.id, None))?;
-        let result = optimize(result).map_err(|e| CompileError::optimizer_err(e, &raw.id, None))?;
 
         if matches!(raw.r#type, TransformType::Filter)
             && inputs.len() != 1
@@ -144,8 +168,12 @@ impl Transform {
             ));
         }
 
+        let inputs = TransformInputs::new(&raw.inputs, inputs, raw.mode);
+        let result = optimize(result, &inputs.inputs)
+            .map_err(|e| CompileError::optimizer_err(e, &raw.id, None))?;
+
         Ok(Self {
-            inputs: TransformInputs::new(inputs, raw.mode),
+            inputs,
             id: raw.id.clone(),
             map: result,
             flatten: raw.expand_output,
@@ -188,7 +216,7 @@ impl Program {
             &mut res,
             &mut transform_map,
             &[],
-            &input_aliases,
+            input_aliases,
             &inv_input_map,
         )?;
 
@@ -245,7 +273,7 @@ impl Program {
         if inv_input_map.contains_key(&raw.id) {
             let values_str = input_map
                 .values()
-                .flat_map(|v| v)
+                .flatten()
                 .fold("\"merge\"".to_owned(), |a, b| {
                     a + ", " + &format!("\"{b}\"")
                 });
@@ -325,8 +353,8 @@ impl Program {
                     build,
                     state,
                     &next_visited,
-                    &input_map,
-                    &inv_input_map,
+                    input_map,
+                    inv_input_map,
                 )?;
                 final_inputs.insert(
                     input.clone(),

@@ -32,7 +32,7 @@ enum ExprTerminator {
 }
 
 impl ExprTerminator {
-    pub fn to_token(&self) -> Token {
+    pub fn to_token(self) -> Token {
         match self {
             ExprTerminator::Comma => Token::Comma,
             ExprTerminator::CloseParenthesis => Token::CloseParenthesis,
