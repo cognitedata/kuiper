@@ -1,8 +1,8 @@
 use logos::Span;
 use serde_json::{Number, Value};
-use std::{borrow::Cow, collections::HashMap, fmt::Display};
+use std::{borrow::Cow, fmt::Display};
 
-use crate::{parse::ParserError, program::TransformOrInput};
+use crate::parse::ParserError;
 
 use super::{
     functions::*, numbers::JsonNumber, operator::UnaryOpExpression,
@@ -16,32 +16,19 @@ use transform_macros::PassThrough;
 /// Notably lifetime heavy. `'a` is the lifetime of the input data.
 /// `'b` is the lifetime of the transform execution, so the temporary data in the transform.
 pub struct ExpressionExecutionState<'data, 'exec> {
-    data: &'exec Vec<Option<&'data Value>>,
-    map: &'exec HashMap<String, TransformOrInput>,
+    data: &'exec Vec<&'data Value>,
     pub id: &'exec str,
-    num_inputs: usize,
 }
 
 impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
     /// Try to obtain a value with the given key from the state.
     #[inline]
-    pub fn get_value(&self, key: &str) -> Option<&'data Value> {
-        let v = self.map.get(key)?;
-        Some(self.data.get(v.get_index(self.num_inputs))?.unwrap())
+    pub fn get_value(&self, key: usize) -> Option<&'data Value> {
+        self.data.get(key).map(|o| *o)
     }
 
-    pub fn new(
-        data: &'exec Vec<Option<&'data Value>>,
-        map: &'exec HashMap<String, TransformOrInput>,
-        id: &'exec str,
-        num_inputs: usize,
-    ) -> Self {
-        Self {
-            data,
-            map,
-            id,
-            num_inputs,
-        }
+    pub fn new(data: &'exec Vec<&'data Value>, id: &'exec str) -> Self {
+        Self { data, id }
     }
 }
 
