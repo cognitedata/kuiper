@@ -54,12 +54,28 @@ pub struct InternalExpressionExecutionState<'data, 'exec> {
 }
 
 impl<'data, 'exec> InternalExpressionExecutionState<'data, 'exec> {
-    pub fn get_temp_state(&'exec self) -> ExpressionExecutionState<'exec, 'exec> {
+    pub fn get_temp_state<'slf>(&'slf self) -> ExpressionExecutionState<'data, 'slf> {
         ExpressionExecutionState {
             data: &self.data,
             id: &self.id,
         }
     }
+}
+
+#[macro_export]
+macro_rules! with_temp_values {
+    ($inner:ident, $inner_state:ident, $values:expr, $func:expr) => {{
+        let len = $values.len();
+        for val in $values {
+            $inner.data.push(val);
+        }
+        let $inner_state = $inner.get_temp_state();
+        let r = $func.map(|ok| ok.into_owned());
+        for _ in 0..len {
+            $inner.data.pop();
+        }
+        r
+    }};
 }
 
 /// Trait for top-level expressions.

@@ -2,7 +2,7 @@ use serde_json::{Map, Value};
 
 use crate::{
     expressions::{Expression, ExpressionType, ResolveResult},
-    ParserError, TransformError,
+    with_temp_values, ParserError, TransformError,
 };
 
 use super::LambdaAcceptFunction;
@@ -34,11 +34,10 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for MapFunction {
                 let mut res = Vec::with_capacity(x.len());
                 let mut inner = state.get_temporary_clone(1);
                 for val in x {
-                    inner.data.push(val);
-                    let inner_state = inner.get_temp_state();
-                    let r = self.args[1].resolve(&inner_state).map(|ok| ok.into_owned());
-                    inner.data.pop();
-                    res.push(r?);
+                    let r = with_temp_values!(inner, inner_state, &[val], {
+                        self.args[1].resolve(&inner_state)
+                    })?;
+                    res.push(r);
                 }
                 Ok(ResolveResult::Owned(Value::Array(res)))
             }
@@ -52,22 +51,18 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for MapFunction {
                 if nargs == 1 {
                     let mut inner = state.get_temporary_clone(1);
                     for (key, val) in pairs.iter() {
-                        inner.data.push(*val);
-                        let inner_state = inner.get_temp_state();
-                        let r = self.args[1].resolve(&inner_state).map(|ok| ok.into_owned());
-                        inner.data.pop();
-                        res.insert(key.as_str().unwrap().to_string(), r?);
+                        let r = with_temp_values!(inner, inner_state, &[*val], {
+                            self.args[1].resolve(&inner_state)
+                        })?;
+                        res.insert(key.as_str().unwrap().to_string(), r);
                     }
                 } else {
                     let mut inner = state.get_temporary_clone(2);
                     for (key, val) in pairs.iter() {
-                        inner.data.push(&key);
-                        inner.data.push(*val);
-                        let inner_state = inner.get_temp_state();
-                        let r = self.args[1].resolve(&inner_state).map(|ok| ok.into_owned());
-                        inner.data.pop();
-                        inner.data.pop();
-                        res.insert(key.as_str().unwrap().to_string(), r?);
+                        let r = with_temp_values!(inner, inner_state, &[key, *val], {
+                            self.args[1].resolve(&inner_state)
+                        })?;
+                        res.insert(key.as_str().unwrap().to_string(), r);
                     }
                 }
                 Ok(ResolveResult::Owned(Value::Object(res)))

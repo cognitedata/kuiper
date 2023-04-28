@@ -30,6 +30,7 @@ impl TryTokenStream {
         }
     }
 
+    #[allow(dead_code)]
     pub fn peek(&self) -> Option<&Token> {
         if let Some(idx) = self.index {
             self.tokens.get(idx + 1).map(|(t, _)| t)
