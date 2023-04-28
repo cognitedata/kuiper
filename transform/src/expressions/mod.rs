@@ -1,7 +1,7 @@
 mod array;
 mod base;
 mod functions;
-// mod index;
+mod lambda;
 mod numbers;
 mod object;
 mod operator;
@@ -15,6 +15,7 @@ pub use base::{
     FunctionType, ResolveResult,
 };
 pub use functions::FunctionExpression;
+pub use lambda::LambdaExpression;
 pub use object::ObjectExpression;
 pub use operator::{OpExpression, Operator, UnaryOpExpression, UnaryOperator};
 pub use optimizer::optimize;

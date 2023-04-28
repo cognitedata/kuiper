@@ -1,15 +1,87 @@
+use std::collections::VecDeque;
+
 use logos::{Lexer, Span};
 
 use crate::{
     expressions::{
-        get_function_expression, ArrayExpression, Constant, ExpressionType, ObjectExpression,
-        OpExpression, Operator, SelectorElement, SelectorExpression, SourceElement,
-        UnaryOpExpression,
+        get_function_expression, ArrayExpression, Constant, ExpressionType, LambdaExpression,
+        ObjectExpression, OpExpression, Operator, SelectorElement, SelectorExpression,
+        SourceElement, UnaryOpExpression,
     },
     lexer::Token,
 };
 
 use super::parse_error::ParserError;
+
+struct TryTokenStream {
+    tokens: Vec<(Token, Span)>,
+    index: Option<usize>,
+    current_span: Span,
+    try_indices: VecDeque<usize>,
+}
+
+impl TryTokenStream {
+    pub fn new(tokens: Lexer<'_, Token>) -> Self {
+        Self {
+            tokens: tokens.spanned().collect(),
+            index: None,
+            current_span: Span { start: 0, end: 0 },
+            try_indices: VecDeque::new(),
+        }
+    }
+
+    pub fn peek(&self) -> Option<&Token> {
+        if let Some(idx) = self.index {
+            self.tokens.get(idx + 1).map(|(t, _)| t)
+        } else {
+            self.tokens.get(0).map(|(t, _)| t)
+        }
+    }
+
+    pub fn move_pointer(&mut self, diff: i64) {
+        self.index = Some((self.index.unwrap() as i64 + diff) as usize);
+    }
+
+    pub fn span(&self) -> Span {
+        if let Some((_, span)) = self.tokens.get(self.index.unwrap_or_default()) {
+            span.clone()
+        } else {
+            self.tokens
+                .last()
+                .map(|(_, s)| s.clone())
+                .unwrap_or_else(|| Span { start: 0, end: 0 })
+        }
+    }
+
+    pub fn next(&mut self) -> Option<Token> {
+        if let Some(index) = self.index {
+            self.index = Some(index + 1);
+        } else {
+            self.index = Some(0);
+        }
+        let (token, span) = self.tokens.get(self.index.unwrap())?;
+        self.current_span = span.clone();
+        Some(token.clone())
+    }
+
+    pub fn current(&self) -> Option<Token> {
+        self.tokens
+            .get(self.index.unwrap_or_default())
+            .map(|(t, _)| t.clone())
+    }
+
+    pub fn begin_try(&mut self) {
+        self.try_indices.push_front(self.index.unwrap_or_default());
+    }
+
+    pub fn abort(&mut self) {
+        self.index = Some(self.try_indices.pop_front().unwrap());
+    }
+
+    pub fn commit(&mut self) {
+        self.try_indices.pop_front();
+    }
+}
 
 /// Construct an executable syntax tree from a token stream.
 /// The parser itself has a lifetime tied to the lexer, whose lifetime is tied to
@@ -17,8 +89,8 @@ use super::parse_error::ParserError;
 /// you need to run the parser to completion before the input that created it goes out
 /// of scope.
 /// The output of the parser is not tied to the input.
-pub struct Parser<'source> {
-    tokens: Lexer<'source, Token>,
+pub struct Parser {
+    tokens: TryTokenStream,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -69,24 +141,51 @@ macro_rules! consume_token {
     }};
 }
 
-enum ParseTokenResult {
-    Expression(ExpressionType),
-    ExpressionAndNext((ExpressionType, Token)),
-    Terminator(ExprTerminator),
-    ExpressionAndTerminator((ExpressionType, ExprTerminator)),
-    Operator((Operator, Span)),
-    Selector((Vec<SelectorElement>, Option<Token>, Span)),
+/// ```ignore
+/// try_parse! {
+///     self;
+///     {
+///         println!("foo");
+///         self.parse_expression()
+///     }
+/// };
+/// ```
+macro_rules! try_parse {
+    { $slf:ident; $t:expr } => {{
+        $slf.tokens.begin_try();
+        let res = $t;
+        match res {
+            Ok(x) => {
+                $slf.tokens.commit();
+                Some(x)
+            },
+            Err(_) => {
+                $slf.tokens.abort();
+                None
+            },
+        }
+    }}
 }
 
-impl<'source> Parser<'source> {
+enum ParseTokenResult {
+    Expression(ExpressionType),
+    Terminator(ExprTerminator),
+    Operator((Operator, Span)),
+    Selector((Vec<SelectorElement>, Span)),
+}
+
+impl Parser {
     /// Construct a new parser from a token stream.
-    pub fn new(stream: Lexer<'source, Token>) -> Self {
-        Self { tokens: stream }
+    pub fn new(stream: Lexer<Token>) -> Self {
+        Self {
+            tokens: TryTokenStream::new(stream),
+        }
     }
 
     /// Entry point for the parser.
     pub fn parse(&mut self) -> Result<ExpressionType, ParserError> {
         let (expr, term) = self.parse_expression()?;
+
         // Expect the terminator to be `End`, otherwise something like 1 + 1) + 1 would yield (1 + 1).
         if term == ExprTerminator::End {
             if let Some(expr) = expr {
@@ -106,12 +205,12 @@ impl<'source> Parser<'source> {
         &mut self,
         expect_expression: bool,
         is_initial: bool,
-        token: Token,
     ) -> Result<ParseTokenResult, ParserError> {
         // Do a simple sanity check on the next token. After an operator, or at the start of an expression
         // only expression operators like `Token::OpenParenthesis`, `Float`, `Integer`, `String`, `SelectorStart`,
         // etc. are valid.
         // After an expression the only valid symbols are operators, or terminators.
+        let token = self.tokens.current().unwrap();
         if matches!(
             token,
             Token::Operator(_) | Token::Comma | Token::Period | Token::Colon
@@ -140,6 +239,7 @@ impl<'source> Parser<'source> {
                     ))
                 }
             }
+            Token::Arrow => Err(ParserError::unexpected_symbol(self.tokens.span(), token)),
             // A colon is invalid outside of a map
             Token::Colon => Ok(ParseTokenResult::Terminator(ExprTerminator::Colon)),
             // A comma should always terminate an expression.
@@ -151,48 +251,57 @@ impl<'source> Parser<'source> {
             Token::Operator(o) => Ok(ParseTokenResult::Operator((o, self.tokens.span()))),
 
             Token::UnaryOperator(o) => {
-                let token = consume_token!(self);
+                consume_token!(self);
                 let span = self.tokens.span();
-                let expr = self.next_expression(true, false, token)?;
+                let expr = self.next_expression(true, false)?;
                 match expr {
                     ParseTokenResult::Expression(x) => Ok(ParseTokenResult::Expression(
-                        ExpressionType::UnaryOperator(UnaryOpExpression::new(o, x, span)),
+                        ExpressionType::UnaryOperator(UnaryOpExpression::new(o, x, span)?),
                     )),
-                    ParseTokenResult::ExpressionAndNext((x, next)) => {
-                        Ok(ParseTokenResult::ExpressionAndNext((
-                            ExpressionType::UnaryOperator(UnaryOpExpression::new(o, x, span)),
-                            next,
-                        )))
-                    }
-                    ParseTokenResult::Terminator(_) => {
-                        Err(ParserError::expect_expression(self.tokens.span()))
-                    }
-                    ParseTokenResult::ExpressionAndTerminator((x, term)) => {
-                        Ok(ParseTokenResult::ExpressionAndTerminator((
-                            ExpressionType::UnaryOperator(UnaryOpExpression::new(o, x, span)),
-                            term,
-                        )))
-                    }
-                    ParseTokenResult::Operator(_) | ParseTokenResult::Selector(_) => {
-                        Err(ParserError::expect_expression(self.tokens.span()))
-                    }
+                    _ => Err(ParserError::expect_expression(self.tokens.span())),
                 }
             }
-            // OpenParenthesis indicates the start of a new expression when encountered here.
+            // OpenParenthesis indicates the start of a new expression or a lambda when encountered here.
             // The terminator must be CloseParenthesis.
             Token::OpenParenthesis => {
                 let start = self.tokens.span();
-                let (expr, term) = self.parse_expression()?;
-                match term {
-                    ExprTerminator::CloseParenthesis => (),
-                    _ => return Err(ParserError::expected_symbol(self.tokens.span(), ")")),
-                };
-                let span = Span {
-                    start: start.start,
-                    end: self.tokens.span().end,
-                };
-                expr.map(ParseTokenResult::Expression)
-                    .ok_or_else(|| ParserError::empty_expression(span))
+                if let Some(lambda_args) = try_parse! {
+                    self;
+                    self.parse_lambda()
+                } {
+                    let end = self.tokens.span();
+                    println!("Got lambda: {lambda_args:?}");
+
+                    let (expr, _) = self.parse_expression()?;
+                    let res = match expr {
+                        Some(x) => Ok(ParseTokenResult::Expression(ExpressionType::Lambda(
+                            LambdaExpression::new(
+                                lambda_args,
+                                x,
+                                Span {
+                                    start: start.start,
+                                    end: end.end,
+                                },
+                            )?,
+                        ))),
+                        None => Err(ParserError::expect_expression(self.tokens.span())),
+                    };
+                    self.tokens.move_pointer(-1);
+                    res
+                } else {
+                    let start = self.tokens.span();
+                    let (expr, term) = self.parse_expression()?;
+                    match term {
+                        ExprTerminator::CloseParenthesis => (),
+                        _ => return Err(ParserError::expected_symbol(self.tokens.span(), ")")),
+                    };
+                    let span = Span {
+                        start: start.start,
+                        end: self.tokens.span().end,
+                    };
+                    expr.map(ParseTokenResult::Expression)
+                        .ok_or_else(|| ParserError::empty_expression(span))
+                }
             }
             // CloseParenthesis terminates an expression. We don't care about what opened the expression here,
             // if a terminator is encountered we stop, the parent expression can handle checking if it is valid.
@@ -240,16 +349,10 @@ impl<'source> Parser<'source> {
             }
             // SelectorStart indicates the start of an expression, which has its own method for parsing.
             Token::SelectorStart => {
-                let (selectors, next, span) = self.parse_selector(Token::SelectorStart, true)?;
-                let expr = SelectorExpression::new(SourceElement::Input, selectors, span);
+                let (selectors, span) = self.parse_selector(Token::SelectorStart, true)?;
+                let expr = SelectorExpression::new(SourceElement::Input, selectors, span)?;
                 let expr = ExpressionType::Selector(expr);
-                match next {
-                    Some(x) => Ok(ParseTokenResult::ExpressionAndNext((expr, x))),
-                    None => Ok(ParseTokenResult::ExpressionAndTerminator((
-                        expr,
-                        ExprTerminator::End,
-                    ))),
-                }
+                Ok(ParseTokenResult::Expression(expr))
             }
             // OpenBracket indicates the start of an array, which contains a (potentially empty) expression list,
             // and a CloseBracket.
@@ -269,7 +372,7 @@ impl<'source> Parser<'source> {
                         return Err(ParserError::expected_symbol(self.tokens.span(), "]"));
                     }
 
-                    let expr = ArrayExpression::new(items, span);
+                    let expr = ArrayExpression::new(items, span)?;
                     Ok(ParseTokenResult::Expression(ExpressionType::Array(expr)))
                 }
             }
@@ -284,7 +387,7 @@ impl<'source> Parser<'source> {
                         start: start.start,
                         end: self.tokens.span().end,
                     },
-                );
+                )?;
                 Ok(ParseTokenResult::Expression(ExpressionType::Object(expr)))
             }
             Token::CloseBrace => Ok(ParseTokenResult::Terminator(ExprTerminator::CloseBrace)),
@@ -320,7 +423,10 @@ impl<'source> Parser<'source> {
     /// ```
     /// Which we would typically express as (((1 + (1 / 1)) + 1) - (1 * 1)). Note how if you calculate that
     /// expression, ignoring normal operator priority rules except for parentheses, it still comes out correct.
-    fn group_expressions(ops: Vec<(Operator, Span)>, exprs: Vec<ExpressionType>) -> ExpressionType {
+    fn group_expressions(
+        ops: Vec<(Operator, Span)>,
+        exprs: Vec<ExpressionType>,
+    ) -> Result<ExpressionType, ParserError> {
         let mut lowest = 1000;
         let mut idx: i64 = -1;
 
@@ -332,7 +438,7 @@ impl<'source> Parser<'source> {
         }
 
         if idx < 0 {
-            return exprs.into_iter().next().unwrap();
+            return Ok(exprs.into_iter().next().unwrap());
         }
 
         let mut lhs_ops = vec![];
@@ -350,10 +456,12 @@ impl<'source> Parser<'source> {
         for i in (idx + 1)..(ops.len() as i64) {
             rhs_ops.push(ops[i as usize].clone());
         }
-        let lhs = Self::group_expressions(lhs_ops, lhs);
-        let rhs = Self::group_expressions(rhs_ops, rhs);
+        let lhs = Self::group_expressions(lhs_ops, lhs)?;
+        let rhs = Self::group_expressions(rhs_ops, rhs)?;
         let (op, span) = ops[idx as usize].clone();
-        ExpressionType::Operator(OpExpression::new(op, lhs, rhs, span))
+        Ok(ExpressionType::Operator(OpExpression::new(
+            op, lhs, rhs, span,
+        )?))
     }
 
     /// Parses tokens until we reach the end of the current expression.
@@ -384,34 +492,23 @@ impl<'source> Parser<'source> {
         let mut exprs: Vec<ExpressionType> = vec![];
         let mut ops = vec![];
 
-        let mut token = consume_token!(self);
+        consume_token!(self);
 
         let mut expect_expression = true;
         let mut initial = true;
         let term = loop {
             let previous = self.tokens.span();
-            match self.next_expression(expect_expression, initial, token)? {
+            match self.next_expression(expect_expression, initial)? {
                 ParseTokenResult::Expression(x) => {
                     exprs.push(x);
                     expect_expression = false;
-                }
-                ParseTokenResult::ExpressionAndNext((x, next)) => {
-                    exprs.push(x);
-                    token = next;
-                    expect_expression = false;
-                    initial = false;
-                    continue;
                 }
                 ParseTokenResult::Terminator(t) => break t,
                 ParseTokenResult::Operator(p) => {
                     ops.push(p);
                     expect_expression = true;
                 }
-                ParseTokenResult::ExpressionAndTerminator((x, t)) => {
-                    exprs.push(x);
-                    break t;
-                }
-                ParseTokenResult::Selector((selectors, next, span)) => {
+                ParseTokenResult::Selector((selectors, span)) => {
                     let root_expr = exprs.pop();
                     let Some(root) = root_expr else {
                         return Err(ParserError::expect_expression(start));
@@ -423,23 +520,13 @@ impl<'source> Parser<'source> {
                             start: previous.start,
                             end: span.end,
                         },
-                    )));
-                    initial = false;
-                    if let Some(t) = next {
-                        token = t;
-                    } else {
-                        token = match self.tokens.next() {
-                            Some(x) => x,
-                            None => break ExprTerminator::End,
-                        };
-                    }
-                    continue;
+                    )?));
                 }
             }
             initial = false;
 
-            token = match self.tokens.next() {
-                Some(x) => x,
+            match self.tokens.next() {
+                Some(_) => (),
                 None => break ExprTerminator::End,
             };
         };
@@ -459,7 +546,7 @@ impl<'source> Parser<'source> {
             ));
         }
 
-        let expr = Self::group_expressions(ops, exprs);
+        let expr = Self::group_expressions(ops, exprs)?;
         Ok((Some(expr), term))
     }
 
@@ -544,7 +631,7 @@ impl<'source> Parser<'source> {
         &mut self,
         token: Token,
         no_initial_period: bool,
-    ) -> Result<(Vec<SelectorElement>, Option<Token>, Span), ParserError> {
+    ) -> Result<(Vec<SelectorElement>, Span), ParserError> {
         let mut path = vec![];
         let start = self.tokens.span();
 
@@ -564,7 +651,7 @@ impl<'source> Parser<'source> {
             x => x,
         };
 
-        let final_token = loop {
+        loop {
             match next {
                 Token::BareString(s) if last_period || initial => {
                     last_period = false;
@@ -599,15 +686,16 @@ impl<'source> Parser<'source> {
                     if last_period {
                         return Err(ParserError::unexpected_symbol(self.tokens.span(), next));
                     }
-                    break Some(next);
+                    self.tokens.move_pointer(-1);
+                    break;
                 }
             }
             initial = false;
             next = match self.tokens.next() {
                 Some(x) => x,
-                None => break None,
+                None => break,
             };
-        };
+        }
         let span = Span {
             start: start.start,
             end: self.tokens.span().end,
@@ -615,7 +703,35 @@ impl<'source> Parser<'source> {
         if path.is_empty() {
             return Err(ParserError::empty_expression(span));
         }
-        Ok((path, final_token, span))
+        Ok((path, span))
+    }
+
+    fn parse_lambda(&mut self) -> Result<Vec<String>, ParserError> {
+        let mut keys = Vec::new();
+
+        println!("Try parse lambda");
+        match consume_token!(self) {
+            Token::CloseParenthesis => (),
+            Token::BareString(s) => {
+                keys.push(s);
+                loop {
+                    match consume_token!(self) {
+                        Token::Comma => (),
+                        Token::CloseParenthesis => break,
+                        x => return Err(ParserError::unexpected_symbol(self.tokens.span(), x)),
+                    }
+                    match consume_token!(self) {
+                        Token::BareString(s) => keys.push(s),
+                        x => return Err(ParserError::unexpected_symbol(self.tokens.span(), x)),
+                    }
+                }
+            }
+            x => return Err(ParserError::unexpected_symbol(self.tokens.span(), x)),
+        }
+        consume_token!(self, Token::Arrow);
+        println!("Successfully captured lambda args: {keys:?}");
+
+        Ok(keys)
     }
 }
 
@@ -724,7 +840,7 @@ pub mod test {
         match res {
             ParserError::InvalidExpression(d) => {
                 assert_eq!(d.detail, Some("Failed to parse expression".to_string()));
-                assert_eq!(d.position, Span { start: 4, end: 9 });
+                assert_eq!(d.position, Span { start: 4, end: 8 });
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -843,5 +959,32 @@ pub mod test {
     pub fn test_index_object() {
         let res = parse("{ 'test': 'test' }['test']").unwrap();
         assert_eq!(r#"{"test": "test"}["test"]"#, res.to_string())
+    }
+
+    #[test]
+    pub fn test_lambda() {
+        let res = parse("(arg1, arg2) => 1 + 1 + $arg1 + (arg3, arg4) => 5").unwrap();
+        assert_eq!(
+            r#"(arg1, arg2) => (((1 + 1) + $arg1) + (arg3, arg4) => 5)"#,
+            res.to_string()
+        );
+    }
+
+    #[test]
+    pub fn test_lambda_arg() {
+        let res = parse("pow((arg1, arg2) => 1 + 1, 2)").unwrap();
+        assert_eq!(r#"pow((arg1, arg2) => (1 + 1), 2)"#, res.to_string());
+    }
+
+    #[test]
+    pub fn test_empty_lambda() {
+        let res = parse_fail("() => ");
+        match res {
+            ParserError::EmptyExpression(d) => {
+                assert_eq!(d.detail, None);
+                assert_eq!(d.position, Span { start: 3, end: 5 });
+            }
+            _ => panic!("Wrong type of response: {res:?}"),
+        }
     }
 }

@@ -2,6 +2,8 @@ use std::{borrow::Cow, collections::HashMap, fmt::Display};
 
 use serde_json::{Map, Value};
 
+use crate::ParserError;
+
 use super::{
     base::{Expression, ExpressionExecutionState, ExpressionMeta, ExpressionType, ResolveResult},
     transform_error::TransformError,
@@ -162,8 +164,24 @@ impl<'a: 'c, 'b, 'c> ExpressionMeta<'a, 'b, 'c> for SelectorExpression {
 }
 
 impl SelectorExpression {
-    pub fn new(source: SourceElement, path: Vec<SelectorElement>, span: Span) -> Self {
-        Self { source, path, span }
+    pub fn new(
+        source: SourceElement,
+        path: Vec<SelectorElement>,
+        span: Span,
+    ) -> Result<Self, ParserError> {
+        if let SourceElement::Expression(expr) = &source {
+            if let ExpressionType::Lambda(lambda) = expr.as_ref() {
+                return Err(ParserError::unexpected_lambda(&lambda.span));
+            }
+        }
+        for item in &path {
+            if let SelectorElement::Expression(expr) = &item {
+                if let ExpressionType::Lambda(lambda) = expr.as_ref() {
+                    return Err(ParserError::unexpected_lambda(&lambda.span));
+                }
+            }
+        }
+        Ok(Self { source, path, span })
     }
 
     fn resolve_by_reference<'a: 'c, 'b, 'c>(

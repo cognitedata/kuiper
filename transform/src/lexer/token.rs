@@ -28,7 +28,7 @@ fn parse_bare_string(lexer: &mut Lexer<Token>) -> String {
 /// The Token type is the entry point for expressions. The input is a string that is automatically tokenized by Logos.
 /// Any new operators, special symbols, or behavior needs to be added here.
 /// Aim to do all the actual text parsing here, so that the parser can operate purely on tokens.
-#[derive(Logos, Debug, PartialEq)]
+#[derive(Logos, Debug, PartialEq, Clone)]
 pub enum Token {
     /// Used inside selectors, which are on the form [SelectorStart][Period][BareString or OpenBracket anything CloseBracket]...
     #[token(".")]
@@ -117,6 +117,9 @@ pub enum Token {
     #[token(":")]
     Colon,
 
+    #[token("=>")]
+    Arrow,
+
     /// Anything else, and whitespace. If it's whitespace it is skipped silently.
     #[error]
     #[regex(r"[ \t\n\f]+", logos::skip)]
@@ -146,6 +149,7 @@ impl Display for Token {
             Token::OpenBrace => write!(f, "{{"),
             Token::CloseBrace => write!(f, "}}"),
             Token::Colon => write!(f, ":"),
+            Token::Arrow => write!(f, "=>"),
         }
     }
 }

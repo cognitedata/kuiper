@@ -6,7 +6,7 @@ use super::{base::ExpressionMeta, Constant, Expression, ExpressionExecutionState
 
 fn resolve_constants(
     root: &mut ExpressionType,
-    known_inputs: &HashMap<String, usize>,
+    known_inputs: &mut HashMap<String, usize>,
     empty_state: &ExpressionExecutionState,
 ) -> Result<Option<ExpressionType>, TransformError> {
     if let ExpressionType::Selector(s) = root {
@@ -18,7 +18,25 @@ fn resolve_constants(
         return Ok(None);
     }
 
-    match root.resolve(empty_state) {
+    let mut temp_inputs: Option<Vec<String>> = None;
+    if let ExpressionType::Lambda(l) = root {
+        let mut max_inputs = known_inputs.values().max().copied().unwrap_or_default();
+        let inputs = l.input_names.clone();
+        for inp in &inputs {
+            if known_inputs.contains_key(inp) {
+                return Err(TransformError::new_invalid_operation(
+                    format!("Function input {inp} is already defined"),
+                    &l.span,
+                    empty_state.id,
+                ));
+            }
+            max_inputs += 1;
+            known_inputs.insert(inp.clone(), max_inputs);
+        }
+        temp_inputs = Some(inputs);
+    }
+
+    let res = match root.resolve(empty_state) {
         // If resolution succeeds, we can replace this operator with a constant
         Ok(x) => Ok(Some(ExpressionType::Constant(Constant::new(
             x.into_owned(),
@@ -42,13 +60,20 @@ fn resolve_constants(
             }
             _ => Err(e),
         },
+    };
+
+    if let Some(inputs) = temp_inputs {
+        for inp in &inputs {
+            known_inputs.remove(inp);
+        }
     }
+    res
 }
 
 /// Run the optimizer. For now this only catches a few consistency errors and resolves any constant expressions.
 pub fn optimize(
     mut root: ExpressionType,
-    known_inputs: &HashMap<String, usize>,
+    known_inputs: &mut HashMap<String, usize>,
 ) -> Result<ExpressionType, TransformError> {
     let data = Vec::new();
     let empty_state = ExpressionExecutionState::new(&data, "optimizer");
@@ -79,8 +104,8 @@ mod tests {
         for (idx, input) in inputs.iter().enumerate() {
             input_map.insert(input.to_string(), idx);
         }
-        let res =
-            optimize(res, &input_map).map_err(|e| CompileError::optimizer_err(e, "test", None))?;
+        let res = optimize(res, &mut input_map)
+            .map_err(|e| CompileError::optimizer_err(e, "test", None))?;
         Ok(res)
     }
 

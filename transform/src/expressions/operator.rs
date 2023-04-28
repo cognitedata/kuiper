@@ -3,6 +3,8 @@ use std::fmt::Display;
 use logos::Span;
 use serde_json::Value;
 
+use crate::ParserError;
+
 use super::{
     base::{
         get_boolean_from_value, get_number_from_value, get_string_from_value, Expression,
@@ -152,13 +154,23 @@ impl<'a: 'c, 'b, 'c> ExpressionMeta<'a, 'b, 'c> for OpExpression {
 }
 
 impl OpExpression {
-    pub fn new(op: Operator, lhs: ExpressionType, rhs: ExpressionType, span: Span) -> Self {
-        Self {
+    pub fn new(
+        op: Operator,
+        lhs: ExpressionType,
+        rhs: ExpressionType,
+        span: Span,
+    ) -> Result<Self, ParserError> {
+        for item in &[&lhs, &rhs] {
+            if let ExpressionType::Lambda(lambda) = &item {
+                return Err(ParserError::unexpected_lambda(&lambda.span));
+            }
+        }
+        Ok(Self {
             operator: op,
             descriptor: format!("'{}'", &op),
             elements: [Box::new(lhs), Box::new(rhs)],
             span,
-        }
+        })
     }
 
     fn resolve_generic_operator<'a>(
@@ -359,12 +371,15 @@ impl<'a: 'c, 'b, 'c> ExpressionMeta<'a, 'b, 'c> for UnaryOpExpression {
 }
 
 impl UnaryOpExpression {
-    pub fn new(op: UnaryOperator, el: ExpressionType, span: Span) -> Self {
-        Self {
+    pub fn new(op: UnaryOperator, el: ExpressionType, span: Span) -> Result<Self, ParserError> {
+        if let ExpressionType::Lambda(lambda) = &el {
+            return Err(ParserError::unexpected_lambda(&lambda.span));
+        }
+        Ok(Self {
             operator: op,
             descriptor: format!("'{}'", &op),
             element: Box::new(el),
             span,
-        }
+        })
     }
 }

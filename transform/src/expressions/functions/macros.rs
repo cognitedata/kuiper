@@ -18,7 +18,17 @@ macro_rules! function_def {
             }
         }
     };
+    (_default_lambda $typ:ident) => {
+        impl $crate::expressions::functions::LambdaAcceptFunction for $typ {}
+    };
     ($typ:ident, $name:expr, $nargs:expr) => {
+        function_def!(_default_lambda $typ);
+        function_def!(_fixargs $typ, $name, $nargs);
+    };
+    ($typ:ident, $name:expr, $nargs:expr, lambda) => {
+        function_def!(_fixargs $typ, $name, $nargs);
+    };
+    (_fixargs $typ:ident, $name:expr, $nargs:expr) => {
         #[derive(Debug, Clone)]
         pub struct $typ {
             args: [Box<$crate::expressions::base::ExpressionType>; $nargs],
@@ -41,6 +51,11 @@ macro_rules! function_def {
                         span,
                         &Self::INFO.num_args_desc(),
                     ));
+                }
+                for (idx, arg) in args.iter().enumerate() {
+                    if let $crate::expressions::base::ExpressionType::Lambda(lambda) = arg {
+                        <Self as $crate::expressions::functions::LambdaAcceptFunction>::validate_lambda(idx, lambda)?;
+                    }
                 }
                 Ok(Self {
                     span,
@@ -79,6 +94,13 @@ macro_rules! function_def {
         }
     };
     ($typ:ident, $name:expr, $minargs:expr, $maxargs:expr) => {
+        function_def!(_default_lambda $typ);
+        function_def!(_dynargs $typ, $name, $minargs, $maxargs);
+    };
+    ($typ:ident, $name:expr, $minargs:expr, $maxargs:expr, lambda) => {
+        function_def!(_dynargs $typ, $name, $minargs, $maxargs);
+    };
+    (_dynargs $typ:ident, $name:expr, $minargs:expr, $maxargs:expr) => {
         #[derive(Debug, Clone)]
         pub struct $typ {
             args: Vec<$crate::expressions::base::ExpressionType>,

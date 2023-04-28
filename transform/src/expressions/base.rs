@@ -5,7 +5,7 @@ use std::{borrow::Cow, fmt::Display};
 use crate::parse::ParserError;
 
 use super::{
-    functions::*, numbers::JsonNumber, operator::UnaryOpExpression,
+    functions::*, lambda::LambdaExpression, numbers::JsonNumber, operator::UnaryOpExpression,
     transform_error::TransformError, ArrayExpression, ObjectExpression, OpExpression,
     SelectorExpression,
 };
@@ -135,6 +135,7 @@ pub enum ExpressionType {
     Function(FunctionType),
     Array(ArrayExpression),
     Object(ObjectExpression),
+    Lambda(LambdaExpression),
 }
 
 /// The result of an expression resolution. The signature is a little weird.
