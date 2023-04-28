@@ -20,7 +20,7 @@ fn resolve_constants(
 
     let mut temp_inputs: Option<Vec<String>> = None;
     if let ExpressionType::Lambda(l) = root {
-        let mut max_inputs = known_inputs.values().max().copied().unwrap_or_default();
+        let mut max_inputs = known_inputs.values().max().copied();
         let inputs = l.input_names.clone();
         for inp in &inputs {
             if known_inputs.contains_key(inp) {
@@ -30,8 +30,11 @@ fn resolve_constants(
                     empty_state.id,
                 ));
             }
-            max_inputs += 1;
-            known_inputs.insert(inp.clone(), max_inputs);
+            max_inputs = match max_inputs {
+                Some(x) => Some(x + 1),
+                None => Some(0),
+            };
+            known_inputs.insert(inp.clone(), max_inputs.unwrap());
         }
         temp_inputs = Some(inputs);
     }

@@ -1,5 +1,6 @@
 #[macro_use]
 mod macros;
+mod functors;
 mod logic;
 mod math;
 mod string;
@@ -7,6 +8,7 @@ mod time;
 mod transforms;
 
 use crate::parse::ParserError;
+pub use functors::*;
 pub use logic::*;
 pub use math::*;
 pub use string::*;
