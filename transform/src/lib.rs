@@ -435,7 +435,7 @@ mod tests {
             }) => {
                 assert_eq!(d.id, "optimizer");
                 assert_eq!(d.desc, "foo");
-                assert_eq!(d.span, Span { start: 8, end: 17 });
+                assert_eq!(d.span, Span { start: 8, end: 16 });
             }
             _ => panic!("Wrong type of error {result:?}"),
         }

@@ -168,8 +168,8 @@ impl Transform {
             ));
         }
 
-        let inputs = TransformInputs::new(&raw.inputs, inputs, raw.mode);
-        let result = optimize(result, &inputs.inputs)
+        let mut inputs = TransformInputs::new(&raw.inputs, inputs, raw.mode);
+        let result = optimize(result, &mut inputs.inputs)
             .map_err(|e| CompileError::optimizer_err(e, &raw.id, None))?;
 
         Ok(Self {

@@ -11,6 +11,7 @@ pub enum ParserError {
     InvalidToken(ParserErrorData),
     NFunctionArgs(ParserErrorData),
     ExpectExpression(ParserErrorData),
+    UnexpectedLambda(ParserErrorData),
 }
 
 #[derive(Debug)]
@@ -69,6 +70,12 @@ impl ParserError {
     pub(crate) fn expect_expression(position: Span) -> Self {
         Self::ExpectExpression(ParserErrorData {
             position,
+            detail: None,
+        })
+    }
+    pub(crate) fn unexpected_lambda(position: &Span) -> Self {
+        Self::UnexpectedLambda(ParserErrorData {
+            position: position.clone(),
             detail: None,
         })
     }

@@ -1,5 +1,6 @@
 #[macro_use]
 mod macros;
+mod functors;
 mod logic;
 mod math;
 mod string;
@@ -7,13 +8,14 @@ mod time;
 mod transforms;
 
 use crate::parse::ParserError;
+pub use functors::*;
 pub use logic::*;
 pub use math::*;
 pub use string::*;
 pub use time::*;
 pub use transforms::*;
 
-use super::{base::ExpressionType, Expression};
+use super::{base::ExpressionType, Expression, LambdaExpression};
 
 use logos::Span;
 
@@ -66,4 +68,10 @@ where
 
     /// Create a new function from a list of expressions.
     fn new(args: Vec<ExpressionType>, span: Span) -> Result<Self, ParserError>;
+}
+
+pub trait LambdaAcceptFunction {
+    fn validate_lambda(_idx: usize, lambda: &LambdaExpression) -> Result<(), ParserError> {
+        Err(ParserError::unexpected_lambda(&lambda.span))
+    }
 }

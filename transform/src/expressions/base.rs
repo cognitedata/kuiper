@@ -5,7 +5,7 @@ use std::{borrow::Cow, fmt::Display};
 use crate::parse::ParserError;
 
 use super::{
-    functions::*, numbers::JsonNumber, operator::UnaryOpExpression,
+    functions::*, lambda::LambdaExpression, numbers::JsonNumber, operator::UnaryOpExpression,
     transform_error::TransformError, ArrayExpression, ObjectExpression, OpExpression,
     SelectorExpression,
 };
@@ -30,6 +30,52 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
     pub fn new(data: &'exec Vec<&'data Value>, id: &'exec str) -> Self {
         Self { data, id }
     }
+
+    pub fn get_temporary_clone(
+        &self,
+        extra_cap: usize,
+    ) -> InternalExpressionExecutionState<'data, 'exec> {
+        let mut data = Vec::with_capacity(self.data.len() + extra_cap);
+        for elem in self.data {
+            data.push(*elem);
+        }
+        InternalExpressionExecutionState {
+            data,
+            id: self.id,
+            base_length: self.data.len(),
+        }
+    }
+}
+
+pub struct InternalExpressionExecutionState<'data, 'exec> {
+    pub data: Vec<&'data Value>,
+    pub id: &'exec str,
+    pub base_length: usize,
+}
+
+impl<'data, 'exec> InternalExpressionExecutionState<'data, 'exec> {
+    pub fn get_temp_state<'slf>(&'slf self) -> ExpressionExecutionState<'data, 'slf> {
+        ExpressionExecutionState {
+            data: &self.data,
+            id: self.id,
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! with_temp_values {
+    ($inner:ident, $inner_state:ident, $values:expr, $func:expr) => {{
+        let len = $values.len();
+        for val in $values {
+            $inner.data.push(val);
+        }
+        let $inner_state = $inner.get_temp_state();
+        let r = $func.map(|ok| ok.into_owned());
+        for _ in 0..len {
+            $inner.data.pop();
+        }
+        r
+    }};
 }
 
 /// Trait for top-level expressions.
@@ -89,6 +135,7 @@ pub enum FunctionType {
     Case(CaseFunction),
     Pairs(PairsFunction),
     Flatten(FlattenFunction),
+    Map(MapFunction),
 }
 
 /// Create a function expression from its name, or return a parser exception if it has the wrong number of arguments,
@@ -114,6 +161,7 @@ pub fn get_function_expression(
         "case" => FunctionType::Case(CaseFunction::new(args, pos)?),
         "pairs" => FunctionType::Pairs(PairsFunction::new(args, pos)?),
         "flatten" => FunctionType::Flatten(FlattenFunction::new(args, pos)?),
+        "map" => FunctionType::Map(MapFunction::new(args, pos)?),
         _ => return Err(ParserError::unrecognized_function(pos, name)),
     };
     Ok(ExpressionType::Function(expr))
@@ -135,6 +183,7 @@ pub enum ExpressionType {
     Function(FunctionType),
     Array(ArrayExpression),
     Object(ObjectExpression),
+    Lambda(LambdaExpression),
 }
 
 /// The result of an expression resolution. The signature is a little weird.
