@@ -271,7 +271,6 @@ impl Parser {
                     self.parse_lambda()
                 } {
                     let end = self.tokens.span();
-                    println!("Got lambda: {lambda_args:?}");
 
                     let (expr, _) = self.parse_expression()?;
                     let res = match expr {
@@ -710,7 +709,6 @@ impl Parser {
     fn parse_lambda(&mut self) -> Result<Vec<String>, ParserError> {
         let mut keys = Vec::new();
 
-        println!("Try parse lambda");
         match consume_token!(self) {
             Token::CloseParenthesis => (),
             Token::BareString(s) => {
@@ -730,7 +728,6 @@ impl Parser {
             x => return Err(ParserError::unexpected_symbol(self.tokens.span(), x)),
         }
         consume_token!(self, Token::Arrow);
-        println!("Successfully captured lambda args: {keys:?}");
 
         Ok(keys)
     }
@@ -964,17 +961,17 @@ pub mod test {
 
     #[test]
     pub fn test_lambda() {
-        let res = parse("(arg1, arg2) => 1 + 1 + $arg1 + (arg3, arg4) => 5").unwrap();
+        let res = parse("map([], (arg1, arg2) => 1 + 1) + $arg1").unwrap();
         assert_eq!(
-            r#"(arg1, arg2) => (((1 + 1) + $arg1) + (arg3, arg4) => 5)"#,
+            r#"(map([], (arg1, arg2) => (1 + 1)) + $arg1)"#,
             res.to_string()
         );
     }
 
     #[test]
     pub fn test_lambda_arg() {
-        let res = parse("pow((arg1, arg2) => 1 + 1, 2)").unwrap();
-        assert_eq!(r#"pow((arg1, arg2) => (1 + 1), 2)"#, res.to_string());
+        let res = parse("map([], (arg1, arg2) => 1 + 1)").unwrap();
+        assert_eq!(r#"map([], (arg1, arg2) => (1 + 1))"#, res.to_string());
     }
 
     #[test]
@@ -984,6 +981,18 @@ pub mod test {
             ParserError::EmptyExpression(d) => {
                 assert_eq!(d.detail, None);
                 assert_eq!(d.position, Span { start: 3, end: 5 });
+            }
+            _ => panic!("Wrong type of response: {res:?}"),
+        }
+    }
+
+    #[test]
+    pub fn test_unexpected_lambda() {
+        let res = parse_fail("1 + () => 1 + 1");
+        match res {
+            ParserError::UnexpectedLambda(d) => {
+                assert_eq!(d.detail, None);
+                assert_eq!(d.position, Span { start: 4, end: 9 });
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }

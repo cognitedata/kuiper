@@ -41,7 +41,7 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
         }
         InternalExpressionExecutionState {
             data,
-            id: &self.id,
+            id: self.id,
             base_length: self.data.len(),
         }
     }
@@ -57,7 +57,7 @@ impl<'data, 'exec> InternalExpressionExecutionState<'data, 'exec> {
     pub fn get_temp_state<'slf>(&'slf self) -> ExpressionExecutionState<'data, 'slf> {
         ExpressionExecutionState {
             data: &self.data,
-            id: &self.id,
+            id: self.id,
         }
     }
 }
