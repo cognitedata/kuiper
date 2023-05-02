@@ -40,13 +40,13 @@ mod tests {
             }, {
                 "id": "parse",
                 "inputs": ["input"],
-                "transform": "$input.values",
+                "transform": "input.values",
                 "expandOutput": true
             }, {
                 "id": "finmerge",
                 "inputs": ["gen", "parse"],
                 "transform": r#"{
-                    "val": $merge
+                    "val": merge
                 }"#,
                 "mode": "merge"
             }
@@ -79,14 +79,14 @@ mod tests {
             }, {
                 "id": "parse",
                 "inputs": ["input"],
-                "transform": "$input.values",
+                "transform": "input.values",
                 "expandOutput": true
             }, {
                 "id": "finmerge",
                 "inputs": ["gen", "parse"],
                 "transform": r#"{
-                    "gen": $gen,
-                    "parse": $parse
+                    "gen": gen,
+                    "parse": parse
                 }"#,
                 "mode": "zip"
             }
@@ -114,7 +114,7 @@ mod tests {
             {
                 "id": "step1",
                 "inputs": ["input"],
-                "transform": "$input.values",
+                "transform": "input.values",
                 "expandOutput": true
             },
             {
@@ -127,17 +127,17 @@ mod tests {
                 "id": "explode1",
                 "inputs": ["gen", "step1"],
                 "transform": r#"{
-                    "v1": $gen,
-                    "v2": $step1.value
+                    "v1": gen,
+                    "v2": step1.value
                 }"#
             },
             {
                 "id": "explode2",
                 "inputs": ["gen", "explode1"],
                 "transform": r#"{
-                    "v1": $gen,
-                    "v21": $explode1.v1,
-                    "v22": $explode1.v2
+                    "v1": gen,
+                    "v21": explode1.v1,
+                    "v22": explode1.v2
                 }"#
             }
         ]))
@@ -166,7 +166,7 @@ mod tests {
             {
                 "id": "step1",
                 "inputs": ["input"],
-                "transform": "pow($input.test)",
+                "transform": "pow(input.test)",
                 "expandOutput": true
             }
         ]));
@@ -181,7 +181,7 @@ mod tests {
                                     .to_string()
                             )
                         );
-                        assert_eq!(d.position, Span { start: 0, end: 16 });
+                        assert_eq!(d.position, Span { start: 0, end: 15 });
                     }
                     _ => panic!("Wrong type of parser error {:?}", &d.err),
                 }
@@ -198,7 +198,7 @@ mod tests {
             "id": "step1",
             "inputs": ["input"],
             "transform": r#"{
-                "f1": pow($input.test)
+                "f1": pow(input.test)
             }"#
         }]));
         match err {
@@ -212,7 +212,7 @@ mod tests {
                                     .to_string()
                             )
                         );
-                        assert_eq!(d.position, Span { start: 24, end: 40 });
+                        assert_eq!(d.position, Span { start: 24, end: 39 });
                     }
                     _ => panic!("Wrong type of parser error {:?}", &d.err),
                 }
@@ -228,7 +228,7 @@ mod tests {
             "id": "input",
             "inputs": ["input"],
             "transform": r#"{
-                "f1": $input.test
+                "f1": input.test
             }"#
         }]));
         match err {
@@ -246,7 +246,7 @@ mod tests {
             "id": "merge",
             "inputs": ["input"],
             "transform": r#"{
-                "f1": $input.test
+                "f1": input.test
             }"#
         }]));
         match err {
@@ -264,7 +264,7 @@ mod tests {
             "id": "step",
             "inputs": ["input", "step"],
             "transform": r#"{
-                "f1": $step.test
+                "f1": step.test
             }"#
         }]));
         match err {
@@ -285,13 +285,13 @@ mod tests {
             "id": "step",
             "inputs": ["input", "step2"],
             "transform": r#"{
-                "f1": $step2.test
+                "f1": step2.test
             }"#
         }, {
             "id": "step2",
             "inputs": ["step"],
             "transform": r#"{
-                "f1": $step.test
+                "f1": step.test
             }"#
         }]));
         match err {
@@ -312,7 +312,7 @@ mod tests {
             "id": "step",
             "inputs": ["input", "step2"],
             "transform": r#"{
-                "f1": $step2.test
+                "f1": step2.test
             }"#
         }]));
         match err {
@@ -330,7 +330,7 @@ mod tests {
         let result = compile(json!([{
             "id": "step",
             "inputs": ["input"],
-            "transform": "$input.val + 5.5"
+            "transform": "input.val + 5.5"
         }]))
         .unwrap();
         let res = result.execute(&json!({ "val": 5 })).unwrap();
@@ -343,7 +343,7 @@ mod tests {
         let result = compile(json!([{
             "id": "step",
             "inputs": ["input"],
-            "transform": "$input.val + 5"
+            "transform": "input.val + 5"
         }]))
         .unwrap();
         let res = result.execute(&json!({ "val": 5 })).unwrap();
@@ -356,7 +356,7 @@ mod tests {
         let result = compile(json!([{
             "id": "step",
             "inputs": ["input"],
-            "transform": "$input.val - 10"
+            "transform": "input.val - 10"
         }]))
         .unwrap();
         let res = result.execute(&json!({ "val": 5 })).unwrap();
@@ -369,7 +369,7 @@ mod tests {
         let result = compile(json!([{
             "id": "step",
             "inputs": ["input"],
-            "transform": "10 / $input.val"
+            "transform": "10 / input.val"
         }]))
         .unwrap();
         let res = result.execute(&json!({ "val": 0 })).unwrap_err();
@@ -388,7 +388,7 @@ mod tests {
         let result = compile(json!([{
             "id": "step",
             "inputs": ["input"],
-            "transform": "10 * $input.val"
+            "transform": "10 * input.val"
         }]))
         .unwrap();
         let res = result.execute(&json!({ "val": "test" })).unwrap_err();
@@ -407,7 +407,7 @@ mod tests {
         let result = compile(json!([{
             "id": "step",
             "inputs": ["input"],
-            "transform": "pow(10, $input.val)"
+            "transform": "pow(10, input.val)"
         }]))
         .unwrap();
         let res = result.execute(&json!({ "val": "test" })).unwrap_err();
@@ -415,7 +415,7 @@ mod tests {
             TransformError::IncorrectTypeInField(d) => {
                 assert_eq!(d.id, "step");
                 assert_eq!(d.desc, "pow. Got string, expected number");
-                assert_eq!(d.span, Span { start: 0, end: 19 });
+                assert_eq!(d.span, Span { start: 0, end: 18 });
             }
             _ => panic!("Wrong type of error {res:?}"),
         }
@@ -426,7 +426,7 @@ mod tests {
         let result = compile_err(json!([{
             "id": "step",
             "inputs": ["input"],
-            "transform": "pow(10, $foo.val)"
+            "transform": "pow(10, foo.val)"
         }]));
         match result {
             CompileError::Optimizer(OptimizerCompileError {
@@ -435,30 +435,7 @@ mod tests {
             }) => {
                 assert_eq!(d.id, "optimizer");
                 assert_eq!(d.desc, "foo");
-                assert_eq!(d.span, Span { start: 8, end: 16 });
-            }
-            _ => panic!("Wrong type of error {result:?}"),
-        }
-    }
-
-    #[test]
-    pub fn test_wrong_source_selector() {
-        let result = compile_err(json!([{
-            "id": "step",
-            "inputs": ["input"],
-            "transform": "$[0]"
-        }]));
-        match result {
-            CompileError::Optimizer(OptimizerCompileError {
-                err: TransformError::IncorrectTypeInField(d),
-                ..
-            }) => {
-                assert_eq!(d.id, "optimizer");
-                assert_eq!(
-                    d.desc,
-                    "First selector from input must be a string. Got number, expected String"
-                );
-                assert_eq!(d.span, Span { start: 0, end: 4 });
+                assert_eq!(d.span, Span { start: 8, end: 15 });
             }
             _ => panic!("Wrong type of error {result:?}"),
         }
@@ -475,7 +452,7 @@ mod tests {
         }, {
             "id": "filter",
             "inputs": ["gen"],
-            "transform": "$gen",
+            "transform": "gen",
             "type": "filter"
         }]))
         .unwrap();
@@ -502,7 +479,7 @@ mod tests {
         }, {
             "id": "filter",
             "inputs": ["gen", "gen2"],
-            "transform": "$merge",
+            "transform": "merge",
             "type": "filter",
             "mode": "merge"
         }]))
@@ -523,7 +500,7 @@ mod tests {
         }, {
             "id": "filter",
             "inputs": ["gen", "input"],
-            "transform": "$merge",
+            "transform": "merge",
             "type": "filter"
         }]));
         match err {
@@ -544,8 +521,8 @@ mod tests {
             "id": "parse",
             "inputs": ["input"],
             "transform": r#"{
-                "v1": !$input.v1,
-                "v2": !!!$input.v2
+                "v1": !input.v1,
+                "v2": !!!input.v2
             }"#
         }]))
         .unwrap();
@@ -566,12 +543,12 @@ mod tests {
             "id": "cmp",
             "inputs": ["input"],
             "transform": r#"{
-                "gt": $input.v1 > $input.v2,
-                "gte": $input.v1 >= $input.v2,
-                "lt": $input.v1 < $input.v2,
-                "lte": $input.v1 <= $input.v2,
-                "eq": $input.v1 == $input.v2,
-                "neq": $input.v1 != $input.v2
+                "gt": input.v1 > input.v2,
+                "gte": input.v1 >= input.v2,
+                "lt": input.v1 < input.v2,
+                "lte": input.v1 <= input.v2,
+                "eq": input.v1 == input.v2,
+                "neq": input.v1 != input.v2
             }"#
         }]))
         .unwrap();
@@ -595,12 +572,12 @@ mod tests {
             "id": "cmp",
             "inputs": ["input"],
             "transform": r#"{
-                "gt": $input.v1 > $input.v2,
-                "gte": $input.v1 >= $input.v2,
-                "lt": $input.v1 < $input.v2,
-                "lte": $input.v1 <= $input.v2,
-                "eq": $input.v1 == $input.v2,
-                "neq": $input.v1 != $input.v2
+                "gt": input.v1 > input.v2,
+                "gte": input.v1 >= input.v2,
+                "lt": input.v1 < input.v2,
+                "lte": input.v1 <= input.v2,
+                "eq": input.v1 == input.v2,
+                "neq": input.v1 != input.v2
             }"#
         }]))
         .unwrap();
@@ -625,7 +602,7 @@ mod tests {
             "id": "cmp",
             "inputs": ["input"],
             "transform": r#"{
-                "v1": $input.v1 && $input.v2 || $input.v3
+                "v1": input.v1 && input.v2 || input.v3
             }"#
         }]))
         .unwrap();
@@ -660,9 +637,9 @@ mod tests {
             "id": "test",
             "inputs": ["input", "input1", "input2"],
             "transform": r#"{
-                "i1": $input,
-                "i2": $input1,
-                "i3": $input2
+                "i1": input,
+                "i2": input1,
+                "i3": input2
             }"#
         }]))
         .unwrap();
@@ -694,9 +671,9 @@ mod tests {
                 "id": "test2",
                 "inputs": ["input", "mystery", "test"],
                 "transform": r#"{
-                    "i1": $input,
-                    "i2": $mystery,
-                    "i3": $input2
+                    "i1": input,
+                    "i2": mystery,
+                    "i3": input2
                 }"#
             }]),
             HashMap::from_iter([
@@ -734,9 +711,9 @@ mod tests {
                 "id": "test",
                 "inputs": ["input", "mystery", "test"],
                 "transform": r#"{
-                    "i1": $input,
-                    "i2": $mystery,
-                    "i3": $input2
+                    "i1": input,
+                    "i2": mystery,
+                    "i3": input2
                 }"#
             }]),
             HashMap::from_iter([
@@ -759,7 +736,7 @@ mod tests {
             "id": "test",
             "inputs": ["input"],
             "transform": r#"{
-                "i1": { concat("test", "test"): 1 + 2 + 3, "val": $input.val }
+                "i1": { concat("test", "test"): 1 + 2 + 3, "val": input.val }
             }"#
         }]))
         .unwrap();
@@ -780,7 +757,7 @@ mod tests {
             "id": "test",
             "inputs": ["input"],
             "transform": r#"{
-                "i1": { concat("test", "test"): { "test": 8 }, "val": $input.val }["testtest"].test
+                "i1": { concat("test", "test"): { "test": 8 }, "val": input.val }["testtest"].test
             }"#
         }]))
         .unwrap();
@@ -818,7 +795,7 @@ mod tests {
         let program = compile(json!([{
             "id": "test",
             "inputs": ["input"],
-            "transform": r#"{ "key": "value", "key2": $input.val, "key3": { "nested": [1, 2, 3] } }"#
+            "transform": r#"{ "key": "value", "key2": input.val, "key3": { "nested": [1, 2, 3] } }"#
         }]))
         .unwrap();
 
@@ -847,7 +824,7 @@ mod tests {
         let program = compile(json!([{
             "id": "test",
             "inputs": [],
-            "transform": r#"{ "test": [1, 2, 3, 4] }.test.map((a) => $a * 2)[0].pow(2)"#
+            "transform": r#"{ "test": [1, 2, 3, 4] }.test.map((a) => a * 2)[0].pow(2)"#
         }]))
         .unwrap();
 

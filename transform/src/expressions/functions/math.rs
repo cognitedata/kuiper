@@ -252,7 +252,7 @@ mod tests {
                 "inputs": ["input"],
                 "transform": r#"{
                     "res": pow(2, 2),
-                    "res2": pow($input.val1, $input.val2)
+                    "res2": pow(input.val1, input.val2)
                 }"#,
                 "type": "map"
             }]))
@@ -280,7 +280,7 @@ mod tests {
                 "inputs": ["input"],
                 "transform": r#"{
                     "res": log(2, 2),
-                    "res2": log($input.val1, $input.val2)
+                    "res2": log(input.val1, input.val2)
                 }"#
             }]))
             .unwrap(),

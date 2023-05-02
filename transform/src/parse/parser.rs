@@ -40,7 +40,13 @@ impl TryTokenStream {
     }
 
     pub fn move_pointer(&mut self, diff: i64) {
-        self.index = Some((self.index.unwrap() as i64 + diff) as usize);
+        if let Some(index) = self.index {
+            if index as i64 >= -diff {
+                self.index = Some((index as i64 + diff) as usize);
+                return;
+            }
+        }
+        panic!("Tried to move pointer into negative value");
     }
 
     pub fn span(&self) -> Span {
@@ -229,23 +235,21 @@ impl Parser {
             return Err(ParserError::unexpected_symbol(self.tokens.span(), token));
         }
 
-        // println!("Investigate symbol {}", token);
         match token {
             // A period is invalid in an expression on its own.
             Token::Period => {
                 if expect_expression {
                     Err(ParserError::unexpected_symbol(self.tokens.span(), token))
                 } else {
-                    let func = try_parse! {
+                    let function = try_parse! {
                         self;
-                        self.parse_postfix_function()
+                        self.peek_for_function()
                     };
-                    if let Some(d) = func {
+                    if let Some(function) = function {
+                        let d = self.parse_function(Some(function))?;
                         Ok(ParseTokenResult::PostfixFunction(d))
                     } else {
-                        Ok(ParseTokenResult::Selector(
-                            self.parse_selector(Token::Period, false)?,
-                        ))
+                        Ok(ParseTokenResult::Selector(self.parse_selector(false)?))
                     }
                 }
             }
@@ -342,34 +346,30 @@ impl Parser {
             // A BareString encountered here is a function call, it must be followed by OpenParenthesis,
             // a (potentially empty) expression list, and a CloseParenthesis.
             Token::BareString(f) => {
-                let start = self.tokens.span();
-                consume_token!(self, Token::OpenParenthesis);
-                let (args, term) = self.parse_expression_list()?;
-                if !matches!(term, ExprTerminator::CloseParenthesis) {
-                    return Err(ParserError::expected_symbol(self.tokens.span(), ")"));
-                }
+                let is_function = matches!(self.tokens.peek(), Some(Token::OpenParenthesis));
 
-                let span = Span {
-                    start: start.start,
-                    end: self.tokens.span().end,
-                };
-                let func = get_function_expression(span, &f, args)?;
-                Ok(ParseTokenResult::Expression(func))
-            }
-            // SelectorStart indicates the start of an expression, which has its own method for parsing.
-            Token::SelectorStart => {
-                let (selectors, span) = self.parse_selector(Token::SelectorStart, true)?;
-                let expr = SelectorExpression::new(SourceElement::Input, selectors, span)?;
-                let expr = ExpressionType::Selector(expr);
-                Ok(ParseTokenResult::Expression(expr))
+                if is_function {
+                    let start = self.tokens.span();
+                    let (args, name) = self.parse_function(Some(f))?;
+                    let span = Span {
+                        start: start.start,
+                        end: self.tokens.span().end,
+                    };
+                    let func = get_function_expression(span, &name, args)?;
+                    Ok(ParseTokenResult::Expression(func))
+                } else {
+                    let (selectors, span) = self.parse_selector(true)?;
+                    let expr = SelectorExpression::new(SourceElement::Input(f), selectors, span)?;
+                    let expr = ExpressionType::Selector(expr);
+                    Ok(ParseTokenResult::Expression(expr))
+                }
             }
             // OpenBracket indicates the start of an array, which contains a (potentially empty) expression list,
             // and a CloseBracket.
             Token::OpenBracket => {
                 if !expect_expression {
-                    Ok(ParseTokenResult::Selector(
-                        self.parse_selector(Token::OpenBracket, false)?,
-                    ))
+                    self.tokens.move_pointer(-1);
+                    Ok(ParseTokenResult::Selector(self.parse_selector(true)?))
                 } else {
                     let start = self.tokens.span();
                     let (items, term) = self.parse_expression_list()?;
@@ -650,41 +650,31 @@ impl Parser {
         }
     }
 
-    fn peek_for_postfix_function(&mut self) -> Result<(), ParserError> {
-        consume_token!(self, Token::BareString(_));
-        consume_token!(self, Token::OpenParenthesis);
-        Ok(())
+    fn peek_for_function(&mut self) -> Result<String, ParserError> {
+        let token = consume_token!(self, Token::BareString(_));
+        if !matches!(self.tokens.peek(), Some(Token::OpenParenthesis)) {
+            return Err(ParserError::expected_symbol(self.tokens.span(), "("));
+        }
+        Ok(match token {
+            Token::BareString(s) => s,
+            _ => unreachable!(),
+        })
     }
 
-    // Parse a selector, on the form `$id.some.json.path` or `$id.array[0][1]`, or `$['dynamic']['selectors'][1 + 1].field`
+    // Parse a selector, on the form `id.some.json.path` or `id.array[0][1]`, or `dynamic['selectors'][1 + 1].field`
     fn parse_selector(
         &mut self,
-        token: Token,
-        no_initial_period: bool,
+        initial_is_element: bool,
     ) -> Result<(Vec<SelectorElement>, Span), ParserError> {
         let mut path = vec![];
         let start = self.tokens.span();
 
-        let mut last_period = false;
-        let mut initial = no_initial_period;
-
-        let mut next = match token {
-            Token::SelectorStart => match self.tokens.next() {
-                Some(x) => x,
-                None => {
-                    return Err(ParserError::empty_expression(Span {
-                        start: start.start,
-                        end: self.tokens.span().end,
-                    }))
-                }
-            },
-            x => x,
-        };
+        let mut last_is_element = initial_is_element;
 
         loop {
-            if !last_period && !initial {
+            if !last_is_element {
                 self.tokens.begin_try();
-                let res = self.peek_for_postfix_function();
+                let res = self.peek_for_function();
                 self.tokens.abort();
                 if res.is_ok() {
                     self.tokens.move_pointer(-1);
@@ -692,23 +682,28 @@ impl Parser {
                 }
             }
 
+            let next = match self.tokens.next() {
+                Some(x) => x,
+                None => break,
+            };
+
             match next {
-                Token::BareString(s) if last_period || initial => {
-                    last_period = false;
+                Token::BareString(s) if !last_is_element => {
+                    last_is_element = true;
                     path.push(SelectorElement::Constant(s));
                 }
-                Token::UInteger(s) if last_period || initial => {
-                    last_period = false;
+                Token::UInteger(s) if !last_is_element => {
+                    last_is_element = true;
                     path.push(SelectorElement::Constant(s.to_string()));
                 }
-                Token::Null if last_period || initial => {
-                    last_period = false;
+                Token::Null if !last_is_element => {
+                    last_is_element = true;
                     path.push(SelectorElement::Constant("null".to_string()))
                 }
-                Token::Period if !last_period && !initial => {
-                    last_period = true;
+                Token::Period if last_is_element => {
+                    last_is_element = false;
                 }
-                Token::OpenBracket if !last_period => {
+                Token::OpenBracket if last_is_element => {
                     let (exprs, term) = self.parse_expression_list()?;
                     if exprs.len() != 1 {
                         return Err(ParserError::invalid_expr(
@@ -723,26 +718,18 @@ impl Parser {
                     path.push(SelectorElement::Expression(Box::new(expr)));
                 }
                 _ => {
-                    if last_period {
+                    if !last_is_element {
                         return Err(ParserError::unexpected_symbol(self.tokens.span(), next));
                     }
                     self.tokens.move_pointer(-1);
                     break;
                 }
             }
-            initial = false;
-            next = match self.tokens.next() {
-                Some(x) => x,
-                None => break,
-            };
         }
         let span = Span {
             start: start.start,
             end: self.tokens.span().end,
         };
-        if path.is_empty() {
-            return Err(ParserError::empty_expression(span));
-        }
         Ok((path, span))
     }
 
@@ -771,12 +758,21 @@ impl Parser {
         Ok(keys)
     }
 
-    fn parse_postfix_function(&mut self) -> Result<(Vec<ExpressionType>, String), ParserError> {
-        let token = consume_token!(self, Token::BareString(_));
-        let function = match token {
-            Token::BareString(s) => s,
-            _ => unreachable!(),
+    fn parse_function(
+        &mut self,
+        name: Option<String>,
+    ) -> Result<(Vec<ExpressionType>, String), ParserError> {
+        let function = match name {
+            Some(x) => x,
+            None => {
+                let token = consume_token!(self, Token::BareString(_));
+                match token {
+                    Token::BareString(s) => s,
+                    _ => unreachable!(),
+                }
+            }
         };
+
         consume_token!(self, Token::OpenParenthesis);
         let (args, term) = self.parse_expression_list()?;
 
@@ -812,11 +808,11 @@ pub mod test {
 
     #[test]
     pub fn test_order_of_ops() {
-        let expr = parse("2 + 2 * $id.elem - 3 * 3 + pow(2, 2)").unwrap();
+        let expr = parse("2 + 2 * id.elem - 3 * 3 + pow(2, 2)").unwrap();
         // The parentheses indicate the order of operations, i.e. this expression is valid even if you ignore
         // normal order of operation rules.
         assert_eq!(
-            "(((2 + (2 * $id.elem)) - (3 * 3)) + pow(2, 2))",
+            "(((2 + (2 * id.elem)) - (3 * 3)) + pow(2, 2))",
             expr.to_string()
         );
     }
@@ -828,16 +824,16 @@ pub mod test {
 
     #[test]
     pub fn test_complex_selector() {
-        parse("$['test'][0].foo.bar[0]").unwrap();
+        parse("test[0].foo.bar[0]").unwrap();
     }
 
     #[test]
     pub fn test_bad_selector() {
-        let res = parse_fail("2 + $id.+");
+        let res = parse_fail("2 + id.+");
         match res {
             ParserError::UnexpectedSymbol(d) => {
                 assert_eq!(d.detail, Some("Unexpected symbol +".to_string()));
-                assert_eq!(d.position, Span { start: 8, end: 9 });
+                assert_eq!(d.position, Span { start: 7, end: 8 });
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -845,11 +841,11 @@ pub mod test {
 
     #[test]
     pub fn test_bad_selector_2() {
-        let res = parse_fail("2 + $id..");
+        let res = parse_fail("2 + id..");
         match res {
             ParserError::UnexpectedSymbol(d) => {
                 assert_eq!(d.detail, Some("Unexpected symbol .".to_string()));
-                assert_eq!(d.position, Span { start: 8, end: 9 });
+                assert_eq!(d.position, Span { start: 7, end: 8 });
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -857,11 +853,11 @@ pub mod test {
 
     #[test]
     pub fn test_bad_selector_3() {
-        let res = parse_fail("2 + $id.[0]");
+        let res = parse_fail("2 + id.[0]");
         match res {
             ParserError::UnexpectedSymbol(d) => {
                 assert_eq!(d.detail, Some("Unexpected symbol [".to_string()));
-                assert_eq!(d.position, Span { start: 8, end: 9 });
+                assert_eq!(d.position, Span { start: 7, end: 8 });
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -991,8 +987,8 @@ pub mod test {
 
     #[test]
     pub fn test_array_idx() {
-        let res = parse("$inp.test[0] + [0, 1, 2][2]").unwrap();
-        assert_eq!("($inp.test[0] + [0, 1, 2][2])", res.to_string());
+        let res = parse("inp.test[0] + [0, 1, 2][2]").unwrap();
+        assert_eq!("(inp.test[0] + [0, 1, 2][2])", res.to_string());
     }
 
     #[test]
@@ -1018,8 +1014,8 @@ pub mod test {
 
     #[test]
     pub fn test_lambda() {
-        let res = parse("map([], (arg1) => 1 + 1) + $arg1").unwrap();
-        assert_eq!(r#"(map([], (arg1) => (1 + 1)) + $arg1)"#, res.to_string());
+        let res = parse("map([], (arg1) => 1 + 1) + arg1").unwrap();
+        assert_eq!(r#"(map([], (arg1) => (1 + 1)) + arg1)"#, res.to_string());
     }
 
     #[test]
@@ -1066,9 +1062,9 @@ pub mod test {
 
     #[test]
     pub fn test_nested_postfix_function() {
-        let res = parse(r#"{ "test": [123] }.test.map((a) => $a * 2)[0].pow(2)"#).unwrap();
+        let res = parse(r#"{ "test": [123] }.test.map((a) => a * 2)[0].pow(2)"#).unwrap();
         assert_eq!(
-            r#"pow(map({"test": [123]}.test, (a) => ($a * 2))[0], 2)"#,
+            r#"pow(map({"test": [123]}.test, (a) => (a * 2))[0], 2)"#,
             res.to_string()
         );
     }

@@ -20,14 +20,14 @@ pub struct SelectorExpression {
 
 #[derive(Debug, Clone)]
 pub enum SourceElement {
-    Input,
+    Input(String),
+    CompiledInput(usize),
     Expression(Box<ExpressionType>),
 }
 
 #[derive(Debug, Clone)]
 pub enum SelectorElement {
     Constant(String),
-    CompiledConstant(usize),
     Expression(Box<ExpressionType>),
 }
 
@@ -36,7 +36,6 @@ impl Display for SelectorElement {
         match self {
             SelectorElement::Constant(x) => write!(f, "{x}"),
             SelectorElement::Expression(x) => write!(f, "[{x}]"),
-            SelectorElement::CompiledConstant(x) => write!(f, "{x}"),
         }
     }
 }
@@ -44,7 +43,8 @@ impl Display for SelectorElement {
 impl Display for SourceElement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SourceElement::Input => write!(f, "$"),
+            SourceElement::Input(s) => write!(f, "{s}"),
+            SourceElement::CompiledInput(s) => write!(f, "${s}"),
             SourceElement::Expression(e) => write!(f, "{e}"),
         }
     }
@@ -53,14 +53,10 @@ impl Display for SourceElement {
 impl Display for SelectorExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.source)?;
-        let mut initial = true;
         for el in &self.path {
-            if matches!(el, SelectorElement::Constant(_))
-                && (!initial || matches!(self.source, SourceElement::Expression(_)))
-            {
+            if matches!(el, SelectorElement::Constant(_)) {
                 write!(f, ".")?;
             }
-            initial = false;
             write!(f, "{el}")?;
         }
         Ok(())
@@ -73,33 +69,28 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for SelectorExpression {
         state: &'b ExpressionExecutionState<'c, 'b>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         match &self.source {
-            SourceElement::Input => {
-                let first_sel = self.path.first().unwrap();
-                let source_ref = match first_sel {
-                    SelectorElement::CompiledConstant(x) => match state.get_value(*x) {
-                        Some(x) => x,
-                        None => {
-                            return Err(TransformError::new_source_missing(
-                                x.to_string(),
-                                &self.span,
-                                state.id,
-                            ))
-                        }
-                    },
-                    x => {
+            SourceElement::CompiledInput(i) => {
+                let source_ref = match state.get_value(*i) {
+                    Some(x) => x,
+                    None => {
                         return Err(TransformError::new_source_missing(
-                            x.to_string(),
+                            i.to_string(),
                             &self.span,
                             state.id,
                         ))
                     }
                 };
-                self.resolve_by_reference(source_ref, state, true)
+                self.resolve_by_reference(source_ref, state)
             }
+            SourceElement::Input(s) => Err(TransformError::new_source_missing(
+                s.to_string(),
+                &self.span,
+                state.id,
+            )),
             SourceElement::Expression(e) => {
                 let src = e.resolve(state)?;
                 match src {
-                    Cow::Borrowed(v) => self.resolve_by_reference(v, state, false),
+                    Cow::Borrowed(v) => self.resolve_by_reference(v, state),
                     Cow::Owned(v) => self.resolve_by_value(v, state),
                 }
             }
@@ -190,12 +181,10 @@ impl SelectorExpression {
         &'a self,
         source: &'c Value,
         state: &'b ExpressionExecutionState<'c, 'b>,
-        skip: bool,
     ) -> Result<ResolveResult<'c>, TransformError> {
         let mut elem = source;
-        for p in self.path.iter().skip(if skip { 1 } else { 0 }) {
+        for p in self.path.iter() {
             elem = match p {
-                SelectorElement::CompiledConstant(_) => unreachable!(),
                 SelectorElement::Constant(x) => match elem.as_object().and_then(|o| o.get(x)) {
                     Some(x) => x,
                     None => return Ok(ResolveResult::Owned(Value::Null)),
@@ -264,7 +253,6 @@ impl SelectorExpression {
         let mut elem = source;
         for p in self.path.iter() {
             elem = match p {
-                SelectorElement::CompiledConstant(_) => unreachable!(),
                 SelectorElement::Constant(x) => {
                     match Self::as_object_owned(elem).and_then(|mut o| o.remove(x)) {
                         Some(x) => x,
@@ -324,45 +312,13 @@ impl SelectorExpression {
         state: &ExpressionExecutionState<'_, '_>,
         map: &HashMap<String, usize>,
     ) -> Result<(), TransformError> {
-        if !matches!(self.source, SourceElement::Input) {
-            return Ok(());
-        }
-
-        let first_sel = self.path.first().unwrap();
-        let new_first = match first_sel {
-            SelectorElement::Constant(x) => map.get(x).copied().ok_or_else(|| {
+        let new_source = match &self.source {
+            SourceElement::Input(x) => map.get(x).copied().ok_or_else(|| {
                 TransformError::new_source_missing(x.to_string(), &self.span, state.id)
             })?,
-            SelectorElement::CompiledConstant(_) => return Ok(()),
-            SelectorElement::Expression(x) => match x.resolve(state) {
-                Ok(r) => match r.as_ref() {
-                    Value::String(s) => map.get(s).copied().ok_or_else(|| {
-                        TransformError::new_source_missing(x.to_string(), &self.span, state.id)
-                    })?,
-                    d => {
-                        return Err(TransformError::new_incorrect_type(
-                            "First selector from input must be a string",
-                            "String",
-                            TransformError::value_desc(d),
-                            &self.span,
-                            state.id,
-                        ))
-                    }
-                },
-                Err(TransformError::SourceMissingError(_)) => {
-                    return Err(TransformError::new_invalid_operation(
-                        "First selector from source must be a constant".to_string(),
-                        &self.span,
-                        state.id,
-                    ))
-                }
-                Err(e) => {
-                    return Err(e);
-                }
-            },
+            _ => return Ok(()),
         };
-        self.path[0] = SelectorElement::CompiledConstant(new_first);
-
+        self.source = SourceElement::CompiledInput(new_source);
         Ok(())
     }
 }

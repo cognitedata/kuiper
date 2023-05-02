@@ -70,7 +70,7 @@ mod tests {
             serde_json::from_value(json!([{
                 "id": "map",
                 "inputs": [],
-                "transform": r#"map([1, 2, 3, 4], (i) => pow($i, 2))"#
+                "transform": r#"map([1, 2, 3, 4], (i) => pow(i, 2))"#
             }]))
             .unwrap(),
         )

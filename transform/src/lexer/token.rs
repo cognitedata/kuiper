@@ -95,10 +95,6 @@ pub enum Token {
     #[regex(r#"`(?:[^`\\]|\\.)*`"#, parse_bare_string)]
     BareString(String),
 
-    /// Start of a selector expression. Necessary to differentiate from function calls.
-    #[token("$")]
-    SelectorStart,
-
     /// Start of a dynamic selector expression, (i.e. $id['some-string'])
     /// or an array.
     #[token("[")]
@@ -138,7 +134,6 @@ impl Display for Token {
             Token::UnaryOperator(x) => write!(f, "{x}"),
             Token::String(x) => write!(f, "'{x}'"),
             Token::BareString(x) => write!(f, "`{x}`"),
-            Token::SelectorStart => write!(f, "$"),
             Token::OpenBracket => write!(f, "["),
             Token::CloseBracket => write!(f, "]"),
             Token::Error => write!(f, "unknown token"),
@@ -164,11 +159,12 @@ mod test {
 
     #[test]
     pub fn test_lexer() {
-        let mut lex = Token::lexer("123 +   $id.seg.`seg2 complex`/3-'some string here' + function_call($id, nested(3, 4))");
+        let mut lex = Token::lexer(
+            "123 +   id.seg.`seg2 complex`/3-'some string here' + function_call(id, nested(3, 4))",
+        );
 
         assert_eq!(lex.next(), Some(Token::UInteger(123)));
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
-        assert_eq!(lex.next(), Some(Token::SelectorStart));
         assert_eq!(lex.next(), Some(Token::BareString("id".to_string())));
         assert_eq!(lex.next(), Some(Token::Period));
         assert_eq!(lex.next(), Some(Token::BareString("seg".to_string())));
@@ -190,7 +186,6 @@ mod test {
             Some(Token::BareString("function_call".to_string()))
         );
         assert_eq!(lex.next(), Some(Token::OpenParenthesis));
-        assert_eq!(lex.next(), Some(Token::SelectorStart));
         assert_eq!(lex.next(), Some(Token::BareString("id".to_string())));
         assert_eq!(lex.next(), Some(Token::Comma));
         assert_eq!(lex.next(), Some(Token::BareString("nested".to_string())));
@@ -204,7 +199,7 @@ mod test {
 
     #[test]
     pub fn test_array_expr() {
-        let mut lex = Token::lexer("['some', 123, 'array', [0, -1, 2.2]] + $id['test'][0][1 + 1]");
+        let mut lex = Token::lexer("['some', 123, 'array', [0, -1, 2.2]] + id['test'][0][1 + 1]");
 
         assert_eq!(lex.next(), Some(Token::OpenBracket));
         assert_eq!(lex.next(), Some(Token::String("some".to_string())));
@@ -222,7 +217,6 @@ mod test {
         assert_eq!(lex.next(), Some(Token::CloseBracket));
         assert_eq!(lex.next(), Some(Token::CloseBracket));
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
-        assert_eq!(lex.next(), Some(Token::SelectorStart));
         assert_eq!(lex.next(), Some(Token::BareString("id".to_string())));
         assert_eq!(lex.next(), Some(Token::OpenBracket));
         assert_eq!(lex.next(), Some(Token::String("test".to_string())));

@@ -82,7 +82,7 @@ mod tests {
                 "inputs": ["input"],
                 "transform": r#"{
                     "concat2": concat('foo', 'bar'),
-                    "concat3": concat('foo', $input.val1 + $input.val2, 'bar')
+                    "concat3": concat('foo', input.val1 + input.val2, 'bar')
                 }"#,
                 "type": "map"
             }]))
@@ -112,7 +112,7 @@ mod tests {
                     "s1": string('foo'),
                     "s2": string(123),
                     "s3": string(null),
-                    "s4": string($input.val)
+                    "s4": string(input.val)
                 }"#,
                 "type": "map"
             }]))
