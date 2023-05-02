@@ -100,12 +100,12 @@ mod tests {
                 "id": "tostring",
                 "inputs": ["input"],
                 "transform": r#"{
-                    "t1": to_unix_timestamp($input.v1, '%Y-%m-%d %H:%M:%S'),
-                    "t2": to_unix_timestamp($input.v2, '%Y-%m-%d %H:%M:%S %z'),
-                    "t12": to_unix_timestamp($input.v1, '%Y-%m-%d %H:%M:%S', 3600),
-                    "t13": to_unix_timestamp($input.v1, '%Y-%m-%d %H:%M:%S%.f', -3600),
-                    "t3": to_unix_timestamp($input.v3, '%Y %b %d %H:%M'),
-                    "t4": to_unix_timestamp($input.v4, '%Y %b %d %H:%M %z')
+                    "t1": to_unix_timestamp(input.v1, '%Y-%m-%d %H:%M:%S'),
+                    "t2": to_unix_timestamp(input.v2, '%Y-%m-%d %H:%M:%S %z'),
+                    "t12": to_unix_timestamp(input.v1, '%Y-%m-%d %H:%M:%S', 3600),
+                    "t13": to_unix_timestamp(input.v1, '%Y-%m-%d %H:%M:%S%.f', -3600),
+                    "t3": to_unix_timestamp(input.v3, '%Y %b %d %H:%M'),
+                    "t4": to_unix_timestamp(input.v4, '%Y %b %d %H:%M %z')
                 }"#,
                 "type": "map"
             }]))

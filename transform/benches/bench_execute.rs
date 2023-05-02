@@ -9,16 +9,16 @@ fn bench_flatten_map(c: &mut Criterion) {
         {
             "id": "step1",
             "inputs": ["input"],
-            "transform": "$input.values",
+            "transform": "input.values",
             "expandOutput": true
         },
         {
             "id": "step2",
             "inputs": ["input", "step1"],
             "transform": r#"{
-                "externalId": $input.id,
-                "value": $step1.value * pow(10, $step1.valueExponent),
-                "timestamp": $step1.time
+                "externalId": input.id,
+                "value": step1.value * pow(10, step1.valueExponent),
+                "timestamp": step1.time
             }"#
         }
     ]))
@@ -48,8 +48,8 @@ fn bench_trivial_map(c: &mut Criterion) {
             "id": "step",
             "inputs": ["input"],
             "transform": r#"{
-                "externalId": $input.id,
-                "value": $input.val
+                "externalId": input.id,
+                "value": input.val
             }"#
         }
     ]))
@@ -70,7 +70,7 @@ fn bench_exponential_flatten(c: &mut Criterion) {
         {
             "id": "step1",
             "inputs": ["input"],
-            "transform": "$input.values",
+            "transform": "input.values",
             "expandOutput": true
         }, // 2
         {
@@ -83,28 +83,28 @@ fn bench_exponential_flatten(c: &mut Criterion) {
             "id": "explode1",
             "inputs": ["gen", "step1"],
             "transform": r#"{
-                "v1": "$gen",
-                "v2": "$step1.value"
+                "v1": gen,
+                "v2": step1.value
             }"#
         }, // 5 * 2
         {
             "id": "explode2",
             "inputs": ["gen", "explode1"],
             "transform": r#"{
-                "v1": $gen,
-                "v21": $explode1.v1,
-                "v22": $explode1.v2
+                "v1": gen,
+                "v21": explode1.v1,
+                "v22": explode1.v2
             }"#
         }, // 5 * (5 * 2) = 50
         {
             "id": "explode3",
             "inputs": ["explode1", "explode2"],
             "transform": r#"{
-                "v11": $explode1.v1,
-                "v12": $explode2.v1,
-                "v21": $explode2.v21,
-                "v22": $explode2.v22,
-                "v23": $explode1.v2
+                "v11": explode1.v1,
+                "v12": explode2.v1,
+                "v21": explode2.v21,
+                "v22": explode2.v22,
+                "v23": explode1.v2
             }"#
         } // (5 * 2) * (5 * (5 * 2)) = 500
     ]))

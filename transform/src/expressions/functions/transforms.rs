@@ -102,7 +102,7 @@ mod tests {
             serde_json::from_value(json!([{
                 "id": "pairs",
                 "inputs": ["input"],
-                "transform": "pairs($input)",
+                "transform": "pairs(input)",
                 "expandOutput": true
             }]))
             .unwrap(),
@@ -136,7 +136,7 @@ mod tests {
             serde_json::from_value(json!([{
                 "id": "flat",
                 "inputs": ["input"],
-                "transform": "flatten($input.data)",
+                "transform": "flatten(input.data)",
                 "expandOutput": true
             }]))
             .unwrap(),
@@ -162,7 +162,7 @@ mod tests {
             serde_json::from_value(json!([{
                 "id": "flat",
                 "inputs": ["input"],
-                "transform": "flatten($input.data, $input)",
+                "transform": "flatten(input.data, input)",
                 "expandOutput": true
             }]))
             .unwrap(),
@@ -193,7 +193,7 @@ mod tests {
             serde_json::from_value(json!([{
                 "id": "flat",
                 "inputs": ["input"],
-                "transform": "flatten($input.data, $input)",
+                "transform": "flatten(input.data, input)",
                 "expandOutput": true
             }]))
             .unwrap(),

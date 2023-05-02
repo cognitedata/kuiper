@@ -130,7 +130,7 @@ mod tests {
 
     #[test]
     pub fn test_mixed_expression() {
-        let expr = parse("2 + 2 * 3 - $input.id", &["input"]).unwrap();
+        let expr = parse("2 + 2 * 3 - input.id", &["input"]).unwrap();
         assert_eq!("(8 - $0.id)", expr.to_string());
     }
 
