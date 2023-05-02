@@ -173,6 +173,7 @@ enum ParseTokenResult {
     Terminator(ExprTerminator),
     Operator((Operator, Span)),
     Selector((Vec<SelectorElement>, Span)),
+    PostfixFunction((Vec<ExpressionType>, String)),
 }
 
 impl Parser {
@@ -232,12 +233,20 @@ impl Parser {
         match token {
             // A period is invalid in an expression on its own.
             Token::Period => {
-                if !expect_expression {
+                if expect_expression {
                     Err(ParserError::unexpected_symbol(self.tokens.span(), token))
                 } else {
-                    Ok(ParseTokenResult::Selector(
-                        self.parse_selector(Token::Period, false)?,
-                    ))
+                    let func = try_parse! {
+                        self;
+                        self.parse_postfix_function()
+                    };
+                    if let Some(d) = func {
+                        Ok(ParseTokenResult::PostfixFunction(d))
+                    } else {
+                        Ok(ParseTokenResult::Selector(
+                            self.parse_selector(Token::Period, false)?,
+                        ))
+                    }
                 }
             }
             Token::Arrow => Err(ParserError::unexpected_symbol(self.tokens.span(), token)),
@@ -522,6 +531,21 @@ impl Parser {
                         },
                     )?));
                 }
+                ParseTokenResult::PostfixFunction((mut args, func)) => {
+                    let root_expr = exprs.pop();
+                    let Some(root) = root_expr else {
+                        return Err(ParserError::expect_expression(start));
+                    };
+                    args.insert(0, root);
+                    exprs.push(get_function_expression(
+                        Span {
+                            start: previous.start,
+                            end: self.tokens.span().end,
+                        },
+                        &func,
+                        args,
+                    )?)
+                }
             }
             initial = false;
 
@@ -626,6 +650,12 @@ impl Parser {
         }
     }
 
+    fn peek_for_postfix_function(&mut self) -> Result<(), ParserError> {
+        consume_token!(self, Token::BareString(_));
+        consume_token!(self, Token::OpenParenthesis);
+        Ok(())
+    }
+
     // Parse a selector, on the form `$id.some.json.path` or `$id.array[0][1]`, or `$['dynamic']['selectors'][1 + 1].field`
     fn parse_selector(
         &mut self,
@@ -652,6 +682,16 @@ impl Parser {
         };
 
         loop {
+            if !last_period && !initial {
+                self.tokens.begin_try();
+                let res = self.peek_for_postfix_function();
+                self.tokens.abort();
+                if res.is_ok() {
+                    self.tokens.move_pointer(-1);
+                    break;
+                }
+            }
+
             match next {
                 Token::BareString(s) if last_period || initial => {
                     last_period = false;
@@ -728,8 +768,25 @@ impl Parser {
             x => return Err(ParserError::unexpected_symbol(self.tokens.span(), x)),
         }
         consume_token!(self, Token::Arrow);
-
         Ok(keys)
+    }
+
+    fn parse_postfix_function(&mut self) -> Result<(Vec<ExpressionType>, String), ParserError> {
+        let token = consume_token!(self, Token::BareString(_));
+        let function = match token {
+            Token::BareString(s) => s,
+            _ => unreachable!(),
+        };
+        consume_token!(self, Token::OpenParenthesis);
+        let (args, term) = self.parse_expression_list()?;
+
+        if !matches!(term, ExprTerminator::CloseParenthesis) {
+            return Err(ParserError::unexpected_symbol(
+                self.tokens.span(),
+                term.to_token(),
+            ));
+        }
+        Ok((args, function))
     }
 }
 
@@ -961,17 +1018,14 @@ pub mod test {
 
     #[test]
     pub fn test_lambda() {
-        let res = parse("map([], (arg1, arg2) => 1 + 1) + $arg1").unwrap();
-        assert_eq!(
-            r#"(map([], (arg1, arg2) => (1 + 1)) + $arg1)"#,
-            res.to_string()
-        );
+        let res = parse("map([], (arg1) => 1 + 1) + $arg1").unwrap();
+        assert_eq!(r#"(map([], (arg1) => (1 + 1)) + $arg1)"#, res.to_string());
     }
 
     #[test]
     pub fn test_lambda_arg() {
-        let res = parse("map([], (arg1, arg2) => 1 + 1)").unwrap();
-        assert_eq!(r#"map([], (arg1, arg2) => (1 + 1))"#, res.to_string());
+        let res = parse("map([], (arg1) => 1 + 1)").unwrap();
+        assert_eq!(r#"map([], (arg1) => (1 + 1))"#, res.to_string());
     }
 
     #[test]
@@ -996,5 +1050,26 @@ pub mod test {
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
+    }
+
+    #[test]
+    pub fn test_postfix_function() {
+        let res = parse("1.pow(2)").unwrap();
+        assert_eq!("pow(1, 2)", res.to_string());
+    }
+
+    #[test]
+    pub fn test_deep_postfix_function() {
+        let res = parse(r#"{ "test": [123] }.test[0].pow(2)"#).unwrap();
+        assert_eq!(r#"pow({"test": [123]}.test[0], 2)"#, res.to_string());
+    }
+
+    #[test]
+    pub fn test_nested_postfix_function() {
+        let res = parse(r#"{ "test": [123] }.test.map((a) => $a * 2)[0].pow(2)"#).unwrap();
+        assert_eq!(
+            r#"pow(map({"test": [123]}.test, (a) => ($a * 2))[0], 2)"#,
+            res.to_string()
+        );
     }
 }

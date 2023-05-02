@@ -55,7 +55,9 @@ impl Display for SelectorExpression {
         write!(f, "{}", self.source)?;
         let mut initial = true;
         for el in &self.path {
-            if matches!(el, SelectorElement::Constant(_)) && !initial {
+            if matches!(el, SelectorElement::Constant(_))
+                && (!initial || matches!(self.source, SourceElement::Expression(_)))
+            {
                 write!(f, ".")?;
             }
             initial = false;

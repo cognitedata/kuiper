@@ -842,4 +842,17 @@ mod tests {
             3
         );
     }
+    #[test]
+    pub fn test_nested_postfix_function() {
+        let program = compile(json!([{
+            "id": "test",
+            "inputs": [],
+            "transform": r#"{ "test": [1, 2, 3, 4] }.test.map((a) => $a * 2)[0].pow(2)"#
+        }]))
+        .unwrap();
+
+        let res = program.execute(&Value::Null).unwrap();
+        let res = res.into_iter().next().unwrap();
+        assert_eq!(res.as_f64().unwrap(), 4.0);
+    }
 }
