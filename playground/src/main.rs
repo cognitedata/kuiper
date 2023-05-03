@@ -31,28 +31,23 @@ async fn main() {
             "id": "build",
             "inputs": ["input"],
             "transform": r#"[
-                if($input.temperature, {
-                    "externalId": concat($input.stationName, '.', 'temperature'),
-                    "time": to_unix_timestamp($input.datetime, '%Y-%m-%d %H:%M:%S%.f'),
-                    "value": float($input.temperature)
+                if(input.temperature, {
+                    "externalId": concat(input.stationName, '.', 'temperature'),
+                    "time": to_unix_timestamp(input.datetime, '%Y-%m-%d %H:%M:%S%.f'),
+                    "value": float(input.temperature)
                 }),
-                if($input.cloudCoverage, {
-                    "externalId": concat($input.stationName, '.', 'cloudCover'),
-                    "time": to_unix_timestamp($input.datetime, '%Y-%m-%d %H:%M:%S%.f'),
-                    "value": $input.cloudCoverage
+                if(input.cloudCoverage, {
+                    "externalId": concat(input.stationName, '.', 'cloudCover'),
+                    "time": to_unix_timestamp(input.datetime, '%Y-%m-%d %H:%M:%S%.f'),
+                    "value": input.cloudCoverage
                 }),
-                if($input.wintSpeed, {
-                    "externalId": concat($input.stationName, '.', 'windspeed'),
-                    "time": to_unix_timestamp($input.datetime, '%Y-%m-%d %H:%M:%S%.f'),
-                    "value": float($input.wintSpeed)
+                if(input.wintSpeed, {
+                    "externalId": concat(input.stationName, '.', 'windspeed'),
+                    "time": to_unix_timestamp(input.datetime, '%Y-%m-%d %H:%M:%S%.f'),
+                    "value": float(input.wintSpeed)
                 })
-            ]"#,
+            ].filter((i) => i)"#,
             "expandOutput": true
-        }, {
-            "id": "filter",
-            "inputs": ["build"],
-            "type": "filter",
-            "transform": "$build"
         }]))
         .unwrap(),
     )

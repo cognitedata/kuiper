@@ -45,6 +45,25 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
             base_length: self.data.len(),
         }
     }
+
+    pub fn get_temporary_clone_inner(
+        &self,
+        extra_values: impl Iterator<Item = &'data Value>,
+        num_values: usize,
+    ) -> InternalExpressionExecutionState<'data, 'exec> {
+        let mut data = Vec::with_capacity(self.data.len() + num_values);
+        for elem in self.data {
+            data.push(*elem);
+        }
+        for elem in extra_values {
+            data.push(elem);
+        }
+        InternalExpressionExecutionState {
+            data,
+            id: self.id,
+            base_length: self.data.len(),
+        }
+    }
 }
 
 pub struct InternalExpressionExecutionState<'data, 'exec> {
@@ -70,7 +89,7 @@ macro_rules! with_temp_values {
             $inner.data.push(val);
         }
         let $inner_state = $inner.get_temp_state();
-        let r = $func.map(|ok| ok.into_owned());
+        let r = $func;
         for _ in 0..len {
             $inner.data.pop();
         }
@@ -136,6 +155,7 @@ pub enum FunctionType {
     Pairs(PairsFunction),
     Flatten(FlattenFunction),
     Map(MapFunction),
+    Filter(FilterFunction),
 }
 
 /// Create a function expression from its name, or return a parser exception if it has the wrong number of arguments,
@@ -162,6 +182,7 @@ pub fn get_function_expression(
         "pairs" => FunctionType::Pairs(PairsFunction::new(args, pos)?),
         "flatten" => FunctionType::Flatten(FlattenFunction::new(args, pos)?),
         "map" => FunctionType::Map(MapFunction::new(args, pos)?),
+        "filter" => FunctionType::Filter(FilterFunction::new(args, pos)?),
         _ => return Err(ParserError::unrecognized_function(pos, name)),
     };
     Ok(ExpressionType::Function(expr))
