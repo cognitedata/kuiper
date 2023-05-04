@@ -52,9 +52,10 @@ macro_rules! function_def {
                         &Self::INFO.num_args_desc(),
                     ));
                 }
+                let num_args = args.len();
                 for (idx, arg) in args.iter().enumerate() {
                     if let $crate::expressions::base::ExpressionType::Lambda(lambda) = arg {
-                        <Self as $crate::expressions::functions::LambdaAcceptFunction>::validate_lambda(idx, lambda)?;
+                        <Self as $crate::expressions::functions::LambdaAcceptFunction>::validate_lambda(idx, lambda, num_args)?;
                     }
                 }
                 Ok(Self {

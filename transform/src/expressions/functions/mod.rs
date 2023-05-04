@@ -1,5 +1,6 @@
 #[macro_use]
 mod macros;
+mod arrays;
 mod functors;
 mod logic;
 mod math;
@@ -8,6 +9,7 @@ mod time;
 mod transforms;
 
 use crate::parse::ParserError;
+pub use arrays::*;
 pub use functors::*;
 pub use logic::*;
 pub use math::*;
@@ -71,7 +73,11 @@ where
 }
 
 pub trait LambdaAcceptFunction {
-    fn validate_lambda(_idx: usize, lambda: &LambdaExpression) -> Result<(), ParserError> {
+    fn validate_lambda(
+        _idx: usize,
+        lambda: &LambdaExpression,
+        _num_args: usize,
+    ) -> Result<(), ParserError> {
         Err(ParserError::unexpected_lambda(&lambda.span))
     }
 }
