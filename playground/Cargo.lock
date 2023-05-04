@@ -570,6 +570,7 @@ name = "json_transform"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "itertools",
  "lazy_static",
  "logos",
  "once_cell",

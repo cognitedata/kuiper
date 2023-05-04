@@ -5,9 +5,12 @@ use std::{borrow::Cow, fmt::Display};
 use crate::parse::ParserError;
 
 use super::{
-    functions::*, lambda::LambdaExpression, numbers::JsonNumber, operator::UnaryOpExpression,
-    transform_error::TransformError, ArrayExpression, ObjectExpression, OpExpression,
-    SelectorExpression,
+    functions::{filter::FilterFunction, map::MapFunction, zip::ZipFunction, *},
+    lambda::LambdaExpression,
+    numbers::JsonNumber,
+    operator::UnaryOpExpression,
+    transform_error::TransformError,
+    ArrayExpression, ObjectExpression, OpExpression, SelectorExpression,
 };
 
 use transform_macros::PassThrough;
@@ -156,6 +159,9 @@ pub enum FunctionType {
     Flatten(FlattenFunction),
     Map(MapFunction),
     Filter(FilterFunction),
+    Zip(ZipFunction),
+    Length(LengthFunction),
+    Chunk(ChunkFunction),
 }
 
 /// Create a function expression from its name, or return a parser exception if it has the wrong number of arguments,
@@ -183,6 +189,9 @@ pub fn get_function_expression(
         "flatten" => FunctionType::Flatten(FlattenFunction::new(args, pos)?),
         "map" => FunctionType::Map(MapFunction::new(args, pos)?),
         "filter" => FunctionType::Filter(FilterFunction::new(args, pos)?),
+        "zip" => FunctionType::Zip(ZipFunction::new(args, pos)?),
+        "length" => FunctionType::Length(LengthFunction::new(args, pos)?),
+        "chunk" => FunctionType::Chunk(ChunkFunction::new(args, pos)?),
         _ => return Err(ParserError::unrecognized_function(pos, name)),
     };
     Ok(ExpressionType::Function(expr))

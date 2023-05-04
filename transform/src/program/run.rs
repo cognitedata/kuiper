@@ -9,6 +9,8 @@ use super::{
     Program,
 };
 
+pub static NULL_CONST: Value = Value::Null;
+
 // State for the transform as a whole.
 // Number of entries is known from the start
 // Must be able to:
@@ -20,7 +22,6 @@ use super::{
 //   Modify old entries
 pub struct TransformState<'inp> {
     data: Vec<OnceCell<Vec<ResolveResult<'inp>>>>,
-    null_const: Value,
     num_inputs: usize,
 }
 
@@ -32,7 +33,6 @@ impl<'inp> TransformState<'inp> {
         }
         Self {
             data: dat,
-            null_const: Value::Null,
             num_inputs,
         }
     }
@@ -53,10 +53,6 @@ impl<'inp> TransformState<'inp> {
             .unwrap()
             .set(value)
             .unwrap_or_else(|_| panic!("OnceCell already set!"));
-    }
-
-    pub fn null_const(&self) -> &Value {
-        &self.null_const
     }
 }
 
@@ -181,7 +177,7 @@ impl Transform {
 
         let mut res: Vec<Vec<&'a Value>> = Vec::with_capacity(res_len);
         for _ in 0..res_len {
-            res.push(vec![it.null_const(); self.inputs.used_inputs.len()]);
+            res.push(vec![&NULL_CONST; self.inputs.used_inputs.len()]);
         }
 
         for (idx, key) in self.inputs.used_inputs.iter().enumerate() {
@@ -264,7 +260,11 @@ impl Transform {
         let is_merge = matches!(inputs.mode, TransformInputType::Merge);
 
         let res = if items.is_empty() {
-            let data = Vec::new();
+            let len = match inputs.mode {
+                TransformInputType::Merge => 1,
+                _ => self.inputs.used_inputs.len(),
+            };
+            let data = vec![&NULL_CONST; len];
             self.execute_chunk(&data, is_merge)?
         } else {
             let mut res = Vec::new();
