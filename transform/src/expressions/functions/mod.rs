@@ -17,7 +17,7 @@ pub use string::*;
 pub use time::*;
 pub use transforms::*;
 
-use super::{base::ExpressionType, Expression, LambdaExpression};
+use super::{base::ExpressionType, LambdaExpression};
 
 use logos::Span;
 
@@ -60,10 +60,9 @@ impl FunctionInfo {
 }
 
 /// An expansion of Expression especially for functions, contains a `new` method, and `INFO`.
-pub trait FunctionExpression<'a: 'c, 'b, 'c>: Expression<'a, 'b, 'c>
+pub trait FunctionExpression
 where
     Self: Sized,
-    Self: 'a,
 {
     /// Static information about this function.
     const INFO: FunctionInfo;

@@ -47,16 +47,16 @@ impl LambdaExpression {
     }
 }
 
-impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for LambdaExpression {
+impl<'a: 'c, 'c> Expression<'a, 'c> for LambdaExpression {
     fn resolve(
         &'a self,
-        state: &'b super::ExpressionExecutionState<'c, 'b>,
+        state: &super::ExpressionExecutionState<'c, '_>,
     ) -> Result<super::ResolveResult<'c>, crate::TransformError> {
         self.expr.resolve(state)
     }
 }
 
-impl<'a: 'c, 'b, 'c> ExpressionMeta<'a, 'b, 'c> for LambdaExpression {
+impl ExpressionMeta for LambdaExpression {
     fn num_children(&self) -> usize {
         1
     }

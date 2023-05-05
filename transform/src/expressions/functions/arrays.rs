@@ -8,10 +8,10 @@ use crate::{
 
 function_def!(LengthFunction, "length", 1);
 
-impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for LengthFunction {
+impl<'a: 'c, 'c> Expression<'a, 'c> for LengthFunction {
     fn resolve(
         &'a self,
-        state: &'b crate::expressions::ExpressionExecutionState<'c, 'b>,
+        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let source = self.args[0].resolve(state)?;
 
@@ -36,10 +36,10 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for LengthFunction {
 
 function_def!(ChunkFunction, "chunk", 2);
 
-impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ChunkFunction {
+impl<'a: 'c, 'c> Expression<'a, 'c> for ChunkFunction {
     fn resolve(
         &'a self,
-        state: &'b crate::expressions::ExpressionExecutionState<'c, 'b>,
+        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         let source = self.args[0].resolve(state)?;
 

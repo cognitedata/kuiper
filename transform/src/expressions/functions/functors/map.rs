@@ -7,10 +7,10 @@ use crate::{
 
 function_def!(MapFunction, "map", 2, lambda);
 
-impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for MapFunction {
+impl<'a: 'c, 'c> Expression<'a, 'c> for MapFunction {
     fn resolve(
         &'a self,
-        state: &'b crate::expressions::ExpressionExecutionState<'c, 'b>,
+        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, TransformError> {
         let source = self.args[0].resolve(state)?;
 

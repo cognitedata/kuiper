@@ -13,20 +13,20 @@ macro_rules! arg2_math_func {
     ($typ:ident, $name:expr, $rname:ident) => {
         function_def!($typ, $name, 2);
 
-        impl<'a: 'c, 'b, 'c> $crate::expressions::base::Expression<'a, 'b, 'c> for $typ {
+        impl<'a: 'c, 'c> $crate::expressions::base::Expression<'a, 'c> for $typ {
             fn resolve(
                 &self,
-                state: &'b $crate::expressions::base::ExpressionExecutionState<'c, 'b>,
+                state: &$crate::expressions::base::ExpressionExecutionState<'c, '_>,
             ) -> Result<$crate::expressions::base::ResolveResult<'c>, $crate::expressions::transform_error::TransformError> {
                 let lhs = $crate::expressions::base::get_number_from_value(
-                    &<Self as $crate::expressions::functions::FunctionExpression<'a, 'b, 'c>>::INFO.name,
+                    &<Self as $crate::expressions::functions::FunctionExpression>::INFO.name,
                     self.args[0].resolve(state)?.as_ref(),
                     &self.span,
                     state.id,
                 )?
                 .as_f64();
                 let rhs = $crate::expressions::base::get_number_from_value(
-                    &<Self as $crate::expressions::functions::FunctionExpression<'a, 'b, 'c>>::INFO.name,
+                    &<Self as $crate::expressions::functions::FunctionExpression>::INFO.name,
                     self.args[1].resolve(state)?.as_ref(),
                     &self.span,
                     state.id,
@@ -60,16 +60,16 @@ macro_rules! arg1_math_func {
     ($typ:ident, $name:expr, $rname:ident) => {
         function_def!($typ, $name, 1);
 
-        impl<'a: 'c, 'b, 'c> $crate::expressions::base::Expression<'a, 'b, 'c> for $typ {
+        impl<'a: 'c, 'c> $crate::expressions::base::Expression<'a, 'c> for $typ {
             fn resolve(
                 &self,
-                state: &'b $crate::expressions::base::ExpressionExecutionState<'c, 'b>,
+                state: &$crate::expressions::base::ExpressionExecutionState<'c, '_>,
             ) -> Result<
                 $crate::expressions::base::ResolveResult<'c>,
                 $crate::expressions::transform_error::TransformError,
             > {
                 let arg = $crate::expressions::base::get_number_from_value(
-                    <Self as $crate::expressions::functions::FunctionExpression<'a, 'b, 'c>>::INFO.name,
+                    <Self as $crate::expressions::functions::FunctionExpression>::INFO.name,
                     self.args[0].resolve(state)?.as_ref(),
                     &self.span,
                     state.id,
@@ -107,10 +107,10 @@ function_def!(IntFunction, "int", 1);
 // Cast and math functions tend to get a bit involved, the reason is that
 // we want to be able to handle fairly large numbers, since those will be involved in timestamps. If we just cast to float, we might not be able to handle
 // (timestamp - timestamp) that well, for example, which is important. So we have to carefully track the type of number, and do conversions where possible.
-impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for IntFunction {
+impl<'a: 'c, 'c> Expression<'a, 'c> for IntFunction {
     fn resolve(
         &'a self,
-        state: &'b crate::expressions::ExpressionExecutionState<'c, 'b>,
+        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let dat = self.args[0].resolve(state)?;
         let val = dat.as_ref();
@@ -130,7 +130,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for IntFunction {
                 }
             }
             Value::Number(_) => get_number_from_value(
-                <Self as FunctionExpression<'a, 'b, 'c>>::INFO.name,
+                <Self as FunctionExpression>::INFO.name,
                 val,
                 &self.span,
                 state.id,
@@ -185,10 +185,10 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for IntFunction {
 
 function_def!(FloatFunction, "float", 1);
 
-impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for FloatFunction {
+impl<'a: 'c, 'c> Expression<'a, 'c> for FloatFunction {
     fn resolve(
         &'a self,
-        state: &'b crate::expressions::ExpressionExecutionState<'c, 'b>,
+        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let dat = self.args[0].resolve(state)?;
         let val = dat.as_ref();
@@ -208,7 +208,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for FloatFunction {
                 }
             }
             Value::Number(_) => get_number_from_value(
-                <Self as FunctionExpression<'a, 'b, 'c>>::INFO.name,
+                <Self as FunctionExpression>::INFO.name,
                 val,
                 &self.span,
                 state.id,

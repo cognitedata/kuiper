@@ -4,10 +4,10 @@ macro_rules! function_def {
     (_display $typ:ident) => {
         impl std::fmt::Display for $typ {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "{}(", <Self as $crate::expressions::functions::FunctionExpression<'_, '_, '_>>::INFO.name)?;
+                write!(f, "{}(", <Self as $crate::expressions::functions::FunctionExpression>::INFO.name)?;
                 let mut is_first = true;
-                for idx in 0..$crate::expressions::base::ExpressionMeta::<'_, '_, '_>::num_children(self) {
-                    let expr = $crate::expressions::base::ExpressionMeta::<'_, '_, '_>::get_child(self, idx).unwrap();
+                for idx in 0..$crate::expressions::base::ExpressionMeta::num_children(self) {
+                    let expr = $crate::expressions::base::ExpressionMeta::get_child(self, idx).unwrap();
                     if !is_first {
                         write!(f, ", ")?;
                     }
@@ -38,7 +38,7 @@ macro_rules! function_def {
 
         function_def!(_display $typ);
 
-        impl<'a: 'c, 'b, 'c> $crate::expressions::functions::FunctionExpression<'a, 'b, 'c> for $typ {
+        impl $crate::expressions::functions::FunctionExpression for $typ {
             const INFO: $crate::expressions::functions::FunctionInfo = $crate::expressions::functions::FunctionInfo {
                 minargs: $nargs,
                 maxargs: Some($nargs),
@@ -65,7 +65,7 @@ macro_rules! function_def {
             }
         }
 
-        impl<'a: 'c, 'b, 'c> $crate::expressions::base::ExpressionMeta<'a, 'b, 'c> for $typ {
+        impl $crate::expressions::base::ExpressionMeta for $typ {
             fn num_children(&self) -> usize {
                 $nargs
             }
@@ -111,7 +111,7 @@ macro_rules! function_def {
 
         function_def!(_display $typ);
 
-        impl<'a: 'c, 'b, 'c> $crate::expressions::functions::FunctionExpression<'a, 'b, 'c> for $typ {
+        impl $crate::expressions::functions::FunctionExpression for $typ {
             const INFO: $crate::expressions::functions::FunctionInfo = $crate::expressions::functions::FunctionInfo {
                 minargs: $minargs,
                 maxargs: $maxargs,
@@ -132,7 +132,7 @@ macro_rules! function_def {
             }
         }
 
-        impl<'a: 'c, 'b, 'c> $crate::expressions::base::ExpressionMeta<'a, 'b, 'c> for $typ {
+        impl $crate::expressions::base::ExpressionMeta for $typ {
             fn num_children(&self) -> usize {
                 self.args.len()
             }
