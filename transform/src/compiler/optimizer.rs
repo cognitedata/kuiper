@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
-use crate::TransformError;
-
-use super::{base::ExpressionMeta, Constant, Expression, ExpressionExecutionState, ExpressionType};
+use crate::{
+    expressions::{Constant, Expression, ExpressionExecutionState, ExpressionMeta, ExpressionType},
+    TransformError,
+};
 
 fn resolve_constants(
     root: &mut ExpressionType,

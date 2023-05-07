@@ -4,8 +4,8 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    compiler::from_ast,
-    expressions::{optimize, ExpressionType},
+    compiler::{from_ast, optimize},
+    expressions::ExpressionType,
     lexer::Lexer,
     parse::ExprParser,
 };
