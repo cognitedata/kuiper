@@ -32,10 +32,10 @@ impl Display for ObjectExpression {
     }
 }
 
-impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ObjectExpression {
+impl<'a: 'c, 'c> Expression<'a, 'c> for ObjectExpression {
     fn resolve(
         &'a self,
-        state: &'b super::ExpressionExecutionState<'c, 'b>,
+        state: &super::ExpressionExecutionState<'c, '_>,
     ) -> Result<super::ResolveResult<'c>, crate::TransformError> {
         let mut output = Map::with_capacity(self.pairs.len());
         for (key, value) in self.pairs.iter() {
@@ -47,7 +47,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ObjectExpression {
     }
 }
 
-impl<'a: 'c, 'b, 'c> ExpressionMeta<'a, 'b, 'c> for ObjectExpression {
+impl ExpressionMeta for ObjectExpression {
     fn num_children(&self) -> usize {
         self.pairs.len() * 2
     }

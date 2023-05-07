@@ -101,10 +101,10 @@ impl Display for OpExpression {
     }
 }
 
-impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for OpExpression {
+impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
     fn resolve(
         &self,
-        state: &'b ExpressionExecutionState<'c, 'b>,
+        state: &ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         let lhs = self.elements[0].resolve(state)?;
         if lhs.is_number() {
@@ -124,7 +124,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for OpExpression {
     }
 }
 
-impl<'a: 'c, 'b, 'c> ExpressionMeta<'a, 'b, 'c> for OpExpression {
+impl ExpressionMeta for OpExpression {
     fn num_children(&self) -> usize {
         2
     }
@@ -329,10 +329,10 @@ impl Display for UnaryOpExpression {
     }
 }
 
-impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for UnaryOpExpression {
+impl<'a: 'c, 'c> Expression<'a, 'c> for UnaryOpExpression {
     fn resolve(
         &'a self,
-        state: &'b ExpressionExecutionState<'c, 'b>,
+        state: &ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         let val = get_boolean_from_value(self.element.resolve(state)?.as_ref());
         match self.operator {
@@ -341,7 +341,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for UnaryOpExpression {
     }
 }
 
-impl<'a: 'c, 'b, 'c> ExpressionMeta<'a, 'b, 'c> for UnaryOpExpression {
+impl ExpressionMeta for UnaryOpExpression {
     fn num_children(&self) -> usize {
         1
     }

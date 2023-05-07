@@ -9,10 +9,10 @@ use crate::{
 
 function_def!(ZipFunction, "zip", 3, None, lambda);
 
-impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ZipFunction {
+impl<'a: 'c, 'c> Expression<'a, 'c> for ZipFunction {
     fn resolve(
         &'a self,
-        state: &'b crate::expressions::ExpressionExecutionState<'c, 'b>,
+        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let mut sources = Vec::with_capacity(self.args.len() - 1);
         let mut output_len = 0;

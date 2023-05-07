@@ -114,16 +114,16 @@ macro_rules! with_temp_values {
 ///     for transform in program
 ///         for entry in inputs
 ///             'b
-pub trait Expression<'a: 'c, 'b, 'c>: Display {
+pub trait Expression<'a: 'c, 'c>: Display {
     /// Resolve an expression.
     fn resolve(
         &'a self,
-        state: &'b ExpressionExecutionState<'c, 'b>,
+        state: &ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError>;
 }
 
 /// Additional trait for expressions, separate from Expression to make it easier to implement in macros
-pub trait ExpressionMeta<'a: 'c, 'b, 'c>: Expression<'a, 'b, 'c> {
+pub trait ExpressionMeta {
     fn num_children(&self) -> usize;
 
     fn get_child(&self, idx: usize) -> Option<&ExpressionType>;
@@ -136,8 +136,8 @@ pub trait ExpressionMeta<'a: 'c, 'b, 'c>: Expression<'a, 'b, 'c> {
 /// A function expression, new functions must be added here.
 #[derive(PassThrough, Debug, Clone)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
-#[pass_through(fn resolve(&'a self, state: &'b ExpressionExecutionState<'c, 'b>) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'b, 'c>, where 'a: 'c)]
-#[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta<'a, 'b, 'c>, where 'a: 'c)]
+#[pass_through(fn resolve(&'a self, state: &ExpressionExecutionState<'c, '_>) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
+#[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta)]
 #[pass_through(fn get_child(&self, idx: usize) -> Option<&ExpressionType>, "", ExpressionMeta<'a>)]
 #[pass_through(fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType>, "", ExpressionMeta<'a>)]
 #[pass_through(fn set_child(&mut self, idx: usize, item: ExpressionType), "", ExpressionMeta<'a>)]
@@ -200,8 +200,8 @@ pub fn get_function_expression(
 /// The main expression type. All expressions must be included here.
 #[derive(PassThrough, Debug, Clone)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
-#[pass_through(fn resolve(&'a self, state: &'b ExpressionExecutionState<'c, 'b>) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'b, 'c>, where 'a: 'c)]
-#[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta<'a, 'b, 'c>, where 'a: 'c)]
+#[pass_through(fn resolve(&'a self, state: &ExpressionExecutionState<'c, '_>) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
+#[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta)]
 #[pass_through(fn get_child(&self, idx: usize) -> Option<&ExpressionType>, "", ExpressionMeta<'a>)]
 #[pass_through(fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType>, "", ExpressionMeta<'a>)]
 #[pass_through(fn set_child(&mut self, idx: usize, item: ExpressionType), "", ExpressionMeta<'a>)]
@@ -233,16 +233,16 @@ impl Display for Constant {
     }
 }
 
-impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for Constant {
+impl<'a: 'c, 'c> Expression<'a, 'c> for Constant {
     fn resolve(
         &'a self,
-        _state: &'b ExpressionExecutionState<'c, 'b>,
+        _state: &ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         Ok(ResolveResult::Borrowed(&self.val))
     }
 }
 
-impl<'a: 'c, 'b, 'c> ExpressionMeta<'a, 'b, 'c> for Constant {
+impl ExpressionMeta for Constant {
     fn num_children(&self) -> usize {
         0
     }

@@ -10,10 +10,10 @@ use crate::{
 
 function_def!(IfFunction, "if", 2, Some(3));
 
-impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for IfFunction {
+impl<'a: 'c, 'c> Expression<'a, 'c> for IfFunction {
     fn resolve(
         &'a self,
-        state: &'b crate::expressions::ExpressionExecutionState<'c, 'b>,
+        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let cond_raw = self.args.first().unwrap().resolve(state)?;
         let cond = get_boolean_from_value(cond_raw.as_ref());
@@ -30,10 +30,10 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for IfFunction {
 
 function_def!(CaseFunction, "case", 3, None);
 
-impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for CaseFunction {
+impl<'a: 'c, 'c> Expression<'a, 'c> for CaseFunction {
     fn resolve(
         &'a self,
-        state: &'b crate::expressions::ExpressionExecutionState<'c, 'b>,
+        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
         let lhs = &self.args[0];
         let lhs = lhs.resolve(state)?;

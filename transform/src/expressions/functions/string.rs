@@ -17,10 +17,10 @@ function_def!(ConcatFunction, "concat", 2, None);
 // or an owned value, like we do here.
 // In theory we could have a function like `pi()`, which returns the constant PI, this could return a reference with lifetime 'a.
 // Typically returning references with lifetime 'a is used for constants, see Constant in base.rs.
-impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ConcatFunction {
+impl<'a: 'c, 'c> Expression<'a, 'c> for ConcatFunction {
     fn resolve(
         &'a self,
-        state: &'b crate::expressions::ExpressionExecutionState<'c, 'b>,
+        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
         // Create a mutable string we can write to, in rust this is fast, a string is just Vec<u8>
         let mut res = "".to_string();
@@ -42,10 +42,10 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ConcatFunction {
 // other functions follow... This function converts the input to a string.
 function_def!(StringFunction, "string", 1);
 
-impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for StringFunction {
+impl<'a: 'c, 'c> Expression<'a, 'c> for StringFunction {
     fn resolve(
         &'a self,
-        state: &'b crate::expressions::ExpressionExecutionState<'c, 'b>,
+        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
         let dat = self.args[0].resolve(state)?;
         let val = dat.as_ref();

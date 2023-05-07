@@ -7,10 +7,10 @@ use crate::{
 
 function_def!(PairsFunction, "pairs", 1);
 
-impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for PairsFunction {
+impl<'a: 'c, 'c> Expression<'a, 'c> for PairsFunction {
     fn resolve(
         &'a self,
-        state: &'b crate::expressions::ExpressionExecutionState<'c, 'b>,
+        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         let inp = self.args[0].resolve(state)?;
         let obj = match inp.into_owned() {
@@ -41,10 +41,10 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for PairsFunction {
 // If no outer object is specified, just flattens.
 function_def!(FlattenFunction, "flatten", 1, Some(2));
 
-impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for FlattenFunction {
+impl<'a: 'c, 'c> Expression<'a, 'c> for FlattenFunction {
     fn resolve(
         &'a self,
-        state: &'b crate::expressions::ExpressionExecutionState<'c, 'b>,
+        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         let inner = self.args.get(0).unwrap().resolve(state)?;
         let inner_flat = Self::flatten_rec(inner.into_owned());

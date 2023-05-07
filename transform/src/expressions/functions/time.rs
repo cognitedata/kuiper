@@ -12,10 +12,10 @@ use serde_json::{Number, Value};
 
 function_def!(ToUnixTimeFunction, "to_unix_timestamp", 2, Some(3));
 
-impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for ToUnixTimeFunction {
+impl<'a: 'c, 'c> Expression<'a, 'c> for ToUnixTimeFunction {
     fn resolve(
         &'a self,
-        state: &'b crate::expressions::ExpressionExecutionState<'c, 'b>,
+        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let dat = self.args.get(0).unwrap().resolve(state)?;
         let val = get_string_from_value(Self::INFO.name, &dat, &self.span, state.id)?;

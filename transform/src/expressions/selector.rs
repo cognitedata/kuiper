@@ -63,10 +63,10 @@ impl Display for SelectorExpression {
     }
 }
 
-impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for SelectorExpression {
+impl<'a: 'c, 'c> Expression<'a, 'c> for SelectorExpression {
     fn resolve(
         &'a self,
-        state: &'b ExpressionExecutionState<'c, 'b>,
+        state: &ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         match &self.source {
             SourceElement::CompiledInput(i) => {
@@ -98,7 +98,7 @@ impl<'a: 'c, 'b, 'c> Expression<'a, 'b, 'c> for SelectorExpression {
     }
 }
 
-impl<'a: 'c, 'b, 'c> ExpressionMeta<'a, 'b, 'c> for SelectorExpression {
+impl ExpressionMeta for SelectorExpression {
     fn num_children(&self) -> usize {
         let path = self.path.iter().filter_map(|f| match f {
             SelectorElement::Expression(e) => Some(e.as_ref()),
