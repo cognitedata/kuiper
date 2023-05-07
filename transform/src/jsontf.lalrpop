@@ -1,0 +1,178 @@
+use crate::{
+    lexer::Token,
+    lexer::LexerError,
+    parse::ast,
+    expressions::{Operator, UnaryOperator},
+};
+
+grammar;
+
+Const: ast::Constant = {
+    <val:"int"> => {
+        ast::Constant::NegativeInteger(val)
+    },
+    <val:"uint"> => {
+        ast::Constant::PositiveInteger(val)
+    },
+    <val:"string"> => {
+        ast::Constant::String(val)
+    },
+    <val:"float"> => {
+        ast::Constant::Float(val)
+    },
+    <val:"bool"> => {
+        ast::Constant::Bool(val)
+    },
+    "null" => {
+        ast::Constant::Null
+    }
+}
+
+Comma<T>: Vec<T> = {
+    <mut v:(<T> ",")*> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+};
+
+FunctionArg: ast::FunctionParameter = {
+    "(" <args: Comma<"var">> ")=>" <e: Expr> => ast::FunctionParameter::Lambda {
+        args,
+        inner: e
+    },
+    <v:"var"> "=>" <e:Expr> => ast::FunctionParameter::Lambda {
+        args: vec![v],
+        inner: e
+    },
+    <e: Expr> => ast::FunctionParameter::Expression(e)
+}
+
+pub Expr: ast::Expression = {
+    <e:Op1Expr> => e
+}
+
+Pair: (ast::Expression, ast::Expression) = {
+    <lh:Expr> ":" <rh:Expr> => (lh, rh)
+}
+
+Term: ast::Expression = {
+    <val:Const> => ast::Expression::Constant(val),
+    <fun:"var"> "(" <args:Comma<FunctionArg>> ")" => ast::Expression::Function {
+        name: fun,
+        args
+    },
+    <var:"var"> => ast::Expression::Variable(var),
+    "[" <it:Comma<Expr>> "]" => ast::Expression::Array(it),
+    "{" <it:Comma<Pair>> "}" => ast::Expression::Object(it),
+    <e: Term> "." <fun:"var"> "(" <mut args:Comma<FunctionArg>> ")" => {
+        args.insert(0, ast::FunctionParameter::Expression(e));
+        ast::Expression::Function {
+            name: fun,
+            args,
+        }
+    },
+    <e: Term> "." <el:"var"> => ast::Expression::Selector {
+        lhs: Box::new(e),
+        sel: ast::Selector::String(el),
+    },
+    <e: Term> "[" <el:Expr> "]" => ast::Expression::Selector {
+        lhs: Box::new(e),
+        sel: ast::Selector::Expression(Box::new(el)),
+    },
+    "(" <e:Expr> ")" => e
+}
+
+Tier<Op, NextTier>: ast::Expression = {
+    <lhs:Tier<Op, NextTier>> <op:Op> <rhs:NextTier> => ast::Expression::BinaryOperation(ast::OpExpression {
+        lhs: Box::new(lhs),
+        operator: op,
+        rhs: Box::new(rhs)
+    }),
+    NextTier
+}
+
+Op1Expr = Tier<Op1, Op2Expr>;
+Op1: Operator = {
+    "+" => Operator::Plus,
+    "-" => Operator::Minus
+}
+
+Op2Expr = Tier<Op2, Op4Expr>;
+Op2: Operator = {
+    "*" => Operator::Multiply,
+    "/" => Operator::Divide
+}
+
+Op4Expr = Tier<Op4, Op5Expr>;
+Op4: Operator = {
+    "==" => Operator::Equals,
+    "!=" => Operator::NotEquals
+}
+
+Op5Expr = Tier<Op5, Op6Expr>;
+Op5: Operator = {
+    ">" => Operator::GreaterThan,
+    "<" => Operator::LessThan,
+    ">=" => Operator::GreaterThanEquals,
+    "<=" => Operator::LessThanEquals 
+}
+
+Op6Expr = Tier<Op6, Op7Expr>;
+Op6: Operator = {
+    "&&" => Operator::And
+}
+
+Op7Expr = Tier<Op7, Op8Expr>;
+Op7: Operator = {
+    "||" => Operator::Or
+}
+
+Op8Expr: ast::Expression = {
+    "!" <e:Op8Expr> => ast::Expression::UnaryOperation {
+        operator: UnaryOperator::Negate,
+        rhs: Box::new(e)
+    },
+    Term
+}
+
+extern {
+    type Location = usize;
+    type Error = LexerError;
+
+    enum Token {
+        "." => Token::Period,
+        "(" => Token::OpenParenthesis,
+        ")" => Token::CloseParenthesis,
+        "," => Token::Comma,
+        "float" => Token::Float(<f64>),
+        "int" => Token::Integer(<i64>),
+        "uint" => Token::UInteger(<u64>),
+        "bool" => Token::Boolean(<bool>),
+        "string" => Token::String(<String>),
+        "+" => Token::Operator(Operator::Plus),
+        "-" => Token::Operator(Operator::Minus),
+        "/" => Token::Operator(Operator::Divide),
+        "*" => Token::Operator(Operator::Multiply),
+        ">" => Token::Operator(Operator::GreaterThan),
+        "<" => Token::Operator(Operator::LessThan),
+        ">=" => Token::Operator(Operator::GreaterThanEquals),
+        "<=" => Token::Operator(Operator::LessThanEquals),
+        "==" => Token::Operator(Operator::Equals),
+        "!=" => Token::Operator(Operator::NotEquals),
+        "&&" => Token::Operator(Operator::And),
+        "||" => Token::Operator(Operator::Or),
+        "!" => Token::UnaryOperator(UnaryOperator::Negate),
+        "null" => Token::Null,
+        "var" => Token::BareString(<String>),
+        "[" => Token::OpenBracket,
+        "]" => Token::CloseBracket,
+        "{" => Token::OpenBrace,
+        "}" => Token::CloseBrace,
+        ":" => Token::Colon,
+        ")=>" => Token::CombinedArrow,
+        "=>" => Token::Arrow
+    }
+}

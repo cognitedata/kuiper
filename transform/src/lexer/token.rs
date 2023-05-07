@@ -4,6 +4,8 @@ use logos::{Lexer, Logos};
 
 use crate::expressions::{Operator, UnaryOperator};
 
+use crate::lexer::LexerError;
+
 fn parse_string(lexer: &mut Lexer<Token>) -> String {
     let raw = lexer.slice();
     if raw.starts_with('\'') || raw.starts_with('"') {
@@ -29,6 +31,7 @@ fn parse_bare_string(lexer: &mut Lexer<Token>) -> String {
 /// Any new operators, special symbols, or behavior needs to be added here.
 /// Aim to do all the actual text parsing here, so that the parser can operate purely on tokens.
 #[derive(Logos, Debug, PartialEq, Clone)]
+#[logos(skip r"[ \t\n\f]+", error = LexerError)]
 pub enum Token {
     /// Used inside selectors, which are on the form [SelectorStart][Period][BareString or OpenBracket anything CloseBracket]...
     #[token(".")]
@@ -116,10 +119,7 @@ pub enum Token {
     #[token("=>")]
     Arrow,
 
-    /// Anything else, and whitespace. If it's whitespace it is skipped silently.
-    #[error]
-    #[regex(r"[ \t\n\f]+", logos::skip)]
-    Error,
+    CombinedArrow,
 }
 
 impl Display for Token {
@@ -136,7 +136,6 @@ impl Display for Token {
             Token::BareString(x) => write!(f, "`{x}`"),
             Token::OpenBracket => write!(f, "["),
             Token::CloseBracket => write!(f, "]"),
-            Token::Error => write!(f, "unknown token"),
             Token::Integer(x) => write!(f, "{x}"),
             Token::UInteger(x) => write!(f, "{x}"),
             Token::Null => write!(f, "null"),
@@ -145,6 +144,7 @@ impl Display for Token {
             Token::CloseBrace => write!(f, "}}"),
             Token::Colon => write!(f, ":"),
             Token::Arrow => write!(f, "=>"),
+            Token::CombinedArrow => write!(f, ") =>"),
         }
     }
 }
@@ -161,7 +161,8 @@ mod test {
     pub fn test_lexer() {
         let mut lex = Token::lexer(
             "123 +   id.seg.`seg2 complex`/3-'some string here' + function_call(id, nested(3, 4))",
-        );
+        )
+        .map(|t| t.unwrap());
 
         assert_eq!(lex.next(), Some(Token::UInteger(123)));
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
@@ -199,7 +200,8 @@ mod test {
 
     #[test]
     pub fn test_array_expr() {
-        let mut lex = Token::lexer("['some', 123, 'array', [0, -1, 2.2]] + id['test'][0][1 + 1]");
+        let mut lex = Token::lexer("['some', 123, 'array', [0, -1, 2.2]] + id['test'][0][1 + 1]")
+            .map(|t| t.unwrap());
 
         assert_eq!(lex.next(), Some(Token::OpenBracket));
         assert_eq!(lex.next(), Some(Token::String("some".to_string())));
@@ -233,7 +235,7 @@ mod test {
 
     #[test]
     pub fn test_operators() {
-        let mut lex = Token::lexer("1 + !!!2 - 3 * 4 / 5 != 6");
+        let mut lex = Token::lexer("1 + !!!2 - 3 * 4 / 5 != 6").map(|t| t.unwrap());
 
         assert_eq!(lex.next(), Some(Token::UInteger(1)));
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
@@ -262,7 +264,7 @@ mod test {
 
     #[test]
     pub fn test_object() {
-        let mut lex = Token::lexer(r#"{ "test": "test", 123: 'test' }"#);
+        let mut lex = Token::lexer(r#"{ "test": "test", 123: 'test' }"#).map(|t| t.unwrap());
         assert_eq!(lex.next(), Some(Token::OpenBrace));
         assert_eq!(lex.next(), Some(Token::String("test".to_string())));
         assert_eq!(lex.next(), Some(Token::Colon));
@@ -272,5 +274,41 @@ mod test {
         assert_eq!(lex.next(), Some(Token::Colon));
         assert_eq!(lex.next(), Some(Token::String("test".to_string())));
         assert_eq!(lex.next(), Some(Token::CloseBrace));
+    }
+
+    #[test]
+    pub fn test_lambda() {
+        let mut lex = Token::lexer("test => 1, (test, test) => 2").map(|t| t.unwrap());
+        assert_eq!(lex.next(), Some(Token::BareString("test".to_string())));
+        assert_eq!(lex.next(), Some(Token::Arrow));
+        assert_eq!(lex.next(), Some(Token::UInteger(1)));
+        assert_eq!(lex.next(), Some(Token::Comma));
+        assert_eq!(lex.next(), Some(Token::OpenParenthesis));
+        assert_eq!(lex.next(), Some(Token::BareString("test".to_string())));
+        assert_eq!(lex.next(), Some(Token::Comma));
+        assert_eq!(lex.next(), Some(Token::BareString("test".to_string())));
+        assert_eq!(lex.next(), Some(Token::CloseParenthesis));
+        assert_eq!(lex.next(), Some(Token::Arrow));
+        assert_eq!(lex.next(), Some(Token::UInteger(2)));
+    }
+
+    #[test]
+    pub fn test_lambda_2() {
+        let mut lex = Token::lexer("map([], (arg1) => 1 + 1) + arg1").map(|t| t.unwrap());
+        assert_eq!(lex.next(), Some(Token::BareString("map".to_string())));
+        assert_eq!(lex.next(), Some(Token::OpenParenthesis));
+        assert_eq!(lex.next(), Some(Token::OpenBracket));
+        assert_eq!(lex.next(), Some(Token::CloseBracket));
+        assert_eq!(lex.next(), Some(Token::Comma));
+        assert_eq!(lex.next(), Some(Token::OpenParenthesis));
+        assert_eq!(lex.next(), Some(Token::BareString("arg1".to_string())));
+        assert_eq!(lex.next(), Some(Token::CloseParenthesis));
+        assert_eq!(lex.next(), Some(Token::Arrow));
+        assert_eq!(lex.next(), Some(Token::UInteger(1)));
+        assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
+        assert_eq!(lex.next(), Some(Token::UInteger(1)));
+        assert_eq!(lex.next(), Some(Token::CloseParenthesis));
+        assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
+        assert_eq!(lex.next(), Some(Token::BareString("arg1".to_string())));
     }
 }

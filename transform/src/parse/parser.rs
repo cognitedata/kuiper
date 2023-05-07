@@ -23,7 +23,7 @@ struct TryTokenStream {
 impl TryTokenStream {
     pub fn new(tokens: Lexer<'_, Token>) -> Self {
         Self {
-            tokens: tokens.spanned().collect(),
+            tokens: tokens.spanned().map(|(r, s)| (r.unwrap(), s)).collect(),
             index: None,
             current_span: Span { start: 0, end: 0 },
             try_indices: VecDeque::new(),
@@ -117,7 +117,7 @@ impl ExprTerminator {
             ExprTerminator::CloseParenthesis => Token::CloseParenthesis,
             ExprTerminator::CloseBracket => Token::CloseBracket,
             ExprTerminator::CloseBrace => Token::CloseBrace,
-            ExprTerminator::End => Token::Error,
+            ExprTerminator::End => panic!("Attempt to convert EOF to token"),
             ExprTerminator::Colon => Token::Colon,
         }
     }
@@ -258,8 +258,6 @@ impl Parser {
             Token::Colon => Ok(ParseTokenResult::Terminator(ExprTerminator::Colon)),
             // A comma should always terminate an expression.
             Token::Comma => Ok(ParseTokenResult::Terminator(ExprTerminator::Comma)),
-            // An error is never valid.
-            Token::Error => Err(ParserError::invalid_token(self.tokens.span())),
             // We have already checked that an operator is valid in this position, so just add it to the operator list
             // along with the "span": where it was encountered.
             Token::Operator(o) => Ok(ParseTokenResult::Operator((o, self.tokens.span()))),
@@ -400,6 +398,7 @@ impl Parser {
                 Ok(ParseTokenResult::Expression(ExpressionType::Object(expr)))
             }
             Token::CloseBrace => Ok(ParseTokenResult::Terminator(ExprTerminator::CloseBrace)),
+            _ => unimplemented!(),
         }
     }
 
