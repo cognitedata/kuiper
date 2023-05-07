@@ -4,9 +4,11 @@ lalrpop_mod!(jsontf);
 
 #[cfg(test)]
 mod tests {
+    use logos::Span;
+
     use crate::{
-        expressions::Operator,
-        lexer::{Lexer, ParseError, Token},
+        expressions::{Operator, UnaryOperator},
+        lexer::{Lexer, LexerError, ParseError, Token},
         parse::ast::{Constant, Expression},
     };
 
@@ -80,13 +82,13 @@ mod tests {
         }
     }
 
-    /* #[test]
+    #[test]
     pub fn test_bad_selector_2() {
         let res = parse_fail("2 + id..");
         match res {
-            ParserError::UnexpectedSymbol(d) => {
-                assert_eq!(d.detail, Some("Unexpected symbol .".to_string()));
-                assert_eq!(d.position, Span { start: 7, end: 8 });
+            ParseError::UnrecognizedToken { token, expected } => {
+                assert_eq!((7, Token::Period, 8), token);
+                assert_eq!(vec![r#""var""#.to_string()], expected);
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -96,20 +98,9 @@ mod tests {
     pub fn test_bad_selector_3() {
         let res = parse_fail("2 + id.[0]");
         match res {
-            ParserError::UnexpectedSymbol(d) => {
-                assert_eq!(d.detail, Some("Unexpected symbol [".to_string()));
-                assert_eq!(d.position, Span { start: 7, end: 8 });
-            }
-            _ => panic!("Wrong type of response: {res:?}"),
-        }
-    }
-
-    #[test]
-    pub fn test_weird_list() {
-        let res = parse_fail("[1, 2,]");
-        match res {
-            ParserError::ExpectExpression(d) => {
-                assert_eq!(d.position, Span { start: 6, end: 7 });
+            ParseError::UnrecognizedToken { token, expected } => {
+                assert_eq!((7, Token::OpenBracket, 8), token);
+                assert_eq!(vec![r#""var""#.to_string()], expected);
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -119,8 +110,10 @@ mod tests {
     pub fn test_empty_expression() {
         let res = parse_fail("2 + ()");
         match res {
-            ParserError::EmptyExpression(d) => {
-                assert_eq!(d.position, Span { start: 4, end: 6 });
+            ParseError::UnrecognizedToken { token, expected: _ } => {
+                assert_eq!((5, Token::CloseParenthesis, 6), token);
+                // Expect is a bunch of stuff here
+                // assert_eq!(vec![r#""var""#.to_string()], expected);
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -130,9 +123,11 @@ mod tests {
     pub fn test_missing_terminator() {
         let res = parse_fail("2 + (2 * ");
         match res {
-            ParserError::InvalidExpression(d) => {
-                assert_eq!(d.detail, Some("Failed to parse expression".to_string()));
-                assert_eq!(d.position, Span { start: 4, end: 8 });
+            ParseError::UnrecognizedEof {
+                location,
+                expected: _,
+            } => {
+                assert_eq!(8, location);
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -142,8 +137,10 @@ mod tests {
     pub fn test_unterminated_string() {
         let res = parse_fail("2 + 'test ");
         match res {
-            ParserError::InvalidToken(d) => {
-                assert_eq!(d.position, Span { start: 4, end: 10 });
+            ParseError::User {
+                error: LexerError::InvalidToken(d),
+            } => {
+                assert_eq!(d, Span { start: 4, end: 10 });
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -151,10 +148,10 @@ mod tests {
 
     #[test]
     pub fn test_misplaced_operator() {
-        let res = parse_fail("2 + + 'test' 3");
+        let res = parse_fail("2 + + 'test'");
         match res {
-            ParserError::ExpectExpression(d) => {
-                assert_eq!(d.position, Span { start: 4, end: 5 });
+            ParseError::UnrecognizedToken { token, expected: _ } => {
+                assert_eq!((4, Token::Operator(Operator::Plus), 5), token);
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -164,43 +161,12 @@ mod tests {
     pub fn test_misplaced_expression() {
         let res = parse_fail("2 + 'test' 'test'");
         match res {
-            ParserError::UnexpectedSymbol(d) => {
-                assert_eq!(d.detail, Some("Unexpected symbol 'test'".to_string()));
-                assert_eq!(d.position, Span { start: 11, end: 17 });
+            ParseError::UnrecognizedToken { token, expected: _ } => {
+                assert_eq!((11, Token::String("test".to_string()), 17), token);
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
     }
-
-    #[test]
-    pub fn test_wrong_function_args() {
-        let res = parse_fail("2 + pow(2)");
-        match res {
-            ParserError::NFunctionArgs(d) => {
-                assert_eq!(
-                    d.detail,
-                    Some(
-                        "Incorrect number of function args: function pow takes 2 arguments"
-                            .to_string()
-                    )
-                );
-                assert_eq!(d.position, Span { start: 4, end: 10 });
-            }
-            _ => panic!("Wrong type of response: {res:?}"),
-        }
-    }
-
-    #[test]
-    pub fn test_unrecognized_function() {
-        let res = parse_fail("2 + bloop(34)");
-        match res {
-            ParserError::UnexpectedSymbol(d) => {
-                assert_eq!(d.detail, Some("Unrecognized function: bloop".to_string()));
-                assert_eq!(d.position, Span { start: 4, end: 13 });
-            }
-            _ => panic!("Wrong type of response: {res:?}"),
-        }
-    } */
 
     #[test]
     pub fn test_negate_op() {
@@ -214,17 +180,16 @@ mod tests {
         assert_eq!("(2 + !((1 + !3) - 5))", res.to_string());
     }
 
-    /* #[test]
+    #[test]
     pub fn test_misplaced_negate() {
         let res = parse_fail("2 + 3!");
         match res {
-            ParserError::UnexpectedSymbol(d) => {
-                assert_eq!(d.detail, Some("Unexpected symbol !".to_string()));
-                assert_eq!(d.position, Span { start: 5, end: 6 });
+            ParseError::UnrecognizedToken { token, expected: _ } => {
+                assert_eq!((5, Token::UnaryOperator(UnaryOperator::Negate), 6), token);
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
-    } */
+    }
 
     #[test]
     pub fn test_array_idx() {
@@ -265,13 +230,12 @@ mod tests {
         assert_eq!(r#"map([], (arg1) => (1 + 1))"#, res.to_string());
     }
 
-    /* #[test]
+    #[test]
     pub fn test_empty_lambda() {
         let res = parse_fail("() => ");
         match res {
-            ParserError::EmptyExpression(d) => {
-                assert_eq!(d.detail, None);
-                assert_eq!(d.position, Span { start: 3, end: 5 });
+            ParseError::UnrecognizedToken { token, expected: _ } => {
+                assert_eq!((1, Token::CombinedArrow, 5), token);
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -281,13 +245,12 @@ mod tests {
     pub fn test_unexpected_lambda() {
         let res = parse_fail("1 + () => 1 + 1");
         match res {
-            ParserError::UnexpectedLambda(d) => {
-                assert_eq!(d.detail, None);
-                assert_eq!(d.position, Span { start: 4, end: 9 });
+            ParseError::UnrecognizedToken { token, expected: _ } => {
+                assert_eq!((5, Token::CombinedArrow, 9), token);
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
-    } */
+    }
 
     #[test]
     pub fn test_postfix_function() {
