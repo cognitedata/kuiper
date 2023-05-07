@@ -1,5 +1,8 @@
 use std::fmt::Display;
 
+use logos::Span;
+use serde_json::{Number, Value};
+
 use crate::expressions::{Operator, UnaryOperator};
 
 pub enum Selector {
@@ -39,11 +42,27 @@ impl Display for Constant {
     }
 }
 
+impl Into<Value> for Constant {
+    fn into(self) -> Value {
+        match self {
+            Constant::String(s) => Value::String(s),
+            Constant::PositiveInteger(x) => Value::Number(x.into()),
+            Constant::NegativeInteger(x) => Value::Number(x.into()),
+            Constant::Float(x) => {
+                Value::Number(Number::from_f64(x).unwrap_or_else(|| Number::from_f64(0.0).unwrap()))
+            }
+            Constant::Bool(x) => Value::Bool(x),
+            Constant::Null => Value::Null,
+        }
+    }
+}
+
 pub enum FunctionParameter {
     Expression(Expression),
     Lambda {
         args: Vec<String>,
         inner: Expression,
+        loc: Span,
     },
 }
 
@@ -51,7 +70,11 @@ impl Display for FunctionParameter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             FunctionParameter::Expression(x) => write!(f, "{x}"),
-            FunctionParameter::Lambda { args, inner } => {
+            FunctionParameter::Lambda {
+                args,
+                inner,
+                loc: _,
+            } => {
                 write!(f, "(")?;
                 let mut needs_comma = false;
                 for arg in args {
@@ -75,33 +98,40 @@ pub struct OpExpression {
 }
 
 pub enum Expression {
-    BinaryOperation(OpExpression),
+    BinaryOperation(OpExpression, Span),
     UnaryOperation {
         operator: UnaryOperator,
         rhs: Box<Expression>,
+        loc: Span,
     },
-    Array(Vec<Expression>),
-    Object(Vec<(Expression, Expression)>),
+    Array(Vec<Expression>, Span),
+    Object(Vec<(Expression, Expression)>, Span),
     Selector {
         lhs: Box<Expression>,
         sel: Selector,
+        loc: Span,
     },
-    Constant(Constant),
+    Constant(Constant, Span),
     Function {
         name: String,
         args: Vec<FunctionParameter>,
+        loc: Span,
     },
-    Variable(String),
+    Variable(String, Span),
 }
 
 impl Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expression::BinaryOperation(OpExpression { lhs, operator, rhs }) => {
+            Expression::BinaryOperation(OpExpression { lhs, operator, rhs }, _) => {
                 write!(f, "({lhs} {operator} {rhs})")
             }
-            Expression::UnaryOperation { operator, rhs } => write!(f, "{operator}{rhs}"),
-            Expression::Array(a) => {
+            Expression::UnaryOperation {
+                operator,
+                rhs,
+                loc: _,
+            } => write!(f, "{operator}{rhs}"),
+            Expression::Array(a, _) => {
                 write!(f, "[")?;
                 let mut needs_comma = false;
                 for arg in a {
@@ -114,7 +144,7 @@ impl Display for Expression {
                 write!(f, "]")?;
                 Ok(())
             }
-            Expression::Object(a) => {
+            Expression::Object(a, _) => {
                 write!(f, "{{")?;
                 let mut needs_comma = false;
                 for (lh, rh) in a {
@@ -126,9 +156,9 @@ impl Display for Expression {
                 }
                 write!(f, "}}")
             }
-            Expression::Selector { lhs, sel } => write!(f, "{lhs}{sel}"),
-            Expression::Constant(c) => write!(f, "{c}"),
-            Expression::Function { name, args } => {
+            Expression::Selector { lhs, sel, loc: _ } => write!(f, "{lhs}{sel}"),
+            Expression::Constant(c, _) => write!(f, "{c}"),
+            Expression::Function { name, args, loc: _ } => {
                 write!(f, "{name}(")?;
                 let mut needs_comma = false;
                 for arg in args {
@@ -140,7 +170,7 @@ impl Display for Expression {
                 }
                 write!(f, ")")
             }
-            Expression::Variable(v) => write!(f, "{v}"),
+            Expression::Variable(v, _) => write!(f, "{v}"),
         }
     }
 }

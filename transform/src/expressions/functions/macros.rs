@@ -45,9 +45,9 @@ macro_rules! function_def {
                 name: $name
             };
 
-            fn new(args: Vec<$crate::expressions::base::ExpressionType>, span: logos::Span) -> Result<Self, $crate::parse::ParserError> {
+            fn new(args: Vec<$crate::expressions::base::ExpressionType>, span: logos::Span) -> Result<Self, $crate::compiler::BuildError> {
                 if !Self::INFO.validate(args.len()) {
-                    return Err($crate::ParserError::n_function_args(
+                    return Err($crate::compiler::BuildError::n_function_args(
                         span,
                         &Self::INFO.num_args_desc(),
                     ));
@@ -118,9 +118,9 @@ macro_rules! function_def {
                 name: $name
             };
 
-            fn new(args: Vec<$crate::expressions::base::ExpressionType>, span: logos::Span) -> Result<Self, $crate::parse::ParserError> {
+            fn new(args: Vec<$crate::expressions::base::ExpressionType>, span: logos::Span) -> Result<Self, $crate::compiler::BuildError> {
                 if !Self::INFO.validate(args.len()) {
-                    return Err($crate::ParserError::n_function_args(
+                    return Err($crate::compiler::BuildError::n_function_args(
                         span,
                         &Self::INFO.num_args_desc(),
                     ));

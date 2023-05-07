@@ -1,8 +1,9 @@
 use serde_json::Value;
 
 use crate::{
+    compiler::BuildError,
     expressions::{functions::LambdaAcceptFunction, Expression, ResolveResult},
-    with_temp_values, ParserError, TransformError,
+    with_temp_values, TransformError,
 };
 
 function_def!(MapFunction, "map", 2, lambda);
@@ -42,13 +43,13 @@ impl LambdaAcceptFunction for MapFunction {
         idx: usize,
         lambda: &crate::expressions::LambdaExpression,
         _num_args: usize,
-    ) -> Result<(), crate::ParserError> {
+    ) -> Result<(), BuildError> {
         if idx != 1 {
-            return Err(crate::ParserError::unexpected_lambda(&lambda.span));
+            return Err(BuildError::unexpected_lambda(&lambda.span));
         }
         let nargs = lambda.input_names.len();
         if nargs != 1 {
-            return Err(ParserError::n_function_args(
+            return Err(BuildError::n_function_args(
                 lambda.span.clone(),
                 "map takes a function with one argument",
             ));

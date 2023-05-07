@@ -1,13 +1,13 @@
 use std::{collections::HashMap, fmt::Display};
 
-use logos::Logos;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    compiler::from_ast,
     expressions::{optimize, ExpressionType},
-    lexer::Token,
-    parse::Parser,
+    lexer::Lexer,
+    parse::ExprParser,
 };
 
 use super::compile_err::CompileError;
@@ -153,10 +153,12 @@ impl Transform {
         inputs: HashMap<String, TransformOrInput>,
         raw: &TransformInput,
     ) -> Result<Self, CompileError> {
-        let inp = Token::lexer(&raw.transform);
-        let result = Parser::new(inp)
-            .parse()
+        let inp = Lexer::new(&raw.transform);
+        let parser = ExprParser::new();
+        let res = parser
+            .parse(inp)
             .map_err(|e| CompileError::from_parser_err(e, &raw.id, None))?;
+        let res = from_ast(res).map_err(|e| CompileError::from_build_err(e, &raw.id, None))?;
 
         if matches!(raw.r#type, TransformType::Filter)
             && inputs.len() != 1
@@ -169,7 +171,7 @@ impl Transform {
         }
 
         let mut inputs = TransformInputs::new(&raw.inputs, inputs, raw.mode);
-        let result = optimize(result, &mut inputs.inputs)
+        let result = optimize(res, &mut inputs.inputs)
             .map_err(|e| CompileError::optimizer_err(e, &raw.id, None))?;
 
         Ok(Self {

@@ -3,7 +3,7 @@ use std::fmt::Display;
 use logos::Span;
 use serde_json::Value;
 
-use crate::ParserError;
+use crate::compiler::BuildError;
 
 use super::{
     base::{
@@ -159,10 +159,10 @@ impl OpExpression {
         lhs: ExpressionType,
         rhs: ExpressionType,
         span: Span,
-    ) -> Result<Self, ParserError> {
+    ) -> Result<Self, BuildError> {
         for item in &[&lhs, &rhs] {
             if let ExpressionType::Lambda(lambda) = &item {
-                return Err(ParserError::unexpected_lambda(&lambda.span));
+                return Err(BuildError::unexpected_lambda(&lambda.span));
             }
         }
         Ok(Self {
@@ -371,9 +371,9 @@ impl ExpressionMeta for UnaryOpExpression {
 }
 
 impl UnaryOpExpression {
-    pub fn new(op: UnaryOperator, el: ExpressionType, span: Span) -> Result<Self, ParserError> {
+    pub fn new(op: UnaryOperator, el: ExpressionType, span: Span) -> Result<Self, BuildError> {
         if let ExpressionType::Lambda(lambda) = &el {
-            return Err(ParserError::unexpected_lambda(&lambda.span));
+            return Err(BuildError::unexpected_lambda(&lambda.span));
         }
         Ok(Self {
             operator: op,

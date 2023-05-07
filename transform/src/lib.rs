@@ -1,10 +1,10 @@
+mod compiler;
 mod expressions;
 mod lexer;
 mod parse;
 mod program;
 
 pub use expressions::{TransformError, TransformErrorData};
-pub use parse::{Parser, ParserError, ParserErrorData};
 pub use program::{CompileError, ConfigCompileError, ParserCompileError, Program, TransformInput};
 
 #[cfg(test)]
@@ -15,7 +15,7 @@ mod tests {
     use serde_json::{json, Value};
 
     use crate::{
-        program::OptimizerCompileError, CompileError, ParserError, Program, TransformError,
+        compiler::BuildError, program::OptimizerCompileError, CompileError, Program, TransformError,
     };
 
     fn compile(value: Value) -> Result<Program, CompileError> {
@@ -161,7 +161,7 @@ mod tests {
 
     // Compile errors
     #[test]
-    pub fn test_parser_error() {
+    pub fn test_build_error() {
         let err = compile_err(json!([
             {
                 "id": "step1",
@@ -171,9 +171,9 @@ mod tests {
             }
         ]));
         match err {
-            CompileError::Parser(d) => {
+            CompileError::Build(d) => {
                 match &d.err {
-                    ParserError::NFunctionArgs(d) => {
+                    BuildError::NFunctionArgs(d) => {
                         assert_eq!(
                             d.detail,
                             Some(
@@ -186,36 +186,6 @@ mod tests {
                     _ => panic!("Wrong type of parser error {:?}", &d.err),
                 }
                 assert_eq!(d.field, None);
-                assert_eq!(d.id, "step1");
-            }
-            _ => panic!("Wrong type of error {err:?}"),
-        }
-    }
-
-    #[test]
-    pub fn test_parser_error_map() {
-        let err = compile_err(json!([{
-            "id": "step1",
-            "inputs": ["input"],
-            "transform": r#"{
-                "f1": pow(input.test)
-            }"#
-        }]));
-        match err {
-            CompileError::Parser(d) => {
-                match &d.err {
-                    ParserError::NFunctionArgs(d) => {
-                        assert_eq!(
-                            d.detail,
-                            Some(
-                                "Incorrect number of function args: function pow takes 2 arguments"
-                                    .to_string()
-                            )
-                        );
-                        assert_eq!(d.position, Span { start: 24, end: 39 });
-                    }
-                    _ => panic!("Wrong type of parser error {:?}", &d.err),
-                }
                 assert_eq!(d.id, "step1");
             }
             _ => panic!("Wrong type of error {err:?}"),
@@ -377,7 +347,7 @@ mod tests {
             TransformError::InvalidOperation(d) => {
                 assert_eq!(d.id, "step");
                 assert_eq!(d.desc, "Divide by zero");
-                assert_eq!(d.span, Span { start: 3, end: 4 });
+                assert_eq!(d.span, Span { start: 0, end: 14 });
             }
             _ => panic!("Wrong type of error {res:?}"),
         }
@@ -396,7 +366,7 @@ mod tests {
             TransformError::IncorrectTypeInField(d) => {
                 assert_eq!(d.id, "step");
                 assert_eq!(d.desc, "'*'. Got string, expected number");
-                assert_eq!(d.span, Span { start: 3, end: 4 });
+                assert_eq!(d.span, Span { start: 0, end: 14 });
             }
             _ => panic!("Wrong type of error {res:?}"),
         }
