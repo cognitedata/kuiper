@@ -1,6 +1,9 @@
 mod token;
 
-use std::num::{ParseFloatError, ParseIntError};
+use std::{
+    fmt::Display,
+    num::{ParseFloatError, ParseIntError},
+};
 
 pub use self::token::Token;
 
@@ -17,6 +20,17 @@ pub enum LexerError {
     InvalidToken(Span),
     ParseInt(ParseIntError),
     ParseFloat(ParseFloatError),
+}
+
+impl Display for LexerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LexerError::UnknownToken => write!(f, "Unknown token"),
+            LexerError::InvalidToken(s) => write!(f, "Unknown token at {}..{}", s.start, s.end),
+            LexerError::ParseInt(e) => write!(f, "Failed to parse string as integer: {e}"),
+            LexerError::ParseFloat(e) => write!(f, "Failed to parse string as float: {e}"),
+        }
+    }
 }
 
 impl From<ParseIntError> for LexerError {

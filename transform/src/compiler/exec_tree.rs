@@ -1,4 +1,7 @@
+use std::fmt::Display;
+
 use logos::Span;
+use thiserror::Error;
 
 use crate::{
     expressions::{
@@ -9,16 +12,29 @@ use crate::{
     parse::{Expression, FunctionParameter, Selector},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub struct CompileErrorData {
     pub position: Span,
     pub detail: Option<String>,
 }
 
-#[derive(Debug)]
+impl Display for CompileErrorData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(e) = &self.detail {
+            write!(f, "{} at {}..{}", e, self.position.start, self.position.end)
+        } else {
+            write!(f, "at {}..{}", self.position.start, self.position.end)
+        }
+    }
+}
+
+#[derive(Debug, Error)]
 pub enum BuildError {
+    #[error("{0}")]
     NFunctionArgs(CompileErrorData),
+    #[error("{0}")]
     UnexpectedLambda(CompileErrorData),
+    #[error("{0}")]
     UnrecognizedFunction(CompileErrorData),
 }
 
