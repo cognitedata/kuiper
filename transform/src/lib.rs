@@ -4,6 +4,7 @@ mod lexer;
 mod parse;
 mod program;
 
+pub use compiler::ExpressionDebugInfo;
 pub use expressions::{TransformError, TransformErrorData};
 pub use program::{CompileError, ConfigCompileError, ParserCompileError, Program, TransformInput};
 

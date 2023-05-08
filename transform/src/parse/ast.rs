@@ -5,6 +5,7 @@ use serde_json::{Number, Value};
 
 use crate::expressions::{Operator, UnaryOperator};
 
+#[derive(Debug)]
 pub enum Selector {
     Expression(Box<Expression>),
     String(String),
@@ -57,6 +58,7 @@ impl Into<Value> for Constant {
     }
 }
 
+#[derive(Debug)]
 pub enum FunctionParameter {
     Expression(Expression),
     Lambda {
@@ -91,12 +93,14 @@ impl Display for FunctionParameter {
     }
 }
 
+#[derive(Debug)]
 pub struct OpExpression {
     pub lhs: Box<Expression>,
     pub operator: Operator,
     pub rhs: Box<Expression>,
 }
 
+#[derive(Debug)]
 pub enum Expression {
     BinaryOperation(OpExpression, Span),
     UnaryOperation {
