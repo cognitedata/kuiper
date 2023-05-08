@@ -6,7 +6,23 @@ use std::{collections::HashMap, fmt::Display};
 pub use exec_tree::{from_ast, BuildError};
 pub use optimizer::optimize;
 
-use crate::{lexer::Lexer, parse::ExprParser, CompileError};
+use crate::{expressions::ExpressionType, lexer::Lexer, parse::ExprParser, CompileError};
+
+pub fn compile_expression(
+    data: &str,
+    known_inputs: &mut HashMap<String, usize>,
+    chunk_id: &str,
+) -> Result<ExpressionType, CompileError> {
+    let inp = Lexer::new(data);
+    let parser = ExprParser::new();
+    let res = parser
+        .parse(inp)
+        .map_err(|e| CompileError::from_parser_err(e, chunk_id))?;
+    let res = from_ast(res).map_err(|e| CompileError::from_build_err(e, chunk_id))?;
+    let optimized =
+        optimize(res, known_inputs).map_err(|e| CompileError::optimizer_err(e, chunk_id))?;
+    Ok(optimized)
+}
 
 #[derive(Debug)]
 pub struct DebugInfo {
@@ -55,24 +71,24 @@ impl ExpressionDebugInfo {
         let parser = ExprParser::new();
         let ast = parser
             .parse(lexer)
-            .map_err(|e| CompileError::from_parser_err(e, "", None))?;
+            .map_err(|e| CompileError::from_parser_err(e, ""))?;
         let ast_info = DebugInfo {
             debug: format!("{:?}", ast),
             clean: ast.to_string(),
         };
 
-        let exec_tree = from_ast(ast).map_err(|e| CompileError::from_build_err(e, "", None))?;
+        let exec_tree = from_ast(ast).map_err(|e| CompileError::from_build_err(e, ""))?;
         let exec_tree_info = DebugInfo {
             debug: format!("{:?}", exec_tree),
             clean: exec_tree.to_string(),
         };
 
         let mut inputs = HashMap::new();
-        for (idx, &inp) in known_inputs.into_iter().enumerate() {
+        for (idx, &inp) in known_inputs.iter().enumerate() {
             inputs.insert(inp.to_string(), idx);
         }
-        let optimized = optimize(exec_tree, &mut inputs)
-            .map_err(|e| CompileError::optimizer_err(e, "", None))?;
+        let optimized =
+            optimize(exec_tree, &mut inputs).map_err(|e| CompileError::optimizer_err(e, ""))?;
         let optimized_info = DebugInfo {
             debug: format!("{:?}", optimized),
             clean: optimized.to_string(),

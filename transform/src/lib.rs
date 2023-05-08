@@ -4,9 +4,12 @@ mod lexer;
 mod parse;
 mod program;
 
-pub use compiler::ExpressionDebugInfo;
-pub use expressions::{TransformError, TransformErrorData};
-pub use program::{CompileError, ConfigCompileError, ParserCompileError, Program, TransformInput};
+pub use compiler::{compile_expression, ExpressionDebugInfo};
+pub use expressions::{ExpressionType, TransformError, TransformErrorData};
+pub use program::{
+    BuildCompileError, CompileError, ConfigCompileError, OptimizerCompileError, ParserCompileError,
+    Program, TransformInput,
+};
 
 #[cfg(test)]
 mod tests {
@@ -186,7 +189,6 @@ mod tests {
                     }
                     _ => panic!("Wrong type of parser error {:?}", &d.err),
                 }
-                assert_eq!(d.field, None);
                 assert_eq!(d.id, "step1");
             }
             _ => panic!("Wrong type of error {err:?}"),

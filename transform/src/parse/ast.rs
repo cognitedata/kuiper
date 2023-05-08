@@ -43,9 +43,9 @@ impl Display for Constant {
     }
 }
 
-impl Into<Value> for Constant {
-    fn into(self) -> Value {
-        match self {
+impl From<Constant> for Value {
+    fn from(val: Constant) -> Self {
+        match val {
             Constant::String(s) => Value::String(s),
             Constant::PositiveInteger(x) => Value::Number(x.into()),
             Constant::NegativeInteger(x) => Value::Number(x.into()),

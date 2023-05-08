@@ -4,7 +4,6 @@ use crate::{compiler::BuildError, lexer::ParseError, TransformError};
 pub struct BuildCompileError {
     pub err: BuildError,
     pub id: String,
-    pub field: Option<String>,
 }
 
 #[derive(Debug)]
@@ -17,14 +16,12 @@ pub struct ConfigCompileError {
 pub struct OptimizerCompileError {
     pub err: TransformError,
     pub id: String,
-    pub field: Option<String>,
 }
 
 #[derive(Debug)]
 pub struct ParserCompileError {
     pub err: ParseError,
     pub id: String,
-    pub field: Option<String>,
 }
 
 #[derive(Debug)]
@@ -36,19 +33,17 @@ pub enum CompileError {
 }
 
 impl CompileError {
-    pub(crate) fn from_build_err(err: BuildError, id: &str, field: Option<&str>) -> Self {
+    pub(crate) fn from_build_err(err: BuildError, id: &str) -> Self {
         Self::Build(BuildCompileError {
             err,
             id: id.to_string(),
-            field: field.map(|s| s.to_string()),
         })
     }
 
-    pub(crate) fn from_parser_err(err: ParseError, id: &str, field: Option<&str>) -> Self {
+    pub(crate) fn from_parser_err(err: ParseError, id: &str) -> Self {
         Self::Parser(ParserCompileError {
             err,
             id: id.to_string(),
-            field: field.map(|s| s.to_string()),
         })
     }
 
@@ -59,11 +54,10 @@ impl CompileError {
         })
     }
 
-    pub(crate) fn optimizer_err(err: TransformError, id: &str, field: Option<&str>) -> Self {
+    pub(crate) fn optimizer_err(err: TransformError, id: &str) -> Self {
         Self::Optimizer(OptimizerCompileError {
             err,
             id: id.to_string(),
-            field: field.map(|s| s.to_string()),
         })
     }
 }

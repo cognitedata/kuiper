@@ -23,7 +23,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for LengthFunction {
                 return Err(TransformError::new_incorrect_type(
                     "Incorrect input to length",
                     "array, string, or object",
-                    TransformError::value_desc(&x),
+                    TransformError::value_desc(x),
                     &self.span,
                     state.id,
                 ))
