@@ -107,14 +107,14 @@ mod tests {
         let parser = ExprParser::new();
         let res = parser
             .parse(lex)
-            .map_err(|e| CompileError::from_parser_err(e, "test", None))?;
-        let res = from_ast(res).map_err(|e| CompileError::from_build_err(e, "test", None))?;
+            .map_err(|e| CompileError::from_parser_err(e, "test"))?;
+        let res = from_ast(res).map_err(|e| CompileError::from_build_err(e, "test"))?;
         let mut input_map = HashMap::new();
         for (idx, input) in inputs.iter().enumerate() {
             input_map.insert(input.to_string(), idx);
         }
-        let res = optimize(res, &mut input_map)
-            .map_err(|e| CompileError::optimizer_err(e, "test", None))?;
+        let res =
+            optimize(res, &mut input_map).map_err(|e| CompileError::optimizer_err(e, "test"))?;
         Ok(res)
     }
 

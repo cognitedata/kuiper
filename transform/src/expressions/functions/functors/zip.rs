@@ -35,7 +35,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ZipFunction {
             sources.push(r);
         }
 
-        let func = self.args.get(self.args.len() - 1).unwrap();
+        let func = self.args.last().unwrap();
 
         let mut res = Vec::with_capacity(output_len);
         for idx in 0..output_len {
@@ -44,7 +44,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ZipFunction {
                 let v = s
                     .as_ref()
                     .and_then(|v| v.get(idx))
-                    .unwrap_or_else(|| &NULL_CONST);
+                    .unwrap_or(&NULL_CONST);
                 chunk.push(v);
             }
             let inner = state.get_temporary_clone_inner(chunk.iter().copied(), 1);

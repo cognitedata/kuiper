@@ -216,6 +216,18 @@ pub enum ExpressionType {
     Lambda(LambdaExpression),
 }
 
+impl ExpressionType {
+    pub fn run<'a: 'c, 'c>(
+        &'a self,
+        data: impl Iterator<Item = &'c Value>,
+        chunk_id: &str,
+    ) -> Result<ResolveResult<'c>, TransformError> {
+        let data = data.collect();
+        let state = ExpressionExecutionState::new(&data, chunk_id);
+        self.resolve(&state)
+    }
+}
+
 /// The result of an expression resolution. The signature is a little weird.
 /// An expression may either return a reference to the source, or an actual value.
 /// By returning references as often as possible we reduce the number of clones.
