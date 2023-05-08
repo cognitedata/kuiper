@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use serde_json::Value;
 
 use crate::{
+    compiler::BuildError,
     expressions::{functions::LambdaAcceptFunction, Expression, ResolveResult},
     program::NULL_CONST,
 };
@@ -60,12 +61,12 @@ impl LambdaAcceptFunction for ZipFunction {
         idx: usize,
         lambda: &crate::expressions::LambdaExpression,
         num_args: usize,
-    ) -> Result<(), crate::ParserError> {
+    ) -> Result<(), BuildError> {
         if idx != num_args - 1 {
-            return Err(crate::ParserError::unexpected_lambda(&lambda.span));
+            return Err(BuildError::unexpected_lambda(&lambda.span));
         }
         if lambda.input_names.len() != num_args - 1 {
-            return Err(crate::ParserError::n_function_args(
+            return Err(BuildError::n_function_args(
                 lambda.span.clone(),
                 "zip takes a function with as many arguments as the zip function itself",
             ));

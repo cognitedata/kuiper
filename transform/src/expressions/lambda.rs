@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use logos::Span;
 
-use crate::ParserError;
+use crate::compiler::BuildError;
 
 use super::{base::ExpressionMeta, Expression, ExpressionType};
 
@@ -35,9 +35,9 @@ impl LambdaExpression {
         input_names: Vec<String>,
         inner: ExpressionType,
         span: Span,
-    ) -> Result<Self, ParserError> {
+    ) -> Result<Self, BuildError> {
         if let ExpressionType::Lambda(lambda) = &inner {
-            return Err(ParserError::unexpected_lambda(&lambda.span));
+            return Err(BuildError::unexpected_lambda(&lambda.span));
         }
         Ok(Self {
             input_names,

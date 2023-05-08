@@ -166,10 +166,8 @@ impl Transform {
 
     fn compute_input_zip<'a>(&self, it: &'a TransformState) -> Vec<Vec<&'a Value>> {
         let mut res_len = 0usize;
-        println!("{:?}", self.inputs.used_inputs);
         for key in &self.inputs.used_inputs {
             let v = it.get_elem(key).unwrap();
-            println!("{:?}", v);
             if v.len() > res_len {
                 res_len = v.len();
             }
@@ -187,7 +185,6 @@ impl Transform {
                 el[idx] = v.as_ref();
             }
         }
-        println!("{:?}", res);
 
         res
     }

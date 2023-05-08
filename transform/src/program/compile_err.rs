@@ -1,8 +1,8 @@
-use crate::{ParserError, TransformError};
+use crate::{compiler::BuildError, lexer::ParseError, TransformError};
 
 #[derive(Debug)]
-pub struct ParserCompileError {
-    pub err: ParserError,
+pub struct BuildCompileError {
+    pub err: BuildError,
     pub id: String,
     pub field: Option<String>,
 }
@@ -21,14 +21,30 @@ pub struct OptimizerCompileError {
 }
 
 #[derive(Debug)]
+pub struct ParserCompileError {
+    pub err: ParseError,
+    pub id: String,
+    pub field: Option<String>,
+}
+
+#[derive(Debug)]
 pub enum CompileError {
+    Build(BuildCompileError),
     Parser(ParserCompileError),
     Config(ConfigCompileError),
     Optimizer(OptimizerCompileError),
 }
 
 impl CompileError {
-    pub(crate) fn from_parser_err(err: ParserError, id: &str, field: Option<&str>) -> Self {
+    pub(crate) fn from_build_err(err: BuildError, id: &str, field: Option<&str>) -> Self {
+        Self::Build(BuildCompileError {
+            err,
+            id: id.to_string(),
+            field: field.map(|s| s.to_string()),
+        })
+    }
+
+    pub(crate) fn from_parser_err(err: ParseError, id: &str, field: Option<&str>) -> Self {
         Self::Parser(ParserCompileError {
             err,
             id: id.to_string(),

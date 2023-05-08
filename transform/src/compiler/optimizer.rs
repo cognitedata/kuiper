@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
-use crate::TransformError;
-
-use super::{base::ExpressionMeta, Constant, Expression, ExpressionExecutionState, ExpressionType};
+use crate::{
+    expressions::{Constant, Expression, ExpressionExecutionState, ExpressionMeta, ExpressionType},
+    TransformError,
+};
 
 fn resolve_constants(
     root: &mut ExpressionType,
@@ -92,17 +93,22 @@ pub fn optimize(
 mod tests {
     use std::collections::HashMap;
 
-    use logos::{Logos, Span};
+    use logos::Span;
 
-    use crate::{expressions::ExpressionType, lexer::Token, CompileError, Parser, TransformError};
+    use crate::{
+        compiler::from_ast, expressions::ExpressionType, lexer::Lexer, parse::ExprParser,
+        CompileError, TransformError,
+    };
 
     use super::optimize;
 
     fn parse(inp: &str, inputs: &[&str]) -> Result<ExpressionType, CompileError> {
-        let lex = Token::lexer(inp);
-        let res = Parser::new(lex)
-            .parse()
+        let lex = Lexer::new(inp);
+        let parser = ExprParser::new();
+        let res = parser
+            .parse(lex)
             .map_err(|e| CompileError::from_parser_err(e, "test", None))?;
+        let res = from_ast(res).map_err(|e| CompileError::from_build_err(e, "test", None))?;
         let mut input_map = HashMap::new();
         for (idx, input) in inputs.iter().enumerate() {
             input_map.insert(input.to_string(), idx);
@@ -166,7 +172,7 @@ mod tests {
             TransformError::InvalidOperation(d) => {
                 assert_eq!(d.id, "optimizer");
                 assert_eq!(d.desc, "Divide by zero");
-                assert_eq!(d.span, Span { start: 2, end: 3 });
+                assert_eq!(d.span, Span { start: 0, end: 5 });
             }
             _ => panic!("Wrong type of error {err:?}"),
         }

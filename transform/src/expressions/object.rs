@@ -3,7 +3,7 @@ use std::fmt::Display;
 use logos::Span;
 use serde_json::{Map, Value};
 
-use crate::ParserError;
+use crate::compiler::BuildError;
 
 use super::{
     base::{get_string_from_value, ExpressionMeta},
@@ -81,13 +81,13 @@ impl ObjectExpression {
     pub fn new(
         pairs: Vec<(ExpressionType, ExpressionType)>,
         span: Span,
-    ) -> Result<Self, ParserError> {
+    ) -> Result<Self, BuildError> {
         for (it1, it2) in &pairs {
             if let ExpressionType::Lambda(lambda) = &it1 {
-                return Err(ParserError::unexpected_lambda(&lambda.span));
+                return Err(BuildError::unexpected_lambda(&lambda.span));
             }
             if let ExpressionType::Lambda(lambda) = &it2 {
-                return Err(ParserError::unexpected_lambda(&lambda.span));
+                return Err(BuildError::unexpected_lambda(&lambda.span));
             }
         }
         Ok(Self { pairs, span })

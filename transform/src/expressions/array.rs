@@ -3,7 +3,7 @@ use std::fmt::Display;
 use logos::Span;
 use serde_json::Value;
 
-use crate::ParserError;
+use crate::compiler::BuildError;
 
 use super::{
     base::{ExpressionMeta, ResolveResult},
@@ -69,10 +69,10 @@ impl ExpressionMeta for ArrayExpression {
 }
 
 impl ArrayExpression {
-    pub fn new(items: Vec<ExpressionType>, span: Span) -> Result<Self, ParserError> {
+    pub fn new(items: Vec<ExpressionType>, span: Span) -> Result<Self, BuildError> {
         for item in &items {
             if let ExpressionType::Lambda(lambda) = &item {
-                return Err(ParserError::unexpected_lambda(&lambda.span));
+                return Err(BuildError::unexpected_lambda(&lambda.span));
             }
         }
         Ok(Self { items, _span: span })

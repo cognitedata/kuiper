@@ -1,8 +1,8 @@
 use logos::Span;
-use serde_json::{Number, Value};
+use serde_json::Value;
 use std::{borrow::Cow, fmt::Display};
 
-use crate::parse::ParserError;
+use crate::compiler::BuildError;
 
 use super::{
     functions::{filter::FilterFunction, map::MapFunction, zip::ZipFunction, *},
@@ -170,7 +170,7 @@ pub fn get_function_expression(
     pos: Span,
     name: &str,
     args: Vec<ExpressionType>,
-) -> Result<ExpressionType, ParserError> {
+) -> Result<ExpressionType, BuildError> {
     let expr = match name {
         "pow" => FunctionType::Pow(PowFunction::new(args, pos)?),
         "log" => FunctionType::Log(LogFunction::new(args, pos)?),
@@ -192,7 +192,7 @@ pub fn get_function_expression(
         "zip" => FunctionType::Zip(ZipFunction::new(args, pos)?),
         "length" => FunctionType::Length(LengthFunction::new(args, pos)?),
         "chunk" => FunctionType::Chunk(ChunkFunction::new(args, pos)?),
-        _ => return Err(ParserError::unrecognized_function(pos, name)),
+        _ => return Err(BuildError::unrecognized_function(pos, name)),
     };
     Ok(ExpressionType::Function(expr))
 }
@@ -259,39 +259,8 @@ impl ExpressionMeta for Constant {
 }
 
 impl Constant {
-    pub fn try_new_f64(v: f64) -> Option<Self> {
-        let val = Number::from_f64(v).map(Value::Number);
-        val.map(|v| Self { val: v })
-    }
-
-    pub fn try_new_i64(v: i64) -> Option<Self> {
-        let val = Number::try_from(v).map(Value::Number).ok();
-        val.map(|v| Self { val: v })
-    }
-
-    pub fn try_new_u64(v: u64) -> Option<Self> {
-        let val = Number::try_from(v).map(Value::Number).ok();
-        val.map(|v| Self { val: v })
-    }
-
     pub fn new(val: Value) -> Self {
         Self { val }
-    }
-
-    pub fn new_string(v: String) -> Self {
-        Self {
-            val: Value::String(v),
-        }
-    }
-
-    pub fn new_null() -> Self {
-        Self { val: Value::Null }
-    }
-
-    pub fn new_bool(val: bool) -> Self {
-        Self {
-            val: Value::Bool(val),
-        }
     }
 }
 

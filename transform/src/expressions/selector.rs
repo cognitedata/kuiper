@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::HashMap, fmt::Display};
 
 use serde_json::{Map, Value};
 
-use crate::ParserError;
+use crate::compiler::BuildError;
 
 use super::{
     base::{Expression, ExpressionExecutionState, ExpressionMeta, ExpressionType, ResolveResult},
@@ -23,6 +23,15 @@ pub enum SourceElement {
     Input(String),
     CompiledInput(usize),
     Expression(Box<ExpressionType>),
+}
+
+impl From<SelectorElement> for SourceElement {
+    fn from(value: SelectorElement) -> Self {
+        match value {
+            SelectorElement::Constant(x) => Self::Input(x),
+            SelectorElement::Expression(x) => Self::Expression(x),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -161,16 +170,16 @@ impl SelectorExpression {
         source: SourceElement,
         path: Vec<SelectorElement>,
         span: Span,
-    ) -> Result<Self, ParserError> {
+    ) -> Result<Self, BuildError> {
         if let SourceElement::Expression(expr) = &source {
             if let ExpressionType::Lambda(lambda) = expr.as_ref() {
-                return Err(ParserError::unexpected_lambda(&lambda.span));
+                return Err(BuildError::unexpected_lambda(&lambda.span));
             }
         }
         for item in &path {
             if let SelectorElement::Expression(expr) = &item {
                 if let ExpressionType::Lambda(lambda) = expr.as_ref() {
-                    return Err(ParserError::unexpected_lambda(&lambda.span));
+                    return Err(BuildError::unexpected_lambda(&lambda.span));
                 }
             }
         }

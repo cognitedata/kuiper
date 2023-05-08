@@ -8,7 +8,7 @@ mod string;
 mod time;
 mod transforms;
 
-use crate::parse::ParserError;
+use crate::compiler::BuildError;
 pub use arrays::*;
 pub use functors::*;
 pub use logic::*;
@@ -68,7 +68,7 @@ where
     const INFO: FunctionInfo;
 
     /// Create a new function from a list of expressions.
-    fn new(args: Vec<ExpressionType>, span: Span) -> Result<Self, ParserError>;
+    fn new(args: Vec<ExpressionType>, span: Span) -> Result<Self, BuildError>;
 }
 
 pub trait LambdaAcceptFunction {
@@ -76,7 +76,7 @@ pub trait LambdaAcceptFunction {
         _idx: usize,
         lambda: &LambdaExpression,
         _num_args: usize,
-    ) -> Result<(), ParserError> {
-        Err(ParserError::unexpected_lambda(&lambda.span))
+    ) -> Result<(), BuildError> {
+        Err(BuildError::unexpected_lambda(&lambda.span))
     }
 }

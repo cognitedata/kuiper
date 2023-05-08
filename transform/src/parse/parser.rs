@@ -1,809 +1,54 @@
-use std::collections::VecDeque;
+use lalrpop_util::lalrpop_mod;
 
-use logos::{Lexer, Span};
+lalrpop_mod!(jsontf);
 
-use crate::{
-    expressions::{
-        get_function_expression, ArrayExpression, Constant, ExpressionType, LambdaExpression,
-        ObjectExpression, OpExpression, Operator, SelectorElement, SelectorExpression,
-        SourceElement, UnaryOpExpression,
-    },
-    lexer::Token,
-};
-
-use super::parse_error::ParserError;
-
-struct TryTokenStream {
-    tokens: Vec<(Token, Span)>,
-    index: Option<usize>,
-    current_span: Span,
-    try_indices: VecDeque<usize>,
-}
-
-impl TryTokenStream {
-    pub fn new(tokens: Lexer<'_, Token>) -> Self {
-        Self {
-            tokens: tokens.spanned().collect(),
-            index: None,
-            current_span: Span { start: 0, end: 0 },
-            try_indices: VecDeque::new(),
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn peek(&self) -> Option<&Token> {
-        if let Some(idx) = self.index {
-            self.tokens.get(idx + 1).map(|(t, _)| t)
-        } else {
-            self.tokens.get(0).map(|(t, _)| t)
-        }
-    }
-
-    pub fn move_pointer(&mut self, diff: i64) {
-        if let Some(index) = self.index {
-            if index as i64 >= -diff {
-                self.index = Some((index as i64 + diff) as usize);
-                return;
-            }
-        }
-        panic!("Tried to move pointer into negative value");
-    }
-
-    pub fn span(&self) -> Span {
-        if let Some((_, span)) = self.tokens.get(self.index.unwrap_or_default()) {
-            span.clone()
-        } else {
-            self.tokens
-                .last()
-                .map(|(_, s)| s.clone())
-                .unwrap_or_else(|| Span { start: 0, end: 0 })
-        }
-    }
-
-    pub fn next(&mut self) -> Option<Token> {
-        if let Some(index) = self.index {
-            self.index = Some(index + 1);
-        } else {
-            self.index = Some(0);
-        }
-        let (token, span) = self.tokens.get(self.index.unwrap())?;
-        self.current_span = span.clone();
-        Some(token.clone())
-    }
-
-    pub fn current(&self) -> Option<Token> {
-        self.tokens
-            .get(self.index.unwrap_or_default())
-            .map(|(t, _)| t.clone())
-    }
-
-    pub fn begin_try(&mut self) {
-        self.try_indices.push_front(self.index.unwrap_or_default());
-    }
-
-    pub fn abort(&mut self) {
-        self.index = Some(self.try_indices.pop_front().unwrap());
-    }
-
-    pub fn commit(&mut self) {
-        self.try_indices.pop_front();
-    }
-}
-
-/// Construct an executable syntax tree from a token stream.
-/// The parser itself has a lifetime tied to the lexer, whose lifetime is tied to
-/// the source of the data, this is usually not a problem, it just means that
-/// you need to run the parser to completion before the input that created it goes out
-/// of scope.
-/// The output of the parser is not tied to the input.
-pub struct Parser {
-    tokens: TryTokenStream,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-enum ExprTerminator {
-    Comma,
-    CloseParenthesis,
-    CloseBracket,
-    CloseBrace,
-    End,
-    Colon,
-}
-
-impl ExprTerminator {
-    pub fn to_token(self) -> Token {
-        match self {
-            ExprTerminator::Comma => Token::Comma,
-            ExprTerminator::CloseParenthesis => Token::CloseParenthesis,
-            ExprTerminator::CloseBracket => Token::CloseBracket,
-            ExprTerminator::CloseBrace => Token::CloseBrace,
-            ExprTerminator::End => Token::Error,
-            ExprTerminator::Colon => Token::Colon,
-        }
-    }
-}
-
-/// Handy macro to consume a token, optionally expecting it to match a pattern.
-/// Usage is either `let token = consume_token!(self);`
-/// or `consume_token!(self, Token::Comma);` The former will return `EmptyExpression`
-/// and the latter will return `IncorrectSymbol`, if they fail.
-macro_rules! consume_token {
-    ($slf:ident, $pt:pat) => {{
-        let token = consume_token!($slf);
-        match token {
-            $pt => (),
-            _ => {
-                return Err(ParserError::unexpected_symbol($slf.tokens.span(), token));
-            }
-        }
-        token
-    }};
-
-    ($slf:ident) => {{
-        let token = match $slf.tokens.next() {
-            Some(x) => x,
-            None => return Err(ParserError::empty_expression($slf.tokens.span())),
-        };
-        token
-    }};
-}
-
-/// ```ignore
-/// try_parse! {
-///     self;
-///     {
-///         println!("foo");
-///         self.parse_expression()
-///     }
-/// };
-/// ```
-macro_rules! try_parse {
-    { $slf:ident; $t:expr } => {{
-        $slf.tokens.begin_try();
-        let res = $t;
-        match res {
-            Ok(x) => {
-                $slf.tokens.commit();
-                Some(x)
-            },
-            Err(_) => {
-                $slf.tokens.abort();
-                None
-            },
-        }
-    }}
-}
-
-enum ParseTokenResult {
-    Expression(ExpressionType),
-    Terminator(ExprTerminator),
-    Operator((Operator, Span)),
-    Selector((Vec<SelectorElement>, Span)),
-    PostfixFunction((Vec<ExpressionType>, String)),
-}
-
-impl Parser {
-    /// Construct a new parser from a token stream.
-    pub fn new(stream: Lexer<Token>) -> Self {
-        Self {
-            tokens: TryTokenStream::new(stream),
-        }
-    }
-
-    /// Entry point for the parser.
-    pub fn parse(&mut self) -> Result<ExpressionType, ParserError> {
-        let (expr, term) = self.parse_expression()?;
-
-        // Expect the terminator to be `End`, otherwise something like 1 + 1) + 1 would yield (1 + 1).
-        if term == ExprTerminator::End {
-            if let Some(expr) = expr {
-                Ok(expr)
-            } else {
-                Err(ParserError::empty_expression(self.tokens.span()))
-            }
-        } else {
-            Err(ParserError::unexpected_symbol(
-                self.tokens.span(),
-                term.to_token(),
-            ))
-        }
-    }
-
-    fn next_expression(
-        &mut self,
-        expect_expression: bool,
-        is_initial: bool,
-    ) -> Result<ParseTokenResult, ParserError> {
-        // Do a simple sanity check on the next token. After an operator, or at the start of an expression
-        // only expression operators like `Token::OpenParenthesis`, `Float`, `Integer`, `String`, `SelectorStart`,
-        // etc. are valid.
-        // After an expression the only valid symbols are operators, or terminators.
-        let token = self.tokens.current().unwrap();
-        if matches!(
-            token,
-            Token::Operator(_) | Token::Comma | Token::Period | Token::Colon
-        ) || !is_initial
-            && matches!(
-                token,
-                Token::CloseParenthesis | Token::CloseBracket | Token::CloseBrace
-            )
-        {
-            if expect_expression {
-                return Err(ParserError::expect_expression(self.tokens.span()));
-            }
-        } else if !expect_expression && !matches!(token, Token::OpenBracket) {
-            return Err(ParserError::unexpected_symbol(self.tokens.span(), token));
-        }
-
-        match token {
-            // A period is invalid in an expression on its own.
-            Token::Period => {
-                if expect_expression {
-                    Err(ParserError::unexpected_symbol(self.tokens.span(), token))
-                } else {
-                    let function = try_parse! {
-                        self;
-                        self.peek_for_function()
-                    };
-                    if let Some(function) = function {
-                        let d = self.parse_function(Some(function))?;
-                        Ok(ParseTokenResult::PostfixFunction(d))
-                    } else {
-                        Ok(ParseTokenResult::Selector(self.parse_selector(false)?))
-                    }
-                }
-            }
-            Token::Arrow => Err(ParserError::unexpected_symbol(self.tokens.span(), token)),
-            // A colon is invalid outside of a map
-            Token::Colon => Ok(ParseTokenResult::Terminator(ExprTerminator::Colon)),
-            // A comma should always terminate an expression.
-            Token::Comma => Ok(ParseTokenResult::Terminator(ExprTerminator::Comma)),
-            // An error is never valid.
-            Token::Error => Err(ParserError::invalid_token(self.tokens.span())),
-            // We have already checked that an operator is valid in this position, so just add it to the operator list
-            // along with the "span": where it was encountered.
-            Token::Operator(o) => Ok(ParseTokenResult::Operator((o, self.tokens.span()))),
-
-            Token::UnaryOperator(o) => {
-                consume_token!(self);
-                let span = self.tokens.span();
-                let expr = self.next_expression(true, false)?;
-                match expr {
-                    ParseTokenResult::Expression(x) => Ok(ParseTokenResult::Expression(
-                        ExpressionType::UnaryOperator(UnaryOpExpression::new(o, x, span)?),
-                    )),
-                    _ => Err(ParserError::expect_expression(self.tokens.span())),
-                }
-            }
-            // OpenParenthesis indicates the start of a new expression or a lambda when encountered here.
-            // The terminator must be CloseParenthesis.
-            Token::OpenParenthesis => {
-                let start = self.tokens.span();
-                if let Some(lambda_args) = try_parse! {
-                    self;
-                    self.parse_lambda()
-                } {
-                    let end = self.tokens.span();
-
-                    let (expr, _) = self.parse_expression()?;
-                    let res = match expr {
-                        Some(x) => Ok(ParseTokenResult::Expression(ExpressionType::Lambda(
-                            LambdaExpression::new(
-                                lambda_args,
-                                x,
-                                Span {
-                                    start: start.start,
-                                    end: end.end,
-                                },
-                            )?,
-                        ))),
-                        None => Err(ParserError::expect_expression(self.tokens.span())),
-                    };
-                    self.tokens.move_pointer(-1);
-                    res
-                } else {
-                    let start = self.tokens.span();
-                    let (expr, term) = self.parse_expression()?;
-                    match term {
-                        ExprTerminator::CloseParenthesis => (),
-                        _ => return Err(ParserError::expected_symbol(self.tokens.span(), ")")),
-                    };
-                    let span = Span {
-                        start: start.start,
-                        end: self.tokens.span().end,
-                    };
-                    expr.map(ParseTokenResult::Expression)
-                        .ok_or_else(|| ParserError::empty_expression(span))
-                }
-            }
-            // CloseParenthesis terminates an expression. We don't care about what opened the expression here,
-            // if a terminator is encountered we stop, the parent expression can handle checking if it is valid.
-            Token::CloseParenthesis => Ok(ParseTokenResult::Terminator(
-                ExprTerminator::CloseParenthesis,
-            )),
-            // Float, Integer, UInteger, Null and String are all constants, which is a type of expression.
-            Token::Float(n) => Ok(ParseTokenResult::Expression(ExpressionType::Constant(
-                Constant::try_new_f64(n)
-                    .ok_or_else(|| ParserError::unexpected_symbol(self.tokens.span(), token))?,
-            ))),
-            Token::Integer(n) => Ok(ParseTokenResult::Expression(ExpressionType::Constant(
-                Constant::try_new_i64(n)
-                    .ok_or_else(|| ParserError::unexpected_symbol(self.tokens.span(), token))?,
-            ))),
-            Token::UInteger(n) => Ok(ParseTokenResult::Expression(ExpressionType::Constant(
-                Constant::try_new_u64(n)
-                    .ok_or_else(|| ParserError::unexpected_symbol(self.tokens.span(), token))?,
-            ))),
-            Token::String(s) => Ok(ParseTokenResult::Expression(ExpressionType::Constant(
-                Constant::new_string(s),
-            ))),
-            Token::Null => Ok(ParseTokenResult::Expression(ExpressionType::Constant(
-                Constant::new_null(),
-            ))),
-            Token::Boolean(b) => Ok(ParseTokenResult::Expression(ExpressionType::Constant(
-                Constant::new_bool(b),
-            ))),
-            // A BareString encountered here is a function call, it must be followed by OpenParenthesis,
-            // a (potentially empty) expression list, and a CloseParenthesis.
-            Token::BareString(f) => {
-                let is_function = matches!(self.tokens.peek(), Some(Token::OpenParenthesis));
-
-                if is_function {
-                    let start = self.tokens.span();
-                    let (args, name) = self.parse_function(Some(f))?;
-                    let span = Span {
-                        start: start.start,
-                        end: self.tokens.span().end,
-                    };
-                    let func = get_function_expression(span, &name, args)?;
-                    Ok(ParseTokenResult::Expression(func))
-                } else {
-                    let (selectors, span) = self.parse_selector(true)?;
-                    let expr = SelectorExpression::new(SourceElement::Input(f), selectors, span)?;
-                    let expr = ExpressionType::Selector(expr);
-                    Ok(ParseTokenResult::Expression(expr))
-                }
-            }
-            // OpenBracket indicates the start of an array, which contains a (potentially empty) expression list,
-            // and a CloseBracket.
-            Token::OpenBracket => {
-                if !expect_expression {
-                    self.tokens.move_pointer(-1);
-                    Ok(ParseTokenResult::Selector(self.parse_selector(true)?))
-                } else {
-                    let start = self.tokens.span();
-                    let (items, term) = self.parse_expression_list()?;
-                    let span = Span {
-                        start: start.start,
-                        end: self.tokens.span().end,
-                    };
-                    if !matches!(term, ExprTerminator::CloseBracket) {
-                        return Err(ParserError::expected_symbol(self.tokens.span(), "]"));
-                    }
-
-                    let expr = ArrayExpression::new(items, span)?;
-                    Ok(ParseTokenResult::Expression(ExpressionType::Array(expr)))
-                }
-            }
-            // CloseBracket is a terminator for arrays.
-            Token::CloseBracket => Ok(ParseTokenResult::Terminator(ExprTerminator::CloseBracket)),
-            Token::OpenBrace => {
-                let start = self.tokens.span();
-                let pairs = self.parse_map_contents()?;
-                let expr = ObjectExpression::new(
-                    pairs,
-                    Span {
-                        start: start.start,
-                        end: self.tokens.span().end,
-                    },
-                )?;
-                Ok(ParseTokenResult::Expression(ExpressionType::Object(expr)))
-            }
-            Token::CloseBrace => Ok(ParseTokenResult::Terminator(ExprTerminator::CloseBrace)),
-        }
-    }
-
-    /// Convert a group of expressions and operators into an expression tree.
-    /// The input to this is a list of expressions and operators built from something like
-    /// `1 + (1 / 1) + 1 - 1 * 1`. This would yield operators `+, +, -, *` and expressions
-    /// `1, (1 / 1), 1, 1, 1`, note how the parenthesized bit is considered an expression on its own.
-    ///
-    /// The output of this method should be a tree that correctly handles operator precedence.
-    /// The way it works is by recursively splitting the expression on an operator. So 1 + 1 + 1
-    /// might split the expression into (1 + 1) and 1, note how there is one fewer total operator,
-    /// running out of operators to split on is what terminates the recursion.
-    ///
-    /// We get operator precedence by how we choose which operators to split on first. The first we split on
-    /// in the expression is executed _last_, so in order to get correct precedence, we split on the
-    /// _lowest priority, latest_ operator.
-    ///
-    /// In the example above we first split on `-`, which has precedence 1 along with +, this yields
-    /// (1 + (1 / 1) + 1) and (1 * 1). In the right part of the tree we only have one operator to split on,
-    /// which yields 1 and 1, and terminates the recursion there, since those expressions contain no more operators.
-    /// In the left tree we get (1 + (1 / 1)) and 1, right tree terminates, left tree yields 1 and (1 / 1).
-    /// We do not delve into the (1 / 1) tree, since that is a separate expression that was evaluated earlier.
-    ///
-    /// The resulting tree is
-    /// ```ignore
-    ///       -
-    ///    +     *
-    ///   + 1   1 1
-    ///  1 (1/1)
-    /// ```
-    /// Which we would typically express as (((1 + (1 / 1)) + 1) - (1 * 1)). Note how if you calculate that
-    /// expression, ignoring normal operator priority rules except for parentheses, it still comes out correct.
-    fn group_expressions(
-        ops: Vec<(Operator, Span)>,
-        exprs: Vec<ExpressionType>,
-    ) -> Result<ExpressionType, ParserError> {
-        let mut lowest = 1000;
-        let mut idx: i64 = -1;
-
-        for (i, (op, _)) in ops.iter().enumerate() {
-            if op.priority() <= lowest {
-                lowest = op.priority();
-                idx = i as i64;
-            }
-        }
-
-        if idx < 0 {
-            return Ok(exprs.into_iter().next().unwrap());
-        }
-
-        let mut lhs_ops = vec![];
-        let mut lhs = vec![];
-        let mut drain = exprs.into_iter();
-
-        for i in 0..(idx + 1) {
-            lhs.push(drain.next().unwrap());
-            if i < idx {
-                lhs_ops.push(ops[i as usize].clone());
-            }
-        }
-        let rhs = drain.collect();
-        let mut rhs_ops = vec![];
-        for i in (idx + 1)..(ops.len() as i64) {
-            rhs_ops.push(ops[i as usize].clone());
-        }
-        let lhs = Self::group_expressions(lhs_ops, lhs)?;
-        let rhs = Self::group_expressions(rhs_ops, rhs)?;
-        let (op, span) = ops[idx as usize].clone();
-        Ok(ExpressionType::Operator(OpExpression::new(
-            op, lhs, rhs, span,
-        )?))
-    }
-
-    /// Parses tokens until we reach the end of the current expression.
-    /// An expression consists of a list of operators and expressions.
-    /// For example, `1 + 1, 2 + 2` is two separate expressions, since `,` is an expression terminator.
-    ///
-    /// Moving through the tokens, an expression is always followed by either an operator (`Token::Operator`)
-    /// or a terminator `Token::Comma, Token::CloseParenthesis, Token::CloseBracket, None`
-    ///
-    /// Certain tokens signal the start of one or more sub-expressions. A `Token::BareString` is a function call,
-    /// and must be followed by `Token::OpenParenthesis`. In this case, and when a `Token::OpenBracket` is encountered,
-    /// we move into parsing a list of comma separated expressions.
-    ///
-    /// When `Token::SelectorStart` is encountered, we build a selector, which is an expression. When `Token::OpenParenthesis`
-    /// is encountered outside of a function call, we build a sub-expression.
-    ///
-    /// Certain tokens are automatic errors inside an expression. `Token::Period` and `Token::Error`.
-    ///
-    /// This method returns an expression, and an `ExprTerminator`, which is either `CloseParenthesis`, `CloseBracket`,
-    /// `Comma`, or `End`, i.e. the valid symbols that may end an expression. When parsing a sub-expression
-    /// we always have to check that the terminator matches the opening token. If the expression is empty it returns None,
-    /// leaving to the caller to handle the case where that's wrong. For example, [] is valid, but () is not (unless it's for a function)
-    fn parse_expression(
-        &mut self,
-    ) -> Result<(Option<ExpressionType>, ExprTerminator), ParserError> {
-        let start = self.tokens.span();
-        // The list of expressions and operators passed to `group_expressions`.
-        let mut exprs: Vec<ExpressionType> = vec![];
-        let mut ops = vec![];
-
-        consume_token!(self);
-
-        let mut expect_expression = true;
-        let mut initial = true;
-        let term = loop {
-            let previous = self.tokens.span();
-            match self.next_expression(expect_expression, initial)? {
-                ParseTokenResult::Expression(x) => {
-                    exprs.push(x);
-                    expect_expression = false;
-                }
-                ParseTokenResult::Terminator(t) => break t,
-                ParseTokenResult::Operator(p) => {
-                    ops.push(p);
-                    expect_expression = true;
-                }
-                ParseTokenResult::Selector((selectors, span)) => {
-                    let root_expr = exprs.pop();
-                    let Some(root) = root_expr else {
-                        return Err(ParserError::expect_expression(start));
-                    };
-                    exprs.push(ExpressionType::Selector(SelectorExpression::new(
-                        SourceElement::Expression(Box::new(root)),
-                        selectors,
-                        Span {
-                            start: previous.start,
-                            end: span.end,
-                        },
-                    )?));
-                }
-                ParseTokenResult::PostfixFunction((mut args, func)) => {
-                    let root_expr = exprs.pop();
-                    let Some(root) = root_expr else {
-                        return Err(ParserError::expect_expression(start));
-                    };
-                    args.insert(0, root);
-                    exprs.push(get_function_expression(
-                        Span {
-                            start: previous.start,
-                            end: self.tokens.span().end,
-                        },
-                        &func,
-                        args,
-                    )?)
-                }
-            }
-            initial = false;
-
-            match self.tokens.next() {
-                Some(_) => (),
-                None => break ExprTerminator::End,
-            };
-        };
-        let span = Span {
-            start: start.start,
-            end: self.tokens.span().end,
-        };
-
-        if exprs.is_empty() {
-            return Ok((None, term));
-        }
-
-        if exprs.len() != ops.len() + 1 {
-            return Err(ParserError::invalid_expr(
-                span,
-                "Failed to parse expression",
-            ));
-        }
-
-        let expr = Self::group_expressions(ops, exprs)?;
-        Ok((Some(expr), term))
-    }
-
-    // Parse comma separated list of expressions. The list may be empty, if the first returned expression is null.
-    fn parse_expression_list(
-        &mut self,
-    ) -> Result<(Vec<ExpressionType>, ExprTerminator), ParserError> {
-        let mut res = vec![];
-        let mut initial = true;
-        let term = loop {
-            let (expr, term) = self.parse_expression()?;
-            let is_some = expr.is_some();
-            if let Some(expr) = expr {
-                res.push(expr);
-            } else if !initial {
-                return Err(ParserError::expect_expression(self.tokens.span()));
-            }
-            initial = false;
-            match term {
-                ExprTerminator::End => {
-                    return Err(ParserError::empty_expression(self.tokens.span()))
-                }
-                ExprTerminator::Comma if is_some => (),
-                ExprTerminator::Comma => {
-                    return Err(ParserError::unexpected_symbol(
-                        self.tokens.span(),
-                        Token::Comma,
-                    ))
-                }
-                term => break term,
-            }
-        };
-        Ok((res, term))
-    }
-
-    fn parse_map_contents(&mut self) -> Result<Vec<(ExpressionType, ExpressionType)>, ParserError> {
-        let mut pairs = vec![];
-        let mut initial = true;
-        loop {
-            let (expr, term) = self.parse_expression()?;
-            let key = if let Some(expr) = expr {
-                expr
-            } else {
-                if initial && matches!(term, ExprTerminator::CloseBrace) {
-                    return Ok(pairs);
-                }
-                return Err(ParserError::expect_expression(self.tokens.span()));
-            };
-            initial = false;
-
-            if !matches!(term, ExprTerminator::Colon) {
-                return Err(ParserError::unexpected_symbol(
-                    self.tokens.span(),
-                    term.to_token(),
-                ));
-            }
-
-            let (expr, term) = self.parse_expression()?;
-            let value = if let Some(expr) = expr {
-                expr
-            } else {
-                return Err(ParserError::expect_expression(self.tokens.span()));
-            };
-
-            pairs.push((key, value));
-
-            match term {
-                ExprTerminator::Comma => (),
-                ExprTerminator::CloseBrace => return Ok(pairs),
-                term => {
-                    return Err(ParserError::unexpected_symbol(
-                        self.tokens.span(),
-                        term.to_token(),
-                    ))
-                }
-            }
-        }
-    }
-
-    fn peek_for_function(&mut self) -> Result<String, ParserError> {
-        let token = consume_token!(self, Token::BareString(_));
-        if !matches!(self.tokens.peek(), Some(Token::OpenParenthesis)) {
-            return Err(ParserError::expected_symbol(self.tokens.span(), "("));
-        }
-        Ok(match token {
-            Token::BareString(s) => s,
-            _ => unreachable!(),
-        })
-    }
-
-    // Parse a selector, on the form `id.some.json.path` or `id.array[0][1]`, or `dynamic['selectors'][1 + 1].field`
-    fn parse_selector(
-        &mut self,
-        initial_is_element: bool,
-    ) -> Result<(Vec<SelectorElement>, Span), ParserError> {
-        let mut path = vec![];
-        let start = self.tokens.span();
-
-        let mut last_is_element = initial_is_element;
-
-        loop {
-            if !last_is_element {
-                self.tokens.begin_try();
-                let res = self.peek_for_function();
-                self.tokens.abort();
-                if res.is_ok() {
-                    self.tokens.move_pointer(-1);
-                    break;
-                }
-            }
-
-            let next = match self.tokens.next() {
-                Some(x) => x,
-                None => break,
-            };
-
-            match next {
-                Token::BareString(s) if !last_is_element => {
-                    last_is_element = true;
-                    path.push(SelectorElement::Constant(s));
-                }
-                Token::UInteger(s) if !last_is_element => {
-                    last_is_element = true;
-                    path.push(SelectorElement::Constant(s.to_string()));
-                }
-                Token::Null if !last_is_element => {
-                    last_is_element = true;
-                    path.push(SelectorElement::Constant("null".to_string()))
-                }
-                Token::Period if last_is_element => {
-                    last_is_element = false;
-                }
-                Token::OpenBracket if last_is_element => {
-                    let (exprs, term) = self.parse_expression_list()?;
-                    if exprs.len() != 1 {
-                        return Err(ParserError::invalid_expr(
-                            self.tokens.span(),
-                            "Expected a single element inside [...] selector expression",
-                        ));
-                    }
-                    if !matches!(term, ExprTerminator::CloseBracket) {
-                        return Err(ParserError::expected_symbol(self.tokens.span(), "]"));
-                    }
-                    let expr = exprs.into_iter().next().unwrap();
-                    path.push(SelectorElement::Expression(Box::new(expr)));
-                }
-                _ => {
-                    if !last_is_element {
-                        return Err(ParserError::unexpected_symbol(self.tokens.span(), next));
-                    }
-                    self.tokens.move_pointer(-1);
-                    break;
-                }
-            }
-        }
-        let span = Span {
-            start: start.start,
-            end: self.tokens.span().end,
-        };
-        Ok((path, span))
-    }
-
-    fn parse_lambda(&mut self) -> Result<Vec<String>, ParserError> {
-        let mut keys = Vec::new();
-
-        match consume_token!(self) {
-            Token::CloseParenthesis => (),
-            Token::BareString(s) => {
-                keys.push(s);
-                loop {
-                    match consume_token!(self) {
-                        Token::Comma => (),
-                        Token::CloseParenthesis => break,
-                        x => return Err(ParserError::unexpected_symbol(self.tokens.span(), x)),
-                    }
-                    match consume_token!(self) {
-                        Token::BareString(s) => keys.push(s),
-                        x => return Err(ParserError::unexpected_symbol(self.tokens.span(), x)),
-                    }
-                }
-            }
-            x => return Err(ParserError::unexpected_symbol(self.tokens.span(), x)),
-        }
-        consume_token!(self, Token::Arrow);
-        Ok(keys)
-    }
-
-    fn parse_function(
-        &mut self,
-        name: Option<String>,
-    ) -> Result<(Vec<ExpressionType>, String), ParserError> {
-        let function = match name {
-            Some(x) => x,
-            None => {
-                let token = consume_token!(self, Token::BareString(_));
-                match token {
-                    Token::BareString(s) => s,
-                    _ => unreachable!(),
-                }
-            }
-        };
-
-        consume_token!(self, Token::OpenParenthesis);
-        let (args, term) = self.parse_expression_list()?;
-
-        if !matches!(term, ExprTerminator::CloseParenthesis) {
-            return Err(ParserError::unexpected_symbol(
-                self.tokens.span(),
-                term.to_token(),
-            ));
-        }
-        Ok((args, function))
-    }
-}
+pub use jsontf::ExprParser;
 
 #[cfg(test)]
-pub mod test {
-    use logos::{Logos, Span};
+mod tests {
+    use logos::Span;
 
-    use crate::{expressions::ExpressionType, lexer::Token, parse::ParserError};
+    use crate::{
+        expressions::{Operator, UnaryOperator},
+        lexer::{Lexer, LexerError, ParseError, Token},
+        parse::ast::{Constant, Expression},
+    };
 
-    use super::Parser;
+    use super::jsontf::ExprParser;
 
-    fn parse(inp: &str) -> Result<ExpressionType, ParserError> {
-        let lex = Token::lexer(inp);
-        Parser::new(lex).parse()
+    fn parse(dat: &str) -> Result<Expression, ParseError> {
+        let p = ExprParser::new();
+        let tokens = Lexer::new(dat);
+        p.parse(tokens)
     }
 
-    fn parse_fail(inp: &str) -> ParserError {
+    fn parse_fail(inp: &str) -> ParseError {
         match parse(inp) {
             Ok(_) => panic!("Expected parse to fail"),
             Err(x) => x,
         }
+    }
+
+    #[test]
+    fn test_const_parse() {
+        fn parse_const(dat: &str) -> Constant {
+            let r = parse(dat);
+            let r = r.unwrap();
+            match r {
+                Expression::Constant(c, _) => c,
+                _ => panic!("Wrong type of result"),
+            }
+        }
+
+        assert_eq!(Constant::PositiveInteger(123), parse_const("123"));
+        assert_eq!(Constant::NegativeInteger(-123), parse_const("-123"));
+        assert_eq!(Constant::Float(123.123), parse_const("123.123"));
+        assert_eq!(Constant::Bool(true), parse_const("true"));
+        assert_eq!(
+            Constant::String("test".to_string()),
+            parse_const("\"test\"")
+        );
+        assert_eq!(Constant::Null, parse_const("null"));
     }
 
     #[test]
@@ -831,9 +76,9 @@ pub mod test {
     pub fn test_bad_selector() {
         let res = parse_fail("2 + id.+");
         match res {
-            ParserError::UnexpectedSymbol(d) => {
-                assert_eq!(d.detail, Some("Unexpected symbol +".to_string()));
-                assert_eq!(d.position, Span { start: 7, end: 8 });
+            ParseError::UnrecognizedToken { token, expected } => {
+                assert_eq!((7, Token::Operator(Operator::Plus), 8), token);
+                assert_eq!(vec![r#""var""#.to_string()], expected);
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -843,9 +88,9 @@ pub mod test {
     pub fn test_bad_selector_2() {
         let res = parse_fail("2 + id..");
         match res {
-            ParserError::UnexpectedSymbol(d) => {
-                assert_eq!(d.detail, Some("Unexpected symbol .".to_string()));
-                assert_eq!(d.position, Span { start: 7, end: 8 });
+            ParseError::UnrecognizedToken { token, expected } => {
+                assert_eq!((7, Token::Period, 8), token);
+                assert_eq!(vec![r#""var""#.to_string()], expected);
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -855,20 +100,9 @@ pub mod test {
     pub fn test_bad_selector_3() {
         let res = parse_fail("2 + id.[0]");
         match res {
-            ParserError::UnexpectedSymbol(d) => {
-                assert_eq!(d.detail, Some("Unexpected symbol [".to_string()));
-                assert_eq!(d.position, Span { start: 7, end: 8 });
-            }
-            _ => panic!("Wrong type of response: {res:?}"),
-        }
-    }
-
-    #[test]
-    pub fn test_weird_list() {
-        let res = parse_fail("[1, 2,]");
-        match res {
-            ParserError::ExpectExpression(d) => {
-                assert_eq!(d.position, Span { start: 6, end: 7 });
+            ParseError::UnrecognizedToken { token, expected } => {
+                assert_eq!((7, Token::OpenBracket, 8), token);
+                assert_eq!(vec![r#""var""#.to_string()], expected);
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -878,8 +112,10 @@ pub mod test {
     pub fn test_empty_expression() {
         let res = parse_fail("2 + ()");
         match res {
-            ParserError::EmptyExpression(d) => {
-                assert_eq!(d.position, Span { start: 4, end: 6 });
+            ParseError::UnrecognizedToken { token, expected: _ } => {
+                assert_eq!((5, Token::CloseParenthesis, 6), token);
+                // Expect is a bunch of stuff here
+                // assert_eq!(vec![r#""var""#.to_string()], expected);
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -889,9 +125,11 @@ pub mod test {
     pub fn test_missing_terminator() {
         let res = parse_fail("2 + (2 * ");
         match res {
-            ParserError::InvalidExpression(d) => {
-                assert_eq!(d.detail, Some("Failed to parse expression".to_string()));
-                assert_eq!(d.position, Span { start: 4, end: 8 });
+            ParseError::UnrecognizedEof {
+                location,
+                expected: _,
+            } => {
+                assert_eq!(8, location);
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -901,8 +139,10 @@ pub mod test {
     pub fn test_unterminated_string() {
         let res = parse_fail("2 + 'test ");
         match res {
-            ParserError::InvalidToken(d) => {
-                assert_eq!(d.position, Span { start: 4, end: 10 });
+            ParseError::User {
+                error: LexerError::InvalidToken(d),
+            } => {
+                assert_eq!(d, Span { start: 4, end: 10 });
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -910,10 +150,10 @@ pub mod test {
 
     #[test]
     pub fn test_misplaced_operator() {
-        let res = parse_fail("2 + + 'test' 3");
+        let res = parse_fail("2 + + 'test'");
         match res {
-            ParserError::ExpectExpression(d) => {
-                assert_eq!(d.position, Span { start: 4, end: 5 });
+            ParseError::UnrecognizedToken { token, expected: _ } => {
+                assert_eq!((4, Token::Operator(Operator::Plus), 5), token);
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -923,39 +163,8 @@ pub mod test {
     pub fn test_misplaced_expression() {
         let res = parse_fail("2 + 'test' 'test'");
         match res {
-            ParserError::UnexpectedSymbol(d) => {
-                assert_eq!(d.detail, Some("Unexpected symbol 'test'".to_string()));
-                assert_eq!(d.position, Span { start: 11, end: 17 });
-            }
-            _ => panic!("Wrong type of response: {res:?}"),
-        }
-    }
-
-    #[test]
-    pub fn test_wrong_function_args() {
-        let res = parse_fail("2 + pow(2)");
-        match res {
-            ParserError::NFunctionArgs(d) => {
-                assert_eq!(
-                    d.detail,
-                    Some(
-                        "Incorrect number of function args: function pow takes 2 arguments"
-                            .to_string()
-                    )
-                );
-                assert_eq!(d.position, Span { start: 4, end: 10 });
-            }
-            _ => panic!("Wrong type of response: {res:?}"),
-        }
-    }
-
-    #[test]
-    pub fn test_unrecognized_function() {
-        let res = parse_fail("2 + bloop(34)");
-        match res {
-            ParserError::UnexpectedSymbol(d) => {
-                assert_eq!(d.detail, Some("Unrecognized function: bloop".to_string()));
-                assert_eq!(d.position, Span { start: 4, end: 13 });
+            ParseError::UnrecognizedToken { token, expected: _ } => {
+                assert_eq!((11, Token::String("test".to_string()), 17), token);
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -977,9 +186,8 @@ pub mod test {
     pub fn test_misplaced_negate() {
         let res = parse_fail("2 + 3!");
         match res {
-            ParserError::UnexpectedSymbol(d) => {
-                assert_eq!(d.detail, Some("Unexpected symbol !".to_string()));
-                assert_eq!(d.position, Span { start: 5, end: 6 });
+            ParseError::UnrecognizedToken { token, expected: _ } => {
+                assert_eq!((5, Token::UnaryOperator(UnaryOperator::Negate), 6), token);
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -1028,9 +236,8 @@ pub mod test {
     pub fn test_empty_lambda() {
         let res = parse_fail("() => ");
         match res {
-            ParserError::EmptyExpression(d) => {
-                assert_eq!(d.detail, None);
-                assert_eq!(d.position, Span { start: 3, end: 5 });
+            ParseError::UnrecognizedToken { token, expected: _ } => {
+                assert_eq!((1, Token::CombinedArrow, 5), token);
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -1040,9 +247,8 @@ pub mod test {
     pub fn test_unexpected_lambda() {
         let res = parse_fail("1 + () => 1 + 1");
         match res {
-            ParserError::UnexpectedLambda(d) => {
-                assert_eq!(d.detail, None);
-                assert_eq!(d.position, Span { start: 4, end: 9 });
+            ParseError::UnrecognizedToken { token, expected: _ } => {
+                assert_eq!((5, Token::CombinedArrow, 9), token);
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
