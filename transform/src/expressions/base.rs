@@ -197,7 +197,8 @@ pub fn get_function_expression(
     Ok(ExpressionType::Function(expr))
 }
 
-/// The main expression type. All expressions must be included here.
+/// An executable node in the expression tree.
+/// This type can be executed with the `run` function, to yield a transformed Value.
 #[derive(PassThrough, Debug, Clone)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
 #[pass_through(fn resolve(&'a self, state: &ExpressionExecutionState<'c, '_>) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
@@ -217,6 +218,8 @@ pub enum ExpressionType {
 }
 
 impl ExpressionType {
+    /// Run the expression. Takes a list of values and a chunk_id, the id is just used for
+    /// errors and logging.
     pub fn run<'a: 'c, 'c>(
         &'a self,
         data: impl Iterator<Item = &'c Value>,

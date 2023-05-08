@@ -171,7 +171,7 @@ impl Transform {
     }
 }
 
-/// The actual compiled program itself.
+/// A compiled program consisting of a sequences of transformations.
 pub struct Program {
     pub(crate) transforms: Vec<Transform>,
 }

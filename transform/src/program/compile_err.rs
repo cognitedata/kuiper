@@ -17,6 +17,8 @@ where
     }
 }
 
+/// Error type for generic compilation errors,
+/// may not be attached to a transformation expression at all.
 #[derive(Debug, Error)]
 pub struct ConfigCompileError {
     pub desc: String,
@@ -33,6 +35,7 @@ impl std::fmt::Display for ConfigCompileError {
     }
 }
 
+/// A failed compilation, contains sub-errors for each stage of the compilation.
 #[derive(Debug, Error)]
 pub enum CompileError {
     #[error("Compilation failed: {0}")]

@@ -21,6 +21,10 @@ impl Display for TransformErrorData {
     }
 }
 
+/// Error returned by a failed transform execution,
+/// or by the optimizer.
+///
+/// These are typically runtime type errors, or other invalid operations.
 #[derive(Debug, Error)]
 pub enum TransformError {
     #[error("Source does not exist: {0}")]

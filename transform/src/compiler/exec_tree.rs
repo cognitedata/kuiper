@@ -28,6 +28,8 @@ impl Display for CompileErrorData {
     }
 }
 
+/// Error returned from the stage converting the AST to an executable expression.
+/// This is typically a missing function, or the wrong number or type of function arguments.
 #[derive(Debug, Error)]
 pub enum BuildError {
     #[error("{0}")]
