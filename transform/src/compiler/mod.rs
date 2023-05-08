@@ -8,6 +8,24 @@ pub use optimizer::optimize;
 
 use crate::{expressions::ExpressionType, lexer::Lexer, parse::ExprParser, CompileError};
 
+/// Compile an expression. The `known_inputs` map should contain map from
+/// valid input strings to indexes in the input array. You are responsible for ensuring that
+/// the expression is run with the correct input array, or it will fail with a source missing error.
+///
+/// ```
+/// use json_transform::compile_expression;
+/// use std::collections::HashMap;
+/// use serde_json::json;
+///
+/// let mut known_inputs = HashMap::new();
+/// known_inputs.insert("input".to_string(), 0);
+/// let transform = compile_expression("input.value + 5", &mut known_inputs, "my_transform").unwrap();
+///
+/// let input = [json!({ "value": 2 })];
+/// let result = transform.run(input.iter(), "my_transform").unwrap();
+///
+/// assert_eq!(result.as_u64().unwrap(), 7);
+/// ```
 pub fn compile_expression(
     data: &str,
     known_inputs: &mut HashMap<String, usize>,
@@ -24,6 +42,7 @@ pub fn compile_expression(
     Ok(optimized)
 }
 
+/// Chunk of debug information about a compilation stage.
 #[derive(Debug)]
 pub struct DebugInfo {
     #[allow(dead_code)]
@@ -37,6 +56,9 @@ impl Display for DebugInfo {
     }
 }
 
+/// Debug information about a compilation.
+/// When converted to string this shows the state of the compiler at each compilation stage.
+#[derive(Debug)]
 pub struct ExpressionDebugInfo {
     pub lexer: DebugInfo,
     pub ast: DebugInfo,
@@ -57,6 +79,11 @@ impl Display for ExpressionDebugInfo {
 }
 
 impl ExpressionDebugInfo {
+    /// Try to compile the input into an expression, and store the compiler state at each stage.
+    /// This lets you peek into the compilers interpretation of the program at each stage,
+    /// which is useful for debugging.
+    ///
+    /// `data` is the program itself `known_inputs` is a list of valid input labels.
     pub fn new(data: &str, known_inputs: &[&str]) -> Result<Self, CompileError> {
         let lexer = Lexer::new(data);
         let tokens: Result<Vec<_>, _> = lexer.map(|data| data.map(|(_, t, _)| t)).collect();

@@ -11,6 +11,8 @@ use logos::{Logos, Span, SpannedIter};
 
 pub type Spanned<Tok, Loc, Error> = Result<(Loc, Tok, Loc), Error>;
 
+/// Error returned by the parser. Contains the location of the error and the token at the error,
+/// as well as rich information about valid tokens at the given location.
 pub type ParseError = lalrpop_util::ParseError<usize, Token, LexerError>;
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]

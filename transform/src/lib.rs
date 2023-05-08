@@ -1,10 +1,43 @@
+//! # Unnamed JSON transform library
+//!
+//! This library defines a JSON to JSON transform and templating language. The language itself is
+//! inspired by JavaScript. Expressions always terminate, as the language has no form of recursion.
+//! This means that while there are loops, they only operate on input arrays. So it is possible to iterate over
+//! an array, and even pairs of arrays, but it is not possible to implement recursion.
+//!
+//! ## Features
+//!
+//! - [Operators], `+`, `-`, `*`, `/`, `==`, `!=`, `>=`, `<=`, `>`, `<`, `&&`, `||` with precendence taken from the C++ standard.
+//! - [Arrays], [1, 2, "test", 123.123, [123, 2]]
+//! - [Objects], { "test": "123", concat("test", "test"): 321 }
+//! - [Built in functions], like `map`, `float`, `concat`, etc. Either `pow(base, exp) or base.pow(exp)`
+//! - [Functors], `map` is a functor, meaning it accepts a lambda: `map(arr, field => ...)` or `arr.map(field => ...)`
+//! - [Selector expressions], `[1, 2, 3][1] == 2`, `input.field.value["dynamic"]`, etc.
+//!
+//! ## Usage
+//!
+//! ```
+//! use json_transform::compile_expression;
+//! use std::collections::HashMap;
+//! use serde_json::json;
+//!
+//! let mut known_inputs = HashMap::new();
+//! known_inputs.insert("input".to_string(), 0);
+//! let transform = compile_expression("input.value + 5", &mut known_inputs, "my_transform").unwrap();
+//!
+//! let input = [json!({ "value": 2 })];
+//! let result = transform.run(input.iter(), "my_transform").unwrap();
+//!
+//! assert_eq!(result.as_u64().unwrap(), 7);
+//! ```
+
 mod compiler;
 mod expressions;
 mod lexer;
 mod parse;
 mod program;
 
-pub use compiler::{compile_expression, BuildError, ExpressionDebugInfo};
+pub use compiler::{compile_expression, BuildError, DebugInfo, ExpressionDebugInfo};
 pub use expressions::{ExpressionType, TransformError, TransformErrorData};
 pub use lexer::ParseError;
 pub use program::{CompileError, ConfigCompileError, Program, SubCompileError, TransformInput};
