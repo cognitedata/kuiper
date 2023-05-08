@@ -1,19 +1,37 @@
+use std::fmt::Display;
+
 use logos::Span;
 use serde_json::Value;
+use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub struct TransformErrorData {
     pub id: String,
     pub span: Span,
     pub desc: String,
 }
 
-#[derive(Debug)]
+impl Display for TransformErrorData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}. ID: {} at {}..{}",
+            self.desc, self.id, self.span.start, self.span.end
+        )
+    }
+}
+
+#[derive(Debug, Error)]
 pub enum TransformError {
+    #[error("Source does not exist: {0}")]
     SourceMissingError(TransformErrorData),
+    #[error("{0}")]
     IncorrectTypeInField(TransformErrorData),
+    #[error("{0}")]
     ConversionFailed(TransformErrorData),
+    #[error("{0}")]
     InvalidOperation(TransformErrorData),
+    #[error("Program is invalid: {0}")]
     InvalidProgramError(String),
 }
 

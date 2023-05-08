@@ -4,12 +4,10 @@ mod lexer;
 mod parse;
 mod program;
 
-pub use compiler::{compile_expression, ExpressionDebugInfo};
+pub use compiler::{compile_expression, BuildError, ExpressionDebugInfo};
 pub use expressions::{ExpressionType, TransformError, TransformErrorData};
-pub use program::{
-    BuildCompileError, CompileError, ConfigCompileError, OptimizerCompileError, ParserCompileError,
-    Program, TransformInput,
-};
+pub use lexer::ParseError;
+pub use program::{CompileError, ConfigCompileError, Program, SubCompileError, TransformInput};
 
 #[cfg(test)]
 mod tests {
@@ -18,9 +16,7 @@ mod tests {
     use logos::Span;
     use serde_json::{json, Value};
 
-    use crate::{
-        compiler::BuildError, program::OptimizerCompileError, CompileError, Program, TransformError,
-    };
+    use crate::{compiler::BuildError, CompileError, Program, SubCompileError, TransformError};
 
     fn compile(value: Value) -> Result<Program, CompileError> {
         Program::compile(serde_json::from_value(value).unwrap())
@@ -402,7 +398,7 @@ mod tests {
             "transform": "pow(10, foo.val)"
         }]));
         match result {
-            CompileError::Optimizer(OptimizerCompileError {
+            CompileError::Optimizer(SubCompileError {
                 err: TransformError::SourceMissingError(d),
                 ..
             }) => {

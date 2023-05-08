@@ -159,7 +159,7 @@ impl Transform {
         }
         let mut inputs = TransformInputs::new(&raw.inputs, inputs, raw.mode);
 
-        let result = compile_expression(&raw.id, &mut inputs.inputs, &raw.id)?;
+        let result = compile_expression(&raw.transform, &mut inputs.inputs, &raw.id)?;
 
         Ok(Self {
             inputs,
