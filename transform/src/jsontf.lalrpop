@@ -57,9 +57,7 @@ FunctionArg: ast::FunctionParameter = {
     <e: Expr> => ast::FunctionParameter::Expression(e)
 }
 
-pub Expr: ast::Expression = {
-    <e:Op1Expr> => e
-}
+pub Expr: ast::Expression = Op2Expr;
 
 Pair: (ast::Expression, ast::Expression) = {
     <lh:Expr> ":" <rh:Expr> => (lh, rh)
@@ -105,16 +103,15 @@ Tier<Op, NextTier>: ast::Expression = {
     NextTier
 }
 
-Op1Expr = Tier<Op1, Op2Expr>;
-Op1: Operator = {
-    "+" => Operator::Plus,
-    "-" => Operator::Minus
+// From least to most important
+Op2Expr = Tier<Op2, Op3Expr>;
+Op2: Operator = {
+    "||" => Operator::Or
 }
 
-Op2Expr = Tier<Op2, Op4Expr>;
-Op2: Operator = {
-    "*" => Operator::Multiply,
-    "/" => Operator::Divide
+Op3Expr = Tier<Op3, Op4Expr>;
+Op3: Operator = {
+    "&&" => Operator::And
 }
 
 Op4Expr = Tier<Op4, Op5Expr>;
@@ -133,14 +130,16 @@ Op5: Operator = {
 
 Op6Expr = Tier<Op6, Op7Expr>;
 Op6: Operator = {
-    "&&" => Operator::And
+    "+" => Operator::Plus,
+    "-" => Operator::Minus
 }
 
 Op7Expr = Tier<Op7, Op8Expr>;
 Op7: Operator = {
-    "||" => Operator::Or
+    "*" => Operator::Multiply,
+    "/" => Operator::Divide,
+    "%" => Operator::Modulo
 }
-
 Op8Expr: ast::Expression = {
     <start:@L> "!" <e:Op8Expr> <end:@R> => ast::Expression::UnaryOperation {
         operator: UnaryOperator::Negate,
@@ -149,6 +148,7 @@ Op8Expr: ast::Expression = {
     },
     Term
 }
+
 
 extern {
     type Location = usize;
@@ -176,6 +176,7 @@ extern {
         "!=" => Token::Operator(Operator::NotEquals),
         "&&" => Token::Operator(Operator::And),
         "||" => Token::Operator(Operator::Or),
+        "%" => Token::Operator(Operator::Modulo),
         "!" => Token::UnaryOperator(UnaryOperator::Negate),
         "null" => Token::Null,
         "var" => Token::BareString(<String>),

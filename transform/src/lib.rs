@@ -834,4 +834,33 @@ mod tests {
         let res = res.into_iter().next().unwrap();
         assert_eq!(res.as_f64().unwrap(), 4.0);
     }
+    #[test]
+    pub fn test_modulo_operator() {
+        let program = compile(json!([{
+            "id": "test",
+            "inputs": [],
+            "transform": "[1, 2, 3, 4].filter((a) => a % 2 == 1)"
+        }]))
+        .unwrap();
+
+        let res = program.execute(&Value::Null).unwrap();
+        let res = res.into_iter().next().unwrap();
+        let val = res.as_array().unwrap();
+        assert_eq!(2, val.len());
+        assert_eq!(val[0].as_u64().unwrap(), 1);
+        assert_eq!(val[1].as_u64().unwrap(), 3);
+    }
+    #[test]
+    pub fn test_complicated_operator_precedence() {
+        let program = compile(json!([{
+            "id": "test",
+            "inputs": [],
+            "transform": "1 == 1 && 2 == 2 || (2 + 2) != 4"
+        }]))
+        .unwrap();
+
+        let res = program.execute(&Value::Null).unwrap();
+        let res = res.into_iter().next().unwrap();
+        assert!(res.as_bool().unwrap());
+    }
 }

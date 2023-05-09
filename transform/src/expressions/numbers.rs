@@ -30,9 +30,7 @@ impl JsonNumber {
         match self {
             Self::NegInteger(x) => x.try_into().map_err(|e| {
                 TransformError::new_conversion_failed(
-                    format!(
-                        "Failed to convert negative integer {x} to unsigned: {e}"
-                    ),
+                    format!("Failed to convert negative integer {x} to unsigned: {e}"),
                     span,
                     id,
                 )
@@ -61,9 +59,7 @@ impl JsonNumber {
         match self {
             Self::PosInteger(x) => x.try_into().map_err(|e| {
                 TransformError::new_conversion_failed(
-                    format!(
-                        "Failed to convert positive integer to signed integer: {e}"
-                    ),
+                    format!("Failed to convert positive integer to signed integer: {e}"),
                     span,
                     id,
                 )
@@ -300,6 +296,37 @@ impl JsonNumber {
                     Ok(x) => x == y,
                     Err(_) => false,
                 }
+            }
+        }
+    }
+
+    pub fn try_mod(
+        self,
+        rhs: JsonNumber,
+        span: &Span,
+        id: &str,
+    ) -> Result<JsonNumber, TransformError> {
+        if rhs.as_f64() == 0.0f64 {
+            return Err(TransformError::new_invalid_operation(
+                "Divide by zero".to_string(),
+                span,
+                id,
+            ));
+        }
+        match (self, rhs) {
+            (JsonNumber::PosInteger(x), JsonNumber::PosInteger(y)) => {
+                Ok(JsonNumber::PosInteger(x % y))
+            }
+            (JsonNumber::NegInteger(x), JsonNumber::NegInteger(y)) => {
+                Ok(JsonNumber::NegInteger(x % y))
+            }
+            (JsonNumber::Float(x), f) => Ok(JsonNumber::Float(x % f.as_f64())),
+            (JsonNumber::PosInteger(_), JsonNumber::NegInteger(y)) => {
+                Ok(JsonNumber::NegInteger(self.try_as_i64(span, id)? % y))
+            }
+            (_, JsonNumber::Float(y)) => Ok(JsonNumber::Float(self.as_f64() % y)),
+            (JsonNumber::NegInteger(x), JsonNumber::PosInteger(_)) => {
+                Ok(JsonNumber::NegInteger(x % rhs.try_as_i64(span, id)?))
             }
         }
     }

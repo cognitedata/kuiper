@@ -78,6 +78,7 @@ pub enum Token {
     #[token("!=", |_| Operator::NotEquals)]
     #[token("&&", |_| Operator::And)]
     #[token("||", |_| Operator::Or)]
+    #[token("%", |_| Operator::Modulo)]
     Operator(Operator),
 
     /// A unary operator, takes the following expression as argument.
