@@ -27,6 +27,7 @@ pub enum Operator {
     LessThan,
     GreaterThanEquals,
     LessThanEquals,
+    Modulo,
 }
 
 impl Display for Operator {
@@ -44,6 +45,7 @@ impl Display for Operator {
             Operator::LessThan => write!(f, "<"),
             Operator::GreaterThanEquals => write!(f, ">="),
             Operator::LessThanEquals => write!(f, "<="),
+            Operator::Modulo => write!(f, "%"),
         }
     }
 }
@@ -57,6 +59,7 @@ impl Operator {
             Self::Minus => 1,
             Self::Multiply => 2,
             Self::Divide => 2,
+            Self::Modulo => 2,
             Self::Equals => 4,
             Self::NotEquals => 4,
             Self::GreaterThan => 5,
@@ -290,6 +293,7 @@ impl OpExpression {
                     !lhs.eq(rhs, &self.span, state.id),
                 )))
             }
+            Operator::Modulo => lhs.try_mod(rhs, &self.span, state.id)?,
             _ => {
                 return Err(TransformError::new_invalid_operation(
                     format!("Operator {} not applicable to numbers", &self.operator),

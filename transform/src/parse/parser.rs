@@ -274,4 +274,12 @@ mod tests {
             res.to_string()
         );
     }
+    #[test]
+    pub fn test_complicated_operator_precedence() {
+        let res = parse("1 == 2 && 2 != 3 || 1 + 1 * 3 - 5 / 3").unwrap();
+        assert_eq!(
+            "(((1 == 2) && (2 != 3)) || ((1 + (1 * 3)) - (5 / 3)))",
+            res.to_string()
+        )
+    }
 }
