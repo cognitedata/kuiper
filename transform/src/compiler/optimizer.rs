@@ -5,6 +5,22 @@ use crate::{
     TransformError,
 };
 
+fn is_deterministic(expr: &ExpressionType) -> bool {
+    if !expr.get_is_deterministic() {
+        return false;
+    }
+
+    for idx in 0..expr.num_children() {
+        let child = expr.get_child(idx).unwrap();
+
+        if !is_deterministic(child) {
+            return false;
+        }
+    }
+
+    true
+}
+
 fn resolve_constants(
     root: &mut ExpressionType,
     known_inputs: &mut HashMap<String, usize>,
@@ -42,16 +58,17 @@ fn resolve_constants(
 
     let res = match root.resolve(empty_state) {
         // If resolution succeeds, we can replace this operator with a constant
-        Ok(x) => Ok(Some(ExpressionType::Constant(Constant::new(
+        Ok(x) if is_deterministic(root) => Ok(Some(ExpressionType::Constant(Constant::new(
             x.into_owned(),
         )))),
+        Ok(_) => Ok(None),
         Err(e) => match e {
             // Any error that is not a source missing error would be a bug in this position,
             // since any execution that is variable between runs would return a source missing error before anything else.
             TransformError::SourceMissingError(_) => {
                 // If the source is missing we should try to optimize each child.
                 for idx in 0..root.num_children() {
-                    let res = resolve_constants(
+                    let res: Option<ExpressionType> = resolve_constants(
                         root.get_child_mut(idx).unwrap(),
                         known_inputs,
                         empty_state,
