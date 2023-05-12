@@ -7,7 +7,7 @@ use crate::{
     TransformError,
 };
 
-use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone};
+use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone, Utc};
 use serde_json::{Number, Value};
 
 function_def!(ToUnixTimeFunction, "to_unix_timestamp", 2, Some(3));
@@ -87,11 +87,25 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ToUnixTimeFunction {
     }
 }
 
+function_def!(NowTimestampFunction, "now_timestamp", 0);
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for NowTimestampFunction {
+    const IS_DETERMINISTIC: bool = false;
+    fn resolve(
+        &'a self,
+        _state: &crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
+        let res = Utc::now().timestamp_millis();
+        Ok(ResolveResult::Owned(Value::Number(res.into())))
+    }
+}
 #[cfg(test)]
 mod tests {
-    use serde_json::json;
+    use std::collections::HashMap;
 
-    use crate::Program;
+    use serde_json::{json, Value};
+
+    use crate::{compile_expression, Program};
 
     #[test]
     pub fn test_time_conversion() {
@@ -130,5 +144,28 @@ mod tests {
         assert_eq!(90000000, val.get("t13").unwrap().as_i64().unwrap());
         assert_eq!(86400000, val.get("t3").unwrap().as_i64().unwrap());
         assert_eq!(86400000, val.get("t4").unwrap().as_i64().unwrap());
+    }
+
+    #[test]
+    pub fn test_now_timestamp() {
+        let program = Program::compile(
+            serde_json::from_value(json!([{
+                "id": "tostring",
+                "inputs": ["input"],
+                "transform": r#"now_timestamp()"#,
+                "type": "map"
+            }]))
+            .unwrap(),
+        )
+        .unwrap();
+
+        let res = program.execute(&Value::Null).unwrap();
+        assert!(res.first().unwrap().as_i64().unwrap() > 0);
+    }
+
+    #[test]
+    pub fn test_now_timestamp_const() {
+        let r = compile_expression("now_timestamp()", &mut HashMap::new(), "test").unwrap();
+        assert_eq!("now_timestamp()", r.to_string());
     }
 }

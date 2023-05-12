@@ -71,7 +71,8 @@ macro_rules! function_def {
             }
 
             fn get_child(&self, idx: usize) -> Option<&$crate::expressions::base::ExpressionType> {
-                if idx > $nargs - 1 {
+                #[allow(unused_comparisons)]
+                if idx >= $nargs {
                     None
                 } else {
                     Some(&self.args[idx])
@@ -79,7 +80,8 @@ macro_rules! function_def {
             }
 
             fn get_child_mut(&mut self, idx: usize) -> Option<&mut $crate::expressions::base::ExpressionType> {
-                if idx > $nargs - 1 {
+                #[allow(unused_comparisons)]
+                if idx >= $nargs {
                     None
                 } else {
                     Some(&mut self.args[idx])
@@ -87,6 +89,7 @@ macro_rules! function_def {
             }
 
             fn set_child(&mut self, idx: usize, item: $crate::expressions::base::ExpressionType) {
+                #[allow(unused_comparisons)]
                 if idx >= $nargs {
                     return;
                 }

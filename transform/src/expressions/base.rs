@@ -115,11 +115,16 @@ macro_rules! with_temp_values {
 ///         for entry in inputs
 ///             'b
 pub trait Expression<'a: 'c, 'c>: Display {
+    const IS_DETERMINISTIC: bool = true;
     /// Resolve an expression.
     fn resolve(
         &'a self,
         state: &ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError>;
+
+    fn get_is_deterministic(&self) -> bool {
+        Self::IS_DETERMINISTIC
+    }
 }
 
 /// Additional trait for expressions, separate from Expression to make it easier to implement in macros
@@ -137,6 +142,7 @@ pub trait ExpressionMeta {
 #[derive(PassThrough, Debug, Clone)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
 #[pass_through(fn resolve(&'a self, state: &ExpressionExecutionState<'c, '_>) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
+#[pass_through(fn get_is_deterministic(&self) -> bool, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta)]
 #[pass_through(fn get_child(&self, idx: usize) -> Option<&ExpressionType>, "", ExpressionMeta<'a>)]
 #[pass_through(fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType>, "", ExpressionMeta<'a>)]
@@ -162,6 +168,7 @@ pub enum FunctionType {
     Zip(ZipFunction),
     Length(LengthFunction),
     Chunk(ChunkFunction),
+    NowTimestamp(NowTimestampFunction),
 }
 
 /// Create a function expression from its name, or return a parser exception if it has the wrong number of arguments,
@@ -192,6 +199,7 @@ pub fn get_function_expression(
         "zip" => FunctionType::Zip(ZipFunction::new(args, pos)?),
         "length" => FunctionType::Length(LengthFunction::new(args, pos)?),
         "chunk" => FunctionType::Chunk(ChunkFunction::new(args, pos)?),
+        "now_timestamp" => FunctionType::NowTimestamp(NowTimestampFunction::new(args, pos)?),
         _ => return Err(BuildError::unrecognized_function(pos, name)),
     };
     Ok(ExpressionType::Function(expr))
@@ -202,6 +210,7 @@ pub fn get_function_expression(
 #[derive(PassThrough, Debug, Clone)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
 #[pass_through(fn resolve(&'a self, state: &ExpressionExecutionState<'c, '_>) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
+#[pass_through(fn get_is_deterministic(&self) -> bool, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta)]
 #[pass_through(fn get_child(&self, idx: usize) -> Option<&ExpressionType>, "", ExpressionMeta<'a>)]
 #[pass_through(fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType>, "", ExpressionMeta<'a>)]
