@@ -13,7 +13,7 @@ use super::{
     ArrayExpression, ObjectExpression, OpExpression, SelectorExpression,
 };
 
-use transform_macros::PassThrough;
+use kuiper_lang_macros::PassThrough;
 
 /// State for expression execution. This struct is constructed for each expression.
 /// Notably lifetime heavy. `'a` is the lifetime of the input data.

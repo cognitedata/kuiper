@@ -1,6 +1,6 @@
 use std::{collections::HashMap, io};
 
-use json_transform::compile_expression;
+use kuiper_lang::compile_expression;
 
 fn main() {
     let mut data = Vec::new();

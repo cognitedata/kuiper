@@ -1,4 +1,4 @@
-# Unnamed JSON transform library
+# Kuiper - JSON transform language
 
 This library defines a JSON to JSON transform and templating language. The language itself is
 inspired by JavaScript. Expressions always terminate, as the language has no form of recursion.
@@ -17,7 +17,7 @@ an array, and even pairs of arrays, but it is not possible to implement recursio
 ## Usage
 
 ```rust
-use json_transform::compile_expression;
+use kuiper_lang::compile_expression;
 use std::collections::HashMap;
 use serde_json::json;
 

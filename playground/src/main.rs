@@ -7,7 +7,7 @@ use std::{
 
 use cognite::raw::{RetrieveCursorsQuery, RetrieveRowsQuery};
 use futures::future::join_all;
-use json_transform::Program;
+use kuiper_lang::Program;
 use serde_json::{json, Value};
 use tokio::task::JoinHandle;
 

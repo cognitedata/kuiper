@@ -1,0 +1,21 @@
+name: Build and test library
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
+      - name: Run cargo format
+        run: cargo fmt --check
+      - name: Test
+        run: cargo test

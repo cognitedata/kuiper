@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "kuiper_lang",
+    "kuiper_lang_macros",
+    "kuiper_cli",
+    "playground"
+]
+resolver = "2"
