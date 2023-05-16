@@ -8,7 +8,7 @@ fn main() {
     let mut inputs = HashMap::new();
 
     loop {
-        println!("");
+        println!();
         println!("Input expression: ");
         let mut expr = String::new();
         io::stdin()

@@ -66,15 +66,12 @@ pub fn pass_through_derive(d: TokenStream) -> TokenStream {
                         let seg = a.path.segments.last();
                         match seg {
                             None => false,
-                            Some(seg) => seg.ident.to_string() == "pass_through_exclude",
+                            Some(seg) => seg.ident == "pass_through_exclude",
                         }
                     })
                     .map(|ex| {
                         let to_exclude: IdentList = ex.parse_args().unwrap();
-                        to_exclude
-                            .items
-                            .iter()
-                            .any(|idt| idt.to_string() == funcname.to_string())
+                        to_exclude.items.iter().any(|idt| funcname == *idt)
                     })
                     .unwrap_or(false);
                 any_excluded |= exclude;
@@ -139,10 +136,7 @@ impl Parse for IdentList {
         while ok {
             result.push(input.parse()?);
             let next_result = input.parse::<Token![,]>();
-            ok = match next_result {
-                Result::Ok(_) => true,
-                Result::Err(_) => false,
-            };
+            ok = next_result.is_ok();
         }
         Ok(IdentList { items: result })
     }
