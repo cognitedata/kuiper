@@ -17,7 +17,7 @@
 //! ## Usage
 //!
 //! ```
-//! use json_transform::compile_expression;
+//! use kuiper_lang::compile_expression;
 //! use std::collections::HashMap;
 //! use serde_json::json;
 //!

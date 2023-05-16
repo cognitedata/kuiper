@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use json_transform::{Program, TransformInput};
+use kuiper_lang::{Program, TransformInput};
 use serde_json::json;
 
 mod perf;

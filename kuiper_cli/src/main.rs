@@ -1,6 +1,6 @@
 use std::{collections::HashMap, io};
 
-use json_transform::compile_expression;
+use kuiper_lang::compile_expression;
 
 fn main() {
     let mut data = Vec::new();
@@ -8,7 +8,7 @@ fn main() {
     let mut inputs = HashMap::new();
 
     loop {
-        println!("");
+        println!();
         println!("Input expression: ");
         let mut expr = String::new();
         io::stdin()

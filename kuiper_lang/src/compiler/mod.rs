@@ -13,7 +13,7 @@ use crate::{expressions::ExpressionType, lexer::Lexer, parse::ExprParser, Compil
 /// the expression is run with the correct input array, or it will fail with a source missing error.
 ///
 /// ```
-/// use json_transform::compile_expression;
+/// use kuiper_lang::compile_expression;
 /// use std::collections::HashMap;
 /// use serde_json::json;
 ///
