@@ -1,30 +1,40 @@
 use std::fmt::Display;
 
-use logos::{Lexer, Logos};
+use logos::Logos;
 
 use crate::expressions::{Operator, UnaryOperator};
 
 use crate::lexer::LexerError;
 
-fn parse_string(lexer: &mut Lexer<Token>) -> String {
-    let raw = lexer.slice();
-    if raw.starts_with('\'') || raw.starts_with('"') {
-        raw[1..raw.len() - 1].to_string()
-    } else {
-        raw.to_string()
-    }
-}
+fn parse_string(mut raw: &str, border_char: char) -> Result<String, LexerError> {
+    raw = &raw[1..raw.len() - 1];
+    let mut res = String::with_capacity(raw.len());
 
-fn parse_bare_string(lexer: &mut Lexer<Token>) -> String {
-    let mut raw = lexer.slice();
-    if raw.starts_with('`') {
-        raw = &raw[1..];
+    let mut escaping = false;
+    for c in raw.chars() {
+        if c == '\\' {
+            if escaping {
+                res.push(c);
+                escaping = false;
+            } else {
+                escaping = true;
+            }
+        } else if escaping {
+            if c == border_char {
+                res.push(c);
+            } else if c == 'n' {
+                res.push('\n');
+            } else if c == 't' {
+                res.push('\t');
+            } else {
+                return Err(LexerError::InvalidEscapeChar(c));
+            }
+            escaping = false;
+        } else {
+            res.push(c);
+        }
     }
-    if raw.ends_with('`') {
-        raw = &raw[..raw.len() - 1]
-    }
-
-    raw.to_string()
+    Ok(res)
 }
 
 /// The Token type is the entry point for expressions. The input is a string that is automatically tokenized by Logos.
@@ -50,15 +60,16 @@ pub enum Token {
     Comma,
 
     /// A floating point number. Strictly not an integer.
-    #[regex(r#"[-]?(\d*\.)?\d+"#, |lex| lex.slice().parse(), priority = 2)]
+    #[regex(r#"[-]?(\d*\.)?\d+"#, |lex| lex.slice().parse())]
+    #[regex(r#"[-]?(\d*\.)?\d+[eE][+-]?(\d)"#, |lex| lex.slice().parse())]
     Float(f64),
 
     /// A negative integer.
-    #[regex(r#"-(\d)+"#, |lex| lex.slice().parse(), priority = 3)]
+    #[regex(r#"-(\d)+"#, |lex| lex.slice().parse())]
     Integer(i64),
 
     /// A positive integer.
-    #[regex(r#"(\d)+"#, |lex| lex.slice().parse(), priority = 4)]
+    #[regex(r#"(\d)+"#, |lex| lex.slice().parse(), priority = 2)]
     UInteger(u64),
 
     #[token("true", |_| true)]
@@ -86,8 +97,8 @@ pub enum Token {
     UnaryOperator(UnaryOperator),
 
     /// A quoted string. We use single quotes for string literals.
-    #[regex(r#"'(?:[^'\\]|\\.)*'"#, parse_string)]
-    #[regex(r#""(?:[^"\\]|\\.)*""#, parse_string)]
+    #[regex(r#"'(?:[^'\\]|\\.)*'"#, |s| parse_string(s.slice(), '\''))]
+    #[regex(r#""(?:[^"\\]|\\.)*""#, |s| parse_string(s.slice(), '\"'))]
     String(String),
 
     /// A literal null
@@ -95,9 +106,10 @@ pub enum Token {
     Null,
 
     /// A bare string, which is either part of a selector, or a function call.
-    #[regex(r#"[a-zA-Z0-9_]+"#, |s| s.slice().to_string())]
-    #[regex(r#"`(?:[^`\\]|\\.)*`"#, parse_bare_string)]
-    BareString(String),
+    #[regex(r#"\p{XID_Start}\p{XID_Continue}*"#, |s| s.slice().to_string())]
+    #[regex(r#"[_a-zA-Z][_0-9a-zA-Z]*"#, |s| s.slice().to_string(), priority = 2)]
+    #[regex(r#"`(?:[^`\\]|\\.)*`"#, |s| parse_string(s.slice(), '`'))]
+    Identifier(String),
 
     /// Start of a dynamic selector expression, (i.e. $id['some-string'])
     /// or an array.
@@ -121,6 +133,14 @@ pub enum Token {
     Arrow,
 
     CombinedArrow,
+
+    #[token("/*", |lex| {
+        let len = lex.remainder().find("*/")?;
+        lex.bump(len + 2); // include len of `*/`
+        Some(())
+    })]
+    #[regex("//[^\n]*")]
+    Comment,
 }
 
 impl Display for Token {
@@ -134,7 +154,7 @@ impl Display for Token {
             Token::Operator(x) => write!(f, "{x}"),
             Token::UnaryOperator(x) => write!(f, "{x}"),
             Token::String(x) => write!(f, "'{x}'"),
-            Token::BareString(x) => write!(f, "`{x}`"),
+            Token::Identifier(x) => write!(f, "`{x}`"),
             Token::OpenBracket => write!(f, "["),
             Token::CloseBracket => write!(f, "]"),
             Token::Integer(x) => write!(f, "{x}"),
@@ -146,6 +166,7 @@ impl Display for Token {
             Token::Colon => write!(f, ":"),
             Token::Arrow => write!(f, "=>"),
             Token::CombinedArrow => write!(f, ") =>"),
+            Token::Comment => Ok(()),
         }
     }
 }
@@ -167,13 +188,13 @@ mod test {
 
         assert_eq!(lex.next(), Some(Token::UInteger(123)));
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
-        assert_eq!(lex.next(), Some(Token::BareString("id".to_string())));
+        assert_eq!(lex.next(), Some(Token::Identifier("id".to_string())));
         assert_eq!(lex.next(), Some(Token::Period));
-        assert_eq!(lex.next(), Some(Token::BareString("seg".to_string())));
+        assert_eq!(lex.next(), Some(Token::Identifier("seg".to_string())));
         assert_eq!(lex.next(), Some(Token::Period));
         assert_eq!(
             lex.next(),
-            Some(Token::BareString("seg2 complex".to_string()))
+            Some(Token::Identifier("seg2 complex".to_string()))
         );
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Divide)));
         assert_eq!(lex.next(), Some(Token::UInteger(3)));
@@ -185,12 +206,12 @@ mod test {
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
         assert_eq!(
             lex.next(),
-            Some(Token::BareString("function_call".to_string()))
+            Some(Token::Identifier("function_call".to_string()))
         );
         assert_eq!(lex.next(), Some(Token::OpenParenthesis));
-        assert_eq!(lex.next(), Some(Token::BareString("id".to_string())));
+        assert_eq!(lex.next(), Some(Token::Identifier("id".to_string())));
         assert_eq!(lex.next(), Some(Token::Comma));
-        assert_eq!(lex.next(), Some(Token::BareString("nested".to_string())));
+        assert_eq!(lex.next(), Some(Token::Identifier("nested".to_string())));
         assert_eq!(lex.next(), Some(Token::OpenParenthesis));
         assert_eq!(lex.next(), Some(Token::UInteger(3)));
         assert_eq!(lex.next(), Some(Token::Comma));
@@ -220,7 +241,7 @@ mod test {
         assert_eq!(lex.next(), Some(Token::CloseBracket));
         assert_eq!(lex.next(), Some(Token::CloseBracket));
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
-        assert_eq!(lex.next(), Some(Token::BareString("id".to_string())));
+        assert_eq!(lex.next(), Some(Token::Identifier("id".to_string())));
         assert_eq!(lex.next(), Some(Token::OpenBracket));
         assert_eq!(lex.next(), Some(Token::String("test".to_string())));
         assert_eq!(lex.next(), Some(Token::CloseBracket));
@@ -280,14 +301,14 @@ mod test {
     #[test]
     pub fn test_lambda() {
         let mut lex = Token::lexer("test => 1, (test, test) => 2").map(|t| t.unwrap());
-        assert_eq!(lex.next(), Some(Token::BareString("test".to_string())));
+        assert_eq!(lex.next(), Some(Token::Identifier("test".to_string())));
         assert_eq!(lex.next(), Some(Token::Arrow));
         assert_eq!(lex.next(), Some(Token::UInteger(1)));
         assert_eq!(lex.next(), Some(Token::Comma));
         assert_eq!(lex.next(), Some(Token::OpenParenthesis));
-        assert_eq!(lex.next(), Some(Token::BareString("test".to_string())));
+        assert_eq!(lex.next(), Some(Token::Identifier("test".to_string())));
         assert_eq!(lex.next(), Some(Token::Comma));
-        assert_eq!(lex.next(), Some(Token::BareString("test".to_string())));
+        assert_eq!(lex.next(), Some(Token::Identifier("test".to_string())));
         assert_eq!(lex.next(), Some(Token::CloseParenthesis));
         assert_eq!(lex.next(), Some(Token::Arrow));
         assert_eq!(lex.next(), Some(Token::UInteger(2)));
@@ -296,13 +317,13 @@ mod test {
     #[test]
     pub fn test_lambda_2() {
         let mut lex = Token::lexer("map([], (arg1) => 1 + 1) + arg1").map(|t| t.unwrap());
-        assert_eq!(lex.next(), Some(Token::BareString("map".to_string())));
+        assert_eq!(lex.next(), Some(Token::Identifier("map".to_string())));
         assert_eq!(lex.next(), Some(Token::OpenParenthesis));
         assert_eq!(lex.next(), Some(Token::OpenBracket));
         assert_eq!(lex.next(), Some(Token::CloseBracket));
         assert_eq!(lex.next(), Some(Token::Comma));
         assert_eq!(lex.next(), Some(Token::OpenParenthesis));
-        assert_eq!(lex.next(), Some(Token::BareString("arg1".to_string())));
+        assert_eq!(lex.next(), Some(Token::Identifier("arg1".to_string())));
         assert_eq!(lex.next(), Some(Token::CloseParenthesis));
         assert_eq!(lex.next(), Some(Token::Arrow));
         assert_eq!(lex.next(), Some(Token::UInteger(1)));
@@ -310,6 +331,61 @@ mod test {
         assert_eq!(lex.next(), Some(Token::UInteger(1)));
         assert_eq!(lex.next(), Some(Token::CloseParenthesis));
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
-        assert_eq!(lex.next(), Some(Token::BareString("arg1".to_string())));
+        assert_eq!(lex.next(), Some(Token::Identifier("arg1".to_string())));
+    }
+
+    #[test]
+    pub fn test_identifiers() {
+        let mut lex = Token::lexer("æøå_123 _123").map(|t| t.unwrap());
+        assert_eq!(lex.next(), Some(Token::Identifier("æøå_123".to_string())));
+        assert_eq!(lex.next(), Some(Token::Identifier("_123".to_string())));
+    }
+
+    #[test]
+    pub fn test_comments() {
+        let mut lex = Token::lexer(
+            "
+            // some line comment
+            abc
+            /* some block comment */ test +
+            // last line comment",
+        )
+        .map(|t| t.unwrap());
+        assert_eq!(lex.next(), Some(Token::Comment));
+        assert_eq!(lex.next(), Some(Token::Identifier("abc".to_string())));
+        assert_eq!(lex.next(), Some(Token::Comment));
+        assert_eq!(lex.next(), Some(Token::Identifier("test".to_string())));
+        assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
+        assert_eq!(lex.next(), Some(Token::Comment));
+        assert_eq!(lex.next(), None);
+    }
+
+    #[test]
+    pub fn test_numbers() {
+        let mut lex = Token::lexer("123.456 123.0e6 321e5 -4e2 14e-3").map(|t| t.unwrap());
+        assert_eq!(lex.next(), Some(Token::Float(123.456)));
+        assert_eq!(lex.next(), Some(Token::Float(123000000.0)));
+        assert_eq!(lex.next(), Some(Token::Float(32100000.0)));
+        assert_eq!(lex.next(), Some(Token::Float(-400.0)));
+        assert_eq!(lex.next(), Some(Token::Float(0.014)));
+    }
+
+    #[test]
+    pub fn test_escapes() {
+        let mut lex = Token::lexer(r#" 'test"test' "test''''test" "test\\\"\"" 'test\''"#)
+            .map(|t| t.unwrap());
+        assert_eq!(lex.next(), Some(Token::String(r#"test"test"#.to_string())));
+        assert_eq!(
+            lex.next(),
+            Some(Token::String(r#"test''''test"#.to_string()))
+        );
+        assert_eq!(lex.next(), Some(Token::String(r#"test\"""#.to_string())));
+        assert_eq!(lex.next(), Some(Token::String(r#"test'"#.to_string())));
+
+        let mut lex = Token::lexer(r#"'test\b'"#);
+        assert_eq!(
+            lex.next(),
+            Some(Err(crate::lexer::LexerError::InvalidEscapeChar('b')))
+        );
     }
 }

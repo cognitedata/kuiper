@@ -179,7 +179,7 @@ extern {
         "%" => Token::Operator(Operator::Modulo),
         "!" => Token::UnaryOperator(UnaryOperator::Negate),
         "null" => Token::Null,
-        "var" => Token::BareString(<String>),
+        "var" => Token::Identifier(<String>),
         "[" => Token::OpenBracket,
         "]" => Token::CloseBracket,
         "{" => Token::OpenBrace,

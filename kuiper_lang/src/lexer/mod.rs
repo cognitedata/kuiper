@@ -22,6 +22,7 @@ pub enum LexerError {
     InvalidToken(Span),
     ParseInt(ParseIntError),
     ParseFloat(ParseFloatError),
+    InvalidEscapeChar(char),
 }
 
 impl Display for LexerError {
@@ -31,6 +32,7 @@ impl Display for LexerError {
             LexerError::InvalidToken(s) => write!(f, "Unknown token at {}..{}", s.start, s.end),
             LexerError::ParseInt(e) => write!(f, "Failed to parse string as integer: {e}"),
             LexerError::ParseFloat(e) => write!(f, "Failed to parse string as float: {e}"),
+            LexerError::InvalidEscapeChar(c) => write!(f, "Invalid escape character: {c}"),
         }
     }
 }
@@ -79,6 +81,8 @@ impl<'input> Iterator for Lexer<'input> {
 
         match &tok {
             Some(t) => match t {
+                // Skip comments. We can add other ignored tokens here.
+                Ok((_, Token::Comment, _)) => self.next(),
                 Ok((_, Token::Arrow, e)) => match self.last {
                     Some(Ok((s, Token::CloseParenthesis, _))) => {
                         self.last = self.token_stream.next().map(|(token, span)| match token {
