@@ -22,7 +22,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FilterFunction {
                 let mut res = Vec::with_capacity(x.len());
                 for item in x {
                     let should_add =
-                        get_boolean_from_value(self.args[1].call(&state, &[&item])?.as_ref());
+                        get_boolean_from_value(self.args[1].call(state, &[&item])?.as_ref());
 
                     if should_add {
                         res.push(item);
