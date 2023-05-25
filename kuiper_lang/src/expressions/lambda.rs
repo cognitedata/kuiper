@@ -4,7 +4,7 @@ use logos::Span;
 
 use crate::compiler::BuildError;
 
-use super::{base::ExpressionMeta, Expression, ExpressionType};
+use super::{base::ExpressionMeta, Expression, ExpressionType, ResolveResult};
 
 #[derive(Debug, Clone)]
 pub struct LambdaExpression {
@@ -53,6 +53,17 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for LambdaExpression {
         state: &super::ExpressionExecutionState<'c, '_>,
     ) -> Result<super::ResolveResult<'c>, crate::TransformError> {
         self.expr.resolve(state)
+    }
+
+    fn call<'d>(
+        &'a self,
+        state: &super::ExpressionExecutionState<'c, '_>,
+        values: &[&'d serde_json::Value],
+    ) -> Result<super::ResolveResult<'c>, crate::TransformError> {
+        let inner = state.get_temporary_clone_inner(values.iter().copied(), values.len());
+        let state = inner.get_temp_state();
+        let r = self.expr.resolve(&state)?;
+        Ok(ResolveResult::Owned(r.into_owned()))
     }
 }
 

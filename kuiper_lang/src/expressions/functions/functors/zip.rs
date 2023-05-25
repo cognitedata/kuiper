@@ -44,9 +44,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ZipFunction {
                 let v = s.as_ref().and_then(|v| v.get(idx)).unwrap_or(&NULL_CONST);
                 chunk.push(v);
             }
-            let inner = state.get_temporary_clone_inner(chunk.iter().copied(), 1);
-            let inner_state = inner.get_temp_state();
-            res.push(func.resolve(&inner_state)?.into_owned())
+            res.push(func.call(&state, &chunk)?.into_owned());
         }
 
         Ok(ResolveResult::Owned(Value::Array(res)))
