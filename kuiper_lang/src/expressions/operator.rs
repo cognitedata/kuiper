@@ -28,6 +28,7 @@ pub enum Operator {
     GreaterThanEquals,
     LessThanEquals,
     Modulo,
+    Is,
 }
 
 impl Display for Operator {
@@ -46,28 +47,7 @@ impl Display for Operator {
             Operator::GreaterThanEquals => write!(f, ">="),
             Operator::LessThanEquals => write!(f, "<="),
             Operator::Modulo => write!(f, "%"),
-        }
-    }
-}
-
-impl Operator {
-    /// Get the operator priority. Higher numbers should be calculated last.
-    /// This is roughly based on operator precedence in C++, which is what pretty much every language uses.
-    pub fn priority(&self) -> i32 {
-        match self {
-            Self::Plus => 1,
-            Self::Minus => 1,
-            Self::Multiply => 2,
-            Self::Divide => 2,
-            Self::Modulo => 2,
-            Self::Equals => 4,
-            Self::NotEquals => 4,
-            Self::GreaterThan => 5,
-            Self::LessThan => 5,
-            Self::LessThanEquals => 5,
-            Self::GreaterThanEquals => 5,
-            Self::And => 6,
-            Self::Or => 7,
+            Operator::Is => write!(f, "is"),
         }
     }
 }
@@ -110,6 +90,10 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
         state: &ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         let lhs = self.elements[0].resolve(state)?;
+        if matches!(self.operator, Operator::Is) {
+            return self.resolve_is(&lhs, state);
+        }
+
         if lhs.is_number() {
             self.resolve_numeric_operator(&lhs, state)
         } else if lhs.is_string()
@@ -174,6 +158,30 @@ impl OpExpression {
             elements: [Box::new(lhs), Box::new(rhs)],
             span,
         })
+    }
+
+    fn resolve_is<'a>(
+        &self,
+        lhs: &Value,
+        state: &ExpressionExecutionState,
+    ) -> Result<ResolveResult<'a>, TransformError> {
+        let rhs = self.elements[1].resolve(state)?;
+        let rhs_ref = rhs.as_ref().as_str();
+        let Some(rhs_ref) = rhs_ref else {
+            return Err(TransformError::new_incorrect_type("Right hand side of `is` operator", "string", TransformError::value_desc(&rhs), &self.span, state.id));
+        };
+        let res = match rhs_ref {
+            "null" => lhs.is_null(),
+            "object" => lhs.is_object(),
+            "array" => lhs.is_array(),
+            "string" => lhs.is_string(),
+            "number" => lhs.is_number(),
+            "float" => lhs.is_f64(),
+            "int" => lhs.is_i64() || lhs.is_u64(),
+            "bool" => lhs.is_boolean(),
+            x => return Err(TransformError::new_invalid_operation(format!("{x} is not a valid type, expected 'null', 'object', 'array', 'string', 'number', 'float', 'int' or 'bool"), &self.span, state.id))
+        };
+        Ok(ResolveResult::Owned(Value::Bool(res)))
     }
 
     fn resolve_generic_operator<'a>(

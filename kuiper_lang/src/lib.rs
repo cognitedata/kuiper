@@ -883,4 +883,37 @@ mod tests {
             assert_eq!(el_arr.first().unwrap().as_u64().unwrap(), 2);
         }
     }
+    #[test]
+    pub fn test_is_operator() {
+        let program = compile(json!([{
+            "id": "test",
+            "inputs": [],
+            "transform": r#"{
+                "v1": "test" is "string",
+                "v2": "test" is "number",
+                "v3": 123 is "number",
+                "v4": 123.0 is "int",
+                "v5": true is "bool",
+                "v6": [1, 2, 3] is "object",
+                "v7": [1, 2, 3] is "array"
+            }"#
+        }]))
+        .unwrap();
+
+        let res = program
+            .execute(&Value::Null)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
+        let res_obj = res.as_object().unwrap();
+
+        assert!(res_obj.get("v1").unwrap().as_bool().unwrap());
+        assert!(!res_obj.get("v2").unwrap().as_bool().unwrap());
+        assert!(res_obj.get("v3").unwrap().as_bool().unwrap());
+        assert!(!res_obj.get("v4").unwrap().as_bool().unwrap());
+        assert!(res_obj.get("v5").unwrap().as_bool().unwrap());
+        assert!(!res_obj.get("v6").unwrap().as_bool().unwrap());
+        assert!(res_obj.get("v7").unwrap().as_bool().unwrap());
+    }
 }

@@ -125,7 +125,8 @@ Op5: Operator = {
     ">" => Operator::GreaterThan,
     "<" => Operator::LessThan,
     ">=" => Operator::GreaterThanEquals,
-    "<=" => Operator::LessThanEquals 
+    "<=" => Operator::LessThanEquals,
+    "is" => Operator::Is,
 }
 
 Op6Expr = Tier<Op6, Op7Expr>;
@@ -177,6 +178,7 @@ extern {
         "&&" => Token::Operator(Operator::And),
         "||" => Token::Operator(Operator::Or),
         "%" => Token::Operator(Operator::Modulo),
+        "is" => Token::Operator(Operator::Is),
         "!" => Token::UnaryOperator(UnaryOperator::Negate),
         "null" => Token::Null,
         "var" => Token::BareString(<String>),
