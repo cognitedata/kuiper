@@ -168,7 +168,7 @@ pub enum FunctionType {
     Zip(ZipFunction),
     Length(LengthFunction),
     Chunk(ChunkFunction),
-    NowTimestamp(NowTimestampFunction),
+    Now(NowFunction),
 }
 
 /// Create a function expression from its name, or return a parser exception if it has the wrong number of arguments,
@@ -199,7 +199,7 @@ pub fn get_function_expression(
         "zip" => FunctionType::Zip(ZipFunction::new(args, pos)?),
         "length" => FunctionType::Length(LengthFunction::new(args, pos)?),
         "chunk" => FunctionType::Chunk(ChunkFunction::new(args, pos)?),
-        "now_timestamp" => FunctionType::NowTimestamp(NowTimestampFunction::new(args, pos)?),
+        "now" => FunctionType::Now(NowFunction::new(args, pos)?),
         _ => return Err(BuildError::unrecognized_function(pos, name)),
     };
     Ok(ExpressionType::Function(expr))
