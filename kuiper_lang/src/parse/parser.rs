@@ -282,4 +282,15 @@ mod tests {
             res.to_string()
         )
     }
+    #[test]
+    pub fn test_skip_comment() {
+        let res = parse(
+            "1 + /* inline comment */ 3 +
+            // Line comment
+            5
+            // trailing comment",
+        )
+        .unwrap();
+        assert_eq!("((1 + 3) + 5)", res.to_string());
+    }
 }
