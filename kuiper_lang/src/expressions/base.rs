@@ -125,6 +125,14 @@ pub trait Expression<'a: 'c, 'c>: Display {
     fn get_is_deterministic(&self) -> bool {
         Self::IS_DETERMINISTIC
     }
+
+    fn call(
+        &'a self,
+        state: &ExpressionExecutionState<'c, '_>,
+        _values: &[&Value],
+    ) -> Result<ResolveResult<'c>, TransformError> {
+        self.resolve(state)
+    }
 }
 
 /// Additional trait for expressions, separate from Expression to make it easier to implement in macros
@@ -142,6 +150,7 @@ pub trait ExpressionMeta {
 #[derive(PassThrough, Debug, Clone)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
 #[pass_through(fn resolve(&'a self, state: &ExpressionExecutionState<'c, '_>) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
+#[pass_through(fn call(&'a self, state: &ExpressionExecutionState<'c, '_>, _values: &[&Value]) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn get_is_deterministic(&self) -> bool, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta)]
 #[pass_through(fn get_child(&self, idx: usize) -> Option<&ExpressionType>, "", ExpressionMeta<'a>)]
@@ -211,6 +220,7 @@ pub fn get_function_expression(
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
 #[pass_through(fn resolve(&'a self, state: &ExpressionExecutionState<'c, '_>) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn get_is_deterministic(&self) -> bool, "", Expression<'a, 'c>, where 'a: 'c)]
+#[pass_through(fn call(&'a self, state: &ExpressionExecutionState<'c, '_>, _values: &[&Value]) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta)]
 #[pass_through(fn get_child(&self, idx: usize) -> Option<&ExpressionType>, "", ExpressionMeta<'a>)]
 #[pass_through(fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType>, "", ExpressionMeta<'a>)]

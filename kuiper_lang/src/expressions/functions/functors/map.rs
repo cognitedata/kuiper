@@ -3,7 +3,7 @@ use serde_json::Value;
 use crate::{
     compiler::BuildError,
     expressions::{functions::LambdaAcceptFunction, Expression, ResolveResult},
-    with_temp_values, TransformError,
+    TransformError,
 };
 
 function_def!(MapFunction, "map", 2, lambda);
@@ -18,12 +18,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for MapFunction {
         match source.as_ref() {
             Value::Array(x) => {
                 let mut res = Vec::with_capacity(x.len());
-                let mut inner = state.get_temporary_clone(1);
                 for val in x {
-                    let r = with_temp_values!(inner, inner_state, &[val], {
-                        self.args[1].resolve(&inner_state).map(|v| v.into_owned())
-                    })?;
-                    res.push(r);
+                    res.push(self.args[1].call(state, &[val])?.into_owned());
                 }
                 Ok(ResolveResult::Owned(Value::Array(res)))
             }

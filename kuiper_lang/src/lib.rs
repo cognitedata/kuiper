@@ -863,7 +863,26 @@ mod tests {
         let res = res.into_iter().next().unwrap();
         assert!(res.as_bool().unwrap());
     }
+    #[test]
+    pub fn test_variable_ordering() {
+        let program = compile(json!([{
+            "id": "test",
+            "inputs": ["input"],
+            "transform": "input.map([1].map(a => a + 1))"
+        }]))
+        .unwrap();
 
+        let inp = json!([1, 2, 3]);
+        let res = program.execute(&inp).unwrap();
+        let res = res.into_iter().next().unwrap();
+        let res_arr = res.as_array().unwrap();
+        assert_eq!(res_arr.len(), 3);
+        for el in res_arr {
+            let el_arr = el.as_array().unwrap();
+            assert_eq!(1, el_arr.len());
+            assert_eq!(el_arr.first().unwrap().as_u64().unwrap(), 2);
+        }
+    }
     #[test]
     pub fn test_is_operator() {
         let program = compile(json!([{
