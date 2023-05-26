@@ -87,9 +87,9 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ToUnixTimeFunction {
     }
 }
 
-function_def!(NowTimestampFunction, "now_timestamp", 0);
+function_def!(NowFunction, "now", 0);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for NowTimestampFunction {
+impl<'a: 'c, 'c> Expression<'a, 'c> for NowFunction {
     const IS_DETERMINISTIC: bool = false;
     fn resolve(
         &'a self,
@@ -147,12 +147,12 @@ mod tests {
     }
 
     #[test]
-    pub fn test_now_timestamp() {
+    pub fn test_now() {
         let program = Program::compile(
             serde_json::from_value(json!([{
                 "id": "tostring",
                 "inputs": ["input"],
-                "transform": r#"now_timestamp()"#,
+                "transform": r#"now()"#,
                 "type": "map"
             }]))
             .unwrap(),
@@ -164,8 +164,8 @@ mod tests {
     }
 
     #[test]
-    pub fn test_now_timestamp_const() {
-        let r = compile_expression("now_timestamp()", &mut HashMap::new(), "test").unwrap();
-        assert_eq!("now_timestamp()", r.to_string());
+    pub fn test_now_const() {
+        let r = compile_expression("now()", &mut HashMap::new(), "test").unwrap();
+        assert_eq!("now()", r.to_string());
     }
 }
