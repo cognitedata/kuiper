@@ -25,13 +25,13 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FlatMapFunction {
                                 res.push(item);
                             }
                         }
-                        _ => res.push(res_inner),
+                        _x => res.push(_x),
                     };
                 }
                 Ok(ResolveResult::Owned(Value::Array(res)))
             }
             x => Err(TransformError::new_incorrect_type(
-                "Incorrect input to map",
+                "Incorrect input to flatmap",
                 "array",
                 TransformError::value_desc(x),
                 &self.span,
@@ -54,7 +54,7 @@ impl LambdaAcceptFunction for FlatMapFunction {
         if nargs != 1 {
             return Err(BuildError::n_function_args(
                 lambda.span.clone(),
-                "map takes a function with one argument",
+                "flatmap takes a function with one argument",
             ));
         }
         Ok(())
@@ -88,5 +88,30 @@ mod tests {
         assert_eq!(val_arr.get(0).unwrap(), 2);
         assert_eq!(val_arr.get(1).unwrap(), 4);
         assert_eq!(val_arr.get(2).unwrap(), 6);
+    }
+
+    #[test]
+    fn test_flatmap_where_include_single() {
+        let program = Program::compile(
+            serde_json::from_value(json!([{
+                "id": "flatmap",
+                "inputs": [],
+                "transform": r#"flatmap([1,2,3, [4, 5]], a => a)"#
+            }]))
+            .unwrap(),
+        )
+        .unwrap();
+
+        let res = program.execute(&Value::Null).unwrap();
+
+        assert_eq!(res.len(), 1);
+        let val = res.first().unwrap();
+        let val_arr = val.as_array().unwrap();
+        assert_eq!(val_arr.len(), 5);
+        assert_eq!(val_arr.get(0).unwrap(), 1);
+        assert_eq!(val_arr.get(1).unwrap(), 2);
+        assert_eq!(val_arr.get(2).unwrap(), 3);
+        assert_eq!(val_arr.get(3).unwrap(), 4);
+        assert_eq!(val_arr.get(4).unwrap(), 5);
     }
 }
