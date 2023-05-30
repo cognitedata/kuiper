@@ -5,7 +5,7 @@ use std::{borrow::Cow, fmt::Display};
 use crate::compiler::BuildError;
 
 use super::{
-    functions::{filter::FilterFunction, map::MapFunction, zip::ZipFunction, *},
+    functions::{filter::FilterFunction, map::MapFunction, zip::ZipFunction, flatmap::FlatMapFunction, *},
     lambda::LambdaExpression,
     numbers::JsonNumber,
     operator::UnaryOpExpression,
@@ -69,6 +69,7 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
     }
 }
 
+#[derive(Debug)]
 pub struct InternalExpressionExecutionState<'data, 'exec> {
     pub data: Vec<&'data Value>,
     pub id: &'exec str,
@@ -173,6 +174,7 @@ pub enum FunctionType {
     Pairs(PairsFunction),
     Flatten(FlattenFunction),
     Map(MapFunction),
+    FlatMap(FlatMapFunction),
     Filter(FilterFunction),
     Zip(ZipFunction),
     Length(LengthFunction),
@@ -204,6 +206,7 @@ pub fn get_function_expression(
         "pairs" => FunctionType::Pairs(PairsFunction::new(args, pos)?),
         "flatten" => FunctionType::Flatten(FlattenFunction::new(args, pos)?),
         "map" => FunctionType::Map(MapFunction::new(args, pos)?),
+        "flatmap" => FunctionType::FlatMap(FlatMapFunction::new(args, pos)?),
         "filter" => FunctionType::Filter(FilterFunction::new(args, pos)?),
         "zip" => FunctionType::Zip(ZipFunction::new(args, pos)?),
         "length" => FunctionType::Length(LengthFunction::new(args, pos)?),
