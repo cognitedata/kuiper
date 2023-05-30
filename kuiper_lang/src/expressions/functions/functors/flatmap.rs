@@ -20,9 +20,11 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FlatMapFunction {
                 for val in x {
                     let res_inner = self.args[1].call(state, &[val])?.into_owned();
                     match res_inner {
-                        Value::Array(y) => for item in y {
-                            res.push(item);
-                        },
+                        Value::Array(y) => {
+                            for item in y {
+                                res.push(item);
+                            }
+                        }
                         _ => res.push(res_inner),
                     };
                 }
@@ -68,14 +70,14 @@ mod tests {
     #[test]
     fn test_flatmap() {
         let program = Program::compile(
-            serde_json::from_value(
-                json!([{
-                    "id": "flatmap",
-                    "inputs": [],
-                    "transform": r#"flatmap([1,2,3], a => [a + a])"#
-                }])
-            ).unwrap()
-        ).unwrap();
+            serde_json::from_value(json!([{
+                "id": "flatmap",
+                "inputs": [],
+                "transform": r#"flatmap([1,2,3], a => [a + a])"#
+            }]))
+            .unwrap(),
+        )
+        .unwrap();
 
         let res = program.execute(&Value::Null).unwrap();
 

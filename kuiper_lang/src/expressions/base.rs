@@ -5,7 +5,9 @@ use std::{borrow::Cow, fmt::Display};
 use crate::compiler::BuildError;
 
 use super::{
-    functions::{filter::FilterFunction, map::MapFunction, zip::ZipFunction, flatmap::FlatMapFunction, *},
+    functions::{
+        filter::FilterFunction, flatmap::FlatMapFunction, map::MapFunction, zip::ZipFunction, *,
+    },
     lambda::LambdaExpression,
     numbers::JsonNumber,
     operator::UnaryOpExpression,
