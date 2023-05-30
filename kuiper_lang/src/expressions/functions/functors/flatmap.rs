@@ -58,3 +58,33 @@ impl LambdaAcceptFunction for FlatMapFunction {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use serde_json::{json, Value};
+
+    use crate::Program;
+
+    #[test]
+    fn test_flatmap() {
+        let program = Program::compile(
+            serde_json::from_value(
+                json!([{
+                    "id": "flatmap",
+                    "inputs": [],
+                    "transform": r#"flatmap([1,2,3], a => [a + a])"#
+                }])
+            ).unwrap()
+        ).unwrap();
+
+        let res = program.execute(&Value::Null).unwrap();
+
+        assert_eq!(res.len(), 1);
+        let val = res.first().unwrap();
+        let val_arr = val.as_array().unwrap();
+        assert_eq!(val_arr.len(), 3);
+        assert_eq!(val_arr.get(0).unwrap(), 2);
+        assert_eq!(val_arr.get(1).unwrap(), 4);
+        assert_eq!(val_arr.get(2).unwrap(), 6);
+    }
+}
