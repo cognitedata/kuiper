@@ -20,7 +20,7 @@ thiserror = "1.0.40"
 
 [dev-dependencies]
 pprof = { version = "0.11", features = ["flamegraph"] }
-criterion = "0.3"
+criterion = "0.5"
 
 [build-dependencies]
 lalrpop = "0.20.0"
