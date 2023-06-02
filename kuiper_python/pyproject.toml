@@ -1,0 +1,34 @@
+[project]
+name = "kuiper"
+version = "0.1.0"
+description = "A JSON to JSON transform and templating language from Cognite"
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["JSON", "transformation"]
+authors = [
+  {name = "Mathias Lohne", email = "mathias.lohne@cognite.com"}
+]
+maintainers = [
+  {name = "Mathias Lohne", email = "mathias.lohne@cognite.com"}
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Rust",
+  "Programming Language :: Python"
+]
+
+dependencies = [
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest >=7,<8",
+]
+
+[project.urls]
+homepage = "cognite.com"
+repository = "github.com/cognitedata/kuiper"
+
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
