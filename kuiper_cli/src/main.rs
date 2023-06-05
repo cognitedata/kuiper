@@ -15,13 +15,13 @@ fn main() {
             .read_line(&mut expr)
             .expect("Unable to get user input");
 
-        if &expr == "clear" {
+        if expr.trim_end().eq("clear") {
             println!("Clearing stored inputs");
             index = 0;
             inputs.clear();
             data.clear();
             continue;
-        } else if &expr == "exit" {
+        } else if expr.trim_end().eq("exit") {
             break;
         }
 
