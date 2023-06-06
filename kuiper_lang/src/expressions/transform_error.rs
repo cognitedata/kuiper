@@ -6,18 +6,13 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub struct TransformErrorData {
-    pub id: String,
     pub span: Span,
     pub desc: String,
 }
 
 impl Display for TransformErrorData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}. ID: {} at {}..{}",
-            self.desc, self.id, self.span.start, self.span.end
-        )
+        write!(f, "{} at {}..{}", self.desc, self.span.start, self.span.end)
     }
 }
 
@@ -45,35 +40,30 @@ impl TransformError {
         expected: &str,
         actual: &str,
         span: &Span,
-        id: &str,
     ) -> Self {
         Self::IncorrectTypeInField(TransformErrorData {
             desc: format!("{desc}. Got {actual}, expected {expected}"),
-            id: id.to_string(),
             span: span.clone(),
         })
     }
 
-    pub(crate) fn new_source_missing(name: String, span: &Span, id: &str) -> Self {
+    pub(crate) fn new_source_missing(name: String, span: &Span) -> Self {
         Self::SourceMissingError(TransformErrorData {
             desc: name,
-            id: id.to_string(),
             span: span.clone(),
         })
     }
 
-    pub(crate) fn new_conversion_failed(desc: String, span: &Span, id: &str) -> Self {
+    pub(crate) fn new_conversion_failed(desc: String, span: &Span) -> Self {
         Self::ConversionFailed(TransformErrorData {
             desc,
-            id: id.to_string(),
             span: span.clone(),
         })
     }
 
-    pub(crate) fn new_invalid_operation(desc: String, span: &Span, id: &str) -> Self {
+    pub(crate) fn new_invalid_operation(desc: String, span: &Span) -> Self {
         Self::InvalidOperation(TransformErrorData {
             desc,
-            id: id.to_string(),
             span: span.clone(),
         })
     }

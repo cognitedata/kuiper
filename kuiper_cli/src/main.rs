@@ -6,7 +6,6 @@ use crate::repl::repl;
 use clap::{Parser, ValueEnum};
 use kuiper_lang::compile_expression;
 use serde_json::Value;
-use std::collections::HashMap;
 use std::fs::read_to_string;
 use std::io;
 use std::io::Read;
@@ -75,17 +74,13 @@ fn load_expression(args: &Args) -> Result<String, KuiperCliError> {
 fn inner_run(args: Args) -> Result<Vec<String>, KuiperCliError> {
     let expression = load_expression(&args)?;
 
-    let mut known_inputs = HashMap::new();
-    known_inputs.insert("input".to_string(), 0);
-
-    let expression = compile_expression(&expression, &mut known_inputs, "cli")?;
+    let expression = compile_expression(&expression, &["input"])?;
 
     let data = load_input_data(&args)?;
 
     let mut res = Vec::new();
     for input in data {
-        let iter_input = [input];
-        let result = expression.run(iter_input.iter(), "cli")?;
+        let result = expression.run([&input])?;
         res.push(serde_json::to_string(&result)?);
     }
 

@@ -29,7 +29,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ConcatFunction {
             // Resolve each argument by passing the state, then return any errors if they occur.
             let resolved = expr.resolve(state)?;
             // Convert the value to string
-            let dat = get_string_from_value("concat", &resolved, &self.span, state.id)?;
+            let dat = get_string_from_value("concat", &resolved, &self.span)?;
             // Push the resulting string to the result vector.
             res.push_str(&dat);
         }
@@ -72,65 +72,49 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for StringFunction {
 mod tests {
     use serde_json::json;
 
-    use crate::Program;
+    use crate::compile_expression;
 
     #[test]
     pub fn test_concat() {
-        let program = Program::compile(
-            serde_json::from_value(json!([{
-                "id": "concat",
-                "inputs": ["input"],
-                "transform": r#"{
-                    "concat2": concat('foo', 'bar'),
-                    "concat3": concat('foo', input.val1 + input.val2, 'bar')
-                }"#,
-                "type": "map"
-            }]))
-            .unwrap(),
+        let expr = compile_expression(
+            r#"{
+            "concat2": concat('foo', 'bar'),
+            "concat3": concat('foo', input.val1 + input.val2, 'bar')
+        }"#,
+            &["input"],
         )
         .unwrap();
 
-        let res = program
-            .execute(&json!({
-                "val1": 100,
-                "val2": 23
-            }))
-            .unwrap();
-        assert_eq!(res.len(), 1);
-        let val = res.get(0).unwrap();
-        assert_eq!("foobar", val.get("concat2").unwrap().as_str().unwrap());
-        assert_eq!("foo123bar", val.get("concat3").unwrap().as_str().unwrap());
+        let inp = json!({
+            "val1": 100,
+            "val2": 23
+        });
+        let res = expr.run([&inp]).unwrap();
+        assert_eq!("foobar", res.get("concat2").unwrap().as_str().unwrap());
+        assert_eq!("foo123bar", res.get("concat3").unwrap().as_str().unwrap());
     }
 
     #[test]
     pub fn test_string_function() {
-        let program = Program::compile(
-            serde_json::from_value(json!([{
-                "id": "tostring",
-                "inputs": ["input"],
-                "transform": r#"{
-                    "s1": string('foo'),
-                    "s2": string(123),
-                    "s3": string(null),
-                    "s4": string(input.val)
-                }"#,
-                "type": "map"
-            }]))
-            .unwrap(),
+        let expr = compile_expression(
+            r#"{
+            "s1": string('foo'),
+            "s2": string(123),
+            "s3": string(null),
+            "s4": string(input.val)
+        }"#,
+            &["input"],
         )
         .unwrap();
 
-        let res = program
-            .execute(&json!({
-                "val": 123.123
-            }))
-            .unwrap();
+        let inp = json!({
+            "val": 123.123
+        });
+        let res = expr.run([&inp]).unwrap();
 
-        assert_eq!(res.len(), 1);
-        let val = res.first().unwrap();
-        assert_eq!("foo", val.get("s1").unwrap().as_str().unwrap());
-        assert_eq!("123", val.get("s2").unwrap().as_str().unwrap());
-        assert_eq!("", val.get("s3").unwrap().as_str().unwrap());
-        assert_eq!("123.123", val.get("s4").unwrap().as_str().unwrap());
+        assert_eq!("foo", res.get("s1").unwrap().as_str().unwrap());
+        assert_eq!("123", res.get("s2").unwrap().as_str().unwrap());
+        assert_eq!("", res.get("s3").unwrap().as_str().unwrap());
+        assert_eq!("123.123", res.get("s4").unwrap().as_str().unwrap());
     }
 }

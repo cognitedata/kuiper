@@ -168,7 +168,7 @@ impl OpExpression {
         let rhs = self.elements[1].resolve(state)?;
         let rhs_ref = rhs.as_ref().as_str();
         let Some(rhs_ref) = rhs_ref else {
-            return Err(TransformError::new_incorrect_type("Right hand side of `is` operator", "string", TransformError::value_desc(&rhs), &self.span, state.id));
+            return Err(TransformError::new_incorrect_type("Right hand side of `is` operator", "string", TransformError::value_desc(&rhs), &self.span));
         };
         let res = match rhs_ref {
             "null" => lhs.is_null(),
@@ -179,7 +179,7 @@ impl OpExpression {
             "float" => lhs.is_f64(),
             "int" => lhs.is_i64() || lhs.is_u64(),
             "bool" => lhs.is_boolean(),
-            x => return Err(TransformError::new_invalid_operation(format!("{x} is not a valid type, expected 'null', 'object', 'array', 'string', 'number', 'float', 'int' or 'bool"), &self.span, state.id))
+            x => return Err(TransformError::new_invalid_operation(format!("{x} is not a valid type, expected 'null', 'object', 'array', 'string', 'number', 'float', 'int' or 'bool"), &self.span))
         };
         Ok(ResolveResult::Owned(Value::Bool(res)))
     }
@@ -204,7 +204,6 @@ impl OpExpression {
                         TransformError::value_desc(rhs_ref)
                     ),
                     &self.span,
-                    state.id,
                 ))
             }
         };
@@ -227,7 +226,6 @@ impl OpExpression {
                 return Err(TransformError::new_invalid_operation(
                     format!("Operator {} not applicable to booleans", &self.operator),
                     &self.span,
-                    state.id,
                 ))
             }
         };
@@ -240,9 +238,9 @@ impl OpExpression {
         lhs: &Value,
         state: &ExpressionExecutionState,
     ) -> Result<ResolveResult<'a>, TransformError> {
-        let lhs = get_string_from_value(&self.descriptor, lhs, &self.span, state.id)?;
+        let lhs = get_string_from_value(&self.descriptor, lhs, &self.span)?;
         let rhs = self.elements[1].resolve(state)?;
-        let rhs = get_string_from_value(&self.descriptor, &rhs, &self.span, state.id)?;
+        let rhs = get_string_from_value(&self.descriptor, &rhs, &self.span)?;
 
         let res = match &self.operator {
             Operator::Equals => lhs == rhs,
@@ -255,7 +253,6 @@ impl OpExpression {
                 return Err(TransformError::new_invalid_operation(
                     format!("Operator {} not applicable to strings", &self.operator),
                     &self.span,
-                    state.id,
                 ))
             }
         };
@@ -267,19 +264,18 @@ impl OpExpression {
         lhs: &Value,
         state: &ExpressionExecutionState,
     ) -> Result<ResolveResult<'a>, TransformError> {
-        let lhs = get_number_from_value(&self.descriptor, lhs, &self.span, state.id)?;
+        let lhs = get_number_from_value(&self.descriptor, lhs, &self.span)?;
         let rhs = get_number_from_value(
             &self.descriptor,
             self.elements[1].resolve(state)?.as_ref(),
             &self.span,
-            state.id,
         )?;
 
         let res = match &self.operator {
-            Operator::Plus => lhs.try_add(rhs, &self.span, state.id)?,
-            Operator::Minus => lhs.try_sub(rhs, &self.span, state.id)?,
-            Operator::Multiply => lhs.try_mul(rhs, &self.span, state.id)?,
-            Operator::Divide => lhs.try_div(rhs, &self.span, state.id)?,
+            Operator::Plus => lhs.try_add(rhs, &self.span)?,
+            Operator::Minus => lhs.try_sub(rhs, &self.span)?,
+            Operator::Multiply => lhs.try_mul(rhs, &self.span)?,
+            Operator::Divide => lhs.try_div(rhs, &self.span)?,
             Operator::GreaterThan
             | Operator::LessThan
             | Operator::GreaterThanEquals
@@ -288,25 +284,19 @@ impl OpExpression {
                     self.operator,
                     rhs,
                     &self.span,
-                    state.id,
                 ))))
             }
             Operator::Equals => {
-                return Ok(ResolveResult::Owned(Value::Bool(
-                    lhs.eq(rhs, &self.span, state.id),
-                )))
+                return Ok(ResolveResult::Owned(Value::Bool(lhs.eq(rhs, &self.span))))
             }
             Operator::NotEquals => {
-                return Ok(ResolveResult::Owned(Value::Bool(
-                    !lhs.eq(rhs, &self.span, state.id),
-                )))
+                return Ok(ResolveResult::Owned(Value::Bool(!lhs.eq(rhs, &self.span))))
             }
-            Operator::Modulo => lhs.try_mod(rhs, &self.span, state.id)?,
+            Operator::Modulo => lhs.try_mod(rhs, &self.span)?,
             _ => {
                 return Err(TransformError::new_invalid_operation(
                     format!("Operator {} not applicable to numbers", &self.operator),
                     &self.span,
-                    state.id,
                 ))
             }
         };
@@ -318,7 +308,6 @@ impl OpExpression {
                         &self.descriptor
                     ),
                     &self.span,
-                    state.id,
                 )
             },
         )?))

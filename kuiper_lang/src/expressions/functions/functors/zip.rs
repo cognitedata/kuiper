@@ -5,7 +5,7 @@ use serde_json::Value;
 use crate::{
     compiler::BuildError,
     expressions::{functions::LambdaAcceptFunction, Expression, ResolveResult},
-    program::NULL_CONST,
+    NULL_CONST,
 };
 
 function_def!(ZipFunction, "zip", 3, None, lambda);
@@ -72,26 +72,20 @@ impl LambdaAcceptFunction for ZipFunction {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::{json, Value};
+    use serde_json::Value;
 
-    use crate::Program;
+    use crate::compile_expression;
 
     #[test]
     pub fn test_zip_two() {
-        let program = Program::compile(
-            serde_json::from_value(json!([{
-                "id": "map",
-                "inputs": [],
-                "transform": r#"zip([1, 2, 3], [4, 5, 6, 7], (v1, v2) => { "v1": v1, "v2": v2 })"#
-            }]))
-            .unwrap(),
+        let expr = compile_expression(
+            r#"zip([1, 2, 3], [4, 5, 6, 7], (v1, v2) => { "v1": v1, "v2": v2 })"#,
+            &[],
         )
         .unwrap();
 
-        let res = program.execute(&Value::Null).unwrap();
-        assert_eq!(res.len(), 1);
-        let val = res.first().unwrap();
-        let val_arr = val.as_array().unwrap();
+        let res = expr.run([]).unwrap();
+        let val_arr = res.as_array().unwrap();
         assert_eq!(4, val_arr.len());
         let obj = val_arr.get(0).unwrap().as_object().unwrap();
         assert_eq!(1, obj.get("v1").unwrap().as_u64().unwrap());

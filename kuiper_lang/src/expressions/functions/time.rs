@@ -18,10 +18,10 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ToUnixTimeFunction {
         state: &crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let dat = self.args.get(0).unwrap().resolve(state)?;
-        let val = get_string_from_value(Self::INFO.name, &dat, &self.span, state.id)?;
+        let val = get_string_from_value(Self::INFO.name, &dat, &self.span)?;
         let val_ref = val.as_ref();
         let fmt = self.args.get(1).unwrap().resolve(state)?;
-        let fmt_val = get_string_from_value(Self::INFO.name, &fmt, &self.span, state.id)?;
+        let fmt_val = get_string_from_value(Self::INFO.name, &fmt, &self.span)?;
         let fmt_ref = fmt_val.as_ref();
         // If the format string contains timezone, create a timestamp with timezone directly
         if fmt_ref.contains("%z") {
@@ -29,7 +29,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ToUnixTimeFunction {
                 TransformError::new_conversion_failed(
                     format!("Failed to convert '{val_ref}' to datetime using '{fmt_ref}': {e}"),
                     &self.span,
-                    state.id,
                 )
             })?;
             Ok(ResolveResult::Owned(Value::Number(Number::from(
@@ -41,7 +40,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ToUnixTimeFunction {
                 TransformError::new_conversion_failed(
                     format!("Failed to convert '{val_ref}' to datetime using '{fmt_ref}': {e}"),
                     &self.span,
-                    state.id,
                 )
             })?;
             // Then, if there is a third "offset" argument, use that to construct an offset datetime.
@@ -50,14 +48,12 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ToUnixTimeFunction {
                     Self::INFO.name,
                     self.args.get(2).unwrap().resolve(state)?.as_ref(),
                     &self.span,
-                    state.id,
                 )?
-                .try_as_i64(&self.span, state.id)?;
+                .try_as_i64(&self.span)?;
                 if off_val < i32::MIN as i64 || off_val > i32::MAX as i64 {
                     return Err(TransformError::new_invalid_operation(
                         format!("Offset {off_val} out of bounds for to_unix_timestamp"),
                         &self.span,
-                        state.id,
                     ));
                 }
 
@@ -65,7 +61,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ToUnixTimeFunction {
                     TransformError::new_invalid_operation(
                         format!("Offset {off_val} out of bounds for to_unix_timestamp"),
                         &self.span,
-                        state.id,
                     )
                 })?;
                 match offset.from_local_datetime(&time) {
@@ -75,7 +70,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ToUnixTimeFunction {
                     _ => Err(TransformError::new_conversion_failed(
                         "Failed to apply timezone offset to timestamp".to_string(),
                         &self.span,
-                        state.id,
                     )),
                 }
             } else {
@@ -101,71 +95,53 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for NowFunction {
 }
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
 
-    use serde_json::{json, Value};
+    use serde_json::json;
 
-    use crate::{compile_expression, Program};
+    use crate::compile_expression;
 
     #[test]
     pub fn test_time_conversion() {
-        let program = Program::compile(
-            serde_json::from_value(json!([{
-                "id": "tostring",
-                "inputs": ["input"],
-                "transform": r#"{
-                    "t1": to_unix_timestamp(input.v1, '%Y-%m-%d %H:%M:%S'),
-                    "t2": to_unix_timestamp(input.v2, '%Y-%m-%d %H:%M:%S %z'),
-                    "t12": to_unix_timestamp(input.v1, '%Y-%m-%d %H:%M:%S', 3600),
-                    "t13": to_unix_timestamp(input.v1, '%Y-%m-%d %H:%M:%S%.f', -3600),
-                    "t3": to_unix_timestamp(input.v3, '%Y %b %d %H:%M'),
-                    "t4": to_unix_timestamp(input.v4, '%Y %b %d %H:%M %z')
-                }"#,
-                "type": "map"
-            }]))
-            .unwrap(),
+        let expr = compile_expression(
+            r#"{
+            "t1": to_unix_timestamp(input.v1, '%Y-%m-%d %H:%M:%S'),
+            "t2": to_unix_timestamp(input.v2, '%Y-%m-%d %H:%M:%S %z'),
+            "t12": to_unix_timestamp(input.v1, '%Y-%m-%d %H:%M:%S', 3600),
+            "t13": to_unix_timestamp(input.v1, '%Y-%m-%d %H:%M:%S%.f', -3600),
+            "t3": to_unix_timestamp(input.v3, '%Y %b %d %H:%M'),
+            "t4": to_unix_timestamp(input.v4, '%Y %b %d %H:%M %z')
+        }"#,
+            &["input"],
         )
         .unwrap();
 
-        let res = program
-            .execute(&json!({
-                "v1": "1970-01-02 00:00:00",
-                "v2": "1970-01-02 01:00:00 +0100",
-                "v3": "1970 Jan 02 00:00",
-                "v4": "1970 Jan 02 01:00 +0100"
-            }))
-            .unwrap();
+        let inp = json!({
+            "v1": "1970-01-02 00:00:00",
+            "v2": "1970-01-02 01:00:00 +0100",
+            "v3": "1970 Jan 02 00:00",
+            "v4": "1970 Jan 02 01:00 +0100"
+        });
+        let res = expr.run([&inp]).unwrap();
 
-        assert_eq!(res.len(), 1);
-        let val = res.first().unwrap();
-        assert_eq!(86400000, val.get("t1").unwrap().as_i64().unwrap());
-        assert_eq!(86400000, val.get("t2").unwrap().as_i64().unwrap());
-        assert_eq!(82800000, val.get("t12").unwrap().as_i64().unwrap());
-        assert_eq!(90000000, val.get("t13").unwrap().as_i64().unwrap());
-        assert_eq!(86400000, val.get("t3").unwrap().as_i64().unwrap());
-        assert_eq!(86400000, val.get("t4").unwrap().as_i64().unwrap());
+        assert_eq!(86400000, res.get("t1").unwrap().as_i64().unwrap());
+        assert_eq!(86400000, res.get("t2").unwrap().as_i64().unwrap());
+        assert_eq!(82800000, res.get("t12").unwrap().as_i64().unwrap());
+        assert_eq!(90000000, res.get("t13").unwrap().as_i64().unwrap());
+        assert_eq!(86400000, res.get("t3").unwrap().as_i64().unwrap());
+        assert_eq!(86400000, res.get("t4").unwrap().as_i64().unwrap());
     }
 
     #[test]
     pub fn test_now() {
-        let program = Program::compile(
-            serde_json::from_value(json!([{
-                "id": "tostring",
-                "inputs": ["input"],
-                "transform": r#"now()"#,
-                "type": "map"
-            }]))
-            .unwrap(),
-        )
-        .unwrap();
+        let expr = compile_expression("now()", &[]).unwrap();
 
-        let res = program.execute(&Value::Null).unwrap();
-        assert!(res.first().unwrap().as_i64().unwrap() > 0);
+        let res = expr.run([].iter()).unwrap();
+        assert!(res.as_i64().unwrap() > 0);
     }
 
     #[test]
     pub fn test_now_const() {
-        let r = compile_expression("now()", &mut HashMap::new(), "test").unwrap();
+        let r = compile_expression("now()", &[]).unwrap();
         assert_eq!("now()", r.to_string());
     }
 }

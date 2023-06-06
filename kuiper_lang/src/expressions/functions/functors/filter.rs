@@ -35,7 +35,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FilterFunction {
                 "array",
                 TransformError::value_desc(&x),
                 &self.span,
-                state.id,
             )),
         }
     }
@@ -63,27 +62,15 @@ impl LambdaAcceptFunction for FilterFunction {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::{json, Value};
-
-    use crate::Program;
+    use crate::compile_expression;
 
     #[test]
     pub fn test_simple_filter() {
-        let program = Program::compile(
-            serde_json::from_value(json!([{
-                "id": "map",
-                "inputs": [],
-                "transform": "[1, 2, 3, 4, 5, 6].filter((i) => i >= 4)"
-            }]))
-            .unwrap(),
-        )
-        .unwrap();
+        let expr = compile_expression("[1, 2, 3, 4, 5, 6].filter((i) => i >= 4)", &[]).unwrap();
 
-        let res = program.execute(&Value::Null).unwrap();
+        let res = expr.run([]).unwrap();
 
-        assert_eq!(res.len(), 1);
-        let val = res.first().unwrap();
-        let val_arr = val.as_array().unwrap();
+        let val_arr = res.as_array().unwrap();
         assert_eq!(3, val_arr.len());
         assert_eq!(val_arr.get(0).unwrap().as_u64().unwrap(), 4);
         assert_eq!(val_arr.get(1).unwrap().as_u64().unwrap(), 5);

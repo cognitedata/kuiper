@@ -80,12 +80,12 @@ impl CaseFunction {
         lhs: &Value,
         pairs: usize,
     ) -> Result<Option<usize>, TransformError> {
-        let lhs_val = get_number_from_value("case", lhs, &self.span, state.id)?;
+        let lhs_val = get_number_from_value("case", lhs, &self.span)?;
         for idx in 0..pairs {
             let cmp = self.args[idx * 2 + 1].resolve(state)?;
             let rhs = cmp.as_ref();
-            let rhs_val = get_number_from_value("case", rhs, &self.span, state.id)?;
-            if lhs_val.eq(rhs_val, &self.span, state.id) {
+            let rhs_val = get_number_from_value("case", rhs, &self.span)?;
+            if lhs_val.eq(rhs_val, &self.span) {
                 return Ok(Some(idx * 2 + 2));
             }
         }
@@ -98,11 +98,11 @@ impl CaseFunction {
         lhs: &Value,
         pairs: usize,
     ) -> Result<Option<usize>, TransformError> {
-        let lhs_val = get_string_from_value("case", lhs, &self.span, state.id)?;
+        let lhs_val = get_string_from_value("case", lhs, &self.span)?;
         for idx in 0..pairs {
             let cmp = self.args[idx * 2 + 1].resolve(state)?;
             let rhs = cmp;
-            let rhs_val = get_string_from_value("case", &rhs, &self.span, state.id)?;
+            let rhs_val = get_string_from_value("case", &rhs, &self.span)?;
             if lhs_val == rhs_val {
                 return Ok(Some(idx * 2 + 2));
             }
@@ -113,58 +113,43 @@ impl CaseFunction {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::{json, Value};
-
-    use crate::Program;
+    use crate::compile_expression;
 
     #[test]
     pub fn test_simple_if() {
-        let program = Program::compile(
-            serde_json::from_value(json!([{
-                "id": "tostring",
-                "inputs": [],
-                "transform": r#"{
-                    "t1": if(true, 'test'),
-                    "t2": if(1 == 2, 'test2'),
-                    "t3": if(1 > 2, 'test3', 'test4')
-                }"#,
-                "type": "map"
-            }]))
-            .unwrap(),
+        let expr = compile_expression(
+            r#"{
+            "t1": if(true, 'test'),
+            "t2": if(1 == 2, 'test2'),
+            "t3": if(1 > 2, 'test3', 'test4')
+        }"#,
+            &[],
         )
         .unwrap();
 
-        let res = program.execute(&Value::Null).unwrap();
+        let res = expr.run([]).unwrap();
 
-        assert_eq!(res.len(), 1);
-        let val = res.first().unwrap();
-        assert_eq!("test", val.get("t1").unwrap().as_str().unwrap());
-        assert!(val.get("t2").unwrap().is_null());
-        assert_eq!("test4", val.get("t3").unwrap().as_str().unwrap());
+        assert_eq!("test", res.get("t1").unwrap().as_str().unwrap());
+        assert!(res.get("t2").unwrap().is_null());
+        assert_eq!("test4", res.get("t3").unwrap().as_str().unwrap());
     }
 
     #[test]
     pub fn test_case() {
-        let program = Program::compile(
-            serde_json::from_value(json!([{
-                "id": "tostring",
-                "inputs": [],
-                "transform": r#"{
-                    "t1": case('foo', 'bar', 1, 'baz', 2, 'foo', 3),
-                    "t2": case('nope', 'bar', 1, 'baz', 2, 'foo', 3),
-                    "t3": case('foo', 'bar', 1, 'baz', 2, 4)
-                }"#
-            }]))
-            .unwrap(),
+        let expr = compile_expression(
+            r#"{
+            "t1": case('foo', 'bar', 1, 'baz', 2, 'foo', 3),
+            "t2": case('nope', 'bar', 1, 'baz', 2, 'foo', 3),
+            "t3": case('foo', 'bar', 1, 'baz', 2, 4)
+        }"#,
+            &[],
         )
         .unwrap();
 
-        let res = program.execute(&Value::Null).unwrap();
+        let res = expr.run([]).unwrap();
 
-        assert_eq!(res.len(), 1);
-        let val = res.first().unwrap();
-        assert_eq!(3, val.get("t1").unwrap().as_u64().unwrap());
-        assert!(val.get("t2").unwrap().is_null());
-        assert_eq!(4, val.get("t3").unwrap().as_u64().unwrap());
+        assert_eq!(3, res.get("t1").unwrap().as_u64().unwrap());
+        assert!(res.get("t2").unwrap().is_null());
+        assert_eq!(4, res.get("t3").unwrap().as_u64().unwrap());
     }
 }

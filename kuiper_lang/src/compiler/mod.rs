@@ -1,7 +1,7 @@
 mod exec_tree;
 mod optimizer;
 
-use std::{collections::HashMap, fmt::Display};
+use std::fmt::Display;
 
 pub use exec_tree::{from_ast, BuildError};
 pub use optimizer::optimize;
@@ -17,28 +17,22 @@ use crate::{expressions::ExpressionType, lexer::Lexer, parse::ExprParser, Compil
 /// use std::collections::HashMap;
 /// use serde_json::json;
 ///
-/// let mut known_inputs = HashMap::new();
-/// known_inputs.insert("input".to_string(), 0);
-/// let transform = compile_expression("input.value + 5", &mut known_inputs, "my_transform").unwrap();
+/// let transform = compile_expression("input.value + 5", &["input"]).unwrap();
 ///
 /// let input = [json!({ "value": 2 })];
-/// let result = transform.run(input.iter(), "my_transform").unwrap();
+/// let result = transform.run(input.iter()).unwrap();
 ///
 /// assert_eq!(result.as_u64().unwrap(), 7);
 /// ```
 pub fn compile_expression(
     data: &str,
-    known_inputs: &mut HashMap<String, usize>,
-    chunk_id: &str,
+    known_inputs: &[&str],
 ) -> Result<ExpressionType, CompileError> {
     let inp = Lexer::new(data);
     let parser = ExprParser::new();
-    let res = parser
-        .parse(inp)
-        .map_err(|e| CompileError::from_parser_err(e, chunk_id))?;
-    let res = from_ast(res).map_err(|e| CompileError::from_build_err(e, chunk_id))?;
-    let optimized =
-        optimize(res, known_inputs).map_err(|e| CompileError::optimizer_err(e, chunk_id))?;
+    let res = parser.parse(inp)?;
+    let res = from_ast(res)?;
+    let optimized = optimize(res, known_inputs)?;
     Ok(optimized)
 }
 
@@ -96,26 +90,19 @@ impl ExpressionDebugInfo {
 
         let lexer = Lexer::new(data);
         let parser = ExprParser::new();
-        let ast = parser
-            .parse(lexer)
-            .map_err(|e| CompileError::from_parser_err(e, ""))?;
+        let ast = parser.parse(lexer)?;
         let ast_info = DebugInfo {
             debug: format!("{:?}", ast),
             clean: ast.to_string(),
         };
 
-        let exec_tree = from_ast(ast).map_err(|e| CompileError::from_build_err(e, ""))?;
+        let exec_tree = from_ast(ast)?;
         let exec_tree_info = DebugInfo {
             debug: format!("{:?}", exec_tree),
             clean: exec_tree.to_string(),
         };
 
-        let mut inputs = HashMap::new();
-        for (idx, &inp) in known_inputs.iter().enumerate() {
-            inputs.insert(inp.to_string(), idx);
-        }
-        let optimized =
-            optimize(exec_tree, &mut inputs).map_err(|e| CompileError::optimizer_err(e, ""))?;
+        let optimized = optimize(exec_tree, known_inputs)?;
         let optimized_info = DebugInfo {
             debug: format!("{:?}", optimized),
             clean: optimized.to_string(),
