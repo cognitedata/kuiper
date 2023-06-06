@@ -1,0 +1,11 @@
+[package]
+name = "kuiper_net_bindings"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+interoptopus_backend_csharp = "0.14.18"
+interoptopus = "0.14.18"
+kuiper_net = { path = "../kuiper_net" }
