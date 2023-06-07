@@ -18,7 +18,6 @@
 //!
 //! ```
 //! use kuiper_lang::compile_expression;
-//! use std::collections::HashMap;
 //! use serde_json::json;
 //!
 //! let transform = compile_expression("input.value + 5", &["input"]).unwrap();
