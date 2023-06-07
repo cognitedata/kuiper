@@ -22,14 +22,12 @@ macro_rules! arg2_math_func {
                     &<Self as $crate::expressions::functions::FunctionExpression>::INFO.name,
                     self.args[0].resolve(state)?.as_ref(),
                     &self.span,
-                    state.id,
                 )?
                 .as_f64();
                 let rhs = $crate::expressions::base::get_number_from_value(
                     &<Self as $crate::expressions::functions::FunctionExpression>::INFO.name,
                     self.args[1].resolve(state)?.as_ref(),
                     &self.span,
-                    state.id,
                 )?
                 .as_f64();
 
@@ -44,7 +42,6 @@ macro_rules! arg2_math_func {
                                     $name, self.span.start
                                 ),
                                 &self.span,
-                                state.id,
                             )
                         },
                     )?),
@@ -72,7 +69,6 @@ macro_rules! arg1_math_func {
                     <Self as $crate::expressions::functions::FunctionExpression>::INFO.name,
                     self.args[0].resolve(state)?.as_ref(),
                     &self.span,
-                    state.id,
                 )?
                 .as_f64();
 
@@ -86,7 +82,6 @@ macro_rules! arg1_math_func {
                                 $name, self.span.start
                             ),
                             &self.span,
-                            state.id,
                         )
                     })?),
                 ))
@@ -119,7 +114,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IntFunction {
                 return Err(TransformError::new_conversion_failed(
                     "Cannot convert null to integer in int() function".to_string(),
                     &self.span,
-                    state.id,
                 ))
             }
             Value::Bool(x) => {
@@ -129,31 +123,26 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IntFunction {
                     Value::Number(Number::from(0))
                 }
             }
-            Value::Number(_) => get_number_from_value(
-                <Self as FunctionExpression>::INFO.name,
-                val,
-                &self.span,
-                state.id,
-            )?
-            .try_cast_integer(&self.span, state.id)?
-            .try_into_json()
-            .ok_or_else(|| {
-                TransformError::new_conversion_failed(
-                    format!(
-                        "Failed to convert result of int() to number at {}",
-                        self.span.start
-                    ),
-                    &self.span,
-                    state.id,
-                )
-            })?,
+            Value::Number(_) => {
+                get_number_from_value(<Self as FunctionExpression>::INFO.name, val, &self.span)?
+                    .try_cast_integer(&self.span)?
+                    .try_into_json()
+                    .ok_or_else(|| {
+                        TransformError::new_conversion_failed(
+                            format!(
+                                "Failed to convert result of int() to number at {}",
+                                self.span.start
+                            ),
+                            &self.span,
+                        )
+                    })?
+            }
             Value::String(s) => {
                 if s.starts_with('-') {
                     let res: i64 = s.parse().map_err(|e| {
                         TransformError::new_conversion_failed(
                             format!("Failed to convert string {s} to integer: {e}"),
                             &self.span,
-                            state.id,
                         )
                     })?;
                     Value::Number(Number::from(res))
@@ -162,7 +151,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IntFunction {
                         TransformError::new_conversion_failed(
                             format!("Failed to convert string {s} to integer: {e}"),
                             &self.span,
-                            state.id,
                         )
                     })?;
                     Value::Number(Number::from(res))
@@ -175,7 +163,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IntFunction {
                         TransformError::value_desc(val)
                     ),
                     &self.span,
-                    state.id,
                 ))
             }
         };
@@ -197,7 +184,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FloatFunction {
                 return Err(TransformError::new_conversion_failed(
                     "Cannot convert null to float in float() function".to_string(),
                     &self.span,
-                    state.id,
                 ))
             }
             Value::Bool(x) => {
@@ -207,18 +193,14 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FloatFunction {
                     0.0
                 }
             }
-            Value::Number(_) => get_number_from_value(
-                <Self as FunctionExpression>::INFO.name,
-                val,
-                &self.span,
-                state.id,
-            )?
-            .as_f64(),
+            Value::Number(_) => {
+                get_number_from_value(<Self as FunctionExpression>::INFO.name, val, &self.span)?
+                    .as_f64()
+            }
             Value::String(s) => s.parse().map_err(|e| {
                 TransformError::new_conversion_failed(
                     format!("Failed to convert string {s} to float: {e}"),
                     &self.span,
-                    state.id,
                 )
             })?,
             Value::Array(_) | Value::Object(_) => {
@@ -228,7 +210,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FloatFunction {
                         TransformError::value_desc(val)
                     ),
                     &self.span,
-                    state.id,
                 ))
             }
         };
@@ -242,119 +223,90 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FloatFunction {
 mod tests {
     use serde_json::json;
 
-    use crate::Program;
+    use crate::compile_expression;
 
     #[test]
     pub fn test_pow_function() {
-        let program = Program::compile(
-            serde_json::from_value(json!([{
-                "id": "pow",
-                "inputs": ["input"],
-                "transform": r#"{
-                    "res": pow(2, 2),
-                    "res2": pow(input.val1, input.val2)
-                }"#,
-                "type": "map"
-            }]))
-            .unwrap(),
+        let expr = compile_expression(
+            r#"{
+            "res": pow(2, 2),
+            "res2": pow(input.val1, input.val2)
+        }"#,
+            &["input"],
         )
         .unwrap();
 
-        let res = program
-            .execute(&json!({
-                "val1": 10,
-                "val2": 4
-            }))
-            .unwrap();
-        assert_eq!(res.len(), 1);
-        let val = res.get(0).unwrap();
-        assert_eq!(4.0, val.get("res").unwrap().as_f64().unwrap());
-        assert_eq!(10_000.0, val.get("res2").unwrap().as_f64().unwrap());
+        let inp = json!({
+            "val1": 10,
+            "val2": 4
+        });
+        let res = expr.run([&inp]).unwrap();
+        assert_eq!(4.0, res.get("res").unwrap().as_f64().unwrap());
+        assert_eq!(10_000.0, res.get("res2").unwrap().as_f64().unwrap());
     }
 
     #[test]
     pub fn test_log_function() {
-        let program = Program::compile(
-            serde_json::from_value(json!([{
-                "id": "pow",
-                "inputs": ["input"],
-                "transform": r#"{
-                    "res": log(2, 2),
-                    "res2": log(input.val1, input.val2)
-                }"#
-            }]))
-            .unwrap(),
+        let expr = compile_expression(
+            r#"{
+            "res": log(2, 2),
+            "res2": log(input.val1, input.val2)
+        }"#,
+            &["input"],
         )
         .unwrap();
 
-        let res = program
-            .execute(&json!({
-                "val1": 1000,
-                "val2": 10
-            }))
-            .unwrap();
-        assert_eq!(res.len(), 1);
-        let val = res.get(0).unwrap();
-        assert_eq!(1.0, val.get("res").unwrap().as_f64().unwrap());
+        let inp = json!({
+            "val1": 1000,
+            "val2": 10
+        });
+        let res = expr.run([&inp]).unwrap();
+        assert_eq!(1.0, res.get("res").unwrap().as_f64().unwrap());
         // Yes, this does yield 2.9999999999999996, blame computers.
-        assert!((3.0 - val.get("res2").unwrap().as_f64().unwrap()).abs() < 0.00000001);
+        assert!((3.0 - res.get("res2").unwrap().as_f64().unwrap()).abs() < 0.00000001);
     }
 
     #[test]
     pub fn test_int_function() {
-        let program = Program::compile(
-            serde_json::from_value(json!([{
-                "id": "pow",
-                "inputs": ["input"],
-                "transform": r#"{
-                    "res": int('123'),
-                    "res2": int('-1234')
-                }"#
-            }]))
-            .unwrap(),
+        let expr = compile_expression(
+            r#"{
+            "res": int('123'),
+            "res2": int('-1234')
+        }"#,
+            &[],
         )
         .unwrap();
 
-        let res = program
-            .execute(&json!({
-                "val1": 1000,
-                "val2": 10
-            }))
-            .unwrap();
-        assert_eq!(res.len(), 1);
-        let val = res.get(0).unwrap();
-        assert_eq!(123, val.get("res").unwrap().as_u64().unwrap());
-        assert_eq!(-1234, val.get("res2").unwrap().as_i64().unwrap());
+        let inp = json!({
+            "val1": 1000,
+            "val2": 10
+        });
+        let res = expr.run([&inp]).unwrap();
+        assert_eq!(123, res.get("res").unwrap().as_u64().unwrap());
+        assert_eq!(-1234, res.get("res2").unwrap().as_i64().unwrap());
     }
 
     #[test]
     pub fn test_float_function() {
-        let program = Program::compile(
-            serde_json::from_value(json!([{
-                "id": "pow",
-                "inputs": ["input"],
-                "transform": r#"{
-                    "res": float('123'),
-                    "res2": float('-1234'),
-                    "res3": float('-1234.123'),
-                    "res4": float('1234.1234')
-                }"#
-            }]))
-            .unwrap(),
+        let expr = compile_expression(
+            r#"{
+            "res": float('123'),
+            "res2": float('-1234'),
+            "res3": float('-1234.123'),
+            "res4": float('1234.1234')
+        }"#,
+            &[],
         )
         .unwrap();
 
-        let res = program
-            .execute(&json!({
-                "val1": 1000,
-                "val2": 10
-            }))
-            .unwrap();
-        assert_eq!(res.len(), 1);
-        let val = res.get(0).unwrap();
-        assert_eq!(123.0, val.get("res").unwrap().as_f64().unwrap());
-        assert_eq!(-1234.0, val.get("res2").unwrap().as_f64().unwrap());
-        assert_eq!(-1234.123, val.get("res3").unwrap().as_f64().unwrap());
-        assert_eq!(1234.1234, val.get("res4").unwrap().as_f64().unwrap());
+        let inp = json!({
+            "val1": 1000,
+            "val2": 10
+        });
+        let res = expr.run([&inp]).unwrap();
+        assert_eq!(123.0, res.get("res").unwrap().as_f64().unwrap());
+        assert_eq!(-1234.0, res.get("res2").unwrap().as_f64().unwrap());
+        assert_eq!(-1234.123, res.get("res3").unwrap().as_f64().unwrap());
+        assert_eq!(1234.1234, res.get("res4").unwrap().as_f64().unwrap());
     }
 }

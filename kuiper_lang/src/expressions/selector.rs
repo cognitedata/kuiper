@@ -85,7 +85,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SelectorExpression {
                         return Err(TransformError::new_source_missing(
                             i.to_string(),
                             &self.span,
-                            state.id,
                         ))
                     }
                 };
@@ -94,7 +93,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SelectorExpression {
             SourceElement::Input(s) => Err(TransformError::new_source_missing(
                 s.to_string(),
                 &self.span,
-                state.id,
             )),
             SourceElement::Expression(e) => {
                 let src = e.resolve(state)?;
@@ -220,7 +218,6 @@ impl SelectorExpression {
                                         "negative integer"
                                     },
                                     &self.span,
-                                    state.id,
                                 ))
                             }
                         },
@@ -230,7 +227,6 @@ impl SelectorExpression {
                                 "integer or string",
                                 TransformError::value_desc(&val),
                                 &self.span,
-                                state.id,
                             ))
                         }
                     }
@@ -296,7 +292,6 @@ impl SelectorExpression {
                                         "negative integer"
                                     },
                                     &self.span,
-                                    state.id,
                                 ))
                             }
                         },
@@ -306,7 +301,6 @@ impl SelectorExpression {
                                 "integer or string",
                                 TransformError::value_desc(&val),
                                 &self.span,
-                                state.id,
                             ))
                         }
                     }
@@ -318,13 +312,14 @@ impl SelectorExpression {
 
     pub fn resolve_first_item(
         &mut self,
-        state: &ExpressionExecutionState<'_, '_>,
+        _state: &ExpressionExecutionState<'_, '_>,
         map: &HashMap<String, usize>,
     ) -> Result<(), TransformError> {
         let new_source = match &self.source {
-            SourceElement::Input(x) => map.get(x).copied().ok_or_else(|| {
-                TransformError::new_source_missing(x.to_string(), &self.span, state.id)
-            })?,
+            SourceElement::Input(x) => map
+                .get(x)
+                .copied()
+                .ok_or_else(|| TransformError::new_source_missing(x.to_string(), &self.span))?,
             _ => return Ok(()),
         };
         self.source = SourceElement::CompiledInput(new_source);

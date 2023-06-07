@@ -1,11 +1,11 @@
-use std::{collections::HashMap, io};
+use std::io;
 
 use kuiper_lang::compile_expression;
 
 pub fn repl() {
     let mut data = Vec::new();
     let mut index = 0usize;
-    let mut inputs = HashMap::new();
+    let mut inputs = Vec::<String>::new();
 
     loop {
         println!();
@@ -26,7 +26,10 @@ pub fn repl() {
         }
 
         let chunk_id = format!("var{index}");
-        let res = compile_expression(&expr, &mut inputs, &chunk_id);
+        let res = compile_expression(
+            &expr,
+            &inputs.iter().map(String::as_str).collect::<Vec<_>>(),
+        );
         let expr = match res {
             Ok(x) => x,
             Err(e) => {
@@ -35,11 +38,11 @@ pub fn repl() {
             }
         };
 
-        let res = expr.run(data.iter(), &chunk_id);
+        let res = expr.run(data.iter());
         match res {
             Ok(x) => {
                 println!("{chunk_id} = {x}");
-                inputs.insert(chunk_id, index);
+                inputs.push(chunk_id);
                 data.push(x.into_owned());
             }
             Err(e) => {
