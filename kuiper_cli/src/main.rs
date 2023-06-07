@@ -1,52 +1,107 @@
-use std::{collections::HashMap, io};
+mod errors;
+mod repl;
 
+use crate::errors::KuiperCliError;
+use crate::repl::repl;
+use clap::{Parser, ValueEnum};
 use kuiper_lang::compile_expression;
+use serde_json::Value;
+use std::collections::HashMap;
+use std::fs::read_to_string;
+use std::io;
+use std::io::Read;
+use std::path::PathBuf;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum MessageEnd {
+    Eof,
+    LF,
+}
+
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Kuiper expression to run
+    #[arg(short, long)]
+    expression: Option<String>,
+
+    /// File to load kuiper expression to run from
+    #[arg(short = 'f', long)]
+    expression_file: Option<PathBuf>,
+
+    /// Input data, uses STDIN if omitted
+    input: Option<PathBuf>,
+
+    /// Launch into repl mode
+    #[arg(long)]
+    repl: bool,
+
+    /// Message separator
+    #[arg(short, long, value_enum, default_value = "eof")]
+    separator: MessageEnd,
+}
+
+fn load_input_data(args: &Args) -> Result<Vec<Value>, KuiperCliError> {
+    let string_data = match &args.input {
+        Some(path) => read_to_string(path)?,
+        None => {
+            let mut buffer = Vec::new();
+            io::stdin().read_to_end(&mut buffer)?;
+            String::from_utf8(buffer)?
+        }
+    };
+
+    let data = match &args.separator {
+        MessageEnd::LF => string_data
+            .trim()
+            .split('\n')
+            .map(serde_json::from_str::<Value>)
+            .collect::<Result<Vec<Value>, serde_json::Error>>()?,
+        MessageEnd::Eof => vec![serde_json::from_str(&string_data)?],
+    };
+
+    Ok(data)
+}
+
+fn load_expression(args: &Args) -> Result<String, KuiperCliError> {
+    match (&args.expression, &args.expression_file) {
+        (None, None) => Err("Either expression or expression file needs to be provided!")?,
+        (Some(expression), None) => Ok(expression.clone()),
+        (None, Some(file)) => Ok(read_to_string(file)?),
+        _ => Err("Only expression or expression file can be provided!")?,
+    }
+}
+
+fn inner_run(args: Args) -> Result<Vec<String>, KuiperCliError> {
+    let expression = load_expression(&args)?;
+
+    let mut known_inputs = HashMap::new();
+    known_inputs.insert("input".to_string(), 0);
+
+    let expression = compile_expression(&expression, &mut known_inputs, "cli")?;
+
+    let data = load_input_data(&args)?;
+
+    let mut res = Vec::new();
+    for input in data {
+        let iter_input = [input];
+        let result = expression.run(iter_input.iter(), "cli")?;
+        res.push(serde_json::to_string(&result)?);
+    }
+
+    Ok(res)
+}
 
 fn main() {
-    let mut data = Vec::new();
-    let mut index = 0usize;
-    let mut inputs = HashMap::new();
+    let args = Args::parse();
 
-    loop {
-        println!();
-        println!("Input expression: ");
-        let mut expr = String::new();
-        io::stdin()
-            .read_line(&mut expr)
-            .expect("Unable to get user input");
+    if args.repl {
+        repl();
+        return;
+    }
 
-        if expr.trim_end().eq("clear") {
-            println!("Clearing stored inputs");
-            index = 0;
-            inputs.clear();
-            data.clear();
-            continue;
-        } else if expr.trim_end().eq("exit") {
-            break;
-        }
-
-        let chunk_id = format!("var{index}");
-        let res = compile_expression(&expr, &mut inputs, &chunk_id);
-        let expr = match res {
-            Ok(x) => x,
-            Err(e) => {
-                println!("Compilation failed! {e}");
-                continue;
-            }
-        };
-
-        let res = expr.run(data.iter(), &chunk_id);
-        match res {
-            Ok(x) => {
-                println!("{chunk_id} = {x}");
-                inputs.insert(chunk_id, index);
-                data.push(x.into_owned());
-            }
-            Err(e) => {
-                println!("Transform failed! {e}");
-                continue;
-            }
-        }
-        index += 1;
+    match inner_run(args) {
+        Ok(strings) => strings.into_iter().for_each(|s| println!("{}", s)),
+        Err(error) => eprintln!("\x1b[91mError:\x1b[0m {}", error),
     }
 }
