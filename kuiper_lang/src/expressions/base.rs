@@ -2,7 +2,7 @@ use logos::Span;
 use serde_json::Value;
 use std::{borrow::Cow, fmt::Display};
 
-use crate::{compiler::BuildError, program::NULL_CONST};
+use crate::{compiler::BuildError, NULL_CONST};
 
 use super::{
     functions::{
