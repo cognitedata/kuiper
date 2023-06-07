@@ -19,7 +19,7 @@ pub fn pass_through_derive(d: TokenStream) -> TokenStream {
 
     let mut by_trait_or_none = HashMap::<Option<String>, Vec<FuncAndError>>::new();
     for attr in en.attrs {
-        if attr.path.get_ident().map(|i| i.to_string()) == Some("pass_through".to_string()) {
+        if attr.path().get_ident().map(|i| i.to_string()) == Some("pass_through".to_string()) {
             let args: FuncAndError = attr.parse_args().unwrap();
             let key = args.trt.clone().map(|i| i.to_string());
             if let Some(funcs) = by_trait_or_none.get_mut(&key) {
@@ -63,7 +63,7 @@ pub fn pass_through_derive(d: TokenStream) -> TokenStream {
                     .attrs
                     .iter()
                     .find(|a| {
-                        let seg = a.path.segments.last();
+                        let seg = a.path().segments.last();
                         match seg {
                             None => false,
                             Some(seg) => seg.ident == "pass_through_exclude",

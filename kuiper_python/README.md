@@ -4,14 +4,17 @@ Python bindings for Kuiper so you can compile and run transformations from a
 Python runtime.
 
 ``` python
-import kuiper
+from kuiper import compile_expression
 
-expression = kuiper.compile_expression("input.value + 15", ["input"])
-result = expression.run("{ \"value\": 27 }")
-
-print(result)
+expression = compile_expression('{"theAnswer": input.numericValue + 27}', ["input"])
+value = expression.run('{"numericValue": 15}')
+print(value)
 ```
 
+The `compile_expression` function might raise a `KuiperCompileError`, and
+otherwise returns a `KuiperExpression` object. The `KuiperExpression.run(...)`
+method might raise a `KuiperRuntimeError`. Both of these exceptions are
+subclasses of the `KuiperError` base class.
 
 ## Development
 
