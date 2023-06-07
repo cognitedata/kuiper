@@ -1,5 +1,10 @@
 /target
 **/target
 
+# Compiled python files
+*.so
+*.pyc
+**/__pycache__
+
 .idea
 **/.env

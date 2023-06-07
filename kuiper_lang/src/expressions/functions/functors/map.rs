@@ -28,7 +28,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for MapFunction {
                 "array",
                 TransformError::value_desc(x),
                 &self.span,
-                state.id,
             )),
         }
     }
@@ -56,27 +55,15 @@ impl LambdaAcceptFunction for MapFunction {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::{json, Value};
-
-    use crate::Program;
+    use crate::compile_expression;
 
     #[test]
     pub fn test_simple_map() {
-        let program = Program::compile(
-            serde_json::from_value(json!([{
-                "id": "map",
-                "inputs": [],
-                "transform": r#"map([1, 2, 3, 4], (i) => pow(i, 2))"#
-            }]))
-            .unwrap(),
-        )
-        .unwrap();
+        let expr = compile_expression(r#"map([1, 2, 3, 4], (i) => pow(i, 2))"#, &[]).unwrap();
 
-        let res = program.execute(&Value::Null).unwrap();
+        let res = expr.run([]).unwrap();
 
-        assert_eq!(res.len(), 1);
-        let val = res.first().unwrap();
-        let val_arr = val.as_array().unwrap();
+        let val_arr = res.as_array().unwrap();
         assert_eq!(4, val_arr.len());
         assert_eq!(val_arr.get(0).unwrap().as_f64().unwrap(), 1.0);
         assert_eq!(val_arr.get(1).unwrap().as_f64().unwrap(), 4.0);

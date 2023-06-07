@@ -25,7 +25,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for LengthFunction {
                     "array, string, or object",
                     TransformError::value_desc(x),
                     &self.span,
-                    state.id,
                 ))
             }
         };
@@ -52,13 +51,12 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ChunkFunction {
                     "array",
                     TransformError::value_desc(x.as_ref()),
                     &self.span,
-                    state.id,
                 ))
             }
         };
 
         let chunk_raw = self.args[1].resolve(state)?;
-        let chunk_size = get_number_from_value("chunk", &chunk_raw, &self.span, state.id)?;
+        let chunk_size = get_number_from_value("chunk", &chunk_raw, &self.span)?;
         let chunk_u = match chunk_size {
             crate::expressions::numbers::JsonNumber::NegInteger(_) => {
                 return Err(TransformError::new_incorrect_type(
@@ -66,7 +64,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ChunkFunction {
                     "positive integer",
                     "negative integer",
                     &self.span,
-                    state.id,
                 ))
             }
             crate::expressions::numbers::JsonNumber::PosInteger(x) => x as usize,
@@ -76,7 +73,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ChunkFunction {
                     "positive integer",
                     "floating point",
                     &self.span,
-                    state.id,
                 ))
             }
         };
@@ -88,7 +84,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ChunkFunction {
             return Err(TransformError::new_invalid_operation(
                 "Chunk size must be greater than 0".to_string(),
                 &self.span,
-                state.id,
             ));
         }
 
@@ -102,31 +97,23 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ChunkFunction {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::{json, Value};
-
-    use crate::Program;
+    use crate::compile_expression;
 
     #[test]
     pub fn test_length() {
-        let program = Program::compile(
-            serde_json::from_value(json!([{
-                "id": "map",
-                "inputs": [],
-                "transform": r#"{
-                    "v1": [1, 2, 3, 4].length(),
-                    "v2": "test test".length(),
-                    "v3": { "t": "t2", "t1": "t3" }.length()   
-                }"#
-            }]))
-            .unwrap(),
+        let expr = compile_expression(
+            r#"{
+            "v1": [1, 2, 3, 4].length(),
+            "v2": "test test".length(),
+            "v3": { "t": "t2", "t1": "t3" }.length()   
+        }"#,
+            &[],
         )
         .unwrap();
 
-        let res = program.execute(&Value::Null).unwrap();
+        let res = expr.run([]).unwrap();
 
-        assert_eq!(res.len(), 1);
-        let val = res.first().unwrap();
-        let obj = val.as_object().unwrap();
+        let obj = res.as_object().unwrap();
         assert_eq!(3, obj.len());
         assert_eq!(4, obj.get("v1").unwrap().as_u64().unwrap());
         assert_eq!(9, obj.get("v2").unwrap().as_u64().unwrap());
@@ -135,25 +122,19 @@ mod tests {
 
     #[test]
     pub fn test_chunks() {
-        let program = Program::compile(
-            serde_json::from_value(json!([{
-                "id": "map",
-                "inputs": [],
-                "transform": r#"{
-                    "v1": [1, 2, 3, 4, 5, 6].chunk(4),
-                    "v2": ["test", 1, 2].chunk(1),
-                    "v3": [1, 2, 3, 4, 5, 6, 7].chunk(8)
-                }"#
-            }]))
-            .unwrap(),
+        let expr = compile_expression(
+            r#"{
+            "v1": [1, 2, 3, 4, 5, 6].chunk(4),
+            "v2": ["test", 1, 2].chunk(1),
+            "v3": [1, 2, 3, 4, 5, 6, 7].chunk(8)
+        }"#,
+            &[],
         )
         .unwrap();
 
-        let res = program.execute(&Value::Null).unwrap();
+        let res = expr.run([]).unwrap();
 
-        assert_eq!(res.len(), 1);
-        let val = res.first().unwrap();
-        let obj = val.as_object().unwrap();
+        let obj = res.as_object().unwrap();
         assert_eq!(3, obj.len());
         assert_eq!(2, obj.get("v1").unwrap().as_array().unwrap().len());
         assert_eq!(3, obj.get("v2").unwrap().as_array().unwrap().len());

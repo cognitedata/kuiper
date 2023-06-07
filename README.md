@@ -18,16 +18,12 @@ an array, and even pairs of arrays, but it is not possible to implement recursio
 
 ```rust
 use kuiper_lang::compile_expression;
-use std::collections::HashMap;
 use serde_json::json;
 
-let mut known_inputs = HashMap::new();
-known_inputs.insert("input".to_string(), 0);
-
-let transform = compile_expression("input.value + 5", &mut known_inputs, "my_transform").unwrap();
+let transform = compile_expression("input.value + 5", &["input"]).unwrap();
 
 let input = [json!({ "value": 2 })];
-let result = transform.run(input.iter(), "my_transform").unwrap();
+let result = transform.run(input.iter()).unwrap();
 
 assert_eq!(result.as_u64().unwrap(), 7);
 ```

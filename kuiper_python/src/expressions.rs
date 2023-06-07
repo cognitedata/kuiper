@@ -22,7 +22,7 @@ impl KuiperExpression {
             Err(json_error) => return Err(KuiperRuntimeError::new_err(json_error.to_string())),
         };
 
-        match self.expression.run(json.iter(), "testrun") {
+        match self.expression.run(json.iter()) {
             Ok(result) => Ok(result.to_string()),
             Err(transform_error) => Err(KuiperRuntimeError::new_err(transform_error.to_string())),
         }

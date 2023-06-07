@@ -44,7 +44,6 @@ fn resolve_constants(
                 return Err(TransformError::new_invalid_operation(
                     format!("Function input {inp} is already defined"),
                     &l.span,
-                    empty_state.id,
                 ));
             }
             max_inputs = match max_inputs {
@@ -94,12 +93,17 @@ fn resolve_constants(
 /// Run the optimizer. For now this only catches a few consistency errors and resolves any constant expressions.
 pub fn optimize(
     mut root: ExpressionType,
-    known_inputs: &mut HashMap<String, usize>,
+    known_inputs: &[&str],
 ) -> Result<ExpressionType, TransformError> {
     let data = Vec::new();
-    let empty_state = ExpressionExecutionState::new(&data, "optimizer");
+    let empty_state = ExpressionExecutionState::new(&data);
 
-    let res = resolve_constants(&mut root, known_inputs, &empty_state)?;
+    let mut known_inputs_map = HashMap::new();
+    for (idx, inp) in known_inputs.iter().enumerate() {
+        known_inputs_map.insert(inp.to_string(), idx);
+    }
+
+    let res = resolve_constants(&mut root, &mut known_inputs_map, &empty_state)?;
     match res {
         Some(x) => Ok(x),
         None => Ok(root),
@@ -108,8 +112,6 @@ pub fn optimize(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use logos::Span;
 
     use crate::{
@@ -122,16 +124,9 @@ mod tests {
     fn parse(inp: &str, inputs: &[&str]) -> Result<ExpressionType, CompileError> {
         let lex = Lexer::new(inp);
         let parser = ExprParser::new();
-        let res = parser
-            .parse(lex)
-            .map_err(|e| CompileError::from_parser_err(e, "test"))?;
-        let res = from_ast(res).map_err(|e| CompileError::from_build_err(e, "test"))?;
-        let mut input_map = HashMap::new();
-        for (idx, input) in inputs.iter().enumerate() {
-            input_map.insert(input.to_string(), idx);
-        }
-        let res =
-            optimize(res, &mut input_map).map_err(|e| CompileError::optimizer_err(e, "test"))?;
+        let res = parser.parse(lex)?;
+        let res = from_ast(res)?;
+        let res = optimize(res, inputs)?;
         Ok(res)
     }
 
@@ -139,7 +134,7 @@ mod tests {
         match parse(inp, inputs) {
             Ok(_) => panic!("Expected parse + optimize to fail"),
             Err(x) => match x {
-                CompileError::Optimizer(e) => e.err,
+                CompileError::Optimizer(e) => e,
                 _ => panic!("Got incorrect "),
             },
         }
@@ -174,7 +169,6 @@ mod tests {
         let err = parse_fail_optimizer("2 + pow(3, 'test')", &[]);
         match err {
             TransformError::IncorrectTypeInField(d) => {
-                assert_eq!(d.id, "optimizer");
                 assert_eq!(d.desc, "pow. Got string, expected number");
                 assert_eq!(d.span, Span { start: 4, end: 18 });
             }
@@ -187,7 +181,6 @@ mod tests {
         let err = parse_fail_optimizer("2 / 0", &[]);
         match err {
             TransformError::InvalidOperation(d) => {
-                assert_eq!(d.id, "optimizer");
                 assert_eq!(d.desc, "Divide by zero");
                 assert_eq!(d.span, Span { start: 0, end: 5 });
             }

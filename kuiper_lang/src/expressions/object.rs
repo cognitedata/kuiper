@@ -40,7 +40,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ObjectExpression {
         let mut output = Map::with_capacity(self.pairs.len());
         for (key, value) in self.pairs.iter() {
             let key_res = key.resolve(state)?;
-            let key_val = get_string_from_value("object", key_res.as_ref(), &self.span, state.id)?;
+            let key_val = get_string_from_value("object", key_res.as_ref(), &self.span)?;
             output.insert(key_val.into_owned(), value.resolve(state)?.into_owned());
         }
         Ok(ResolveResult::Owned(Value::Object(output)))

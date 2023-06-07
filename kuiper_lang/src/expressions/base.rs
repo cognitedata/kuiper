@@ -22,7 +22,6 @@ use kuiper_lang_macros::PassThrough;
 /// `'b` is the lifetime of the transform execution, so the temporary data in the transform.
 pub struct ExpressionExecutionState<'data, 'exec> {
     data: &'exec Vec<&'data Value>,
-    pub id: &'exec str,
 }
 
 impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
@@ -32,21 +31,17 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
         self.data.get(key).copied()
     }
 
-    pub fn new(data: &'exec Vec<&'data Value>, id: &'exec str) -> Self {
-        Self { data, id }
+    pub fn new(data: &'exec Vec<&'data Value>) -> Self {
+        Self { data }
     }
 
-    pub fn get_temporary_clone(
-        &self,
-        extra_cap: usize,
-    ) -> InternalExpressionExecutionState<'data, 'exec> {
+    pub fn get_temporary_clone(&self, extra_cap: usize) -> InternalExpressionExecutionState<'data> {
         let mut data = Vec::with_capacity(self.data.len() + extra_cap);
         for elem in self.data {
             data.push(*elem);
         }
         InternalExpressionExecutionState {
             data,
-            id: self.id,
             base_length: self.data.len(),
         }
     }
@@ -55,7 +50,7 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
         &self,
         extra_values: impl Iterator<Item = &'data Value>,
         num_values: usize,
-    ) -> InternalExpressionExecutionState<'data, 'exec> {
+    ) -> InternalExpressionExecutionState<'data> {
         let mut data = Vec::with_capacity(self.data.len() + num_values);
         for elem in self.data.iter() {
             data.push(*elem);
@@ -73,25 +68,20 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
 
         InternalExpressionExecutionState {
             data,
-            id: self.id,
             base_length: self.data.len(),
         }
     }
 }
 
 #[derive(Debug)]
-pub struct InternalExpressionExecutionState<'data, 'exec> {
+pub struct InternalExpressionExecutionState<'data> {
     pub data: Vec<&'data Value>,
-    pub id: &'exec str,
     pub base_length: usize,
 }
 
-impl<'data, 'exec> InternalExpressionExecutionState<'data, 'exec> {
+impl<'data> InternalExpressionExecutionState<'data> {
     pub fn get_temp_state<'slf>(&'slf self) -> ExpressionExecutionState<'data, 'slf> {
-        ExpressionExecutionState {
-            data: &self.data,
-            id: self.id,
-        }
+        ExpressionExecutionState { data: &self.data }
     }
 }
 
@@ -182,7 +172,6 @@ pub enum FunctionType {
     ToUnixTime(ToUnixTimeFunction),
     Case(CaseFunction),
     Pairs(PairsFunction),
-    Flatten(FlattenFunction),
     Map(MapFunction),
     FlatMap(FlatMapFunction),
     Filter(FilterFunction),
@@ -214,7 +203,6 @@ pub fn get_function_expression(
         "to_unix_timestamp" => FunctionType::ToUnixTime(ToUnixTimeFunction::new(args, pos)?),
         "case" => FunctionType::Case(CaseFunction::new(args, pos)?),
         "pairs" => FunctionType::Pairs(PairsFunction::new(args, pos)?),
-        "flatten" => FunctionType::Flatten(FlattenFunction::new(args, pos)?),
         "map" => FunctionType::Map(MapFunction::new(args, pos)?),
         "flatmap" => FunctionType::FlatMap(FlatMapFunction::new(args, pos)?),
         "filter" => FunctionType::Filter(FilterFunction::new(args, pos)?),
@@ -254,11 +242,10 @@ impl ExpressionType {
     /// errors and logging.
     pub fn run<'a: 'c, 'c>(
         &'a self,
-        data: impl Iterator<Item = &'c Value>,
-        chunk_id: &str,
+        data: impl IntoIterator<Item = &'c Value>,
     ) -> Result<ResolveResult<'c>, TransformError> {
-        let data = data.collect();
-        let state = ExpressionExecutionState::new(&data, chunk_id);
+        let data = data.into_iter().collect();
+        let state = ExpressionExecutionState::new(&data);
         self.resolve(&state)
     }
 }
@@ -322,7 +309,6 @@ pub(crate) fn get_number_from_value(
     desc: &str,
     val: &Value,
     span: &Span,
-    id: &str,
 ) -> Result<JsonNumber, TransformError> {
     let v = match val {
         Value::Number(n) => n,
@@ -332,7 +318,6 @@ pub(crate) fn get_number_from_value(
                 "number",
                 TransformError::value_desc(val),
                 span,
-                id,
             ))
         }
     };
@@ -344,7 +329,6 @@ pub(crate) fn get_number_from_value(
             TransformError::new_conversion_failed(
                 format!("Failed to convert input into number for operator {desc}"),
                 span,
-                id,
             )
         })
 }
@@ -360,7 +344,6 @@ pub(crate) fn get_string_from_value<'a>(
     desc: &str,
     val: &'a Value,
     span: &Span,
-    id: &str,
 ) -> Result<Cow<'a, String>, TransformError> {
     match val {
         Value::Null => Ok(Cow::Owned("".to_string())),
@@ -376,7 +359,6 @@ pub(crate) fn get_string_from_value<'a>(
                 "string or number",
                 TransformError::value_desc(val),
                 span,
-                id,
             ))
         }
     }
