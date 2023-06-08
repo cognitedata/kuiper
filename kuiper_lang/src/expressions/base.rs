@@ -6,7 +6,8 @@ use crate::compiler::BuildError;
 
 use super::{
     functions::{
-        filter::FilterFunction, flatmap::FlatMapFunction, map::MapFunction, zip::ZipFunction, *,
+        filter::FilterFunction, flatmap::FlatMapFunction, map::MapFunction, reduce::ReduceFunction,
+        zip::ZipFunction, *,
     },
     lambda::LambdaExpression,
     numbers::JsonNumber,
@@ -166,6 +167,7 @@ pub enum FunctionType {
     Pairs(PairsFunction),
     Map(MapFunction),
     FlatMap(FlatMapFunction),
+    Reduce(ReduceFunction),
     Filter(FilterFunction),
     Zip(ZipFunction),
     Length(LengthFunction),
@@ -197,6 +199,7 @@ pub fn get_function_expression(
         "pairs" => FunctionType::Pairs(PairsFunction::new(args, pos)?),
         "map" => FunctionType::Map(MapFunction::new(args, pos)?),
         "flatmap" => FunctionType::FlatMap(FlatMapFunction::new(args, pos)?),
+        "reduce" => FunctionType::Reduce(ReduceFunction::new(args, pos)?),
         "filter" => FunctionType::Filter(FilterFunction::new(args, pos)?),
         "zip" => FunctionType::Zip(ZipFunction::new(args, pos)?),
         "length" => FunctionType::Length(LengthFunction::new(args, pos)?),
