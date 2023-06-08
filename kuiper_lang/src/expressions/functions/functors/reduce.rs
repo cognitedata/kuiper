@@ -51,3 +51,29 @@ impl LambdaAcceptFunction for ReduceFunction {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::compile_expression;
+
+    #[test]
+    pub fn test_reduce_strings() {
+        let expr = compile_expression(r#"['a', 'b', 'c'].reduce((a, b) => concat(a, b), '')"#, &[])
+            .unwrap();
+
+        let res = expr.run([]).unwrap();
+
+        let val_arr = res.as_str().unwrap();
+        assert_eq!(val_arr, "abc");
+    }
+
+    #[test]
+    pub fn test_reduce_numbers() {
+        let expr = compile_expression(r#"[1, 2, 3, 4].reduce((a, b) => a+b, 0)"#, &[]).unwrap();
+
+        let res = expr.run([]).unwrap();
+
+        let val_arr = res.as_i64().unwrap();
+        assert_eq!(val_arr, 10);
+    }
+}
