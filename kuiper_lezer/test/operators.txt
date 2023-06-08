@@ -1,0 +1,115 @@
+# Trivial
+
+1 + 1
+
+==>
+
+Result(Expression(Operator(
+    Expression(Term(Number)),
+    Expression(Term(Number))
+)))
+
+# Simple precedence
+
+1 * 1 + 1
+
+==>
+
+Result(Expression(Operator(
+    Expression(Operator(
+        Expression(Term(Number)),
+        Expression(Term(Number))
+    )),
+    Expression(Term(Number))
+)))
+
+# Simple precedence 2
+
+1 + 1 * 1
+
+==>
+
+Result(Expression(Operator(
+    Expression(Term(Number)),
+    Expression(Operator(
+        Expression(Term(Number)),
+        Expression(Term(Number))
+    ))
+)))
+
+# Complex precedence 1
+
+1 == 2 && 2 != 3 || 1 + 1 * 3 - 5 / 3
+
+==>
+
+Result(Expression(Operator(
+    Expression(Operator(
+        Expression(Operator(
+            Expression(Term(Number)),
+            Expression(Term(Number))
+        )),
+        Expression(Operator(
+            Expression(Term(Number)),
+            Expression(Term(Number))
+        )),
+    )),
+    Expression(Operator(
+        Expression(Operator(
+            Expression(Term(Number)),
+            Expression(Operator(
+                Expression(Term(Number)),
+                Expression(Term(Number))
+            )),
+        )),
+        Expression(Operator(
+            Expression(Term(Number)),
+            Expression(Term(Number))
+        )),
+    )),
+)))
+
+# Complex precedence 2
+
+2 + !(1 + !3 - 5)
+
+==>
+
+Result(Expression(Operator(
+    Expression(Term(Number)),
+    Expression(Operator(
+        Expression(Term(
+            Expression(Operator(
+                Expression(Operator(
+                    Expression(Term(Number)),
+                    Expression(Operator(Expression(Term(Number))))
+                )),
+                Expression(Term(Number))
+            ))
+        ))
+    ))
+)))
+
+# Complex precedence 3
+
+2 + !!!3
+
+==>
+
+Result(Expression(Operator(
+    Expression(Term(Number)),
+    Expression(Operator(Expression(Operator(
+        Expression(Operator(Expression(Term(Number)))))
+    )))
+)))
+
+# Comment in expression
+
+1 /* This is the number 1 */ + /* This is the operator for adding two numbers */ 1 /* This is also the number 1 */
+
+==>
+
+Result(Expression(Operator(
+    Expression(Term(Number)),
+    Expression(Term(Number))
+)))

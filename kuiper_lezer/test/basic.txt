@@ -1,0 +1,119 @@
+# Number
+
+1
+
+==>
+
+Result(Expression(Term(Number)))
+
+# Large number
+
+1124124123
+
+==>
+
+Result(Expression(Term(Number)))
+
+# Float
+
+1.2
+
+==>
+
+Result(Expression(Term(Number)))
+
+# Exp Float
+
+1.32134e-17
+
+==>
+
+Result(Expression(Term(Number)))
+
+# Null
+
+null
+
+==>
+
+Result(Expression(Term(Null)))
+
+# True
+
+true
+
+==>
+
+Result(Expression(Term(Boolean)))
+
+# False
+
+false
+
+==>
+
+Result(Expression(Term(Boolean)))
+
+# Variable
+
+hi_imavariable
+
+==>
+
+Result(Expression(Term(Var(PlainVar))))
+
+# Variable like kw
+
+true_hi_im_avariable
+
+==>
+
+Result(Expression(Term(Var(PlainVar))))
+
+# Variable like operator
+
+is_hi_im_avariable
+
+==>
+
+Result(Expression(Term(Var(PlainVar))))
+
+# String
+
+"test"
+
+==>
+
+Result(Expression(Term(String)))
+
+# Flexible var
+
+`var with spaces and \` escapes and shit`
+
+==>
+
+Result(Expression(Term(Var)))
+
+# Fancy string
+
+"test with \n \" neat escapes \\"
+
+==>
+
+Result(Expression(Term(String)))
+
+# Single quote string
+
+'test with \n \" neat escapes \\'
+
+==>
+
+Result(Expression(Term(String)))
+
+# Block comment
+
+'test /* not a comment' /**/ /* This is a comment */
+
+==>
+
+Result(Expression(Term(String)))
