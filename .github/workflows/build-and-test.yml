@@ -36,3 +36,19 @@ jobs:
       - name: Build Python bindings
         run: maturin build
         working-directory: ./kuiper_python
+
+  build_codemirror_module:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set Node.js 18.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+
+      - name: Run install
+        working-directory: ./kuiper_lezer
+        run: yarn install
+      - name: Run test
+        working-directory: ./kuiper_lezer
+        run: yarn prepare && yarn test
