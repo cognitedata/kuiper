@@ -7,7 +7,7 @@ export const kuiperLanguage = LRLanguage.define({
     parser: parser.configure({
         props: [styleTags({
             'Integer Float UInteger': tags.number,
-            'Var': tags.variableName,
+            'Var PlainVar': tags.variableName,
             'String': tags.string,
             'Null': tags.null,
             '"{" "}"': tags.brace,
