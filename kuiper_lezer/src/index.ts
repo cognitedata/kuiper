@@ -1,4 +1,4 @@
-import { LRLanguage, LanguageSupport, bracketMatching } from "@codemirror/language";
+import { LRLanguage, LanguageSupport, bracketMatching, delimitedIndent, foldInside, foldNodeProp, indentNodeProp } from "@codemirror/language";
 import {parser} from "./kuiper.grammar"
 import {styleTags, tags} from "@lezer/highlight"
 import {Completion, completeFromList} from "@codemirror/autocomplete";
@@ -6,16 +6,22 @@ import {Completion, completeFromList} from "@codemirror/autocomplete";
 export const kuiperLanguage = LRLanguage.define({
     parser: parser.configure({
         props: [styleTags({
-            'Integer Float UInteger': tags.number,
+            'Number': tags.number,
             'Var PlainVar': tags.variableName,
             'String': tags.string,
             'Null': tags.null,
-            '"{" "}"': tags.brace,
-            '"[" "]"': tags.bracket,
-            '"(" ")"': tags.paren,
-            '"." ":" ","': tags.punctuation,
+            '{ }': tags.brace,
+            '[ ]': tags.bracket,
+            '( )': tags.paren,
+            '. : ,': tags.punctuation,
             '"||" "&&" "==" "!=" ">" "<" ">=" "is" "+" "-" "*" "/" "%" "!" "=>"': tags.operator,
             "BlockComment": tags.blockComment
+        }), indentNodeProp.add({
+            Object: delimitedIndent({ closing: "}" }),
+            Array: delimitedIndent({ closing: "]" })
+        }), foldNodeProp.add({
+            "Object Array": foldInside,
+            blockComment(tree) { return { from: tree.from + 2, to: tree.to - 2 } }
         })]
     }),
     languageData: {
