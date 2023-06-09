@@ -14,12 +14,12 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ReduceFunction {
 
         match source.as_ref() {
             Value::Array(xs) => {
-                let mut value = self.args[2].resolve(state)?.clone();
+                let mut value = self.args[2].resolve(state)?.into_owned();
                 for x in xs {
-                    let res = self.args[1].call(state, &[value.as_ref(), x])?;
-                    value = res.clone();
+                    let res = self.args[1].call(state, &[&value, x])?;
+                    value = res.into_owned();
                 }
-                Ok(value)
+                Ok(ResolveResult::Owned(value))
             }
 
             non_array => Err(TransformError::new_incorrect_type(
