@@ -32,7 +32,7 @@ jobs:
         with:
           python-version: "3.10"
       - name: Install dev deps
-        run: pip install maturin pre-commit
+        run: pip install maturin pre-commit tomllib
       - name: Check style
         run: pre-commit run --all
       - name: Build Python bindings
