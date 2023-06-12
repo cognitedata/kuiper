@@ -20,7 +20,7 @@ jobs:
       - name: Test
         run: cargo test
 
-  name: Publish
+  publish_python_bindings:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
