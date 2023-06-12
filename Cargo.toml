@@ -5,5 +5,4 @@ members = [
     "kuiper_cli",
     "kuiper_python"
 ]
-workspace-exclude = ["playground"]
 resolver = "2"
