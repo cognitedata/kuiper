@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 import sys
-import tomllib
+import toml
 from pathlib import Path
 from typing import Any
 
@@ -26,8 +26,8 @@ def main() -> None:
     versions = set()
 
     for file in FILES:
-        with open(file, "rb") as f:
-            version = FILES[file](tomllib.load(f))
+        with open(file, "r") as f:
+            version = FILES[file](toml.load(f))
             print(f"{file}: {version}")
             versions.add(version)
 
