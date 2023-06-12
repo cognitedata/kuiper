@@ -2,7 +2,7 @@ use logos::Span;
 use serde_json::Value;
 use std::{borrow::Cow, fmt::Display};
 
-use crate::compiler::BuildError;
+use crate::{compiler::BuildError, NULL_CONST};
 
 use super::{
     functions::{
@@ -53,12 +53,20 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
         num_values: usize,
     ) -> InternalExpressionExecutionState<'data> {
         let mut data = Vec::with_capacity(self.data.len() + num_values);
-        for elem in self.data {
+        for elem in self.data.iter() {
             data.push(*elem);
         }
-        for elem in extra_values {
+        let mut pushed = 0;
+        for elem in extra_values.take(num_values) {
             data.push(elem);
+            pushed += 1;
         }
+        if pushed < num_values {
+            for _ in pushed..num_values {
+                data.push(&NULL_CONST);
+            }
+        }
+
         InternalExpressionExecutionState {
             data,
             base_length: self.data.len(),
