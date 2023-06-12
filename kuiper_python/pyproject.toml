@@ -29,6 +29,11 @@ test = [
 homepage = "cognite.com"
 repository = "github.com/cognitedata/kuiper"
 
+[tool.black]
+line-length = 120
+target_version = ['py310']
+include = '\.pyi?$'
+
 [build-system]
 requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"

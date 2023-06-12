@@ -48,4 +48,3 @@ maturin develop
 
 This will build and install the python package into the current environment,
 which is the virtual environment created by the `enter.sh` script.
-
