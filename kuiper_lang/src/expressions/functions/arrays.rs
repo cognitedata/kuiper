@@ -105,7 +105,7 @@ mod tests {
             r#"{
             "v1": [1, 2, 3, 4].length(),
             "v2": "test test".length(),
-            "v3": { "t": "t2", "t1": "t3" }.length()   
+            "v3": { "t": "t2", "t1": "t3" }.length()
         }"#,
             &[],
         )
