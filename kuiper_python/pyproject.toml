@@ -1,5 +1,5 @@
 [project]
-name = "kuiper"
+name = "cognite-kuiper"
 version = "0.1.0"
 description = "A JSON to JSON transform and templating language from Cognite"
 readme = "README.md"
