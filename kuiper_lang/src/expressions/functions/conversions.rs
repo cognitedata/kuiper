@@ -14,7 +14,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryFloatFunction {
             .to_string()
             .trim_matches('"')
             .trim()
-            .to_string()
+            .replace(',', ".")
             .parse::<f64>()
         {
             Ok(value) => Ok(ResolveResult::Owned(Value::from(value))),
@@ -82,6 +82,7 @@ mod tests {
             "test6": try_float("not a float", 6.3),
             "test7": try_float("   4.2  ", 6.3),
             "test8": try_float("not a float", "also not a float"),
+            "test9": try_float("5,2", "9"),
         }"#,
             &["input"],
         )
@@ -102,6 +103,7 @@ mod tests {
             "also not a float",
             result.get("test8").unwrap().as_str().unwrap()
         );
+        assert_eq!(5.2, result.get("test9").unwrap().as_f64().unwrap());
     }
 
     #[test]
