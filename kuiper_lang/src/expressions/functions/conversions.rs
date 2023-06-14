@@ -13,7 +13,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryFloatFunction {
             .resolve(state)?
             .to_string()
             .trim_matches('"')
-            .trim()
+            .replace(' ', "")
             .replace(',', ".")
             .parse::<f64>()
         {
@@ -83,6 +83,7 @@ mod tests {
             "test7": try_float("   4.2  ", 6.3),
             "test8": try_float("not a float", "also not a float"),
             "test9": try_float("5,2", "9"),
+            "test10": try_float("1 234,56", "9"),
         }"#,
             &["input"],
         )
@@ -104,6 +105,7 @@ mod tests {
             result.get("test8").unwrap().as_str().unwrap()
         );
         assert_eq!(5.2, result.get("test9").unwrap().as_f64().unwrap());
+        assert_eq!(1234.56, result.get("test10").unwrap().as_f64().unwrap());
     }
 
     #[test]
