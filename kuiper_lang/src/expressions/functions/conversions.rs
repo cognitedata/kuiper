@@ -13,8 +13,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryFloatFunction {
             .resolve(state)?
             .to_string()
             .trim_matches('"')
-            .replace(' ', "")
-            .replace('_', "")
+            .replace([' ', '_'], "")
             .replace(',', ".")
             .parse::<f64>()
         {
