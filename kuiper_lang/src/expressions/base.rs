@@ -7,7 +7,7 @@ use crate::{compiler::BuildError, NULL_CONST};
 use super::{
     functions::{
         filter::FilterFunction, flatmap::FlatMapFunction, map::MapFunction, reduce::ReduceFunction,
-        zip::ZipFunction, *,
+        zip::ZipFunction, *, join_object::JoinObjectFunction,
     },
     lambda::LambdaExpression,
     numbers::JsonNumber,
@@ -181,6 +181,7 @@ pub enum FunctionType {
     Length(LengthFunction),
     Chunk(ChunkFunction),
     Now(NowFunction),
+    Join(JoinObjectFunction)
 }
 
 /// Create a function expression from its name, or return a parser exception if it has the wrong number of arguments,
@@ -213,6 +214,7 @@ pub fn get_function_expression(
         "length" => FunctionType::Length(LengthFunction::new(args, pos)?),
         "chunk" => FunctionType::Chunk(ChunkFunction::new(args, pos)?),
         "now" => FunctionType::Now(NowFunction::new(args, pos)?),
+        "join" => FunctionType::Join(JoinObjectFunction::new(args, pos)?),
         _ => return Err(BuildError::unrecognized_function(pos, name)),
     };
     Ok(ExpressionType::Function(expr))
