@@ -214,7 +214,7 @@ pub fn get_function_expression(
         "length" => FunctionType::Length(LengthFunction::new(args, pos)?),
         "chunk" => FunctionType::Chunk(ChunkFunction::new(args, pos)?),
         "now" => FunctionType::Now(NowFunction::new(args, pos)?),
-        "join" => FunctionType::Join(JoinObjectFunction::new(args, pos)?),
+        "join_object" => FunctionType::Join(JoinObjectFunction::new(args, pos)?),
         _ => return Err(BuildError::unrecognized_function(pos, name)),
     };
     Ok(ExpressionType::Function(expr))

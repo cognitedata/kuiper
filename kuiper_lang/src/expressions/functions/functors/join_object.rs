@@ -69,7 +69,7 @@ mod tests {
 
     #[test]
     fn test_join_object() {
-        let expr = compile_expression(r#"join({'a': 1}, {'b': 2})"#, &[]).unwrap();
+        let expr = compile_expression(r#"join_object({'a': 1}, {'b': 2})"#, &[]).unwrap();
 
         let res = expr.run([]).unwrap();
 
@@ -82,7 +82,7 @@ mod tests {
 
     #[test]
     fn test_join_object_overwrites() {
-        let expr = compile_expression(r#"join({'a':1}, {'a': 2})"#, &[]).unwrap();
+        let expr = compile_expression(r#"join_object({'a':1}, {'a': 2})"#, &[]).unwrap();
 
         let res = expr.run([]).unwrap();
 
@@ -93,7 +93,7 @@ mod tests {
 
     #[test]
     fn test_join_object_fails_for_other_types() {
-        match compile_expression(r#"join({'a':1}, [1,2,3])"#, &[]) {
+        match compile_expression(r#"join_object({'a':1}, [1,2,3])"#, &[]) {
             Ok(_) => assert!(false, "Should not be able to resolve"),
             Err(_) => assert!(true),
         }
