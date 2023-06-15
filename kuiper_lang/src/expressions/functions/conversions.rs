@@ -14,6 +14,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryFloatFunction {
             .to_string()
             .trim_matches('"')
             .replace(' ', "")
+            .replace('_', "")
             .replace(',', ".")
             .parse::<f64>()
         {
@@ -84,6 +85,7 @@ mod tests {
             "test8": try_float("not a float", "also not a float"),
             "test9": try_float("5,2", "9"),
             "test10": try_float("1 234,56", "9"),
+            "test11": try_float("1_000", "6"),
         }"#,
             &["input"],
         )
@@ -106,6 +108,7 @@ mod tests {
         );
         assert_eq!(5.2, result.get("test9").unwrap().as_f64().unwrap());
         assert_eq!(1234.56, result.get("test10").unwrap().as_f64().unwrap());
+        assert_eq!(1000.0, result.get("test11").unwrap().as_f64().unwrap());
     }
 
     #[test]
