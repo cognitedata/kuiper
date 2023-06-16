@@ -31,15 +31,24 @@ unsafe fn compile_expression_internal(
     len: usize,
 ) -> Result<ExpressionType, InteropError> {
     let data = unsafe { CStr::from_ptr(data) };
-    let inputs_raw = unsafe { &*slice_from_raw_parts(inputs, len) };
-    let inputs: Vec<_> = inputs_raw
-        .into_iter()
-        .map(|i| CStr::from_ptr(*i).to_str())
-        .collect::<Result<Vec<_>, _>>()?;
+    let inputs = if len > 0 {
+        let inputs_raw = unsafe { &*slice_from_raw_parts(inputs, len) };
+        inputs_raw
+            .iter()
+            .map(|i| CStr::from_ptr(*i).to_str())
+            .collect::<Result<Vec<_>, _>>()?
+    } else {
+        Vec::new()
+    };
 
     Ok(kuiper_lang::compile_expression(data.to_str()?, &inputs)?)
 }
 
+/// Destroy a compile result. Called from external code to correctly free rust allocated memory.
+///
+/// # Safety
+///
+/// `data` must be a valid, non-null rust pointer to a `CompileResult`, typically produced by `compile_expression`
 #[no_mangle]
 pub unsafe extern "C" fn destroy_compile_result(data: *mut CompileResult) {
     let data = unsafe { Box::from_raw(data) };
@@ -51,11 +60,24 @@ pub unsafe extern "C" fn destroy_compile_result(data: *mut CompileResult) {
     }
 }
 
+/// Destroy an expression type
+///
+/// # Safety
+///
+/// `data` must be a valid, non-null rust pointer to an `ExpressionType`, typically produced by
+/// `compile_expression` and `get_expression_from_compile_result`.
 #[no_mangle]
 pub unsafe extern "C" fn destroy_expression(data: *mut ExpressionType) {
     unsafe { Box::from_raw(data) };
 }
 
+/// Destroy a `CompileResult` and return the `ExpressionType` it contains.
+/// This does not check whether `result` is null and may return a null pointer.
+///
+/// # Safety
+///
+/// `data` must be a valid rust pointer to a `CompileResult`, typically produced by
+/// `compile_expression`.
 #[no_mangle]
 pub unsafe extern "C" fn get_expression_from_compile_result(
     data: *mut CompileResult,
@@ -67,6 +89,14 @@ pub unsafe extern "C" fn get_expression_from_compile_result(
     data.result
 }
 
+/// Compile a kuiper expression from a string and a list of inputs.
+///
+/// Returns a result struct in which exactly one of `error` or `result` is non-null.
+///
+/// # Safety
+///
+/// `data` must be a valid, utf8-encoded, null terminated string. `inputs` must be an array of such strings
+/// with length `len`. If `len` is 0, `inputs` may be null.
 #[no_mangle]
 pub unsafe extern "C" fn compile_expression(
     data: *mut c_char,
@@ -96,11 +126,16 @@ unsafe fn run_expression_internal(
     len: usize,
     expression: *mut ExpressionType,
 ) -> Result<String, InteropError> {
-    let data_raw = unsafe { &*slice_from_raw_parts(data, len) };
-    let data: Vec<_> = data_raw
-        .into_iter()
-        .map(|i| CStr::from_ptr(*i).to_str())
-        .collect::<Result<Vec<_>, _>>()?;
+    let data = if len > 0 {
+        let data_raw = unsafe { &*slice_from_raw_parts(data, len) };
+        data_raw
+            .iter()
+            .map(|i| CStr::from_ptr(*i).to_str())
+            .collect::<Result<Vec<_>, _>>()?
+    } else {
+        Vec::new()
+    };
+
     unsafe {
         let data_json = data
             .into_iter()
@@ -111,6 +146,12 @@ unsafe fn run_expression_internal(
     }
 }
 
+/// Destroy a transform result, this is called from external code to safely dispose of results
+/// allocated by `run_expression` after the result has been extracted.
+///
+/// # Safety
+///
+/// `data` must be a valid, non-null pointer to a TransformResult, typically obtained from `run_expression`.
 #[no_mangle]
 pub unsafe extern "C" fn destroy_transform_result(data: *mut TransformResult) {
     let data = unsafe { Box::from_raw(data) };
@@ -122,6 +163,17 @@ pub unsafe extern "C" fn destroy_transform_result(data: *mut TransformResult) {
     }
 }
 
+/// Run a kuiper expression with a list of inputs.
+///
+/// Returns a result struct in which exactly one of `error` or `result` is non-null.
+///
+/// # Safety
+///
+/// `data` must be an array of valid, utf8-encoded, null-terminated strings
+/// with length `len`. If `len` is 0, `data` may be null.
+///
+/// `expression` must be a valid pointer to an `ExpressionType`, typically obtained from
+/// `compile_expression` and `get_expression_from_compile_result`
 #[no_mangle]
 pub unsafe extern "C" fn run_expression(
     data: *mut *mut c_char,
