@@ -3,10 +3,11 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Cognite.Kuiper {
+namespace Cognite.Kuiper
+{
     public class KuiperException : Exception
     {
-        public KuiperException(string message) : base(message) {}
+        public KuiperException(string message) : base(message) { }
     }
 
     internal struct CompileResult
@@ -50,14 +51,15 @@ namespace Cognite.Kuiper {
         public KuiperExpression(string expression, string[] inputs)
         {
             unsafe
-            { 
+            {
                 var rawExpression = Encoding.UTF8.GetBytes(expression + char.MinValue);
                 var rawInputs = inputs.Select(inp => Encoding.UTF8.GetBytes(inp + char.MinValue)).ToArray();
-                
+
                 GCHandle[] pinnedInputs = new GCHandle[rawInputs.Length];
                 byte*[] inputPtrs = new byte*[rawInputs.Length];
 
-                for (int i = 0; i < rawInputs.Length; i++) {
+                for (int i = 0; i < rawInputs.Length; i++)
+                {
                     pinnedInputs[i] = GCHandle.Alloc(rawInputs[i], GCHandleType.Pinned);
                     inputPtrs[i] = (byte*)pinnedInputs[i].AddrOfPinnedObject();
                 }
@@ -66,7 +68,7 @@ namespace Cognite.Kuiper {
                 var expressionPtr = (byte*)pinnedExpression.AddrOfPinnedObject();
 
                 KuiperException exc = null;
-                fixed(byte** inputsToRust = &inputPtrs[0])
+                fixed (byte** inputsToRust = &inputPtrs[0])
                 {
                     var result = KuiperInterop.compile_expression(expressionPtr, inputsToRust, (nuint)rawInputs.Length);
                     if (((IntPtr)(*result).error) != IntPtr.Zero)
@@ -92,20 +94,22 @@ namespace Cognite.Kuiper {
 
         public string Run(string[] inputs)
         {
-            unsafe {
+            unsafe
+            {
                 var rawInputs = inputs.Select(inp => Encoding.UTF8.GetBytes(inp + char.MinValue)).ToArray();
-                
+
                 GCHandle[] pinnedInputs = new GCHandle[rawInputs.Length];
                 byte*[] inputPtrs = new byte*[rawInputs.Length];
 
-                for (int i = 0; i < rawInputs.Length; i++) {
+                for (int i = 0; i < rawInputs.Length; i++)
+                {
                     pinnedInputs[i] = GCHandle.Alloc(rawInputs[i], GCHandleType.Pinned);
                     inputPtrs[i] = (byte*)pinnedInputs[i].AddrOfPinnedObject();
                 }
 
                 KuiperException exc = null;
                 string transformedData = null;
-                fixed(byte** inputsToRust = &inputPtrs[0])
+                fixed (byte** inputsToRust = &inputPtrs[0])
                 {
                     var result = KuiperInterop.run_expression(inputsToRust, (nuint)rawInputs.Length, _expression);
                     if (((IntPtr)(*result).error) != IntPtr.Zero)
@@ -135,7 +139,8 @@ namespace Cognite.Kuiper {
         {
             if (!disposedValue)
             {
-                if (_expression != IntPtr.Zero) {
+                if (_expression != IntPtr.Zero)
+                {
                     KuiperInterop.destroy_expression(_expression);
                     _expression = IntPtr.Zero;
                 }
