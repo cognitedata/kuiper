@@ -8,3 +8,7 @@
 
 .idea
 **/.env
+
+# .NET files
+**/bin
+**/obj

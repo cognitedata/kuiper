@@ -730,6 +730,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "kuiper_interop"
+version = "0.1.0"
+dependencies = [
+ "kuiper_lang",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "kuiper_lang"
 version = "0.1.0"
 dependencies = [
