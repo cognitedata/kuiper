@@ -1,5 +1,5 @@
 [project]
-name = "kuiper"
+name = "cognite-kuiper"
 version = "0.1.0"
 description = "A JSON to JSON transform and templating language from Cognite"
 readme = "README.md"
@@ -28,6 +28,11 @@ test = [
 [project.urls]
 homepage = "cognite.com"
 repository = "github.com/cognitedata/kuiper"
+
+[tool.black]
+line-length = 120
+target_version = ['py310']
+include = '\.pyi?$'
 
 [build-system]
 requires = ["maturin>=1.0,<2.0"]

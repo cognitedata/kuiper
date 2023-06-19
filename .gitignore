@@ -8,8 +8,15 @@
 
 .idea
 **/.env
+<<<<<<< HEAD
 .vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json
 !.vscode/launch.json
 !.vscode/tasks.json
+=======
+
+# .NET files
+**/bin
+**/obj
+>>>>>>> origin/main

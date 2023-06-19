@@ -1,7 +1,7 @@
-name: Build and test library
+name: Release
 
 on:
-  pull_request:
+  push:
     branches: [main]
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
       - name: Test
         run: cargo test
 
-  build_python_bindings:
+  publish_python_bindings:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -31,10 +31,12 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
-      - name: Install dev deps
-        run: pip install maturin pre-commit toml
-      - name: Check style
-        run: pre-commit run --all
-      - name: Build Python bindings
-        run: maturin build
+      - name: Install maturin
+        run: pip install maturin
+      - name: Publish artifact
+        env:
+          MATURIN_USERNAME: ${{ secrets.ARTIFACTORY_PUBLISH_TOKEN_USER }}
+          MATURIN_PASSWORD: ${{ secrets.ARTIFACTORY_PUBLISH_TOKEN }}
+          MATURIN_REPOSITORY_URL: https://cognite.jfrog.io/cognite/api/pypi/snakepit
+        run: maturin publish --skip-existing
         working-directory: ./kuiper_python

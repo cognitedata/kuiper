@@ -1,13 +1,97 @@
 use kuiper_lang::compile_expression;
+use rustyline::completion::Completer;
 use rustyline::error::ReadlineError;
-use rustyline::DefaultEditor;
+use rustyline::{CompletionType, Config, Context, Editor, Helper};
+use rustyline::{Highlighter, Hinter, Validator};
+
+#[derive(Hinter, Highlighter, Validator, Helper)]
+struct KuiperHelper {}
+
+impl KuiperHelper {
+    pub fn new() -> Self {
+        KuiperHelper {}
+    }
+}
+
+fn is_separator(c: Option<char>) -> bool {
+    match c {
+        None | Some(',') | Some(' ') | Some(':') | Some('\n') | Some(')') | Some('(')
+        | Some('"') => true,
+        Some(_) => false,
+    }
+}
+
+impl Completer for KuiperHelper {
+    type Candidate = String;
+
+    fn complete(
+        &self,
+        line: &str,
+        pos: usize,
+        _ctx: &Context<'_>,
+    ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
+        let (mut low, mut high) = (pos.saturating_sub(1), pos);
+
+        while !is_separator(line.chars().nth(low)) && low > 0 {
+            low -= 1;
+        }
+        if low != 0 {
+            low += 1;
+        }
+        while !is_separator(line.chars().nth(high)) {
+            high += 1;
+        }
+
+        let word: String = line.chars().skip(low).take(high - low).collect();
+        let candidates: Vec<String> = vec![
+            "pow(",
+            "log(",
+            "atan2(",
+            "floor(",
+            "ceil(",
+            "round(",
+            "concat(",
+            "string(",
+            "int(",
+            "float(",
+            "try_float(",
+            "try_int(",
+            "try_bool(",
+            "if(",
+            "to_unix_timestamp(",
+            "case(",
+            "pairs(",
+            "map(",
+            "flatmap(",
+            "reduce(",
+            "filter(",
+            "zip(",
+            "length(",
+            "chunk(",
+            "now(",
+            "input",
+        ]
+        .into_iter()
+        .filter(|s| s.starts_with(&word))
+        .map(|s| s.to_string())
+        .collect();
+
+        Ok((low, candidates))
+    }
+}
 
 pub fn repl() {
     let mut data = Vec::new();
     let mut index = 0usize;
     let mut inputs = Vec::<String>::new();
 
-    let mut readlines = DefaultEditor::new().unwrap();
+    let editor_config = Config::builder()
+        .completion_type(CompletionType::List)
+        .build();
+
+    let mut readlines = Editor::with_config(editor_config).unwrap();
+    readlines.set_helper(Some(KuiperHelper::new()));
+
     let mut history_path = dirs::home_dir().unwrap();
     history_path.push(".kuiper_history");
 
