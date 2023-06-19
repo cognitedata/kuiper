@@ -1,4 +1,4 @@
-use serde_json::{Value, Map};
+use serde_json::{Map, Value};
 
 use crate::{
     expressions::{
@@ -135,4 +135,3 @@ mod tests {
         }
     }
 }
-
