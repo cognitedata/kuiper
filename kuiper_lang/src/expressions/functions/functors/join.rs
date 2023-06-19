@@ -5,9 +5,9 @@ use crate::{
     BuildError, TransformError,
 };
 
-function_def!(JoinObjectFunction, "flatmap", 2, lambda);
+function_def!(JoinFunction, "join", 2, lambda);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for JoinObjectFunction {
+impl<'a: 'c, 'c> Expression<'a, 'c> for JoinFunction {
     fn resolve(
         &'a self,
         state: &crate::expressions::ExpressionExecutionState<'c, '_>,
@@ -35,7 +35,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for JoinObjectFunction {
             }
             x => Err(TransformError::new_incorrect_type(
                 "Incorrect input to join",
-                "array",
+                "object",
                 TransformError::value_desc(x),
                 &self.span,
             )),
@@ -43,7 +43,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for JoinObjectFunction {
     }
 }
 
-impl LambdaAcceptFunction for JoinObjectFunction {
+impl LambdaAcceptFunction for JoinFunction {
     fn validate_lambda(
         idx: usize,
         lambda: &crate::expressions::LambdaExpression,
@@ -68,8 +68,8 @@ mod tests {
     use crate::compile_expression;
 
     #[test]
-    fn test_join_object() {
-        let expr = compile_expression(r#"join_object({'a': 1}, {'b': 2})"#, &[]).unwrap();
+    fn test_join() {
+        let expr = compile_expression(r#"join({'a': 1}, {'b': 2})"#, &[]).unwrap();
 
         let res = expr.run([]).unwrap();
 
@@ -81,8 +81,8 @@ mod tests {
     }
 
     #[test]
-    fn test_join_object_overwrites() {
-        let expr = compile_expression(r#"join_object({'a':1}, {'a': 2})"#, &[]).unwrap();
+    fn test_join_overwrites() {
+        let expr = compile_expression(r#"join({'a':1}, {'a': 2})"#, &[]).unwrap();
 
         let res = expr.run([]).unwrap();
 
@@ -92,8 +92,8 @@ mod tests {
     }
 
     #[test]
-    fn test_join_object_fails_for_other_types() {
-        match compile_expression(r#"join_object({'a':1}, [1,2,3])"#, &[]) {
+    fn test_join_fails_for_other_types() {
+        match compile_expression(r#"join({'a':1}, [1,2,3])"#, &[]) {
             Ok(_) => assert!(false, "Should not be able to resolve"),
             Err(_) => assert!(true),
         }
