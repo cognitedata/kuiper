@@ -16,7 +16,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for JoinFunction {
 
         match source.as_ref() {
             Value::Object(x) => {
-                let res_inner = self.args[1].call(state, &[source.as_ref()])?.to_owned();
+                let res_inner = self.args[1].call(state, &[])?;
                 let mut x = x.to_owned();
                 match res_inner.as_ref() {
                     Value::Object(inner) => {

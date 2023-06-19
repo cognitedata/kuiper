@@ -50,9 +50,9 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SelectFunction {
                     None => {
                         for (k, v) in x {
                             let should_add = get_boolean_from_value(
-                                &self.args[1]
+                                self.args[1]
                                     .call(state, &[v, &Value::String(k.to_owned())])?
-                                    .into_owned(),
+                                    .as_ref(),
                             );
                             if should_add {
                                 output.insert(k.to_owned(), v.to_owned());

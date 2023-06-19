@@ -47,9 +47,9 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ExceptFunction {
                     None => {
                         for (k, v) in x {
                             let should_remove = get_boolean_from_value(
-                                &self.args[1]
+                                self.args[1]
                                     .call(state, &[v, &Value::String(k.to_owned())])?
-                                    .into_owned(),
+                                    .as_ref(),
                             );
                             if should_remove {
                                 output.remove(&k.to_owned());
