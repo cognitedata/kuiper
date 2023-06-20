@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "kuiperlang"
 version = "1.0.0"
-authors = ["Einar Marstrander Omang <einar.omang@cognite.com>"]
+authors = ["Mathias Lohne <mathias.lohne@cognite.com>"]
 description = "Python binding to kuiper rust"
 
 [project]

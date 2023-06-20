@@ -18,7 +18,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for JoinFunction {
             Value::Object(x) => {
                 let res_inner = self.args[1].call(state, &[])?;
                 let mut x = x.to_owned();
-                match res_inner.as_ref() {
+                match res_inner.into_owned() {
                     Value::Object(inner) => {
                         for (key, val) in inner {
                             x.insert(key.to_owned(), val.to_owned());
@@ -28,7 +28,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for JoinFunction {
                     x => Err(TransformError::new_incorrect_type(
                         "Incorrect type provided for join",
                         "object",
-                        TransformError::value_desc(x),
+                        TransformError::value_desc(&x),
                         &self.span,
                     )),
                 }

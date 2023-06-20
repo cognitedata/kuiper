@@ -14,15 +14,16 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ExceptFunction {
         &'a self,
         state: &crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
-        let source = self.args[0].resolve(state)?;
-        match source.as_ref() {
+        let mut source = self.args[0].resolve(state)?;
+        let source = source.to_mut().to_owned();
+        match source {
             Value::Object(x) => {
                 let mut output = x.to_owned();
                 match &*self.args[1] {
                     crate::ExpressionType::Lambda(expr) => {
                         for (k, v) in x {
                             let should_remove = get_boolean_from_value(
-                                expr.call(state, &[v, &Value::String(k.to_owned())])?
+                                expr.call(state, &[&v, &Value::String(k.to_owned())])?
                                     .as_ref(),
                             );
                             if should_remove {
@@ -62,9 +63,9 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ExceptFunction {
                 }
             }
             x => Err(TransformError::new_incorrect_type(
-                "Incorrect input passed as first argument to except",
+                "except takes a function with 1 or 2 arguments",
                 "object",
-                TransformError::value_desc(x),
+                TransformError::value_desc(&x),
                 &self.span,
             )),
         }

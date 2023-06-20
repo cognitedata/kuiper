@@ -44,7 +44,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SelectFunction {
                                         x => Err(TransformError::new_incorrect_type(
                                             "Filter values should be of type string",
                                             "string",
-                                            TransformError::value_desc(&x),
+                                            TransformError::value_desc(x),
                                             &self.span,
                                         )),
                                     }?;
@@ -87,7 +87,7 @@ impl LambdaAcceptFunction for SelectFunction {
         if nargs > 2 {
             return Err(BuildError::n_function_args(
                 lambda.span.clone(),
-                "except takes a function with a maximum of 2 argument",
+                "select takes a function with 1 or 2 arguments",
             ));
         }
         Ok(())
