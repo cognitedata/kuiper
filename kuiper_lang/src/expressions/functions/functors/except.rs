@@ -63,7 +63,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ExceptFunction {
                 }
             }
             x => Err(TransformError::new_incorrect_type(
-                "except takes a function with 1 or 2 arguments",
+                "The first argument to except should be an object",
                 "object",
                 TransformError::value_desc(&x),
                 &self.span,
