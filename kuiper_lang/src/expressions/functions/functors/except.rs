@@ -38,7 +38,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ExceptFunction {
                             Value::Array(arr) => {
                                 for f in arr {
                                     match f {
-                                        Value::String(s) => match output.remove(&s.to_owned()) {
+                                        Value::String(s) => match output.remove(s) {
                                             Some(_) => Ok(()),
                                             None => Ok(()),
                                         },

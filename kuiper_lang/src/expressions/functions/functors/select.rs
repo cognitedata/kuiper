@@ -37,7 +37,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SelectFunction {
                             Value::Array(arr) => {
                                 for f in arr {
                                     let (should_add, k, v) = match f {
-                                        Value::String(k) => match x.get(&k.to_owned()) {
+                                        Value::String(k) => match x.get(k) {
                                             Some(val) => Ok((true, k, val)),
                                             None => Ok((false, k, &Value::Null)),
                                         },
