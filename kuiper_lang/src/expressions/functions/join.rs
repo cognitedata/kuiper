@@ -17,7 +17,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for JoinFunction {
         match source.as_ref() {
             Value::Object(x) => {
                 let mut res = x.to_owned();
-                // self.args.iter().fold(res, |acc, arg| {})
                 for arg in self.args.iter() {
                     let res_inner = arg.resolve(state)?;
                     let mut value = match res_inner.into_owned() {
