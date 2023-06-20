@@ -15,41 +15,41 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SelectFunction {
         state: &crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let source = self.args[0].resolve(state)?;
-        match source.as_ref() {
+        match source.into_owned() {
             Value::Object(x) => {
                 let mut output = Map::new();
                 match &*self.args[1] {
                     crate::ExpressionType::Lambda(expr) => {
                         for (k, v) in x {
                             let should_add = get_boolean_from_value(
-                                expr.call(state, &[v, &Value::String(k.to_owned())])?
+                                expr.call(state, &[&v, &Value::String(k.to_owned())])?
                                     .as_ref(),
                             );
                             if should_add {
-                                output.insert(k.to_owned(), v.to_owned());
+                                output.insert(k, v);
                             }
                         }
                         Ok(ResolveResult::Owned(Value::Object(output)))
                     }
                     expr => {
                         let res = expr.resolve(state)?;
-                        match res.as_ref() {
+                        match res.into_owned() {
                             Value::Array(arr) => {
                                 for f in arr {
                                     let (should_add, k, v) = match f {
-                                        Value::String(k) => match x.get(k) {
-                                            Some(val) => Ok((true, k, val)),
-                                            None => Ok((false, k, &Value::Null)),
+                                        Value::String(k) => match x.get(&k) {
+                                            Some(val) => Ok((true, k, val.to_owned())),
+                                            None => Ok((false, k, Value::Null)),
                                         },
                                         x => Err(TransformError::new_incorrect_type(
                                             "Filter values should be of type string",
                                             "string",
-                                            TransformError::value_desc(x),
+                                            TransformError::value_desc(&x),
                                             &self.span,
                                         )),
                                     }?;
                                     if should_add {
-                                        output.insert(k.to_owned(), v.to_owned());
+                                        output.insert(k, v);
                                     }
                                 }
                                 Ok(ResolveResult::Owned(Value::Object(output)))
@@ -57,7 +57,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SelectFunction {
                             x => Err(TransformError::new_incorrect_type(
                                 "Incorrect input passed as second argument to except",
                                 "array, lambda",
-                                TransformError::value_desc(x),
+                                TransformError::value_desc(&x),
                                 &self.span,
                             )),
                         }
@@ -67,7 +67,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SelectFunction {
             x => Err(TransformError::new_incorrect_type(
                 "Incorrect input passed as first argument to except",
                 "object",
-                TransformError::value_desc(x),
+                TransformError::value_desc(&x),
                 &self.span,
             )),
         }
@@ -84,7 +84,7 @@ impl LambdaAcceptFunction for SelectFunction {
             return Err(BuildError::unexpected_lambda(&lambda.span));
         }
         let nargs = lambda.input_names.len();
-        if nargs > 2 {
+        if !(1..=2).contains(&nargs) {
             return Err(BuildError::n_function_args(
                 lambda.span.clone(),
                 "select takes a function with 1 or 2 arguments",
@@ -96,7 +96,9 @@ impl LambdaAcceptFunction for SelectFunction {
 
 #[cfg(test)]
 mod tests {
-    use crate::compile_expression;
+    use logos::Span;
+
+    use crate::{compile_expression, CompileError, TransformError};
 
     #[test]
     fn test_select() {
@@ -133,7 +135,19 @@ mod tests {
     fn test_select_fails_for_other_types() {
         match compile_expression(r#"select({'a':1}, ['a',2,3])"#, &[]) {
             Ok(_) => assert!(false, "Should not be able to resolve"),
-            Err(_) => assert!(true),
+            Err(err) => {
+                match err {
+                    CompileError::Optimizer(TransformError::IncorrectTypeInField(t_err)) => {
+                        assert_eq!(
+                            t_err.desc,
+                            "Filter values should be of type string. Got number, expected string"
+                        );
+                        assert_eq!(t_err.span, Span { start: 0, end: 26 })
+                    }
+                    _ => assert!(false, "Should be an optimizer error"),
+                }
+                assert!(true);
+            }
         }
     }
 }

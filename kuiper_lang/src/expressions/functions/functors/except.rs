@@ -27,7 +27,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ExceptFunction {
                                     .as_ref(),
                             );
                             if should_remove {
-                                output.remove(&k.to_owned());
+                                output.remove(&k);
                             }
                         }
                         Ok(ResolveResult::Owned(Value::Object(output)))
@@ -82,7 +82,7 @@ impl LambdaAcceptFunction for ExceptFunction {
             return Err(BuildError::unexpected_lambda(&lambda.span));
         }
         let nargs = lambda.input_names.len();
-        if nargs > 2 {
+        if !(1..=2).contains(&nargs) {
             return Err(BuildError::n_function_args(
                 lambda.span.clone(),
                 "except takes a function with a maximum of 2 argument",
@@ -94,7 +94,9 @@ impl LambdaAcceptFunction for ExceptFunction {
 
 #[cfg(test)]
 mod tests {
-    use crate::compile_expression;
+    use logos::Span;
+
+    use crate::{compile_expression, CompileError, TransformError};
 
     #[test]
     fn test_except() {
@@ -129,7 +131,19 @@ mod tests {
     fn test_except_fails_for_other_types() {
         match compile_expression(r#"except({'a':1}, [1,2,3])"#, &[]) {
             Ok(_) => assert!(false, "Should not be able to resolve"),
-            Err(_) => assert!(true),
+            Err(err) => {
+                match err {
+                    CompileError::Optimizer(TransformError::IncorrectTypeInField(t_err)) => {
+                        assert_eq!(
+                            t_err.desc,
+                            "Filter values should be of type string. Got number, expected string"
+                        );
+                        assert_eq!(t_err.span, Span { start: 0, end: 24 })
+                    }
+                    _ => assert!(false, "Should be an optimizer error"),
+                }
+                assert!(true);
+            }
         }
     }
 }

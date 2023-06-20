@@ -6,9 +6,8 @@ use crate::{compiler::BuildError, NULL_CONST};
 
 use super::{
     functions::{
-        except::ExceptFunction, filter::FilterFunction, flatmap::FlatMapFunction,
-        join::JoinFunction, map::MapFunction, reduce::ReduceFunction, select::SelectFunction,
-        zip::ZipFunction, *,
+        except::ExceptFunction, filter::FilterFunction, flatmap::FlatMapFunction, map::MapFunction,
+        reduce::ReduceFunction, select::SelectFunction, zip::ZipFunction, *,
     },
     lambda::LambdaExpression,
     numbers::JsonNumber,
