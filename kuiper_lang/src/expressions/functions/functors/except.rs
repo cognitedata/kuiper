@@ -15,40 +15,14 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ExceptFunction {
         state: &crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let source = self.args[0].resolve(state)?;
-        let init_res = match self.args[1].call(state, &[]) {
-            Ok(res) => match res.as_ref().to_owned() {
-                Value::Array(val) => Some(val),
-                _ => None,
-            },
-            Err(_) => None,
-        };
-
         match source.as_ref() {
             Value::Object(x) => {
                 let mut output = x.to_owned();
-                match init_res {
-                    Some(arr) => {
-                        for f in arr {
-                            match f {
-                                Value::String(s) => match output.remove(&s) {
-                                    Some(_) => Ok(()),
-                                    None => Ok(()),
-                                },
-                                x => Err(TransformError::new_incorrect_type(
-                                    "Filter values should be of type string",
-                                    "string",
-                                    TransformError::value_desc(&x),
-                                    &self.span,
-                                )),
-                            }?
-                        }
-                        Ok(ResolveResult::Owned(Value::Object(output)))
-                    }
-                    None => {
+                match &*self.args[1] {
+                    crate::ExpressionType::Lambda(expr) => {
                         for (k, v) in x {
                             let should_remove = get_boolean_from_value(
-                                self.args[1]
-                                    .call(state, &[v, &Value::String(k.to_owned())])?
+                                expr.call(state, &[v, &Value::String(k.to_owned())])?
                                     .as_ref(),
                             );
                             if should_remove {
@@ -57,10 +31,38 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ExceptFunction {
                         }
                         Ok(ResolveResult::Owned(Value::Object(output)))
                     }
+                    expr => {
+                        let res = expr.resolve(state)?;
+                        match res.as_ref() {
+                            Value::Array(arr) => {
+                                for f in arr {
+                                    match f {
+                                        Value::String(s) => match output.remove(&s.to_owned()) {
+                                            Some(_) => Ok(()),
+                                            None => Ok(()),
+                                        },
+                                        x => Err(TransformError::new_incorrect_type(
+                                            "Filter values should be of type string",
+                                            "string",
+                                            TransformError::value_desc(x),
+                                            &self.span,
+                                        )),
+                                    }?
+                                }
+                                Ok(ResolveResult::Owned(Value::Object(output)))
+                            }
+                            x => Err(TransformError::new_incorrect_type(
+                                "Incorrect input passed as second argument to except",
+                                "array, lambda",
+                                TransformError::value_desc(x),
+                                &self.span,
+                            )),
+                        }
+                    }
                 }
             }
             x => Err(TransformError::new_incorrect_type(
-                "Incorrect input given to except",
+                "Incorrect input passed as first argument to except",
                 "object",
                 TransformError::value_desc(x),
                 &self.span,
