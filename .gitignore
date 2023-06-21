@@ -1,5 +1,7 @@
 /target
 **/target
+kuiper_python/kuiper/kuiper
+
 
 # Compiled python files
 *.so
