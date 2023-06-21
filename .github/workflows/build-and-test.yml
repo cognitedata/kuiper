@@ -35,6 +35,10 @@ jobs:
         run: pip install maturin pre-commit toml cffi
       - name: Check style
         run: pre-commit run --all
-      - name: Build Python bindings
-        run: maturin build
-        working-directory: ./kuiper_python
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v1
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          working-directory: ./kuiper_python
+          args: --release
