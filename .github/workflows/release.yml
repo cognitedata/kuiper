@@ -32,7 +32,7 @@ jobs:
         with:
           python-version: "3.10"
       - name: Install maturin
-        run: pip install maturin
+        run: pip install maturin cffi
       - name: Publish artifact
         env:
           MATURIN_USERNAME: ${{ secrets.ARTIFACTORY_PUBLISH_TOKEN_USER }}
