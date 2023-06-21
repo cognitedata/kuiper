@@ -1,3 +1,9 @@
+[tool.poetry]
+name = "kuiperlang"
+version = "1.0.0"
+authors = ["Mathias Lohne <mathias.lohne@cognite.com>"]
+description = "Python binding to kuiper rust"
+
 [project]
 name = "cognite-kuiper"
 version = "0.2.0"
@@ -26,8 +32,8 @@ test = [
 ]
 
 [project.urls]
-homepage = "cognite.com"
-repository = "github.com/cognitedata/kuiper"
+homepage = "https://cognite.com"
+repository = "https://github.com/cognitedata/kuiper"
 
 [tool.black]
 line-length = 120

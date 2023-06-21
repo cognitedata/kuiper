@@ -7,9 +7,15 @@ kuiper_python/kuiper/kuiper
 *.so
 *.pyc
 **/__pycache__
+**/*.python-version
 
 .idea
 **/.env
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
 
 # .NET files
 **/bin
