@@ -21,6 +21,9 @@ jobs:
         run: cargo test
 
   publish_python_bindings:
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -30,7 +33,7 @@ jobs:
           components: rustfmt, clippy
       - uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: ${{ matrix.python-version }}
       - name: Setup QEMU
         uses: docker/setup-qemu-action@v1
       - uses: PyO3/maturin-action@v1
@@ -45,4 +48,4 @@ jobs:
           TWINE_USERNAME: ${{ secrets.ARTIFACTORY_PUBLISH_TOKEN_USER }}
           TWINE_PASSWORD: ${{ secrets.ARTIFACTORY_PUBLISH_TOKEN }}
           TWINE_REPOSITORY_URL: https://cognite.jfrog.io/cognite/api/pypi/snakepit
-        run: twine upload ./target/wheels/*
+        run: twine upload ./target/wheels/* || true

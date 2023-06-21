@@ -21,6 +21,9 @@ jobs:
         run: cargo test
 
   build_python_bindings:
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -30,7 +33,7 @@ jobs:
           components: rustfmt, clippy
       - uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: ${{ matrix.python-version }}
       - name: Install dev deps
         run: pip install maturin pre-commit toml cffi
       - name: Check style
