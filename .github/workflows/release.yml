@@ -31,12 +31,18 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
-      - name: Install maturin
-        run: pip install maturin cffi
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v1
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          working-directory: ./kuiper_python
+          args: --release
+      - name: Install twine
+        run: pip install twine
       - name: Publish artifact
         env:
-          MATURIN_USERNAME: ${{ secrets.ARTIFACTORY_PUBLISH_TOKEN_USER }}
-          MATURIN_PASSWORD: ${{ secrets.ARTIFACTORY_PUBLISH_TOKEN }}
-          MATURIN_REPOSITORY_URL: https://cognite.jfrog.io/cognite/api/pypi/snakepit
-        run: maturin publish --skip-existing
-        working-directory: ./kuiper_python
+          TWINE_USERNAME: ${{ secrets.ARTIFACTORY_PUBLISH_TOKEN_USER }}
+          TWINE_PASSWORD: ${{ secrets.ARTIFACTORY_PUBLISH_TOKEN }}
+          TWINE_REPOSITORY_URL: https://cognite.jfrog.io/cognite/api/pypi/snakepit
+        run: twine upload ./target/wheels/*

@@ -6,7 +6,7 @@ description = "Python binding to kuiper rust"
 
 [project]
 name = "cognite-kuiper"
-version = "0.2.0"
+version = "0.2.1"
 description = "A JSON to JSON transform and templating language from Cognite"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -43,7 +43,3 @@ include = '\.pyi?$'
 [build-system]
 requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
-
-[tool.maturin]
-bindings = "cffi"
-compatibility = "linux"

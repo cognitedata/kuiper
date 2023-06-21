@@ -720,7 +720,7 @@ dependencies = [
 
 [[package]]
 name = "kuiper-cli"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "clap",
  "dirs",
@@ -740,7 +740,7 @@ dependencies = [
 
 [[package]]
 name = "kuiper_lang"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "chrono",
  "criterion",
@@ -769,7 +769,7 @@ dependencies = [
 
 [[package]]
 name = "kuiper_python"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "kuiper_lang",
  "pyo3",
