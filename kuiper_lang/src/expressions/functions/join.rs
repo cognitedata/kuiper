@@ -14,28 +14,29 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for JoinFunction {
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let source = self.args[0].resolve(state)?;
 
-        match source.as_ref() {
+        match source.into_owned() {
             Value::Object(x) => {
-                let mut res = x.to_owned();
+                let mut res = x;
                 for arg in self.args.iter() {
                     let res_inner = arg.resolve(state)?;
-                    let mut value = match res_inner.into_owned() {
-                        Value::Object(ref mut inner) => Ok(inner.to_owned()),
-                        x => Err(TransformError::new_incorrect_type(
+                    let mut res_inner = res_inner.into_owned();
+                    let value = match res_inner {
+                        Value::Object(ref mut inner) => Ok(inner),
+                        y => Err(TransformError::new_incorrect_type(
                             "Incorrect type provided for join",
                             "object",
-                            TransformError::value_desc(&x),
+                            TransformError::value_desc(&y),
                             &self.span,
                         )),
                     }?;
-                    res.append(&mut value);
+                    res.append(value);
                 }
                 Ok(ResolveResult::Owned(Value::Object(res)))
             }
-            x => Err(TransformError::new_incorrect_type(
+            x_val => Err(TransformError::new_incorrect_type(
                 "Incorrect input to join",
                 "object",
-                TransformError::value_desc(x),
+                TransformError::value_desc(&x_val),
                 &self.span,
             )),
         }
@@ -59,6 +60,19 @@ mod tests {
         assert_eq!(val.len(), 2);
         assert_eq!(val.get("a").unwrap(), 1);
         assert_eq!(val.get("b").unwrap(), 2);
+    }
+
+    #[test]
+    fn test_join_multiple() {
+        let expr = compile_expression(r#"join({'a':1}, {'b': 2}, {'c': 3})"#, &[]).unwrap();
+
+        let res = expr.run([]).unwrap();
+
+        let val = res.as_object().unwrap();
+        assert_eq!(val.len(), 3);
+        assert_eq!(val.get("a").unwrap(), 1);
+        assert_eq!(val.get("b").unwrap(), 2);
+        assert_eq!(val.get("c").unwrap(), 3);
     }
 
     #[test]

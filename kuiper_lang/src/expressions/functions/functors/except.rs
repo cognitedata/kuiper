@@ -14,8 +14,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ExceptFunction {
         &'a self,
         state: &crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
-        let mut source = self.args[0].resolve(state)?;
-        let source = source.to_mut().to_owned();
+        let source = self.args[0].resolve(state)?;
+        let source = source.into_owned();
         match source {
             Value::Object(x) => {
                 let mut output = x.to_owned();
@@ -38,10 +38,10 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ExceptFunction {
                             Value::Array(arr) => {
                                 for f in arr {
                                     match f {
-                                        Value::String(s) => match output.remove(s) {
-                                            Some(_) => Ok(()),
-                                            None => Ok(()),
-                                        },
+                                        Value::String(s) => {
+                                            output.remove(s);
+                                            Ok(())
+                                        }
                                         x => Err(TransformError::new_incorrect_type(
                                             "Filter values should be of type string",
                                             "string",
