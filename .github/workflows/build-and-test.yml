@@ -44,4 +44,5 @@ jobs:
         with:
           command: build
           working-directory: ./kuiper_python
-          args: --release
+          args: --release -i python${{ matrix.python-version }}
+          manylinux: auto
