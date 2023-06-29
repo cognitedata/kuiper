@@ -30,7 +30,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
+          components: rustfmt
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
