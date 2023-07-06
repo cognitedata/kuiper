@@ -44,7 +44,7 @@ function App() {
     const onChange = React.useCallback((value: string, viewUpdate) => {
         console.log('value:', lang.language.parser.parse(value).topNode);
       }, []);
-      
+
       console.log(lang.language.name, lang.extension);
       return (
         <CodeMirror
