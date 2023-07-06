@@ -1,7 +1,9 @@
 #[macro_use]
 mod macros;
 mod arrays;
+mod conversions;
 mod functors;
+mod join;
 mod logic;
 mod math;
 mod string;
@@ -10,7 +12,9 @@ mod transforms;
 
 use crate::compiler::BuildError;
 pub use arrays::*;
+pub use conversions::*;
 pub use functors::*;
+pub use join::*;
 pub use logic::*;
 pub use math::*;
 pub use string::*;

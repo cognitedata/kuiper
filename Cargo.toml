@@ -3,7 +3,7 @@ members = [
     "kuiper_lang",
     "kuiper_lang_macros",
     "kuiper_cli",
-    "kuiper_python"
+    "kuiper_python",
+    "kuiper_interop"
 ]
-workspace-exclude = ["playground"]
 resolver = "2"

@@ -2,11 +2,12 @@ use logos::Span;
 use serde_json::Value;
 use std::{borrow::Cow, fmt::Display};
 
-use crate::compiler::BuildError;
+use crate::{compiler::BuildError, NULL_CONST};
 
 use super::{
     functions::{
-        filter::FilterFunction, flatmap::FlatMapFunction, map::MapFunction, zip::ZipFunction, *,
+        except::ExceptFunction, filter::FilterFunction, flatmap::FlatMapFunction, map::MapFunction,
+        reduce::ReduceFunction, select::SelectFunction, zip::ZipFunction, *,
     },
     lambda::LambdaExpression,
     numbers::JsonNumber,
@@ -52,12 +53,20 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
         num_values: usize,
     ) -> InternalExpressionExecutionState<'data> {
         let mut data = Vec::with_capacity(self.data.len() + num_values);
-        for elem in self.data {
+        for elem in self.data.iter() {
             data.push(*elem);
         }
-        for elem in extra_values {
+        let mut pushed = 0;
+        for elem in extra_values.take(num_values) {
             data.push(elem);
+            pushed += 1;
         }
+        if pushed < num_values {
+            for _ in pushed..num_values {
+                data.push(&NULL_CONST);
+            }
+        }
+
         InternalExpressionExecutionState {
             data,
             base_length: self.data.len(),
@@ -160,17 +169,24 @@ pub enum FunctionType {
     String(StringFunction),
     Int(IntFunction),
     Float(FloatFunction),
+    TryFloat(TryFloatFunction),
+    TryInt(TryIntFunction),
+    TryBool(TryBoolFunction),
     If(IfFunction),
     ToUnixTime(ToUnixTimeFunction),
     Case(CaseFunction),
     Pairs(PairsFunction),
     Map(MapFunction),
     FlatMap(FlatMapFunction),
+    Reduce(ReduceFunction),
     Filter(FilterFunction),
     Zip(ZipFunction),
     Length(LengthFunction),
     Chunk(ChunkFunction),
     Now(NowFunction),
+    Join(JoinFunction),
+    Except(ExceptFunction),
+    Select(SelectFunction),
 }
 
 /// Create a function expression from its name, or return a parser exception if it has the wrong number of arguments,
@@ -191,17 +207,24 @@ pub fn get_function_expression(
         "string" => FunctionType::String(StringFunction::new(args, pos)?),
         "int" => FunctionType::Int(IntFunction::new(args, pos)?),
         "float" => FunctionType::Float(FloatFunction::new(args, pos)?),
+        "try_float" => FunctionType::TryFloat(TryFloatFunction::new(args, pos)?),
+        "try_int" => FunctionType::TryInt(TryIntFunction::new(args, pos)?),
+        "try_bool" => FunctionType::TryBool(TryBoolFunction::new(args, pos)?),
         "if" => FunctionType::If(IfFunction::new(args, pos)?),
         "to_unix_timestamp" => FunctionType::ToUnixTime(ToUnixTimeFunction::new(args, pos)?),
         "case" => FunctionType::Case(CaseFunction::new(args, pos)?),
         "pairs" => FunctionType::Pairs(PairsFunction::new(args, pos)?),
         "map" => FunctionType::Map(MapFunction::new(args, pos)?),
         "flatmap" => FunctionType::FlatMap(FlatMapFunction::new(args, pos)?),
+        "reduce" => FunctionType::Reduce(ReduceFunction::new(args, pos)?),
         "filter" => FunctionType::Filter(FilterFunction::new(args, pos)?),
         "zip" => FunctionType::Zip(ZipFunction::new(args, pos)?),
         "length" => FunctionType::Length(LengthFunction::new(args, pos)?),
         "chunk" => FunctionType::Chunk(ChunkFunction::new(args, pos)?),
         "now" => FunctionType::Now(NowFunction::new(args, pos)?),
+        "join" => FunctionType::Join(JoinFunction::new(args, pos)?),
+        "except" => FunctionType::Except(ExceptFunction::new(args, pos)?),
+        "select" => FunctionType::Select(SelectFunction::new(args, pos)?),
         _ => return Err(BuildError::unrecognized_function(pos, name)),
     };
     Ok(ExpressionType::Function(expr))

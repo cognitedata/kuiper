@@ -1,7 +1,7 @@
-name: Build and test library
+name: Release
 
 on:
-  pull_request:
+  push:
     branches: [main]
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
       - name: Test
         run: cargo test
 
-  build_python_bindings:
+  publish_python_bindings:
     strategy:
       matrix:
         python-version: ["3.10", "3.11"]
@@ -30,14 +30,9 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dev deps
-        run: pip install pre-commit toml
-      - name: Check style
-        run: pre-commit run --all
       - name: Setup QEMU
         uses: docker/setup-qemu-action@v2
       - uses: PyO3/maturin-action@v1
@@ -46,18 +41,11 @@ jobs:
           working-directory: ./kuiper_python
           args: --release -i python${{ matrix.python-version }}
           manylinux: auto
-
-  build_codemirror_module:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set Node.js 18.x
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18.x
-      - name: Run install
-        working-directory: ./kuiper_lezer
-        run: yarn install
-      - name: Run test
-        working-directory: ./kuiper_lezer
-        run: yarn prepare && yarn test
+      - name: Install twine
+        run: pip install twine
+      - name: Publish artifact
+        env:
+          TWINE_USERNAME: ${{ secrets.ARTIFACTORY_PUBLISH_TOKEN_USER }}
+          TWINE_PASSWORD: ${{ secrets.ARTIFACTORY_PUBLISH_TOKEN }}
+          TWINE_REPOSITORY_URL: https://cognite.jfrog.io/cognite/api/pypi/snakepit
+        run: twine upload ./target/wheels/* || true
