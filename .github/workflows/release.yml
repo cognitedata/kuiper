@@ -30,7 +30,6 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
@@ -40,7 +39,8 @@ jobs:
         with:
           command: build
           working-directory: ./kuiper_python
-          args: --release
+          args: --release -i python${{ matrix.python-version }}
+          manylinux: auto
       - name: Install twine
         run: pip install twine
       - name: Publish artifact
