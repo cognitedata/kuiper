@@ -1,0 +1,83 @@
+@top Result { Expression }
+
+@skip { whitespace | blockComment }
+
+Expression { Operator | Term }
+
+CommaSep<Content> { "" | Content ("," Content)* ","? }
+
+Lambda {
+    ("(" CommaSep<Var> ~lambda ")" "=>" Expression) |
+    (Var "=>" Expression)
+}
+
+FunctionArg {
+    Lambda |
+    Expression
+}
+
+Pair {
+    Expression ":" Expression
+}
+
+FunctionCall {
+    Var "(" CommaSep<FunctionArg> ")" |
+    Term "." Var "(" CommaSep<FunctionArg> ")"
+}
+
+Object { "{" CommaSep<Pair> "}" }
+Array { "[" CommaSep<Expression> "]" }
+Selector {
+    Term "." Var |
+    Term "[" Expression "]"
+}
+
+Term {
+    Number | Boolean | String | Null |
+    FunctionCall |
+    Var |
+    Array |
+    Object |
+    Selector |
+    "(" Expression ~lambda ")"
+}
+
+@precedence { t8 @right, t7 @left, t6 @left, t5 @left, t4 @left, t3 @left, t2 @left }
+
+Operator {
+    !t8 "!" Expression |
+    Expression !t7 ("*" | "/" | "%") Expression |
+    Expression !t6 ("+" | "-") Expression |
+    Expression !t5 (">" | "<" | ">=" | "<=" | "is") Expression |
+    Expression !t4 ("==" | "!=") Expression |
+    Expression !t3 ("&&") Expression |
+    Expression !t2 ("||") Expression
+}
+
+@external tokens doubleQuoteStringContent from "./tokens.js" { doubleQuoteStringContent }
+@external tokens singleQuoteStringContent from "./tokens.js" { singleQuoteStringContent }
+@external tokens identifierContent from "./tokens.js" { identifierContent }
+
+Boolean { @specialize<PlainVar, "true"> | @specialize<PlainVar, "false"> }
+Null { @specialize<PlainVar, "null"> }
+
+@external tokens blockComment from "./tokens.js" { blockComment }
+
+@skip {} {
+  String {
+    "\"" doubleQuoteStringContent "\"" |
+    "'" singleQuoteStringContent "'"
+  }
+  Var {
+    PlainVar |
+    "`" identifierContent "`"
+  }
+}
+
+@tokens {
+    Number { "-"? $[0-9]* "." $[0-9]+ | "-"? $[0-9]* "."? $[0-9]+ $[eE] $[+-]? $[0-9]+ | "-" $[0-9]+ | $[0-9]+ }
+    whitespace { @whitespace+ }
+    PlainVar { $[a-zA-Z_]$[a-zA-Z0-9_]* }
+    "(" ")" "{" "}" "[" "]" "!" "*" "/" "%" "+" "-" ">" "<" "<=" ">=" "is" "==" "!=" "&&" "||"
+    "," "." ":"
+}

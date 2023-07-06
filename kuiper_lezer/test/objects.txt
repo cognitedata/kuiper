@@ -1,0 +1,33 @@
+# Fancy object
+
+{
+    "test": 123,
+    concat("test", "test"): 321,
+}
+
+==>
+
+Result(Expression(Term(Object(CommaSep(
+    Pair(
+        Expression(Term(String)),
+        Expression(Term(Number))
+    ),
+    Pair(
+        Expression(Term(FunctionCall(
+            Var(PlainVar),
+            CommaSep(
+                FunctionArg(Expression(Term(String))),
+                FunctionArg(Expression(Term(String)))
+            )
+        ))),
+        Expression(Term(Number))
+    )
+)))))
+
+# Empty object
+
+{}
+
+==>
+
+Result(Expression(Term(Object(CommaSep))))

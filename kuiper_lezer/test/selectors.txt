@@ -1,0 +1,21 @@
+# Fancy selector
+
+input.test["dynamic"].foo[0]
+
+==>
+
+Result(Expression(Term(
+    Selector(
+        Term(Selector(
+            Term(Selector(
+                Term(Selector(
+                    Term(Var(PlainVar)),
+                    Var(PlainVar)
+                )),
+                Expression(Term(String))
+            )),
+            Var(PlainVar)
+        )),
+        Expression(Term(Number))
+    )
+)))

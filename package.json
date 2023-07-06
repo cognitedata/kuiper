@@ -1,0 +1,4 @@
+{
+    "private": true,
+    "workspaces": ["kuiper_frontend_test", "kuiper_lezer"]
+}

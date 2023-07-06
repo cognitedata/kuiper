@@ -1,0 +1,71 @@
+# Simple function call
+
+pow(2, 2)
+
+==>
+
+Result(Expression(Term(FunctionCall(Var(PlainVar), CommaSep(
+    FunctionArg(Expression(Term(Number))),
+    FunctionArg(Expression(Term(Number)))
+)))))
+
+# Postfix function call
+
+2.pow(2)
+
+==>
+
+Result(Expression(Term(FunctionCall(
+    Term(Number),
+    Var(PlainVar),
+    CommaSep(FunctionArg(Expression(Term(Number))))
+))))
+
+# Simple lambda
+
+map([1, 2], a => a + 1)
+
+==>
+
+Result(Expression(Term(FunctionCall(
+    Var(PlainVar),
+    CommaSep(
+        FunctionArg(Expression(Term(Array(CommaSep(
+            Expression(Term(Number)),
+            Expression(Term(Number))
+        ))))),
+        FunctionArg(Lambda(
+            Var(PlainVar),
+            Expression(Operator(
+                Expression(Term(Var(PlainVar))),
+                Expression(Term(Number))
+            ))
+        ))
+    )
+))))
+
+# Fancy lambda
+
+[1, 2].map((a, b) => a + b)
+
+==>
+
+Result(Expression(Term(FunctionCall(
+    Term(Array(CommaSep(
+        Expression(Term(Number)),
+        Expression(Term(Number))
+    ))),
+    Var(PlainVar),
+    CommaSep(
+        FunctionArg(Lambda(
+            CommaSep(
+                Var(PlainVar),
+                Var(PlainVar)
+            ),
+            Expression(Operator(
+                Expression(Term(Var(PlainVar))),
+                Expression(Term(Var(PlainVar)))
+            ))
+        ))
+    )
+))))

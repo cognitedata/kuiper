@@ -9,13 +9,23 @@ kuiper_python/kuiper/kuiper
 **/__pycache__
 **/*.python-version
 
+
+# IDE files
 .idea
 **/.env
+
 .vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json
 !.vscode/launch.json
 !.vscode/tasks.json
+
+
+# JS files
+**/node_modules
+**/dist
+**/yarn.lock
+
 
 # .NET files
 **/bin
