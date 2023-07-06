@@ -16,7 +16,7 @@ serde = { version = "1.0.164", features = ["derive"] }
 serde_json = "1.0.100"
 kuiper_lang_macros = { path = "../kuiper_lang_macros" }
 lalrpop-util = "0.20.0"
-thiserror = "1.0.40"
+thiserror = "1.0.41"
 
 [dev-dependencies]
 pprof = { version = "0.12", features = ["flamegraph"] }
