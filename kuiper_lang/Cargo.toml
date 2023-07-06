@@ -13,7 +13,7 @@ logos = "0.13"
 once_cell = "1.18.0"
 regex = "1.8.4"
 serde = { version = "1.0.164", features = ["derive"] }
-serde_json = "1.0.99"
+serde_json = "1.0.100"
 kuiper_lang_macros = { path = "../kuiper_lang_macros" }
 lalrpop-util = "0.20.0"
 thiserror = "1.0.41"
