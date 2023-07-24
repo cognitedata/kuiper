@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::HashSet;
 
 use serde_json::{Map, Value};
 
@@ -19,54 +19,22 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for DistinctByFunction {
         match source.as_ref() {
             Value::Array(x) => {
                 let mut res: Vec<Value> = Vec::new();
-                let mut found: HashMap<String, bool> = HashMap::new();
+                let mut found: HashSet<String> = HashSet::new();
                 for val in x {
-                    let res_inner = self.args[1].call(state, &[val])?.into_owned();
-                    let by_value: String = match res_inner {
-                        Value::Bool(b) => Ok(b.to_string()),
-                        Value::Number(n) => Ok(n.to_string()),
-                        Value::String(s) => Ok(s),
-                        x => Err(TransformError::new_incorrect_type(
-                            "Incorrect type returned by lambda",
-                            "string, number, boolean",
-                            TransformError::value_desc(&x),
-                            &self.span,
-                        )),
-                    }?;
-                    match found.get(&by_value) {
-                        Some(_) => (),
-                        None => {
-                            res.push(val.to_owned());
-                            found.insert(by_value, true);
-                        }
+                    let res_inner = self.args[1].call(state, &[val])?;
+                    if found.insert(res_inner.to_string()) {
+                        res.push(val.to_owned());
                     }
                 }
                 Ok(ResolveResult::Owned(Value::Array(res)))
             }
             Value::Object(x) => {
                 let mut res: Map<String, Value> = Map::new();
-                let mut found: HashMap<String, bool> = HashMap::new();
+                let mut found: HashSet<String> = HashSet::new();
                 for (k, v) in x {
-                    let res_inner = self.args[1]
-                        .call(state, &[v, &Value::String(k.to_owned())])?
-                        .into_owned();
-                    let by_value: String = match res_inner {
-                        Value::Bool(b) => Ok(b.to_string()),
-                        Value::Number(n) => Ok(n.to_string()),
-                        Value::String(s) => Ok(s),
-                        x => Err(TransformError::new_incorrect_type(
-                            "Incorrect type returned by lambda",
-                            "string, number, boolean",
-                            TransformError::value_desc(&x),
-                            &self.span,
-                        )),
-                    }?;
-                    match found.get(&by_value) {
-                        Some(_) => (),
-                        None => {
-                            res.insert(k.to_owned(), v.to_owned());
-                            found.insert(by_value, true);
-                        }
+                    let res_inner = self.args[1].call(state, &[v, &Value::String(k.to_owned())])?;
+                    if found.insert(res_inner.to_string()) {
+                        res.insert(k.to_owned(), v.to_owned());
                     }
                 }
                 Ok(ResolveResult::Owned(Value::Object(res)))
