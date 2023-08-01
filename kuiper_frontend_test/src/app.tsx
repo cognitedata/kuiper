@@ -75,7 +75,7 @@ function App() {
           theme={kuiperTheme}
           extensions={[lang, linter(lintTest)]}
           onChange={onChange}
-          
+
         />
       );
 }

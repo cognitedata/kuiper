@@ -9,7 +9,7 @@ const scopeNodes = new Set([
 const gatherCompletions: {
     [node: string]: (node: SyntaxNodeRef, def: (node: SyntaxNodeRef, type: string) => void) => void | boolean
 } = {
-    
+
 }
 
 export const dontComplete = [
