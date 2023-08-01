@@ -40,7 +40,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for DistinctByFunction {
                 Ok(ResolveResult::Owned(Value::Object(res)))
             }
             x => Err(TransformError::new_incorrect_type(
-                "Incorrect input to distinctBy",
+                "Incorrect input to distinct_by",
                 "array or object",
                 TransformError::value_desc(x),
                 &self.span,
@@ -62,7 +62,7 @@ impl LambdaAcceptFunction for DistinctByFunction {
         if !(1..=2).contains(&nargs) {
             return Err(BuildError::n_function_args(
                 lambda.span.clone(),
-                "distictBy takes a function with one argument",
+                "distict_by takes a function with one argument",
             ));
         }
         Ok(())
