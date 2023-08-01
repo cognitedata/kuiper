@@ -1,15 +1,16 @@
 use std::fmt::Display;
 
-use logos::Logos;
+use logos::{Logos, Span};
 
 use crate::expressions::{Operator, UnaryOperator};
 
 use crate::lexer::LexerError;
 
-fn parse_string(mut raw: &str, border_char: char) -> Result<String, LexerError> {
+fn parse_string(mut raw: &str, border_char: char, start: usize) -> Result<String, LexerError> {
     raw = &raw[1..raw.len() - 1];
     let mut res = String::with_capacity(raw.len());
 
+    let mut pos = start;
     let mut escaping = false;
     for c in raw.chars() {
         if c == '\\' {
@@ -27,12 +28,19 @@ fn parse_string(mut raw: &str, border_char: char) -> Result<String, LexerError> 
             } else if c == 't' {
                 res.push('\t');
             } else {
-                return Err(LexerError::InvalidEscapeChar(c));
+                return Err(LexerError::InvalidEscapeChar((
+                    c,
+                    Span {
+                        start: pos,
+                        end: pos + 1,
+                    },
+                )));
             }
             escaping = false;
         } else {
             res.push(c);
         }
+        pos += 1;
     }
     Ok(res)
 }
@@ -60,16 +68,16 @@ pub enum Token {
     Comma,
 
     /// A floating point number. Strictly not an integer.
-    #[regex(r#"[-]?(\d*\.)?\d+"#, |lex| lex.slice().parse())]
-    #[regex(r#"[-]?(\d*\.)?\d+[eE][+-]?(\d)"#, |lex| lex.slice().parse())]
+    #[regex(r#"[-]?(\d*\.)?\d+"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseFloat((e, lex.span().clone()))))]
+    #[regex(r#"[-]?(\d*\.)?\d+[eE][+-]?(\d)"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseFloat((e, lex.span().clone()))))]
     Float(f64),
 
     /// A negative integer.
-    #[regex(r#"-(\d)+"#, |lex| lex.slice().parse())]
+    #[regex(r#"-(\d)+"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseInt((e, lex.span().clone()))))]
     Integer(i64),
 
     /// A positive integer.
-    #[regex(r#"(\d)+"#, |lex| lex.slice().parse(), priority = 2)]
+    #[regex(r#"(\d)+"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseInt((e, lex.span().clone()))), priority = 2)]
     UInteger(u64),
 
     #[token("true", |_| true)]
@@ -98,8 +106,8 @@ pub enum Token {
     UnaryOperator(UnaryOperator),
 
     /// A quoted string. We use single quotes for string literals.
-    #[regex(r#"'(?:[^'\\]|\\.)*'"#, |s| parse_string(s.slice(), '\''))]
-    #[regex(r#""(?:[^"\\]|\\.)*""#, |s| parse_string(s.slice(), '\"'))]
+    #[regex(r#"'(?:[^'\\]|\\.)*'"#, |s| parse_string(s.slice(), '\'', s.span().start))]
+    #[regex(r#""(?:[^"\\]|\\.)*""#, |s| parse_string(s.slice(), '\"', s.span().start))]
     String(String),
 
     /// A literal null
@@ -109,7 +117,7 @@ pub enum Token {
     /// A bare string, which is either part of a selector, or a function call.
     #[regex(r#"\p{XID_Start}\p{XID_Continue}*"#, |s| s.slice().to_string())]
     #[regex(r#"[_a-zA-Z][_0-9a-zA-Z]*"#, |s| s.slice().to_string(), priority = 2)]
-    #[regex(r#"`(?:[^`\\]|\\.)*`"#, |s| parse_string(s.slice(), '`'))]
+    #[regex(r#"`(?:[^`\\]|\\.)*`"#, |s| parse_string(s.slice(), '`', s.span().start))]
     Identifier(String),
 
     /// Start of a dynamic selector expression, (i.e. $id['some-string'])
@@ -174,7 +182,7 @@ impl Display for Token {
 
 #[cfg(test)]
 mod test {
-    use logos::Logos;
+    use logos::{Logos, Span};
 
     use crate::expressions::{Operator, UnaryOperator};
 
@@ -386,7 +394,10 @@ mod test {
         let mut lex = Token::lexer(r#"'test\b'"#);
         assert_eq!(
             lex.next(),
-            Some(Err(crate::lexer::LexerError::InvalidEscapeChar('b')))
+            Some(Err(crate::lexer::LexerError::InvalidEscapeChar((
+                'b',
+                Span { start: 6, end: 7 }
+            ))))
         );
     }
 }

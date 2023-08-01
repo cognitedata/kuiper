@@ -14,6 +14,12 @@ pub fn compile_expression_py(
         &inputs.iter().map(String::as_str).collect::<Vec<_>>(),
     ) {
         Ok(expression) => Ok(KuiperExpression::new(expression)),
-        Err(compile_error) => Err(KuiperCompileError::new_err(compile_error.to_string())),
+        Err(compile_error) => Err(KuiperCompileError::new_err((
+            compile_error.span().map(|s| s.start),
+            compile_error
+                .span()
+                .map(|s: std::ops::Range<usize>| s.start),
+            compile_error.to_string(),
+        ))),
     }
 }

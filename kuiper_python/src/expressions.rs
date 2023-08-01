@@ -19,12 +19,22 @@ impl KuiperExpression {
     fn run(&self, input: String) -> PyResult<String> {
         let json: Vec<Value> = match from_str(&input) {
             Ok(value) => vec![value],
-            Err(json_error) => return Err(KuiperRuntimeError::new_err(json_error.to_string())),
+            Err(json_error) => {
+                return Err(KuiperRuntimeError::new_err((
+                    None::<usize>,
+                    None::<usize>,
+                    json_error.to_string(),
+                )))
+            }
         };
 
         match self.expression.run(json.iter()) {
             Ok(result) => Ok(result.to_string()),
-            Err(transform_error) => Err(KuiperRuntimeError::new_err(transform_error.to_string())),
+            Err(transform_error) => Err(KuiperRuntimeError::new_err((
+                transform_error.span().map(|s| s.start),
+                transform_error.span().map(|s| s.end),
+                transform_error.to_string(),
+            ))),
         }
     }
 }

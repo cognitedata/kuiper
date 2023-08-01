@@ -78,4 +78,14 @@ impl TransformError {
             Value::Object(_) => "object",
         }
     }
+
+    pub fn span(&self) -> Option<Span> {
+        match self {
+            TransformError::SourceMissingError(x) => Some(x.span.clone()),
+            TransformError::IncorrectTypeInField(x) => Some(x.span.clone()),
+            TransformError::ConversionFailed(x) => Some(x.span.clone()),
+            TransformError::InvalidOperation(x) => Some(x.span.clone()),
+            TransformError::InvalidProgramError(_) => None,
+        }
+    }
 }
