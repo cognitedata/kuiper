@@ -182,6 +182,7 @@ mod tests {
                 "s2": format_timestamp(to_unix_timestamp("2023-08-01 13:42:13", "%Y-%m-%d %H:%M:%S"), "%Y-%m-%d %H:%M:%S"),
                 "s3": format_timestamp(0, "%H:%M:%S %d/%m - %Y"),
                 "s4": format_timestamp(1417176009000, "%a %b %e %T %Y"),
+                "s5": format_timestamp(1234, "just a string"),
             }"#,
             &[],
         )
@@ -204,5 +205,9 @@ mod tests {
             "Fri Nov 28 12:00:09 2014",
             result.get("s4").unwrap().as_str().unwrap()
         );
+        assert_eq!("just a string", result.get("s5").unwrap().as_str().unwrap());
+
+        let invalid_ts = compile_expression(r#"format_timestamp("not a number", "%Y-%m-%d)"#, &[]);
+        assert!(invalid_ts.is_err());
     }
 }
