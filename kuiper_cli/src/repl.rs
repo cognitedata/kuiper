@@ -59,6 +59,7 @@ impl Completer for KuiperHelper {
             "try_bool(",
             "if(",
             "to_unix_timestamp(",
+            "format_timestamp(",
             "case(",
             "pairs(",
             "map(",
