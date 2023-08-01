@@ -36,8 +36,10 @@ Result(Expression(Term(FunctionCall(
         ))))),
         FunctionArg(Lambda(
             Var(PlainVar),
+            Arrow,
             Expression(Operator(
                 Expression(Term(Var(PlainVar))),
+                ArithOp,
                 Expression(Term(Number))
             ))
         ))
@@ -62,8 +64,10 @@ Result(Expression(Term(FunctionCall(
                 Var(PlainVar),
                 Var(PlainVar)
             ),
+            Arrow,
             Expression(Operator(
                 Expression(Term(Var(PlainVar))),
+                ArithOp,
                 Expression(Term(Var(PlainVar)))
             ))
         ))

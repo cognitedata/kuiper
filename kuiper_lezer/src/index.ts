@@ -1,7 +1,8 @@
 import { LRLanguage, LanguageSupport, bracketMatching, delimitedIndent, foldInside, foldNodeProp, indentNodeProp } from "@codemirror/language";
 import {parser} from "./kuiper.grammar"
 import {styleTags, tags} from "@lezer/highlight"
-import {Completion, completeFromList} from "@codemirror/autocomplete";
+import {Completion, completeFromList, ifNotIn} from "@codemirror/autocomplete";
+import { dontComplete, varCompletionSource } from "./complete";
 
 export const kuiperLanguage = LRLanguage.define({
     parser: parser.configure({
@@ -13,19 +14,26 @@ export const kuiperLanguage = LRLanguage.define({
             '{ }': tags.brace,
             '[ ]': tags.bracket,
             '( )': tags.paren,
-            '. : ,': tags.punctuation,
-            '"||" "&&" "==" "!=" ">" "<" ">=" "is" "+" "-" "*" "/" "%" "!" "=>"': tags.operator,
-            "BlockComment": tags.blockComment
+            ':': tags.punctuation,
+            ".": tags.derefOperator,
+            ",": tags.separator,
+            "BlockComment": tags.blockComment,
+            "CompareOp": tags.compareOperator,
+            "ArithOp": tags.arithmeticOperator,
+            "LogicOp": tags.logicOperator,
+            "Arrow": tags.function(tags.punctuation)
         }), indentNodeProp.add({
             Object: delimitedIndent({ closing: "}" }),
-            Array: delimitedIndent({ closing: "]" })
+            Array: delimitedIndent({ closing: "]" }),
+            Lambda: cx => cx.baseIndent + cx.unit
         }), foldNodeProp.add({
             "Object Array": foldInside,
-            blockComment(tree) { return { from: tree.from + 2, to: tree.to - 2 } }
+            BlockComment(tree) { return { from: tree.from + 2, to: tree.to - 2 } }
         })]
     }),
     languageData: {
         closeBrackets: { brackets: ["(", "[", "{", "'", '"', "`"] },
+        commentTokens: { block: { open: "/*", close: "*/" } }
     }
 })
 
@@ -51,6 +59,13 @@ const builtIns: KuiperInput[] = [
     { label: "length", description: "`length(x)`: Return the length of the array, string, or object x" },
     { label: "chunk", description: "`chunk(x, s)`: Convert the array x into chunks of at most length s" },
     { label: "now", description: "`now()`: Return the current time in milliseconds since 1/1/1970" },
+    { label: "except", description: "`except(x, (k(, v)) => ...)` or `except(x, [1, 2, 3])`: Return an array or object where the lambda returns false. If the second argument is an array, the array values or object keys found in that array are excluded from the result." },
+    { label: "reduce", description: "`reduce(x, (seed, val) => ...)`: Returns a value produced by reducing the array x. The lambda is called once for each element in the array, and the returned value is passed as `seed` in the next iteration" },
+    { label: "distinct_by", description: "`distinct_by(x, (a(, b)))`: Return an array or object where the elements are distinct by the returned value of the given lambda. The lambda either takes array values, or object (value, key) pairs" },
+    { label: "select", description: "`select(x, (k(, v)) => ...)` or `select(x, [1, 2, 3])`: Return an array or object where the lambda returns true. If the second argument is an array, the array values or object keys found in that array are used to select from the source." },
+    { label: "try_float", description: "`try_float(a, b)`: Try convert `a` to a float, if it fails, return `b`" },
+    { label: "try_int", description: "`try_int(a, b)`: Try convert `a` to an integer, if it fails, return `b`" },
+    { label: "try_bool", description: "`try_bool(a, b)`: Try convert `a` to a boolean, if it fails, return `b`" },
 ];
 
 export type KuiperInput = {
@@ -69,13 +84,17 @@ export function kuiper(inputs: KuiperInput[] = []) {
         detail: inp.description,
         type: "variable"
     }));
-    const completion = kuiperLanguage.data.of({
-        autocomplete: completeFromList(
-            builtInCompletions.concat(inputCompletions)
-        )
+    const buildInCompletion = kuiperLanguage.data.of({
+        autocomplete: ifNotIn(dontComplete, completeFromList(
+            builtInCompletions
+        ))
     });
+    const varCompletion = kuiperLanguage.data.of({
+        autocomplete: varCompletionSource(inputCompletions)
+    });
+
     return new LanguageSupport(
         kuiperLanguage,
-        [completion]
+        [buildInCompletion, varCompletion]
     )
 }

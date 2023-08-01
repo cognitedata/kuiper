@@ -7,7 +7,7 @@ use crate::{
     BuildError, TransformError,
 };
 
-function_def!(DistinctByFunction, "distinctBy", 2, lambda);
+function_def!(DistinctByFunction, "distinct_by", 2, lambda);
 
 impl<'a: 'c, 'c> Expression<'a, 'c> for DistinctByFunction {
     fn resolve(
@@ -77,14 +77,14 @@ mod tests {
 
     #[test]
     fn test_distinct_by_fails_for_unknown_types() {
-        match compile_expression(r#"distinctBy(1234567890, (a) => a)"#, &[]) {
+        match compile_expression(r#"distinct_by(1234567890, (a) => a)"#, &[]) {
             Ok(_) => assert!(false, "Should not be able to resolve"),
             Err(err) => {
                 match err {
                     CompileError::Optimizer(TransformError::IncorrectTypeInField(t_err)) => {
                         assert_eq!(
                             t_err.desc,
-                            "Incorrect input to distinctBy. Got number, expected array or object"
+                            "Incorrect input to distinct_by. Got number, expected array or object"
                         );
                         assert_eq!(t_err.span, Span { start: 0, end: 32 })
                     }
@@ -98,7 +98,7 @@ mod tests {
     #[test]
     fn test_distinct_by_for_arrays() {
         let expr =
-            compile_expression(r#"distinctBy(["sheep", "apple", "sheep"], a => a)"#, &[]).unwrap();
+            compile_expression(r#"distinct_by(["sheep", "apple", "sheep"], a => a)"#, &[]).unwrap();
 
         let res = expr.run([]).unwrap();
 
@@ -111,7 +111,7 @@ mod tests {
     #[test]
     fn test_distinct_by_for_objects() {
         let expr = compile_expression(
-            r#"distinctBy({'x': 'y', 'a': 'b', 'c': 'b'}, (a, b) => a)"#,
+            r#"distinct_by({'x': 'y', 'a': 'b', 'c': 'b'}, (a, b) => a)"#,
             &[],
         )
         .unwrap();
