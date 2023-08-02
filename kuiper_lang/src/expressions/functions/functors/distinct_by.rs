@@ -86,7 +86,7 @@ mod tests {
                             t_err.desc,
                             "Incorrect input to distinct_by. Got number, expected array or object"
                         );
-                        assert_eq!(t_err.span, Span { start: 0, end: 32 })
+                        assert_eq!(t_err.span, Span { start: 0, end: 33 })
                     }
                     _ => assert!(false, "Should be an optimizer error"),
                 }
