@@ -24,7 +24,7 @@ impl KuiperExpression {
                     "KuiperRuntimeError",
                     json_error.to_string(),
                     Some(json_error.column()),
-                    None,
+                    Some(json_error.column()),
                 ))
             }
         };
