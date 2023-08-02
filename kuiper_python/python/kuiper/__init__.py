@@ -14,15 +14,4 @@ object. The ``KuiperExpression.run(...)`` method might raise a ``KuiperRuntimeEr
 subclasses of the ``KuiperError`` base class.
 """
 
-# from typing import Optional
-
-# class KuiperError(Exception):
-#     start: Optional[int]
-#     end: Optional[int]
-# 
-#     def __init__(self, start: Optional[int], end: Optional[int], *args: object) -> None:
-#         super().__init__(*args)
-#         self.start = start
-#         self.end = end
-
 from .kuiper import *

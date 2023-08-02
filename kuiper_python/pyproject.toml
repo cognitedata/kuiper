@@ -31,6 +31,9 @@ test = [
   "pytest >=7,<8",
 ]
 
+[package.metadata.maturin]
+python-source = "python"
+
 [project.urls]
 homepage = "https://cognite.com"
 repository = "https://github.com/cognitedata/kuiper"
