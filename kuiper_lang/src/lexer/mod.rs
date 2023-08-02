@@ -20,9 +20,9 @@ pub enum LexerError {
     #[default]
     UnknownToken,
     InvalidToken(Span),
-    ParseInt(ParseIntError),
-    ParseFloat(ParseFloatError),
-    InvalidEscapeChar(char),
+    ParseInt((ParseIntError, Span)),
+    ParseFloat((ParseFloatError, Span)),
+    InvalidEscapeChar((char, Span)),
 }
 
 impl Display for LexerError {
@@ -30,22 +30,10 @@ impl Display for LexerError {
         match self {
             LexerError::UnknownToken => write!(f, "Unknown token"),
             LexerError::InvalidToken(s) => write!(f, "Unknown token at {}..{}", s.start, s.end),
-            LexerError::ParseInt(e) => write!(f, "Failed to parse string as integer: {e}"),
-            LexerError::ParseFloat(e) => write!(f, "Failed to parse string as float: {e}"),
-            LexerError::InvalidEscapeChar(c) => write!(f, "Invalid escape character: {c}"),
+            LexerError::ParseInt(e) => write!(f, "Failed to parse string as integer: {}", e.0),
+            LexerError::ParseFloat(e) => write!(f, "Failed to parse string as float: {}", e.0),
+            LexerError::InvalidEscapeChar(c) => write!(f, "Invalid escape character: {}", c.0),
         }
-    }
-}
-
-impl From<ParseIntError> for LexerError {
-    fn from(value: ParseIntError) -> Self {
-        LexerError::ParseInt(value)
-    }
-}
-
-impl From<ParseFloatError> for LexerError {
-    fn from(value: ParseFloatError) -> Self {
-        LexerError::ParseFloat(value)
     }
 }
 

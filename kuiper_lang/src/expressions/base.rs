@@ -175,6 +175,7 @@ pub enum FunctionType {
     TryBool(TryBoolFunction),
     If(IfFunction),
     ToUnixTime(ToUnixTimeFunction),
+    FormatTimestamp(FormatTimestampFunction),
     Case(CaseFunction),
     Pairs(PairsFunction),
     Map(MapFunction),
@@ -214,6 +215,9 @@ pub fn get_function_expression(
         "try_bool" => FunctionType::TryBool(TryBoolFunction::new(args, pos)?),
         "if" => FunctionType::If(IfFunction::new(args, pos)?),
         "to_unix_timestamp" => FunctionType::ToUnixTime(ToUnixTimeFunction::new(args, pos)?),
+        "format_timestamp" => {
+            FunctionType::FormatTimestamp(FormatTimestampFunction::new(args, pos)?)
+        }
         "case" => FunctionType::Case(CaseFunction::new(args, pos)?),
         "pairs" => FunctionType::Pairs(PairsFunction::new(args, pos)?),
         "map" => FunctionType::Map(MapFunction::new(args, pos)?),
