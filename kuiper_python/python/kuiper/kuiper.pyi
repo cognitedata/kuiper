@@ -1,10 +1,10 @@
 from typing import Optional
 
-
-class KuiperError(BaseException): 
+class KuiperError(BaseException):
     start: Optional[int]
     end: Optional[int]
     ...
+
 class KuiperCompileError(KuiperError): ...
 class KuiperRuntimeError(KuiperError): ...
 

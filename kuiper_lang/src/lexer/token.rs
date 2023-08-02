@@ -396,7 +396,7 @@ mod test {
             lex.next(),
             Some(Err(crate::lexer::LexerError::InvalidEscapeChar((
                 'b',
-                Span { start: 6, end: 7 }
+                Span { start: 5, end: 6 }
             ))))
         );
     }
