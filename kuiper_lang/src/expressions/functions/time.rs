@@ -93,6 +93,35 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for NowFunction {
         Ok(ResolveResult::Owned(Value::Number(res.into())))
     }
 }
+
+function_def!(FormatTimestampFunction, "format_timestamp", 2);
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for FormatTimestampFunction {
+    fn resolve(
+        &'a self,
+        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        let timestamp = self.args[0].resolve(state)?;
+        let format = self.args[1].resolve(state)?;
+
+        let timestamp_num =
+            get_number_from_value("format_timestamp", timestamp.as_ref(), &self.span)?
+                .try_as_i64(&self.span)?;
+        let format_str = get_string_from_value("format_timestamp", format.as_ref(), &self.span)?;
+
+        let datetime = Utc.timestamp_millis_opt(timestamp_num).single().ok_or(
+            TransformError::new_conversion_failed(
+                format!("Failed to convert {timestamp_num} to datetime"),
+                &self.span,
+            ),
+        )?;
+
+        Ok(ResolveResult::Owned(Value::String(
+            datetime.format(&format_str).to_string(),
+        )))
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -143,5 +172,42 @@ mod tests {
     pub fn test_now_const() {
         let r = compile_expression("now()", &[]).unwrap();
         assert_eq!("now()", r.to_string());
+    }
+
+    #[test]
+    pub fn test_time_format() {
+        let expr = compile_expression(
+            r#"{
+                "s1": format_timestamp(1690873155301, "%Y-%m-%d %H:%M:%S"),
+                "s2": format_timestamp(to_unix_timestamp("2023-08-01 13:42:13", "%Y-%m-%d %H:%M:%S"), "%Y-%m-%d %H:%M:%S"),
+                "s3": format_timestamp(0, "%H:%M:%S %d/%m - %Y"),
+                "s4": format_timestamp(1417176009000, "%a %b %e %T %Y"),
+                "s5": format_timestamp(1234, "just a string"),
+            }"#,
+            &[],
+        )
+        .unwrap();
+        let result = expr.run([].iter()).unwrap();
+
+        assert_eq!(
+            "2023-08-01 06:59:15",
+            result.get("s1").unwrap().as_str().unwrap()
+        );
+        assert_eq!(
+            "2023-08-01 13:42:13",
+            result.get("s2").unwrap().as_str().unwrap()
+        );
+        assert_eq!(
+            "00:00:00 01/01 - 1970",
+            result.get("s3").unwrap().as_str().unwrap()
+        );
+        assert_eq!(
+            "Fri Nov 28 12:00:09 2014",
+            result.get("s4").unwrap().as_str().unwrap()
+        );
+        assert_eq!("just a string", result.get("s5").unwrap().as_str().unwrap());
+
+        let invalid_ts = compile_expression(r#"format_timestamp("not a number", "%Y-%m-%d)"#, &[]);
+        assert!(invalid_ts.is_err());
     }
 }
