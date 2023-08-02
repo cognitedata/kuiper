@@ -1,6 +1,6 @@
 [package]
 name = "kuiper_python"
-version = "0.2.1"
+version = "0.2.3"
 edition = "2021"
 
 [lib]
@@ -15,4 +15,4 @@ crate-type = ["cdylib"]
 [dependencies]
 kuiper_lang = { path = "../kuiper_lang" }
 pyo3 = { version = "0.19.1", features = ["extension-module"] }
-serde_json = { version = "1.0.100" }
+serde_json = { version = "1.0.104" }

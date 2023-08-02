@@ -1,12 +1,6 @@
-[tool.poetry]
-name = "kuiperlang"
-version = "1.0.0"
-authors = ["Mathias Lohne <mathias.lohne@cognite.com>"]
-description = "Python binding to kuiper rust"
-
 [project]
 name = "cognite-kuiper"
-version = "0.2.1"
+version = "0.2.3"
 description = "A JSON to JSON transform and templating language from Cognite"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -30,6 +24,9 @@ dependencies = [
 test = [
   "pytest >=7,<8",
 ]
+
+[package.metadata.maturin]
+python-source = "python"
 
 [project.urls]
 homepage = "https://cognite.com"

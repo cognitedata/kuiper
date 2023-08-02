@@ -1,3 +1,4 @@
+pub mod distinct_by;
 pub mod except;
 pub mod filter;
 pub mod flatmap;

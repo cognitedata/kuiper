@@ -6,6 +6,7 @@
 
 Result(Expression(Operator(
     Expression(Term(Number)),
+    ArithOp,
     Expression(Term(Number))
 )))
 
@@ -18,8 +19,10 @@ Result(Expression(Operator(
 Result(Expression(Operator(
     Expression(Operator(
         Expression(Term(Number)),
+        ArithOp,
         Expression(Term(Number))
     )),
+    ArithOp,
     Expression(Term(Number))
 )))
 
@@ -31,8 +34,10 @@ Result(Expression(Operator(
 
 Result(Expression(Operator(
     Expression(Term(Number)),
+    ArithOp,
     Expression(Operator(
         Expression(Term(Number)),
+        ArithOp,
         Expression(Term(Number))
     ))
 )))
@@ -47,23 +52,31 @@ Result(Expression(Operator(
     Expression(Operator(
         Expression(Operator(
             Expression(Term(Number)),
+            CompareOp,
             Expression(Term(Number))
         )),
+        LogicOp,
         Expression(Operator(
             Expression(Term(Number)),
+            CompareOp,
             Expression(Term(Number))
         )),
     )),
+    LogicOp,
     Expression(Operator(
         Expression(Operator(
             Expression(Term(Number)),
+            ArithOp,
             Expression(Operator(
                 Expression(Term(Number)),
+                ArithOp,
                 Expression(Term(Number))
             )),
         )),
+        ArithOp,
         Expression(Operator(
             Expression(Term(Number)),
+            ArithOp,
             Expression(Term(Number))
         )),
     )),
@@ -77,13 +90,20 @@ Result(Expression(Operator(
 
 Result(Expression(Operator(
     Expression(Term(Number)),
+    ArithOp,
     Expression(Operator(
+        LogicOp,
         Expression(Term(
             Expression(Operator(
                 Expression(Operator(
                     Expression(Term(Number)),
-                    Expression(Operator(Expression(Term(Number))))
+                    ArithOp,
+                    Expression(Operator(
+                        LogicOp,
+                        Expression(Term(Number))
+                    ))
                 )),
+                ArithOp,
                 Expression(Term(Number))
             ))
         ))
@@ -98,9 +118,17 @@ Result(Expression(Operator(
 
 Result(Expression(Operator(
     Expression(Term(Number)),
-    Expression(Operator(Expression(Operator(
-        Expression(Operator(Expression(Term(Number)))))
-    )))
+    ArithOp,
+    Expression(Operator(
+        LogicOp,
+        Expression(Operator(
+            LogicOp,
+            Expression(Operator(
+                LogicOp,
+                Expression(Term(Number))
+            ))
+        ))
+    ))
 )))
 
 # Comment in expression
@@ -111,5 +139,8 @@ Result(Expression(Operator(
 
 Result(Expression(Operator(
     Expression(Term(Number)),
+    BlockComment,
+    ArithOp,
+    BlockComment,
     Expression(Term(Number))
-)))
+)), BlockComment)

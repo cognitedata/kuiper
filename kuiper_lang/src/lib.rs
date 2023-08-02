@@ -48,9 +48,52 @@ pub enum CompileError {
     Optimizer(#[from] TransformError),
 }
 
+impl CompileError {
+    pub fn span(&self) -> Option<Span> {
+        match self {
+            CompileError::Build(x) => match x {
+                BuildError::NFunctionArgs(x) => Some(x.position.clone()),
+                BuildError::UnexpectedLambda(x) => Some(x.position.clone()),
+                BuildError::UnrecognizedFunction(x) => Some(x.position.clone()),
+            },
+            CompileError::Parser(x) => match x {
+                lalrpop_util::ParseError::InvalidToken { location } => Some(Span {
+                    start: *location,
+                    end: *location,
+                }),
+                lalrpop_util::ParseError::UnrecognizedEof {
+                    location,
+                    expected: _,
+                } => Some(Span {
+                    start: *location,
+                    end: *location,
+                }),
+                lalrpop_util::ParseError::UnrecognizedToken { token, expected: _ } => Some(Span {
+                    start: token.0,
+                    end: token.2,
+                }),
+                lalrpop_util::ParseError::ExtraToken { token } => Some(Span {
+                    start: token.0,
+                    end: token.2,
+                }),
+                lalrpop_util::ParseError::User { error } => match error {
+                    lexer::LexerError::UnknownToken => None,
+                    lexer::LexerError::InvalidToken(x) => Some(x.clone()),
+                    lexer::LexerError::ParseInt(x) => Some(x.1.clone()),
+                    lexer::LexerError::ParseFloat(x) => Some(x.1.clone()),
+                    lexer::LexerError::InvalidEscapeChar(x) => Some(x.1.clone()),
+                },
+            },
+            CompileError::Config(_) => None,
+            CompileError::Optimizer(t) => t.span(),
+        }
+    }
+}
+
 pub use compiler::{compile_expression, BuildError, DebugInfo, ExpressionDebugInfo};
 pub use expressions::{ExpressionType, TransformError, TransformErrorData};
 pub use lexer::ParseError;
+use logos::Span;
 use serde_json::Value;
 use thiserror::Error;
 

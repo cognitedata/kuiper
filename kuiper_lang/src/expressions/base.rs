@@ -6,8 +6,9 @@ use crate::{compiler::BuildError, NULL_CONST};
 
 use super::{
     functions::{
-        except::ExceptFunction, filter::FilterFunction, flatmap::FlatMapFunction, map::MapFunction,
-        reduce::ReduceFunction, select::SelectFunction, zip::ZipFunction, *,
+        distinct_by::DistinctByFunction, except::ExceptFunction, filter::FilterFunction,
+        flatmap::FlatMapFunction, map::MapFunction, reduce::ReduceFunction, select::SelectFunction,
+        zip::ZipFunction, *,
     },
     lambda::LambdaExpression,
     numbers::JsonNumber,
@@ -174,6 +175,7 @@ pub enum FunctionType {
     TryBool(TryBoolFunction),
     If(IfFunction),
     ToUnixTime(ToUnixTimeFunction),
+    FormatTimestamp(FormatTimestampFunction),
     Case(CaseFunction),
     Pairs(PairsFunction),
     Map(MapFunction),
@@ -187,6 +189,7 @@ pub enum FunctionType {
     Join(JoinFunction),
     Except(ExceptFunction),
     Select(SelectFunction),
+    DistinctBy(DistinctByFunction),
 }
 
 /// Create a function expression from its name, or return a parser exception if it has the wrong number of arguments,
@@ -212,6 +215,9 @@ pub fn get_function_expression(
         "try_bool" => FunctionType::TryBool(TryBoolFunction::new(args, pos)?),
         "if" => FunctionType::If(IfFunction::new(args, pos)?),
         "to_unix_timestamp" => FunctionType::ToUnixTime(ToUnixTimeFunction::new(args, pos)?),
+        "format_timestamp" => {
+            FunctionType::FormatTimestamp(FormatTimestampFunction::new(args, pos)?)
+        }
         "case" => FunctionType::Case(CaseFunction::new(args, pos)?),
         "pairs" => FunctionType::Pairs(PairsFunction::new(args, pos)?),
         "map" => FunctionType::Map(MapFunction::new(args, pos)?),
@@ -225,6 +231,7 @@ pub fn get_function_expression(
         "join" => FunctionType::Join(JoinFunction::new(args, pos)?),
         "except" => FunctionType::Except(ExceptFunction::new(args, pos)?),
         "select" => FunctionType::Select(SelectFunction::new(args, pos)?),
+        "distinct_by" => FunctionType::DistinctBy(DistinctByFunction::new(args, pos)?),
         _ => return Err(BuildError::unrecognized_function(pos, name)),
     };
     Ok(ExpressionType::Function(expr))
