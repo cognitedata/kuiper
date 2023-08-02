@@ -4,6 +4,9 @@ import { createRoot } from 'react-dom/client';
 import { okaidia } from '@uiw/codemirror-theme-okaidia';
 import { createTheme } from '@uiw/codemirror-themes'
 import { tags as t } from '@lezer/highlight';
+import {linter, Diagnostic} from "@codemirror/lint"
+import { EditorView } from "@codemirror/view"
+import { syntaxTree } from "@codemirror/language"
 
 const kuiperTheme = createTheme({
     theme: 'dark',
@@ -30,6 +33,25 @@ const kuiperTheme = createTheme({
         { tag: t.variableName, color: '#CDF6FF' }
     ]
 });
+
+function lintTest(view: EditorView): Diagnostic[] {
+    const diagnostics: Diagnostic[] = [];
+
+    syntaxTree(view.state).iterate({
+        enter: (node) => {
+            if (node.type.isError) {
+                diagnostics.push({
+                    from: node.from,
+                    to: node.to,
+                    severity: "error",
+                    message: "Syntax error"
+                })
+            }
+        }
+    });
+
+    return diagnostics;
+}
 /* test */
 import { kuiper } from "codemirror-lang-kuiper"
 
@@ -51,8 +73,9 @@ function App() {
           value=""
           height="200px"
           theme={kuiperTheme}
-          extensions={[lang]}
+          extensions={[lang, linter(lintTest)]}
           onChange={onChange}
+
         />
       );
 }

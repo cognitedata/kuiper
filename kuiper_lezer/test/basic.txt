@@ -116,4 +116,4 @@ Result(Expression(Term(String)))
 
 ==>
 
-Result(Expression(Term(String)))
+Result(Expression(Term(String)), BlockComment, BlockComment)

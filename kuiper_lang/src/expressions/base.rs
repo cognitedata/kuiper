@@ -231,7 +231,7 @@ pub fn get_function_expression(
         "join" => FunctionType::Join(JoinFunction::new(args, pos)?),
         "except" => FunctionType::Except(ExceptFunction::new(args, pos)?),
         "select" => FunctionType::Select(SelectFunction::new(args, pos)?),
-        "distinctBy" => FunctionType::DistinctBy(DistinctByFunction::new(args, pos)?),
+        "distinct_by" => FunctionType::DistinctBy(DistinctByFunction::new(args, pos)?),
         _ => return Err(BuildError::unrecognized_function(pos, name)),
     };
     Ok(ExpressionType::Function(expr))
