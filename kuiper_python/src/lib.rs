@@ -3,7 +3,6 @@ mod exceptions;
 mod expressions;
 
 use crate::compiler::compile_expression_py;
-use crate::exceptions::KuiperError;
 use crate::expressions::KuiperExpression;
 use pyo3::prelude::PyModule;
 use pyo3::{pymodule, wrap_pyfunction, PyResult, Python};
@@ -13,9 +12,24 @@ fn kuiper(py: Python<'_>, module: &PyModule) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(compile_expression_py, py)?)?;
     module.add_class::<KuiperExpression>()?;
 
-    module.add("KuiperError", py.get_type::<KuiperError>())?;
-    module.add("KuiperCompileError", py.get_type::<KuiperError>())?;
-    module.add("KuiperRuntimeError", py.get_type::<KuiperError>())?;
+    PyModule::from_code(
+        py,
+        r#"
+class KuiperError(Exception):
+    def __init__(self, message, start, end):
+        super().__init__(message)
+        self.start = start
+        self.end = end
+
+class KuiperCompileError(KuiperError):
+    pass
+
+class KuiperRuntimeError(KuiperError):
+    pass
+"#,
+        "kuiper_errors.py",
+        "kuiper",
+    )?;
 
     Ok(())
 }
