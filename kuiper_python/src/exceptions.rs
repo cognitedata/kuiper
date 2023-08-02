@@ -1,7 +1,14 @@
-use pyo3::create_exception;
-use pyo3::exceptions::PyException;
+use pyo3::{PyErr, Python};
 
-create_exception!(kuiper, KuiperError, PyException);
-
-create_exception!(kuiper, KuiperCompileError, KuiperError);
-create_exception!(kuiper, KuiperRuntimeError, KuiperError);
+pub fn raise_kuiper_error(
+    error: &str,
+    message: String,
+    start: Option<usize>,
+    end: Option<usize>,
+) -> PyErr {
+    Python::with_gil(|py| {
+        let errors = py.import("kuiper").unwrap();
+        let exception = errors.getattr(error).unwrap();
+        PyErr::from_value(exception.call1((message, start, end)).unwrap())
+    })
+}
