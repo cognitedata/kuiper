@@ -61,6 +61,9 @@ jobs:
       - name: Run install
         working-directory: ./kuiper_lezer
         run: yarn install --frozen-lockfile
+      - name: Build package
+        working-directory: ./kuiper_lezer
+        run: yarn prepare
       - name: Authenticate with npm
         env:
           NPM_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}

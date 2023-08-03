@@ -1,6 +1,6 @@
 {
   "name": "@cognite/codemirror-lang-kuiper",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Codemirror module for the json transformation language Kuiper",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -11,6 +11,9 @@
     "url": "https://github.com/cognitedata/kuiper",
     "directory": "kuiper_lezer"
   },
+  "files": [
+    "./dist/*"
+  ],
   "author": "Einar Omang",
   "license": "MIT",
   "type": "module",
