@@ -1,17 +1,22 @@
 #! /usr/bin/env python3
 
+from io import TextIOWrapper
 import sys
 import toml
+import json
 from pathlib import Path
-from typing import Any
 
 
-def get_cargo_version(cargo: dict[str, Any]) -> str:
-    return cargo["package"]["version"]
+def get_cargo_version(file: TextIOWrapper) -> str:
+    return toml.load(file)["package"]["version"]
 
 
-def get_pyproject_version(pyproject: dict[str, Any]) -> str:
-    return pyproject["project"]["version"]
+def get_pyproject_version(file: TextIOWrapper) -> str:
+    return toml.load(file)["project"]["version"]
+
+
+def get_js_package_version(file: TextIOWrapper) -> str:
+    return json.load(file)["version"]
 
 
 FILES = {
@@ -19,6 +24,7 @@ FILES = {
     Path(__file__).resolve().parent / "kuiper_lang" / "Cargo.toml": get_cargo_version,
     Path(__file__).resolve().parent / "kuiper_python" / "Cargo.toml": get_cargo_version,
     Path(__file__).resolve().parent / "kuiper_python" / "pyproject.toml": get_pyproject_version,
+    Path(__file__).resolve().parent / "kuiper_lezer" / "package.json": get_js_package_version,
 }
 
 
@@ -27,7 +33,7 @@ def main() -> None:
 
     for file in FILES:
         with open(file, "r") as f:
-            version = FILES[file](toml.load(f))
+            version = FILES[file](f)
             print(f"{file}: {version}")
             versions.add(version)
 
