@@ -57,7 +57,7 @@ jobs:
           node-version: 18.x
       - name: Run install
         working-directory: ./kuiper_lezer
-        run: yarn install
+        run: yarn install --frozen-lockfile
       - name: Run test
         working-directory: ./kuiper_lezer
         run: yarn prepare && yarn test
