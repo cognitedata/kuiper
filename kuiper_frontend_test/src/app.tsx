@@ -179,7 +179,7 @@ function App() {
             extensions={[lang, linter(lintReal)]}
             onChange={onChange}
         />
-        <span>{output}</span>
+        <div><pre>{output}</pre></div>
     </div>
 
     );
