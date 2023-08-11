@@ -104,7 +104,7 @@ jobs:
         working-directory: ./kuiper_js
         run: wasm-pack build --scope cognite
       - name: Copy npmrc to package dir
-        run: cp .npmrc ./kuper_js/pkg/.npmrc
+        run: cp .npmrc ./kuiper_js/pkg/.npmrc
       - name: Publish wasm package
         working-directory: ./kuiper_js/pkg
         run: npm publish
