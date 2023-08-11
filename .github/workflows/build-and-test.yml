@@ -73,7 +73,7 @@ jobs:
           args: --release -i python${{ matrix.python-version }} --target ${{ matrix.arch }}
           manylinux: auto
 
-  build_codemirror_module:
+  build_js_modules:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -81,6 +81,15 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18.x
+
+      # WASM module
+      - name: Setup wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: Build wasm package
+        working-directory: ./kuiper_js
+        run: wasm-pack build --scope cognite
+
+      # Codemirror module
       - name: Run install
         working-directory: ./kuiper_lezer
         run: yarn install --frozen-lockfile

@@ -7,6 +7,7 @@ import { tags as t } from '@lezer/highlight';
 import {linter, Diagnostic} from "@codemirror/lint"
 import { EditorView } from "@codemirror/view"
 import { syntaxTree } from "@codemirror/language"
+import { json } from "@codemirror/lang-json"
 
 const kuiperTheme = createTheme({
     theme: 'dark',
@@ -52,8 +53,11 @@ function lintTest(view: EditorView): Diagnostic[] {
 
     return diagnostics;
 }
+
+
 /* test */
 import { kuiper } from "codemirror-lang-kuiper"
+import { compile_expression, KuiperError, KuiperExpression } from '@cognite/kuiper_js';
 
 function App() {
     const lang = kuiper([{
@@ -63,21 +67,122 @@ function App() {
         label: "context",
         description: "Context"
     }]);
+
+
+
+    const [ expression, setExpression ] = React.useState<KuiperExpression | undefined>();
+    const [ sampleData, setSampleData ] = React.useState<string | undefined>("{}");
+    const lintReal = (view: EditorView): Diagnostic[] => {
+        const data = view.state.doc.toString();
+        let expr: KuiperExpression | undefined = undefined;
+        try {
+            expr = compile_expression(data, ["input"]);
+        }
+        catch (err) {
+            if (err instanceof KuiperError) {
+                const diagnostics: Diagnostic[] = [];
+                if (err.start !== undefined && err.end !== undefined) {
+                    diagnostics.push({
+                        from: err.start,
+                        to: err.end,
+                        severity: "error",
+                        message: err.message
+                    });
+                }
+                err.free();
+                return diagnostics;
+            }
+            return [];
+        }
+
+        if (!sampleData) return [];
+
+        try {
+            expr.run(JSON.parse(sampleData));
+        } catch (err) {
+            if (err instanceof KuiperError) {
+                const diagnostics: Diagnostic[] = [];
+                if (err.start !== undefined && err.end !== undefined) {
+                    diagnostics.push({
+                        from: err.start,
+                        to: err.end,
+                        severity: "error",
+                        message: err.message
+                    });
+                }
+                err.free();
+                return diagnostics;
+            }
+        } finally {
+            expr.free();
+        }
+        return [];
+    }
     const onChange = React.useCallback((value: string, viewUpdate) => {
-        console.log('value:', lang.language.parser.parse(value).topNode);
-      }, []);
+        let expr: KuiperExpression | undefined = undefined;
+        try {
+            expr = compile_expression(value, ["input"]);
+        }
+        catch (err) {
+            if (err instanceof KuiperError) {
+                console.log("Failed to compile: " + err.message + ", " + err.start + ":" + err.end);
+                err.free()
+            } else {
+                console.log("Unexpected error during compile: " + err)
+            }
+            return;
+        }
+        if (expression) {
+            expression.free();
+        }
+        setExpression(expr);
+    }, []);
 
-      console.log(lang.language.name, lang.extension);
-      return (
+    const jsonLang = json();
+    const onChangeSample = React.useCallback((value: string, viewUpdate) => {
+        try {
+            JSON.parse(value);
+        } catch (err) {
+            return;
+        }
+        setSampleData(value);
+    }, []);
+
+    let output: string | undefined = undefined;
+    if (expression && sampleData) {
+        try {
+            let res = expression.run(JSON.parse(sampleData));
+            output = JSON.stringify(res, undefined, 4);
+        } catch (err) {
+            if (err instanceof KuiperError) {
+                console.log("Failed to transform: " + err.message + ", " + err.start + ":" + err.end);
+                err.free()
+            } else {
+                console.log("Unexpected error during run: " + err)
+            }
+        }
+    }
+
+    return (
+    <div>
         <CodeMirror
-          value=""
-          height="200px"
-          theme={kuiperTheme}
-          extensions={[lang, linter(lintTest)]}
-          onChange={onChange}
-
+            value="{}"
+            height='200px'
+            theme={okaidia}
+            extensions={[jsonLang]}
+            onChange={onChangeSample}
         />
-      );
+        <CodeMirror
+            value=""
+            height="200px"
+            theme={okaidia}
+            extensions={[lang, linter(lintReal)]}
+            onChange={onChange}
+        />
+        <div><pre>{output}</pre></div>
+    </div>
+
+    );
 }
 
 const container = document.getElementById('root')!;
