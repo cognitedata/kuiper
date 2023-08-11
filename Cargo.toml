@@ -4,6 +4,7 @@ members = [
     "kuiper_lang_macros",
     "kuiper_cli",
     "kuiper_python",
-    "kuiper_interop"
+    "kuiper_interop",
+    "kuiper_js",
 ]
 resolver = "2"
