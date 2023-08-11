@@ -736,7 +736,7 @@ dependencies = [
 
 [[package]]
 name = "kuiper-cli"
-version = "0.2.4"
+version = "0.3.0"
 dependencies = [
  "clap",
  "dirs",
@@ -756,7 +756,7 @@ dependencies = [
 
 [[package]]
 name = "kuiper_js"
-version = "0.2.4"
+version = "0.3.0"
 dependencies = [
  "console_error_panic_hook",
  "gloo-utils",
@@ -768,7 +768,7 @@ dependencies = [
 
 [[package]]
 name = "kuiper_lang"
-version = "0.2.4"
+version = "0.3.0"
 dependencies = [
  "chrono",
  "criterion",
@@ -797,7 +797,7 @@ dependencies = [
 
 [[package]]
 name = "kuiper_python"
-version = "0.2.4"
+version = "0.3.0"
 dependencies = [
  "kuiper_lang",
  "pyo3",

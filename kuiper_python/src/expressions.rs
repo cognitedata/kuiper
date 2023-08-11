@@ -1,7 +1,7 @@
 use crate::exceptions::raise_kuiper_error;
 use kuiper_lang::ExpressionType;
 use pyo3::{pyclass, pymethods, PyResult};
-use serde_json::{from_str, Value};
+use serde_json::from_str;
 
 #[pyclass]
 pub struct KuiperExpression {
@@ -14,11 +14,14 @@ impl KuiperExpression {
     }
 }
 
-#[pymethods]
 impl KuiperExpression {
-    fn run(&self, input: String) -> PyResult<String> {
-        let json: Vec<Value> = match from_str(&input) {
-            Ok(value) => vec![value],
+    fn run_internal<'a>(&self, input: impl IntoIterator<Item = &'a str>) -> PyResult<String> {
+        let json = input
+            .into_iter()
+            .map(|i| from_str(i))
+            .collect::<Result<Vec<_>, _>>();
+        let json = match json {
+            Ok(values) => values,
             Err(json_error) => {
                 return Err(raise_kuiper_error(
                     "KuiperRuntimeError",
@@ -28,7 +31,6 @@ impl KuiperExpression {
                 ))
             }
         };
-
         match self.expression.run(json.iter()) {
             Ok(result) => Ok(result.to_string()),
             Err(transform_error) => Err(raise_kuiper_error(
@@ -38,5 +40,16 @@ impl KuiperExpression {
                 transform_error.span().map(|s| s.end),
             )),
         }
+    }
+}
+
+#[pymethods]
+impl KuiperExpression {
+    fn run(&self, input: String) -> PyResult<String> {
+        self.run_internal([input.as_str()])
+    }
+
+    fn run_multiple_inputs(&self, inputs: Vec<String>) -> PyResult<String> {
+        self.run_internal(inputs.iter().map(|s| s.as_str()))
     }
 }
