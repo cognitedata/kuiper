@@ -24,7 +24,7 @@ serde_json = { version = "1.0.104" }
 # all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
 # code size when deploying.
 console_error_panic_hook = { version = "0.1.7", optional = true }
-gloo-utils = { version = "0.1.7", features = ["serde"] }
+gloo-utils = { version = "0.2.0", features = ["serde"] }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.34"
