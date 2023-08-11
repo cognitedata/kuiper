@@ -92,16 +92,28 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18.x
+      - name: Authenticate with npm
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+        run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
+
+      # WASM module
+      - name: Setup wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: Build wasm package
+        working-directory: ./kuiper_js
+        run: wasm-pack build --scope cognite
+      - name: Publish wasm package
+        working-directory: ./kuiper_js/pkg
+        run: npm publish
+
+      # Codemirror module
       - name: Run install
         working-directory: ./kuiper_lezer
         run: yarn install --frozen-lockfile
       - name: Build package
         working-directory: ./kuiper_lezer
         run: yarn prepare
-      - name: Authenticate with npm
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
-        run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
       - name: Publish package
         working-directory: ./kuiper_lezer
         run: npm publish

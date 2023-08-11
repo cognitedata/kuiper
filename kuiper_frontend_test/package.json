@@ -23,7 +23,7 @@
     "@uiw/codemirror-themes": "^4.21.2",
     "@uiw/react-codemirror": "^4.21.2",
     "codemirror-lang-kuiper": "./kuiper_lezer",
-    "kuiper_js": "./kuiper_js/pkg",
+    "@cognite/kuiper_js": "./kuiper_js/pkg",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   }

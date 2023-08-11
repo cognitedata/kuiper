@@ -57,7 +57,7 @@ function lintTest(view: EditorView): Diagnostic[] {
 
 /* test */
 import { kuiper } from "codemirror-lang-kuiper"
-import { compile_expression, KuiperError, KuiperExpression } from 'kuiper_js';
+import { compile_expression, KuiperError, KuiperExpression } from '@cognite/kuiper_js';
 
 function App() {
     const lang = kuiper([{

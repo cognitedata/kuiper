@@ -81,12 +81,14 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18.x
+
       # WASM module
       - name: Setup wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - name: Build wasm package
         working-directory: ./kuiper_js
-        run: wasm-pack build
+        run: wasm-pack build --scope cognite
+
       # Codemirror module
       - name: Run install
         working-directory: ./kuiper_lezer
@@ -94,4 +96,3 @@ jobs:
       - name: Run test
         working-directory: ./kuiper_lezer
         run: yarn prepare && yarn test
-      
