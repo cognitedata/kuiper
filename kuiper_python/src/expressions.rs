@@ -18,7 +18,7 @@ impl KuiperExpression {
     fn run_internal<'a>(&self, input: impl IntoIterator<Item = &'a str>) -> PyResult<String> {
         let json = input
             .into_iter()
-            .map(|i| from_str(i))
+            .map(from_str)
             .collect::<Result<Vec<_>, _>>();
         let json = match json {
             Ok(values) => values,
