@@ -163,6 +163,17 @@ pub unsafe extern "C" fn destroy_transform_result(data: *mut TransformResult) {
     }
 }
 
+/// Convert an expression to its string representation
+///
+/// # Safety
+///
+/// `data` must be a valid pointer to an `ExpressionType`.
+#[no_mangle]
+pub unsafe extern "C" fn expression_to_string(data: *mut ExpressionType) -> *mut c_char {
+    let str = unsafe { &*data }.to_string();
+    CString::new(str).unwrap().into_raw()
+}
+
 /// Run a kuiper expression with a list of inputs.
 ///
 /// Returns a result struct in which exactly one of `error` or `result` is non-null.
