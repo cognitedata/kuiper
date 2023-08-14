@@ -174,6 +174,12 @@ pub unsafe extern "C" fn expression_to_string(data: *mut ExpressionType) -> *mut
     CString::new(str).unwrap().into_raw()
 }
 
+/// Destroy a string allocated by rust
+///
+/// # Safety
+///
+/// `data` must be a valid, null-terminated, UTF-8 encoded string.
+/// Do not call this on strings not originally allocated by rust.
 #[no_mangle]
 pub unsafe extern "C" fn destroy_string(data: *mut c_char) {
     if !data.is_null() {
