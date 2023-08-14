@@ -162,7 +162,7 @@ mod tests {
         match res {
             TransformError::InvalidOperation(d) => {
                 assert_eq!(d.desc, "Divide by zero");
-                assert_eq!(d.span, Span { start: 0, end: 14 });
+                assert_eq!(d.span, Span { start: 3, end: 4 });
             }
             _ => panic!("Wrong type of error {res:?}"),
         }
@@ -175,7 +175,7 @@ mod tests {
         match res {
             TransformError::IncorrectTypeInField(d) => {
                 assert_eq!(d.desc, "'*'. Got string, expected number");
-                assert_eq!(d.span, Span { start: 0, end: 14 });
+                assert_eq!(d.span, Span { start: 3, end: 4 });
             }
             _ => panic!("Wrong type of error {res:?}"),
         }
@@ -200,7 +200,7 @@ mod tests {
         match result {
             CompileError::Optimizer(TransformError::SourceMissingError(d)) => {
                 assert_eq!(d.desc, "foo");
-                assert_eq!(d.span, Span { start: 8, end: 15 });
+                assert_eq!(d.span, Span { start: 12, end: 15 });
             }
             _ => panic!("Wrong type of error {result:?}"),
         }
