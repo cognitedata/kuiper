@@ -182,7 +182,7 @@ mod tests {
         match err {
             TransformError::InvalidOperation(d) => {
                 assert_eq!(d.desc, "Divide by zero");
-                assert_eq!(d.span, Span { start: 0, end: 5 });
+                assert_eq!(d.span, Span { start: 2, end: 3 });
             }
             _ => panic!("Wrong type of error {err:?}"),
         }

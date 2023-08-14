@@ -73,7 +73,7 @@ Term: ast::Expression = {
     <var:Spanned<"var">> => ast::Expression::Variable(var.0, var.1),
     <start:@L> "[" <it:Comma<Expr>> "]" <end:@R> => ast::Expression::Array(it, Span { start, end }),
     <start:@L> "{" <it:Comma<Pair>> "}" <end:@R> => ast::Expression::Object(it, Span { start, end }),
-    <start:@L> <e: Term> "." <fun:"var"> "(" <mut args:Comma<FunctionArg>> ")" <end:@R> => {
+    <e: Term> "." <start:@L> <fun:"var"> "(" <mut args:Comma<FunctionArg>> ")" <end:@R> => {
         args.insert(0, ast::FunctionParameter::Expression(e));
         ast::Expression::Function {
             name: fun,
@@ -81,12 +81,12 @@ Term: ast::Expression = {
             loc: Span { start, end }
         }
     },
-    <start:@L> <e: Term> "." <el:"var"> <end:@R> => ast::Expression::Selector {
+    <e: Term> "." <start:@L> <el:"var"> <end:@R> => ast::Expression::Selector {
         lhs: Box::new(e),
         sel: ast::Selector::String(el),
         loc: Span { start, end }
     },
-    <start:@L> <e: Term> "[" <el:Expr> "]" <end:@R> => ast::Expression::Selector {
+    <e: Term> <start:@L> "[" <el:Expr> "]" <end:@R> => ast::Expression::Selector {
         lhs: Box::new(e),
         sel: ast::Selector::Expression(Box::new(el)),
         loc: Span { start, end }
@@ -95,11 +95,11 @@ Term: ast::Expression = {
 }
 
 Tier<Op, NextTier>: ast::Expression = {
-    <start:@L> <lhs:Tier<Op, NextTier>> <op:Op> <rhs:NextTier> <end:@R> => ast::Expression::BinaryOperation(ast::OpExpression {
+    <lhs:Tier<Op, NextTier>> <op:Spanned<Op>> <rhs:NextTier> => ast::Expression::BinaryOperation(ast::OpExpression {
         lhs: Box::new(lhs),
-        operator: op,
+        operator: op.0,
         rhs: Box::new(rhs)
-    }, Span { start, end }),
+    }, op.1),
     NextTier
 }
 
@@ -142,7 +142,7 @@ Op7: Operator = {
     "%" => Operator::Modulo
 }
 Op8Expr: ast::Expression = {
-    <start:@L> "!" <e:Op8Expr> <end:@R> => ast::Expression::UnaryOperation {
+    <start:@L> "!" <end:@R> <e:Op8Expr> => ast::Expression::UnaryOperation {
         operator: UnaryOperator::Negate,
         rhs: Box::new(e),
         loc: Span { start, end }
