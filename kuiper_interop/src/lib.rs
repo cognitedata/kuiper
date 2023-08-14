@@ -53,7 +53,7 @@ unsafe fn compile_expression_internal(
 pub unsafe extern "C" fn destroy_compile_result(data: *mut CompileResult) {
     let data = unsafe { Box::from_raw(data) };
     if !data.error.is_null() {
-        unsafe { Box::from_raw(data.error) };
+        unsafe { std::mem::drop(CString::from_raw(data.error)) };
     }
     if !data.result.is_null() {
         unsafe { Box::from_raw(data.result) };
@@ -156,10 +156,10 @@ unsafe fn run_expression_internal(
 pub unsafe extern "C" fn destroy_transform_result(data: *mut TransformResult) {
     let data = unsafe { Box::from_raw(data) };
     if !data.error.is_null() {
-        unsafe { Box::from_raw(data.error) };
+        unsafe { drop(CString::from_raw(data.error)) };
     }
     if !data.result.is_null() {
-        unsafe { Box::from_raw(data.result) };
+        unsafe { drop(CString::from_raw(data.result)) };
     }
 }
 
@@ -172,6 +172,13 @@ pub unsafe extern "C" fn destroy_transform_result(data: *mut TransformResult) {
 pub unsafe extern "C" fn expression_to_string(data: *mut ExpressionType) -> *mut c_char {
     let str = unsafe { &*data }.to_string();
     CString::new(str).unwrap().into_raw()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn destroy_string(data: *mut c_char) {
+    if !data.is_null() {
+        drop(CString::from_raw(data))
+    }
 }
 
 /// Run a kuiper expression with a list of inputs.
