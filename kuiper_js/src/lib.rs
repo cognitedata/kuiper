@@ -55,7 +55,17 @@ impl KuiperExpression {
         let res = self.expression.run(json)?;
         Ok(JsValue::from_serde(&res)?)
     }
-
+    
+    pub fn run_multiple_inputs(&self, data: Vec<JsValue>) -> Result<JsValue, KuiperError> {
+        let json_items: Vec<Value> = data
+            .into_iter()
+            .map(|d| d.into_serde())
+            .collect::<Result<_, _>>()?;
+        let json: Vec<&Value> = json_items.iter().collect();
+        let res = self.expression.run(json)?;
+        Ok(JsValue::from_serde(&res)?)
+    }
+  
     #[wasm_bindgen(js_name = toString)]
     pub fn to_string(&self) -> String {
         self.expression.to_string()
