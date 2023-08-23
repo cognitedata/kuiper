@@ -42,6 +42,12 @@ namespace Cognite.Kuiper
 
         [DllImport(NativeLib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "destroy_expression")]
         public unsafe static extern void destroy_expression(IntPtr data);
+
+        [DllImport(NativeLib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "expression_to_string")]
+        public unsafe static extern byte* expression_to_string(IntPtr expression);
+
+        [DllImport(NativeLib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "destroy_string")]
+        public unsafe static extern void destroy_string(byte* data);
     }
 
     public class KuiperExpression : IDisposable
@@ -132,6 +138,19 @@ namespace Cognite.Kuiper
                 return transformedData;
             }
         }
+
+        public override string ToString()
+        {
+            unsafe
+            {
+                var result = KuiperInterop.expression_to_string(_expression);
+                var resString = Marshal.PtrToStringUTF8((nint)result);
+                KuiperInterop.destroy_string(result);
+                return resString;
+            }
+        }
+
+        ~KuiperExpression() => Dispose(false);
 
         private bool disposedValue;
 

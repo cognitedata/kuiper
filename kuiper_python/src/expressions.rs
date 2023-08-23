@@ -41,6 +41,10 @@ impl KuiperExpression {
             )),
         }
     }
+
+    fn __str__(&self) -> String {
+        self.expression.to_string()
+    }
 }
 
 #[pymethods]
