@@ -168,7 +168,12 @@ impl OpExpression {
         let rhs = self.elements[1].resolve(state)?;
         let rhs_ref = rhs.as_ref().as_str();
         let Some(rhs_ref) = rhs_ref else {
-            return Err(TransformError::new_incorrect_type("Right hand side of `is` operator", "string", TransformError::value_desc(&rhs), &self.span));
+            return Err(TransformError::new_incorrect_type(
+                "Right hand side of `is` operator",
+                "string",
+                TransformError::value_desc(&rhs),
+                &self.span,
+            ));
         };
         let res = match rhs_ref {
             "null" => lhs.is_null(),
