@@ -68,16 +68,16 @@ pub enum Token {
     Comma,
 
     /// A floating point number. Strictly not an integer.
-    #[regex(r#"[-]?(\d*\.)?\d+"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseFloat((e, lex.span().clone()))))]
-    #[regex(r#"[-]?(\d*\.)?\d+[eE][+-]?(\d)"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseFloat((e, lex.span().clone()))))]
+    #[regex(r#"[-]?(\d*\.)?\d+"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseFloat((e, lex.span()))))]
+    #[regex(r#"[-]?(\d*\.)?\d+[eE][+-]?(\d)"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseFloat((e, lex.span()))))]
     Float(f64),
 
     /// A negative integer.
-    #[regex(r#"-(\d)+"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseInt((e, lex.span().clone()))))]
+    #[regex(r#"-(\d)+"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseInt((e, lex.span()))))]
     Integer(i64),
 
     /// A positive integer.
-    #[regex(r#"(\d)+"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseInt((e, lex.span().clone()))), priority = 2)]
+    #[regex(r#"(\d)+"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseInt((e, lex.span()))), priority = 2)]
     UInteger(u64),
 
     #[token("true", |_| true)]

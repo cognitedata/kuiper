@@ -7,7 +7,7 @@ use crate::compiler::BuildError;
 
 use super::{
     base::{
-        get_boolean_from_value, get_number_from_value, get_string_from_value, Expression,
+        get_boolean_from_value, get_number_from_value, get_string_from_cow_value, Expression,
         ExpressionExecutionState, ExpressionMeta, ExpressionType, ResolveResult,
     },
     transform_error::TransformError,
@@ -86,7 +86,7 @@ impl Display for OpExpression {
 
 impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
     fn resolve(
-        &self,
+        &'a self,
         state: &ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         let lhs = self.elements[0].resolve(state)?;
@@ -102,7 +102,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
                 Operator::And | Operator::Or | Operator::Equals | Operator::NotEquals
             )
         {
-            self.resolve_string_operator(&lhs, state)
+            self.resolve_string_operator(lhs, state)
         } else if matches!(self.operator, Operator::And | Operator::Or) {
             self.resolve_boolean_operator(&lhs, state)
         } else {
@@ -235,12 +235,12 @@ impl OpExpression {
 
     fn resolve_string_operator<'a>(
         &self,
-        lhs: &Value,
+        lhs: ResolveResult<'a>,
         state: &ExpressionExecutionState,
     ) -> Result<ResolveResult<'a>, TransformError> {
-        let lhs = get_string_from_value(&self.descriptor, lhs, &self.span)?;
+        let lhs = get_string_from_cow_value(&self.descriptor, lhs, &self.span)?;
         let rhs = self.elements[1].resolve(state)?;
-        let rhs = get_string_from_value(&self.descriptor, &rhs, &self.span)?;
+        let rhs = get_string_from_cow_value(&self.descriptor, rhs, &self.span)?;
 
         let res = match &self.operator {
             Operator::Equals => lhs == rhs,
