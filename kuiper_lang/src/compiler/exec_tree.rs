@@ -50,7 +50,7 @@ impl BuildError {
     pub(crate) fn unexpected_lambda(position: &Span) -> Self {
         Self::UnexpectedLambda(CompileErrorData {
             position: position.clone(),
-            detail: None,
+            detail: Some("Expected expression, got lambda".to_owned()),
         })
     }
     pub(crate) fn unrecognized_function(position: Span, symbol: &str) -> Self {
