@@ -1,6 +1,6 @@
 // This file is automatically created by kuiper_documentation/codegen.py. Do not edit it directly.
 //
-// To change the content of this file, edit kuiper_documentation/functions.yaml file instead.
+// To change the content of this file, edit kuiper_documentation/functions.yaml instead.
 
 export type KuiperInput = {
     label: string,
