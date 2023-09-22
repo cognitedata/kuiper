@@ -36,7 +36,7 @@ def generate_warning_header(file: TextIO, comment_tag="//"):
     )
     file.write(f"{comment_tag}\n")
     file.write(
-        f"{comment_tag} To change the content of the file, edit kuiper_documentation/functions.yaml file instead.\n\n"
+        f"{comment_tag} To change the content of this file, edit kuiper_documentation/functions.yaml file instead.\n\n"
     )
 
 
