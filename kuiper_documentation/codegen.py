@@ -30,7 +30,19 @@ title: Built-in functions
             file.write("\n```\n")
 
 
+def generate_warning_header(file: TextIO, comment_tag="//"):
+    file.write(
+        f"{comment_tag} This file is automatically created by kuiper_documentation/codegen.py. Do not edit it directly.\n"
+    )
+    file.write(f"{comment_tag}\n")
+    file.write(
+        f"{comment_tag} To change the content of the file, edit kuiper_documentation/functions.yaml file instead.\n\n"
+    )
+
+
 def generate_repl_list(functions: list[dict[str, Any]], file: TextIO):
+    generate_warning_header(file)
+
     file.write(f"pub const BUILT_INS: [&str; {len(functions)+1}] = [\n")
     for function in functions:
         file.write(f"    \"{function['name'].strip()}(\",\n")
@@ -39,6 +51,8 @@ def generate_repl_list(functions: list[dict[str, Any]], file: TextIO):
 
 
 def generate_js_list(functions: list[dict[str, Any]], file: TextIO):
+    generate_warning_header(file)
+
     file.write(
         """export type KuiperInput = {
     label: string,
