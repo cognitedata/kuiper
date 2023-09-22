@@ -34,13 +34,7 @@ functions:
         {
             "externalId": concat("some-prefix:", input.tag)
         }
-
-  - name: distinct_by
-    signature: "`distinct_by(x, s)`"
-    description: Returns a list or object where the elements are distinct by the returned value of the given lambda function. The lambda function either takes list values, or object (value, key) pairs
-    examples:
-      - "[1, 2, 3, 4, 5].distinct_by(x => x % 2) -> [1, 2]"
-
+        
   - name: except
     signature: "`except(x, (v(, k)) => ...)` or `except(x, l)`"
     description: Returns a list or object where the elements are distinct by the returned value of the given lambda function. The lambda function either takes list values, or object (value, key) pairs

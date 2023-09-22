@@ -1,10 +1,9 @@
-pub const BUILT_INS: [&str; 31] = [
+pub const BUILT_INS: [&str; 30] = [
     "atan2(",
     "case(",
     "ceil(",
     "chunk(",
     "concat(",
-    "distinct_by(",
     "except(",
     "filter(",
     "flatmap(",
