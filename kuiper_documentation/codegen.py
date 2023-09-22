@@ -39,7 +39,7 @@ def generate_repl_list(functions: list[dict[str, Any]], file: TextIO):
 
 
 def generate_js_list(functions: list[dict[str, Any]], file: TextIO):
-    file.write("const builtIns: KuiperInput[] = [\n")
+    file.write("export const builtIns: KuiperInput[] = [\n")
 
     for function in functions:
         short_desc = function["description"].split("\n")[0].strip()

@@ -1,4 +1,4 @@
-const builtIns: KuiperInput[] = [
+export const builtIns: KuiperInput[] = [
     { label: "atan2", description: "`atan2(x, y)`: Returns the inverse tangent of `x`/`y` in radians between -pi and pi." },
     { label: "case", description: "`case(x, c1, r1, c2, r2, ..., (default))`: Compare `x` to each of `c1`, `c2`, etc. and return the matching `r1`, `r2` of the first match. If no entry matches, a final optional expression can be returned as default." },
     { label: "ceil", description: "`ceil(x)`: Returns `x` rounded up to the nearest integer." },
