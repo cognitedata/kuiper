@@ -69,6 +69,17 @@ concat("Hello, ", "world!") -> "Hello, world!"
 }
 ```
 
+## distinct_by
+
+`distinct_by(x, s)`
+
+Returns a list or object where the elements are distinct by the returned value of the given lambda function. The lambda function either takes list values, or object (value, key) pairs
+
+**Code example**
+```
+[1, 2, 3, 4, 5].distinct_by(x => x % 2) -> [1, 2]
+```
+
 ## except
 
 `except(x, (v(, k)) => ...)` or `except(x, l)`

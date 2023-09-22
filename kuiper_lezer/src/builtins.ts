@@ -9,6 +9,7 @@ export const builtIns: KuiperInput[] = [
     { label: "ceil", description: "`ceil(x)`: Returns `x` rounded up to the nearest integer." },
     { label: "chunk", description: "`chunk(x, s)`: Converts the list `x` into several lists of length at most `s`" },
     { label: "concat", description: "`concat(x, y, ...)`: Concatenate any number of strings." },
+    { label: "distinct_by", description: "`distinct_by(x, s)`: Returns a list or object where the elements are distinct by the returned value of the given lambda function. The lambda function either takes list values, or object (value, key) pairs" },
     { label: "except", description: "`except(x, (v(, k)) => ...)` or `except(x, l)`: Returns a list or object where the elements are distinct by the returned value of the given lambda function. The lambda function either takes list values, or object (value, key) pairs" },
     { label: "filter", description: "`filter(x, it => ...)`: Removes any item from the list `x` where the lambda function returns a falsy value." },
     { label: "flatmap", description: "`flatmap(x, it => ...)`: Applies the lambda function to every item in the list `x` and flattens the result." },
