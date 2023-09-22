@@ -39,6 +39,13 @@ def generate_repl_list(functions: list[dict[str, Any]], file: TextIO):
 
 
 def generate_js_list(functions: list[dict[str, Any]], file: TextIO):
+    file.write(
+        """export type KuiperInput = {
+    label: string,
+    description: string,
+};\n\n"""
+    )
+
     file.write("export const builtIns: KuiperInput[] = [\n")
 
     for function in functions:

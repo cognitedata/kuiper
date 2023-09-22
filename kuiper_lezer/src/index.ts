@@ -3,7 +3,9 @@ import {parser} from "./kuiper.grammar"
 import {styleTags, tags} from "@lezer/highlight"
 import {Completion, completeFromList, ifNotIn} from "@codemirror/autocomplete";
 import { dontComplete, varCompletionSource } from "./complete";
-import {builtIns} from "./builtins";
+import {builtIns, KuiperInput} from "./builtins";
+
+export {KuiperInput};
 
 export const kuiperLanguage = LRLanguage.define({
     parser: parser.configure({
@@ -37,13 +39,6 @@ export const kuiperLanguage = LRLanguage.define({
         commentTokens: { block: { open: "/*", close: "*/" } }
     }
 })
-
-
-
-export type KuiperInput = {
-    label: string,
-    description: string,
-};
 
 export function kuiper(inputs: KuiperInput[] = []) {
     const builtInCompletions: Completion[] = builtIns.map(func => ({
