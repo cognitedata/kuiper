@@ -1,10 +1,13 @@
+use crate::builtins::BUILT_INS;
+use colored::Colorize;
 use kuiper_lang::compile_expression;
 use rustyline::completion::Completer;
 use rustyline::error::ReadlineError;
+use rustyline::highlight::Highlighter;
 use rustyline::{CompletionType, Config, Context, Editor, Helper};
-use rustyline::{Highlighter, Hinter, Validator};
+use rustyline::{Hinter, Validator};
 
-#[derive(Hinter, Highlighter, Validator, Helper)]
+#[derive(Hinter, Validator, Helper)]
 struct KuiperHelper {}
 
 impl KuiperHelper {
@@ -43,42 +46,22 @@ impl Completer for KuiperHelper {
         }
 
         let word: String = line.chars().skip(low).take(high - low).collect();
-        let candidates: Vec<String> = vec![
-            "pow(",
-            "log(",
-            "atan2(",
-            "floor(",
-            "ceil(",
-            "round(",
-            "concat(",
-            "string(",
-            "int(",
-            "float(",
-            "try_float(",
-            "try_int(",
-            "try_bool(",
-            "if(",
-            "to_unix_timestamp(",
-            "format_timestamp(",
-            "case(",
-            "pairs(",
-            "map(",
-            "flatmap(",
-            "reduce(",
-            "filter(",
-            "zip(",
-            "length(",
-            "chunk(",
-            "now(",
-            "input",
-        ]
-        .into_iter()
-        .filter(|s| s.starts_with(&word))
-        .map(|s| s.to_string())
-        .collect();
+        let candidates = BUILT_INS
+            .into_iter()
+            .filter(|s| s.starts_with(&word))
+            .map(String::from)
+            .collect();
 
         Ok((low, candidates))
     }
+}
+
+impl Highlighter for KuiperHelper {}
+
+macro_rules! printerr {
+    ( $description:expr, $error:expr ) => {
+        println!("{} {} {}", "Error:".red(), $description, $error);
+    };
 }
 
 pub fn repl() {
@@ -122,7 +105,7 @@ pub fn repl() {
                 let expr = match res {
                     Ok(x) => x,
                     Err(e) => {
-                        println!("Compilation failed! {e}");
+                        printerr!("", e);
                         continue;
                     }
                 };
@@ -135,7 +118,7 @@ pub fn repl() {
                         data.push(x.into_owned());
                     }
                     Err(e) => {
-                        println!("Transform failed! {e}");
+                        printerr!("Transform failed:", e);
                         continue;
                     }
                 }
@@ -146,7 +129,7 @@ pub fn repl() {
             Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => break,
 
             Err(error) => {
-                eprintln!("Unexpected error: {}", error);
+                printerr!("Unexpected error:", error);
                 break;
             }
         }

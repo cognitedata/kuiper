@@ -35,9 +35,13 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dev deps
-        run: pip install pre-commit toml
+        run: pip install pre-commit toml pyyaml
       - name: Check style
         run: pre-commit run --all
+      - name: Check that docs are up to date
+        run: |
+          python kuiper_documentation/codegen.py
+          git diff --quiet
       - name: Setup QEMU
         uses: docker/setup-qemu-action@v2
       - uses: PyO3/maturin-action@v1

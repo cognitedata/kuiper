@@ -1,0 +1,328 @@
+functions:
+  - name: atan2
+    signature: "`atan2(x, y)`"
+    description: Returns the inverse tangent of `x`/`y` in radians between -pi and pi.
+    examples:
+      - atan2(3, 2) -> 0.982793723247329
+
+  - name: case
+    signature: "`case(x, c1, r1, c2, r2, ..., (default))`"
+    description: |
+      Compare `x` to each of `c1`, `c2`, etc. and return the matching `r1`, `r2` of the first match. If no entry matches, a final optional expression can be returned as default.
+    examples:
+      - case("b", "a", 1, "b", 2, "c", 3, 0) -> 2
+      - case("d", "a", 1, "b", 2, "c", 3, 0) -> 0
+
+  - name: ceil
+    signature: "`ceil(x)`"
+    description: Returns `x` rounded up to the nearest integer.
+    examples:
+      - ceil(16.2) -> 17
+
+  - name: chunk
+    signature: "`chunk(x, s)`"
+    description: Converts the list `x` into several lists of length at most `s`
+    examples:
+      - chunk([1, 2, 3, 4, 5, 6, 7], 3) -> [[1, 2, 3], [4, 5, 6], [7]]
+
+  - name: concat
+    signature: "`concat(x, y, ...)`"
+    description: Concatenate any number of strings.
+    examples:
+      - concat("Hello, ", "world!") -> "Hello, world!"
+      - |
+        {
+            "externalId": concat("some-prefix:", input.tag)
+        }
+
+  - name: distinct_by
+    signature: "`distinct_by(x, s)`"
+    description: Returns a list or object where the elements are distinct by the returned value of the given lambda function. The lambda function either takes list values, or object (value, key) pairs
+    examples:
+      - "[1, 2, 3, 4, 5].distinct_by(x => x % 2) -> [1, 2]"
+
+  - name: except
+    signature: "`except(x, (v(, k)) => ...)` or `except(x, l)`"
+    description: Returns a list or object where the elements are distinct by the returned value of the given lambda function. The lambda function either takes list values, or object (value, key) pairs
+    examples:
+      - |
+        {
+            "x-axis": 13.6,
+            "y-axis": 63.1,
+            "z-axis": 1.4,
+            "offset": 4.3,
+            "power": "on"
+        }.except(["offset", "power"])
+        ->
+        {
+            "x-axis": 13.6,
+            "y-axis": 63.1,
+            "z-axis": 1.4
+        }
+      - |
+        {
+            "a": 1,
+            "b": 2,
+            "c": 3,
+            "d": 4
+        }.except((v, k) => v > 2)
+        ->
+        {
+            "a": 1,
+            "b": 2
+        }
+
+  - name: filter
+    signature: "`filter(x, it => ...)`"
+    description: Removes any item from the list `x` where the lambda function returns a falsy value.
+    examples:
+      - "[1, 2, 3, 4].filter(item => item > 2) -> [3, 4]"
+      - |
+        input.data.map(row => {
+            "timestamp": to_unix_timestamp(row.StartTime, "%Y-%m-%dT%H:%M:%S"),
+            "value": try_float(row.Value, null),
+            "externalId": concat("prefix/", column.Name),
+            "type": "datapoint",
+        }).filter(dp => dp.value is "number")
+
+  - name: flatmap
+    signature: "`flatmap(x, it => ...)`"
+    description: |
+      Applies the lambda function to every item in the list `x` and flattens the result.
+
+      For example, if the lambda function returns a list, the result of the `flatmap` will just be a list instead of a list of lists.
+    examples:
+      - |
+        [[1, 2, 3], [2, 3, 4], [3, 4, 5]].flatmap(list => list.map(item => item + 1))
+        ->
+        [2, 3, 4, 3, 4, 5, 4, 5, 6]
+      - |
+        input.sensorData.flatmap(timeseries =>
+            timeseries.values.map(datapoint => {
+                "value": datapoint.value,
+                "timestamp": to_unix_timestamp(datapoint.datetime, "%Y-%m-%dT%H:%M:%S"),
+                "externalId": concat(timeseries.location, "/", timeseries.sensor),
+                "type": "datapoint"
+            })
+        )
+
+  - name: float
+    signature: "`float(x)`"
+    description: |
+      Converts `x` into a floating point number if possible. If the conversion fails, the whole mapping will fail.
+
+      Consider using [try_float](#try_float) instead if you need error handling.
+    examples:
+      - float("6.1") -> 6.1
+
+  - name: floor
+    signature: "`floor(x)`"
+    description: Returns `x` rounded down to the nearest integer.
+    examples:
+      - floor(16.2) -> 16
+
+  - name: format_timestamp
+    signature: "`format_timestamp(x)`"
+    description: |
+      Converts the Unix timestamp `x` into a string representation based on the format `f`.
+
+      The format is given using the table found [here](https://docs.rs/chrono/latest/chrono/format/strftime/index.html).
+    examples:
+      - format_timestamp(1694159249120, "%Y-%m-%d %H:%M:%S") -> "2023-09-08 07:47:29"
+      - format_timestamp(now(), "%d/%m - %Y") -> "08/09 - 2023"
+
+  - name: if
+    signature: "`if(x, y, (z))`"
+    description: Returns `y` if `x` evaluates to `true`, otherwise return `z`, or `null` if `z` is omitted.
+    examples:
+      - if(condition, "yes", "no")
+      - if(true, "on", "off") -> "on"
+
+  - name: int
+    signature: "`int(x)`"
+    description: |
+      Converts `x` into an integer if possible. If the conversion fails, the whole mapping will fail.
+
+      Consider using [try_int](#try_int) instead if you need error handling.
+    examples:
+      - int("6") -> 6
+
+  - name: join
+    signature: "`join(a, b)`"
+    description: Returns the union of the two objects `a` and `b`. If a key is present in both objects, `b` takes precedent.
+    examples:
+      - |
+        join({"key1": "value1"}, {"key2": "value2"})
+        ->
+        {
+            "key1": "value1",
+            "key2": "value2"
+        }
+
+  - name: length
+    signature: "`length(x)`"
+    description: Returns the length on the list, string or object `x`.
+    examples:
+      - length("Hello, world") -> 12
+      - length([1, 2, 3]) -> 3
+      - length(input.items)
+
+  - name: log
+    signature: "`log(x, y)`"
+    description: Returns the base `y` logarithm of `x`.
+    examples:
+      - log(16, 2) -> 4.0
+
+  - name: map
+    signature: "`map(x, it => ...)`"
+    description: Applies the lambda function to every item in the list `x`.
+    examples:
+      - "[1, 2, 3, 4].map(number => number * 2) -> [2, 4, 6, 8]"
+      - |
+        input.data.map(item => {
+            "type": "datapoint",
+            "value": item.value,
+            "externalId": concat("prefix:", item.tag),
+            "timestamp": now()
+        })
+
+  - name: now
+    signature: "`now()`"
+    description: Returns the current time as a millisecond Unix timestamp, ie number of milliseconds since midnight 1/1/1970 UTC.
+    examples:
+      - |
+        {
+            "timestamp": now()
+        }
+
+  - name: pairs
+    signature: "`pairs(x)`"
+    description: Convert the object `x` into a list of key/value pairs.
+    examples:
+      - |
+        {
+            "a": 1,
+            "b": 2,
+            "c": 3
+        }.pairs()
+        ->
+        [{
+            "key": "a",
+            "value": 1
+        }, {
+            "key": "b",
+            "value": 2
+        }, {
+            "key": "c",
+            "value": 3
+        }]
+      - |
+        {
+            "x-axis": 12.4,
+            "y-axis": 17.3,
+            "z-axis": 2.1
+        }.pairs().map(kv => {
+            "timestamp": now(),
+            "value": kv.value,
+            "externalId": kv.key,
+            "type": "datapoint"
+        })
+
+  - name: pow
+    signature: "`pow(x, y)`"
+    description: Returns `x` to the power of `y`
+    examples:
+      - pow(5, 3) -> 125.0
+
+  - name: reduce
+    signature: "`reduce(x, (acc, val) => ..., init)`"
+    description: Returns the value obtained by reducing the list `x`. The lambda function is called once for each element in the list `val`, and the returned value is passed as `acc` in the next iteration. The `init` will be given as the initial `acc` for the first call to the lambda function.
+    examples:
+      - "[1, 2, 3, 4, 5].reduce((acc, val) => acc + val, 0) -> 15"
+      - "[1, 2, 3, 4, 5].reduce((acc, val) => acc * val, 1) -> 120"
+
+  - name: round
+    signature: "`round(x)`"
+    description: Returns `x` rounded to the nearest integer.
+    examples:
+      - round(16.2) -> 16
+
+  - name: select
+    signature: "`select(x, (v(, k)) => ...)` or `select(x, [1, 2, 3])`"
+    description: Returs a list or object where the lambda returns true. If the second argument is a list, the list values or object keys found in that list are used to select from the source.
+    examples:
+      - |
+        {
+            "x-axis": 13.6,
+            "y-axis": 63.1,
+            "z-axis": 1.4,
+            "offset": 4.3,
+            "power": "on"
+        }.select(["x-axis", "y-axis", "z-axis"])
+        ->
+        {
+            "x-axis": 13.6,
+            "y-axis": 63.1,
+            "z-axis": 1.4
+        }
+      - |
+        {
+            "a": 1,
+            "b": 2,
+            "c": 3
+        }.select((v, k) => v > 2)
+        ->
+        {
+            "c": 3
+        }
+
+  - name: string
+    signature: "`string(x)`"
+    description: |
+      Converts `x` into a string.
+
+      `null`s will be converted into empty strings.
+    examples:
+      - string(true) -> "true"
+
+  - name: to_unix_timestamp
+    signature: "`to_unix_timestamp(x, f)`"
+    description: |
+      Converts the string `x` into a millisecond unix timestamp using the format string `f`.
+
+      The format is given using the table found [here](https://docs.rs/chrono/latest/chrono/format/strftime/index.html).
+    examples:
+      - to_unix_timestamp("2023-05-01 12:43:23", "%Y-%m-%d %H:%M:%S") -> 1682945003000
+      - |
+        {
+            "timestamp": to_unix_timestamp(input.time, "%Y-%m-%d %H:%M:%S")
+        }
+
+  - name: try_bool
+    signature: "`try_bool(a, b)`"
+    description: Try convert `a` to a boolean, if it fails, return `b`
+    examples:
+      - try_bool("true", null) -> true
+      - try_bool("foo", null) -> null
+
+  - name: try_float
+    signature: "`try_float(a, b)`"
+    description: Try convert `a` to a float, if it fails, return `b`
+    examples:
+      - try_float("6.2", 1.2) -> 6.2
+      - try_float("4,5", null) -> 4.5
+
+  - name: try_int
+    signature: "`try_int(a, b)`"
+    description: Try convert `a` to a int, if it fails, return `b`
+    examples:
+      - try_int("6", 1) -> 6
+      - try_int("4", null) -> 4
+
+  - name: zip
+    signature: "`zip(x, y, ..., (i1, i2, ...) => ...)`"
+    description: Takes a number of arrays, call the given lambda function on each entry, and return a single array from the result of each call. The returned array will be as long as the longest argument, null will be given for the shorter input arrays when they run out.
+    examples:
+      - zip([1, 2, 3], ['a', 'b', 'c'], (a, b) => concat(a, b))
+        ->
+        ["1a", "2b", "3c"]
