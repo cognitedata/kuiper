@@ -53,10 +53,10 @@ unsafe fn compile_expression_internal(
 pub unsafe extern "C" fn destroy_compile_result(data: *mut CompileResult) {
     let data = unsafe { Box::from_raw(data) };
     if !data.error.is_null() {
-        unsafe { Box::from_raw(data.error) };
+        unsafe { std::mem::drop(CString::from_raw(data.error)) };
     }
     if !data.result.is_null() {
-        unsafe { Box::from_raw(data.result) };
+        unsafe { drop(Box::from_raw(data.result)) };
     }
 }
 
@@ -68,7 +68,7 @@ pub unsafe extern "C" fn destroy_compile_result(data: *mut CompileResult) {
 /// `compile_expression` and `get_expression_from_compile_result`.
 #[no_mangle]
 pub unsafe extern "C" fn destroy_expression(data: *mut ExpressionType) {
-    unsafe { Box::from_raw(data) };
+    unsafe { drop(Box::from_raw(data)) };
 }
 
 /// Destroy a `CompileResult` and return the `ExpressionType` it contains.
@@ -84,7 +84,7 @@ pub unsafe extern "C" fn get_expression_from_compile_result(
 ) -> *mut ExpressionType {
     let data = unsafe { Box::from_raw(data) };
     if !data.error.is_null() {
-        unsafe { Box::from_raw(data.error) };
+        unsafe { drop(Box::from_raw(data.error)) };
     }
     data.result
 }
@@ -156,10 +156,34 @@ unsafe fn run_expression_internal(
 pub unsafe extern "C" fn destroy_transform_result(data: *mut TransformResult) {
     let data = unsafe { Box::from_raw(data) };
     if !data.error.is_null() {
-        unsafe { Box::from_raw(data.error) };
+        unsafe { drop(CString::from_raw(data.error)) };
     }
     if !data.result.is_null() {
-        unsafe { Box::from_raw(data.result) };
+        unsafe { drop(CString::from_raw(data.result)) };
+    }
+}
+
+/// Convert an expression to its string representation
+///
+/// # Safety
+///
+/// `data` must be a valid pointer to an `ExpressionType`.
+#[no_mangle]
+pub unsafe extern "C" fn expression_to_string(data: *mut ExpressionType) -> *mut c_char {
+    let str = unsafe { &*data }.to_string();
+    CString::new(str).unwrap().into_raw()
+}
+
+/// Destroy a string allocated by rust
+///
+/// # Safety
+///
+/// `data` must be a valid, null-terminated, UTF-8 encoded string.
+/// Do not call this on strings not originally allocated by rust.
+#[no_mangle]
+pub unsafe extern "C" fn destroy_string(data: *mut c_char) {
+    if !data.is_null() {
+        drop(CString::from_raw(data))
     }
 }
 

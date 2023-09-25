@@ -65,6 +65,11 @@ impl KuiperExpression {
         let res = self.expression.run(json)?;
         Ok(JsValue::from_serde(&res)?)
     }
+
+    #[wasm_bindgen(js_name = toString)]
+    pub fn to_string_js(&self) -> String {
+        self.expression.to_string()
+    }
 }
 
 #[wasm_bindgen]
