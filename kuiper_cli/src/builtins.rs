@@ -1,0 +1,37 @@
+// This file is automatically created by kuiper_documentation/codegen.py. Do not edit it directly.
+//
+// To change the content of this file, edit kuiper_documentation/functions.yaml instead.
+
+pub const BUILT_INS: [&str; 31] = [
+    "atan2(",
+    "case(",
+    "ceil(",
+    "chunk(",
+    "concat(",
+    "distinct_by(",
+    "except(",
+    "filter(",
+    "flatmap(",
+    "float(",
+    "floor(",
+    "format_timestamp(",
+    "if(",
+    "int(",
+    "join(",
+    "length(",
+    "log(",
+    "map(",
+    "now(",
+    "pairs(",
+    "pow(",
+    "reduce(",
+    "round(",
+    "select(",
+    "string(",
+    "to_unix_timestamp(",
+    "try_bool(",
+    "try_float(",
+    "try_int(",
+    "zip(",
+    "input",
+];
