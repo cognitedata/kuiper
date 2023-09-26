@@ -94,8 +94,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
             return self.resolve_is(&lhs, state);
         }
 
-        if lhs.is_number() {
-            self.resolve_numeric_operator(&lhs, state)
+        if matches!(self.operator, Operator::And | Operator::Or) {
+            self.resolve_boolean_operator(&lhs, state)
         } else if lhs.is_string()
             && !matches!(
                 self.operator,
@@ -103,8 +103,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
             )
         {
             self.resolve_string_operator(&lhs, state)
-        } else if matches!(self.operator, Operator::And | Operator::Or) {
-            self.resolve_boolean_operator(&lhs, state)
+        } else if lhs.is_number() {
+            self.resolve_numeric_operator(&lhs, state)
         } else {
             self.resolve_generic_operator(&lhs, state)
         }
