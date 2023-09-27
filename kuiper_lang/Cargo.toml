@@ -19,7 +19,7 @@ lalrpop-util = "0.20.0"
 thiserror = "1.0.48"
 
 [dev-dependencies]
-pprof = { version = "0.12", features = ["flamegraph"] }
+pprof = { version = "0.13", features = ["flamegraph"] }
 criterion = "0.5"
 
 [build-dependencies]
