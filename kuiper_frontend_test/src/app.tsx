@@ -57,7 +57,10 @@ function lintTest(view: EditorView): Diagnostic[] {
 
 /* test */
 import { kuiper } from "codemirror-lang-kuiper"
-import { compile_expression, KuiperError, KuiperExpression } from '@cognite/kuiper_js';
+import { Completion, CompletionContext, CompletionResult } from "@codemirror/autocomplete";
+import { compile_expression, KuiperError, KuiperExpression, KuiperResultWithCompletion } from '@cognite/kuiper_js';
+
+let completions: KuiperResultWithCompletion | undefined = undefined;
 
 function App() {
     const lang = kuiper([{
@@ -72,6 +75,7 @@ function App() {
 
     const [ expression, setExpression ] = React.useState<KuiperExpression | undefined>();
     const [ sampleData, setSampleData ] = React.useState<string | undefined>("{}");
+
     const lintReal = (view: EditorView): Diagnostic[] => {
         const data = view.state.doc.toString();
         let expr: KuiperExpression | undefined = undefined;
@@ -151,8 +155,12 @@ function App() {
     let output: string | undefined = undefined;
     if (expression && sampleData) {
         try {
-            let res = expression.run(JSON.parse(sampleData));
-            output = JSON.stringify(res, undefined, 4);
+            let res = expression.run_get_completions([JSON.parse(sampleData)]);
+            output = JSON.stringify(res.get_result(), undefined, 4);
+            if (completions) {
+                completions.free();
+            }
+            completions = res;
         } catch (err) {
             if (err instanceof KuiperError) {
                 console.log("Failed to transform: " + err.message + ", " + err.start + ":" + err.end);
@@ -162,6 +170,28 @@ function App() {
             }
         }
     }
+
+    const Identifier = /^[\w$\xa1-\uffff][\w$\d\xa1-\uffff]*$/
+    const extCompletionSource = (context: CompletionContext): CompletionResult | null => {
+        if (!completions) return null;
+        let inner = syntaxTree(context.state).resolveInner(context.pos, -1);
+        console.log(context.pos);
+        if (inner.name != "Var" && inner.name != "PlainVar") return null;
+        let comps = completions.get_completions_at(context.pos);
+        let options: Completion[] = [];
+        for (let comp of comps) {
+            options.push({ label: comp, type: "variable" });
+        }
+        return {
+            options,
+            from: inner.from,
+            validFor: Identifier
+        }
+    }
+
+    const extCompletions = lang.language.data.of({
+        autocomplete: extCompletionSource
+    })
 
     return (
     <div>
@@ -176,7 +206,7 @@ function App() {
             value=""
             height="200px"
             theme={okaidia}
-            extensions={[lang, linter(lintReal)]}
+            extensions={[lang, linter(lintReal), extCompletions]}
             onChange={onChange}
         />
         <div><pre>{output}</pre></div>

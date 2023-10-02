@@ -1,5 +1,10 @@
 mod utils;
 
+use std::{
+    collections::{HashMap, HashSet},
+    ops::Range,
+};
+
 use gloo_utils::format::JsValueSerdeExt;
 use kuiper_lang::{compile_expression as compile_expression_kuiper, CompileError, TransformError};
 use serde_json::Value;
@@ -48,6 +53,34 @@ impl From<serde_json::Error> for KuiperError {
 }
 
 #[wasm_bindgen]
+pub struct KuiperResultWithCompletion {
+    result: Value,
+    completions: HashMap<Range<usize>, HashSet<String>>,
+}
+
+#[wasm_bindgen]
+impl KuiperResultWithCompletion {
+    pub fn get_completions_at(&self, index: usize) -> Vec<JsValue> {
+        let mut res = vec![];
+        for (range, completions) in &self.completions {
+            if range.start <= index && range.end >= index {
+                res.extend(completions.iter().map(|v| JsValue::from_str(v)));
+            }
+        }
+        res
+    }
+
+    pub fn get_result(&self) -> Result<JsValue, KuiperError> {
+        Ok(JsValue::from_serde(&self.result)?)
+    }
+
+    #[wasm_bindgen(js_name = toString)]
+    pub fn to_string_js(&self) -> String {
+        format!("{}, {:?}", &self.result, &self.completions)
+    }
+}
+
+#[wasm_bindgen]
 impl KuiperExpression {
     pub fn run(&self, data: JsValue) -> Result<JsValue, KuiperError> {
         let json_item: Value = data.into_serde()?;
@@ -64,6 +97,22 @@ impl KuiperExpression {
         let json: Vec<&Value> = json_items.iter().collect();
         let res = self.expression.run(json)?;
         Ok(JsValue::from_serde(&res)?)
+    }
+
+    pub fn run_get_completions(
+        &self,
+        data: Vec<JsValue>,
+    ) -> Result<KuiperResultWithCompletion, KuiperError> {
+        let json_items: Vec<Value> = data
+            .into_iter()
+            .map(|d| d.into_serde())
+            .collect::<Result<_, _>>()?;
+        let json: Vec<&Value> = json_items.iter().collect();
+        let (res, comp) = self.expression.run_get_completions(json)?;
+        Ok(KuiperResultWithCompletion {
+            result: res.into_owned(),
+            completions: comp,
+        })
     }
 
     #[wasm_bindgen(js_name = toString)]

@@ -200,7 +200,7 @@ mod tests {
         match result {
             CompileError::Optimizer(TransformError::SourceMissingError(d)) => {
                 assert_eq!(d.desc, "foo");
-                assert_eq!(d.span, Span { start: 12, end: 15 });
+                assert_eq!(d.span, Span { start: 11, end: 15 });
             }
             _ => panic!("Wrong type of error {result:?}"),
         }

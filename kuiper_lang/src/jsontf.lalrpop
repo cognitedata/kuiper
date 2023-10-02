@@ -63,6 +63,11 @@ Pair: (ast::Expression, ast::Expression) = {
     <lh:Expr> ":" <rh:Expr> => (lh, rh)
 }
 
+Selector: ast::Selector = {
+    "." <start:@L> <el:"var"> <end:@R> => ast::Selector::String(el, Span { start, end }),
+    "[" <el:Expr> "]" => ast::Selector::Expression(Box::new(el))
+}
+
 Term: ast::Expression = {
     <val:Spanned<Const>> => ast::Expression::Constant(val.0, val.1),
     <start:@L> <fun:"var"> "(" <args:Comma<FunctionArg>> ")" <end:@R> => ast::Expression::Function {
@@ -81,14 +86,9 @@ Term: ast::Expression = {
             loc: Span { start, end }
         }
     },
-    <e: Term> "." <start:@L> <el:"var"> <end:@R> => ast::Expression::Selector {
+    <e: Term> <start:@L> <sel:Selector> <end:@R> => ast::Expression::Selector {
         lhs: Box::new(e),
-        sel: ast::Selector::String(el),
-        loc: Span { start, end }
-    },
-    <e: Term> <start:@L> "[" <el:Expr> "]" <end:@R> => ast::Expression::Selector {
-        lhs: Box::new(e),
-        sel: ast::Selector::Expression(Box::new(el)),
+        sel: sel,
         loc: Span { start, end }
     },
     "(" <e:Expr> ")" => e
