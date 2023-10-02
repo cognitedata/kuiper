@@ -19,17 +19,16 @@ use super::{
 
 use kuiper_lang_macros::PassThrough;
 
+#[cfg(feature = "completions")]
+type Completions = std::collections::HashMap<Span, std::collections::HashSet<String>>;
+
 /// State for expression execution. This struct is constructed for each expression.
 /// Notably lifetime heavy. `'a` is the lifetime of the input data.
 /// `'b` is the lifetime of the transform execution, so the temporary data in the transform.
 pub struct ExpressionExecutionState<'data, 'exec> {
     data: &'exec Vec<&'data Value>,
     #[cfg(feature = "completions")]
-    completions: Option<
-        std::rc::Rc<
-            std::cell::RefCell<std::collections::HashMap<Span, std::collections::HashSet<String>>>,
-        >,
-    >,
+    completions: Option<std::rc::Rc<std::cell::RefCell<Completions>>>,
 }
 
 impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
@@ -102,11 +101,7 @@ pub struct InternalExpressionExecutionState<'data> {
     pub data: Vec<&'data Value>,
     pub base_length: usize,
     #[cfg(feature = "completions")]
-    completions: Option<
-        std::rc::Rc<
-            std::cell::RefCell<std::collections::HashMap<Span, std::collections::HashSet<String>>>,
-        >,
-    >,
+    completions: Option<std::rc::Rc<std::cell::RefCell<Completions>>>,
 }
 
 impl<'data> InternalExpressionExecutionState<'data> {
@@ -309,13 +304,7 @@ impl ExpressionType {
     pub fn run_get_completions<'a: 'c, 'c>(
         &'a self,
         data: impl IntoIterator<Item = &'c Value>,
-    ) -> Result<
-        (
-            ResolveResult<'c>,
-            std::collections::HashMap<core::ops::Range<usize>, std::collections::HashSet<String>>,
-        ),
-        TransformError,
-    > {
+    ) -> Result<(ResolveResult<'c>, Completions), TransformError> {
         let data = data.into_iter().collect();
         let mut state = ExpressionExecutionState::new(&data);
         state.completions = Some(Default::default());

@@ -88,7 +88,7 @@ Term: ast::Expression = {
     },
     <e: Term> <start:@L> <sel:Selector> <end:@R> => ast::Expression::Selector {
         lhs: Box::new(e),
-        sel: sel,
+        sel,
         loc: Span { start, end }
     },
     "(" <e:Expr> ")" => e
