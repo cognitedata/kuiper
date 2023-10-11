@@ -80,7 +80,7 @@ function App() {
         const data = view.state.doc.toString();
         let expr: KuiperExpression | undefined = undefined;
         try {
-            expr = compile_expression(data, ["input"]);
+            expr = compile_expression(data, ["input", "context"]);
         }
         catch (err) {
             if (err instanceof KuiperError) {
@@ -102,7 +102,7 @@ function App() {
         if (!sampleData) return [];
 
         try {
-            expr.run(JSON.parse(sampleData));
+            expr.run_multiple_inputs([JSON.parse(sampleData), { topic: "my_topic" }]);
         } catch (err) {
             if (err instanceof KuiperError) {
                 const diagnostics: Diagnostic[] = [];
@@ -125,7 +125,7 @@ function App() {
     const onChange = React.useCallback((value: string, viewUpdate) => {
         let expr: KuiperExpression | undefined = undefined;
         try {
-            expr = compile_expression(value, ["input"]);
+            expr = compile_expression(value, ["input", "context"]);
         }
         catch (err) {
             if (err instanceof KuiperError) {
@@ -155,7 +155,7 @@ function App() {
     let output: string | undefined = undefined;
     if (expression && sampleData) {
         try {
-            let res = expression.run_get_completions([JSON.parse(sampleData)]);
+            let res = expression.run_get_completions([JSON.parse(sampleData), { topic: "my_topic" }]);
             output = JSON.stringify(res.get_result(), undefined, 4);
             if (completions) {
                 completions.free();
@@ -175,7 +175,6 @@ function App() {
     const extCompletionSource = (context: CompletionContext): CompletionResult | null => {
         if (!completions) return null;
         let inner = syntaxTree(context.state).resolveInner(context.pos, -1);
-        console.log(context.pos);
         if (inner.name != "Var" && inner.name != "PlainVar") return null;
         let comps = completions.get_completions_at(context.pos);
         let options: Completion[] = [];
