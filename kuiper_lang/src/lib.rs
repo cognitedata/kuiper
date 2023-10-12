@@ -454,13 +454,13 @@ mod tests {
     pub fn test_is_operator() {
         let expr = compile_expression(
             r#"{
-            "v1": "test" is "string",
-            "v2": "test" is "number",
-            "v3": 123 is "number",
-            "v4": 123.0 is "int",
-            "v5": true is "bool",
-            "v6": [1, 2, 3] is "object",
-            "v7": [1, 2, 3] is "array"
+            "v1": "test" is string,
+            "v2": "test" is number,
+            "v3": 123 is number,
+            "v4": 123.0 is int,
+            "v5": true is bool,
+            "v6": [1, 2, 3] is object,
+            "v7": [1, 2, 3] is array
         }"#,
             &[],
         )
