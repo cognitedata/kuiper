@@ -14,7 +14,7 @@ Result(Expression(Term(Object(CommaSep(
     ),
     Pair(
         Expression(Term(FunctionCall(
-            Var(PlainVar),
+            FunctionName(Var(PlainVar)),
             CommaSep(
                 FunctionArg(Expression(Term(String))),
                 FunctionArg(Expression(Term(String)))
