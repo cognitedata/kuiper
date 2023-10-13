@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use logos::{Logos, Span};
 
-use crate::expressions::{Operator, UnaryOperator};
+use crate::expressions::{Operator, TypeLiteral, UnaryOperator};
 
 use crate::lexer::LexerError;
 
@@ -110,9 +110,16 @@ pub enum Token {
     #[regex(r#""(?:[^"\\]|\\.)*""#, |s| parse_string(s.slice(), '\"', s.span().start))]
     String(String),
 
-    /// A literal null
-    #[token("null")]
-    Null,
+    /// A literal refering to a type, also includes the null literal
+    #[token("null", |_| TypeLiteral::Null)]
+    #[token("int", |_| TypeLiteral::Int)]
+    #[token("bool", |_| TypeLiteral::Bool)]
+    #[token("float", |_| TypeLiteral::Float)]
+    #[token("string", |_| TypeLiteral::String)]
+    #[token("array", |_| TypeLiteral::Array)]
+    #[token("object", |_| TypeLiteral::Object)]
+    #[token("number", |_| TypeLiteral::Number)]
+    TypeLiteral(TypeLiteral),
 
     /// A bare string, which is either part of a selector, or a function call.
     #[regex(r#"\p{XID_Start}\p{XID_Continue}*"#, |s| s.slice().to_string())]
@@ -168,7 +175,7 @@ impl Display for Token {
             Token::CloseBracket => write!(f, "]"),
             Token::Integer(x) => write!(f, "{x}"),
             Token::UInteger(x) => write!(f, "{x}"),
-            Token::Null => write!(f, "null"),
+            Token::TypeLiteral(x) => write!(f, "{x}"),
             Token::Boolean(b) => write!(f, "{}", if *b { "true" } else { "false" }),
             Token::OpenBrace => write!(f, "{{"),
             Token::CloseBrace => write!(f, "}}"),

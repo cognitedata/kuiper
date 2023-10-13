@@ -68,9 +68,14 @@ Selector: ast::Selector = {
     "[" <el:Expr> "]" => ast::Selector::Expression(Box::new(el))
 }
 
+Literal: String = {
+    <fun:"var"> => fun,
+    <fun:"type"> => fun.to_string()
+}
+
 Term: ast::Expression = {
     <val:Spanned<Const>> => ast::Expression::Constant(val.0, val.1),
-    <start:@L> <fun:"var"> "(" <args:Comma<FunctionArg>> ")" <end:@R> => ast::Expression::Function {
+    <start:@L> <fun:Literal> "(" <args:Comma<FunctionArg>> ")" <end:@R> => ast::Expression::Function {
         name: fun,
         args,
         loc: Span { start, end }
@@ -78,7 +83,7 @@ Term: ast::Expression = {
     <var:Spanned<"var">> => ast::Expression::Variable(var.0, var.1),
     <start:@L> "[" <it:Comma<Expr>> "]" <end:@R> => ast::Expression::Array(it, Span { start, end }),
     <start:@L> "{" <it:Comma<Pair>> "}" <end:@R> => ast::Expression::Object(it, Span { start, end }),
-    <e: Term> "." <start:@L> <fun:"var"> "(" <mut args:Comma<FunctionArg>> ")" <end:@R> => {
+    <e: Term> "." <start:@L> <fun:Literal> "(" <mut args:Comma<FunctionArg>> ")" <end:@R> => {
         args.insert(0, ast::FunctionParameter::Expression(e));
         ast::Expression::Function {
             name: fun,
@@ -120,13 +125,24 @@ Op4: Operator = {
     "!=" => Operator::NotEquals
 }
 
-Op5Expr = Tier<Op5, Op6Expr>;
+Op5Expr: ast::Expression = {
+    <lhs:Op5Expr> <op:Spanned<Op5>> <rhs:Op6Expr> => ast::Expression::BinaryOperation(ast::OpExpression {
+        lhs: Box::new(lhs),
+        operator: op.0,
+        rhs: Box::new(rhs)
+    }, op.1),
+    <lhs:Op5Expr> "is" <rhs:"type"> => ast::Expression::Is(ast::IsExpression {
+        lhs: Box::new(lhs),
+        rhs,
+    }),
+    Op6Expr
+}
+
 Op5: Operator = {
     ">" => Operator::GreaterThan,
     "<" => Operator::LessThan,
     ">=" => Operator::GreaterThanEquals,
     "<=" => Operator::LessThanEquals,
-    "is" => Operator::Is,
 }
 
 Op6Expr = Tier<Op6, Op7Expr>;
@@ -180,8 +196,9 @@ extern {
         "%" => Token::Operator(Operator::Modulo),
         "is" => Token::Operator(Operator::Is),
         "!" => Token::UnaryOperator(UnaryOperator::Negate),
-        "null" => Token::Null,
+        "null" => Token::TypeLiteral(crate::expressions::TypeLiteral::Null),
         "var" => Token::Identifier(<String>),
+        "type" => Token::TypeLiteral(<crate::expressions::TypeLiteral>),
         "[" => Token::OpenBracket,
         "]" => Token::CloseBracket,
         "{" => Token::OpenBrace,

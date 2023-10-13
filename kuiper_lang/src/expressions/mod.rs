@@ -1,6 +1,7 @@
 mod array;
 mod base;
 mod functions;
+mod is_operator;
 mod lambda;
 mod numbers;
 mod object;
@@ -14,6 +15,7 @@ pub use base::{
     ExpressionType, FunctionType, ResolveResult,
 };
 pub use functions::FunctionExpression;
+pub use is_operator::{IsExpression, TypeLiteral};
 pub use lambda::LambdaExpression;
 pub use object::ObjectExpression;
 pub use operator::{OpExpression, Operator, UnaryOpExpression, UnaryOperator};
