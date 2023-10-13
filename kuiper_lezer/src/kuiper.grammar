@@ -20,9 +20,13 @@ Pair {
     Expression ":" Expression
 }
 
+FunctionName {
+    Var | FloatTy | StringTy | IntTy
+}
+
 FunctionCall {
-    Var "(" CommaSep<FunctionArg> ")" |
-    Term "." Var "(" CommaSep<FunctionArg> ")"
+    FunctionName "(" CommaSep<FunctionArg> ")" |
+    Term "." FunctionName "(" CommaSep<FunctionArg> ")"
 }
 
 Object { "{" CommaSep<Pair> "}" }
@@ -48,7 +52,8 @@ Operator {
     !t8 LogicOp<"!"> Expression |
     Expression !t7 (ArithOp<"*"> | ArithOp<"/"> | ArithOp<"%">) Expression |
     Expression !t6 (ArithOp<"+"> | ArithOp<"-">) Expression |
-    Expression !t5 (CompareOp<">"> | CompareOp<"<"> | CompareOp<">="> | CompareOp<"<="> | CompareOp<"is">) Expression |
+    Expression !t5 (CompareOp<">"> | CompareOp<"<"> | CompareOp<">="> | CompareOp<"<=">) Expression |
+    Expression !t5 CompareOp<"is"> (Null | IntTy | BoolTy | FloatTy | StringTy | ArrayTy | ObjectTy | NumberTy) |
     Expression !t4 (CompareOp<"=="> | CompareOp<"!=">) Expression |
     Expression !t3 (LogicOp<"&&">) Expression |
     Expression !t2 (LogicOp<"||">) Expression
@@ -66,6 +71,14 @@ BlockComment { blockComment }
 
 Boolean { @specialize<PlainVar, "true"> | @specialize<PlainVar, "false"> }
 Null { @specialize<PlainVar, "null"> }
+IntTy { @specialize<PlainVar, "int"> }
+BoolTy { @specialize<PlainVar, "bool"> }
+FloatTy { @specialize<PlainVar, "float"> }
+StringTy { @specialize<PlainVar, "string"> }
+ArrayTy { @specialize<PlainVar, "array"> }
+ObjectTy { @specialize<PlainVar, "object"> }
+NumberTy { @specialize<PlainVar, "number"> }
+
 
 @external tokens blockComment from "./tokens.js" { blockComment }
 

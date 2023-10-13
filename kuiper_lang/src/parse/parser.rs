@@ -78,7 +78,10 @@ mod tests {
         match res {
             ParseError::UnrecognizedToken { token, expected } => {
                 assert_eq!((7, Token::Operator(Operator::Plus), 8), token);
-                assert_eq!(vec![r#""var""#.to_string()], expected);
+                assert_eq!(
+                    vec![r#""type""#.to_string(), r#""var""#.to_string()],
+                    expected
+                );
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -90,7 +93,10 @@ mod tests {
         match res {
             ParseError::UnrecognizedToken { token, expected } => {
                 assert_eq!((7, Token::Period, 8), token);
-                assert_eq!(vec![r#""var""#.to_string()], expected);
+                assert_eq!(
+                    vec![r#""type""#.to_string(), r#""var""#.to_string()],
+                    expected
+                );
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
@@ -102,7 +108,10 @@ mod tests {
         match res {
             ParseError::UnrecognizedToken { token, expected } => {
                 assert_eq!((7, Token::OpenBracket, 8), token);
-                assert_eq!(vec![r#""var""#.to_string()], expected);
+                assert_eq!(
+                    vec![r#""type""#.to_string(), r#""var""#.to_string()],
+                    expected
+                );
             }
             _ => panic!("Wrong type of response: {res:?}"),
         }
