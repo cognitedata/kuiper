@@ -28,7 +28,7 @@ pub enum SourceElement {
 impl From<SelectorElement> for SourceElement {
     fn from(value: SelectorElement) -> Self {
         match value {
-            SelectorElement::Constant(x) => Self::Input(x),
+            SelectorElement::Constant(x, _) => Self::Input(x),
             SelectorElement::Expression(x) => Self::Expression(x),
         }
     }
@@ -36,14 +36,14 @@ impl From<SelectorElement> for SourceElement {
 
 #[derive(Debug, Clone)]
 pub enum SelectorElement {
-    Constant(String),
+    Constant(String, Span),
     Expression(Box<ExpressionType>),
 }
 
 impl Display for SelectorElement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SelectorElement::Constant(x) => write!(f, "{x}"),
+            SelectorElement::Constant(x, _) => write!(f, "{x}"),
             SelectorElement::Expression(x) => write!(f, "[{x}]"),
         }
     }
@@ -63,7 +63,7 @@ impl Display for SelectorExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.source)?;
         for el in &self.path {
-            if matches!(el, SelectorElement::Constant(_)) {
+            if matches!(el, SelectorElement::Constant(_, _)) {
                 write!(f, ".")?;
             }
             write!(f, "{el}")?;
@@ -191,8 +191,11 @@ impl SelectorExpression {
     ) -> Result<ResolveResult<'c>, TransformError> {
         let mut elem = source;
         for p in self.path.iter() {
+            #[cfg(feature = "completions")]
+            Self::register_completions(state, p, elem);
+
             elem = match p {
-                SelectorElement::Constant(x) => match elem.as_object().and_then(|o| o.get(x)) {
+                SelectorElement::Constant(x, _) => match elem.as_object().and_then(|o| o.get(x)) {
                     Some(x) => x,
                     None => return Ok(ResolveResult::Owned(Value::Null)),
                 },
@@ -236,6 +239,20 @@ impl SelectorExpression {
         Ok(ResolveResult::Borrowed(elem))
     }
 
+    #[cfg(feature = "completions")]
+    fn register_completions(
+        state: &ExpressionExecutionState<'_, '_>,
+        p: &SelectorElement,
+        source: &Value,
+    ) {
+        let SelectorElement::Constant(_, s) = p else {
+            return;
+        };
+        if let Some(o) = source.as_object() {
+            state.add_completion_entries(o.keys(), s.clone());
+        }
+    }
+
     fn as_object_owned(value: Value) -> Option<Map<String, Value>> {
         match value {
             Value::Object(o) => Some(o),
@@ -257,8 +274,11 @@ impl SelectorExpression {
     ) -> Result<ResolveResult<'_>, TransformError> {
         let mut elem = source;
         for p in self.path.iter() {
+            #[cfg(feature = "completions")]
+            Self::register_completions(state, p, &elem);
+
             elem = match p {
-                SelectorElement::Constant(x) => {
+                SelectorElement::Constant(x, _) => {
                     match Self::as_object_owned(elem).and_then(|mut o| o.remove(x)) {
                         Some(x) => x,
                         None => return Ok(ResolveResult::Owned(Value::Null)),

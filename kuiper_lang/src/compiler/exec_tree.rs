@@ -64,7 +64,7 @@ impl BuildError {
 fn build_selector(lhs: Expression, sel: Selector) -> Result<Vec<SelectorElement>, BuildError> {
     let x = match sel {
         Selector::Expression(x) => SelectorElement::Expression(Box::new(from_ast(*x)?)),
-        Selector::String(x) => SelectorElement::Constant(x),
+        Selector::String(x, s) => SelectorElement::Constant(x, s),
     };
 
     match lhs {
@@ -73,7 +73,7 @@ fn build_selector(lhs: Expression, sel: Selector) -> Result<Vec<SelectorElement>
             ch.push(x);
             Ok(ch)
         }
-        Expression::Variable(v, _) => Ok(vec![SelectorElement::Constant(v), x]),
+        Expression::Variable(v, s) => Ok(vec![SelectorElement::Constant(v, s), x]),
         r => Ok(vec![SelectorElement::Expression(Box::new(from_ast(r)?)), x]),
     }
 }

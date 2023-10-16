@@ -8,14 +8,14 @@ use crate::expressions::{Operator, TypeLiteral, UnaryOperator};
 #[derive(Debug)]
 pub enum Selector {
     Expression(Box<Expression>),
-    String(String),
+    String(String, Span),
 }
 
 impl Display for Selector {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Selector::Expression(x) => write!(f, "[{x}]"),
-            Selector::String(x) => write!(f, ".{x}"),
+            Selector::String(x, _) => write!(f, ".{x}"),
         }
     }
 }

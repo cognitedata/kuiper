@@ -20,11 +20,16 @@ use super::{
 
 use kuiper_lang_macros::PassThrough;
 
+#[cfg(feature = "completions")]
+type Completions = std::collections::HashMap<Span, std::collections::HashSet<String>>;
+
 /// State for expression execution. This struct is constructed for each expression.
 /// Notably lifetime heavy. `'a` is the lifetime of the input data.
 /// `'b` is the lifetime of the transform execution, so the temporary data in the transform.
 pub struct ExpressionExecutionState<'data, 'exec> {
     data: &'exec Vec<&'data Value>,
+    #[cfg(feature = "completions")]
+    completions: Option<std::rc::Rc<std::cell::RefCell<Completions>>>,
 }
 
 impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
@@ -35,7 +40,11 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
     }
 
     pub fn new(data: &'exec Vec<&'data Value>) -> Self {
-        Self { data }
+        Self {
+            data,
+            #[cfg(feature = "completions")]
+            completions: Default::default(),
+        }
     }
 
     pub fn get_temporary_clone(&self, extra_cap: usize) -> InternalExpressionExecutionState<'data> {
@@ -46,6 +55,8 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
         InternalExpressionExecutionState {
             data,
             base_length: self.data.len(),
+            #[cfg(feature = "completions")]
+            completions: self.completions.clone(),
         }
     }
 
@@ -72,6 +83,16 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
         InternalExpressionExecutionState {
             data,
             base_length: self.data.len(),
+            #[cfg(feature = "completions")]
+            completions: self.completions.clone(),
+        }
+    }
+
+    #[cfg(feature = "completions")]
+    pub fn add_completion_entries(&self, it: impl Iterator<Item = impl Into<String>>, span: Span) {
+        if let Some(c) = &self.completions {
+            let mut r = c.borrow_mut();
+            r.entry(span).or_default().extend(it.map(|i| i.into()));
         }
     }
 }
@@ -80,11 +101,17 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
 pub struct InternalExpressionExecutionState<'data> {
     pub data: Vec<&'data Value>,
     pub base_length: usize,
+    #[cfg(feature = "completions")]
+    completions: Option<std::rc::Rc<std::cell::RefCell<Completions>>>,
 }
 
 impl<'data> InternalExpressionExecutionState<'data> {
     pub fn get_temp_state<'slf>(&'slf self) -> ExpressionExecutionState<'data, 'slf> {
-        ExpressionExecutionState { data: &self.data }
+        ExpressionExecutionState {
+            data: &self.data,
+            #[cfg(feature = "completions")]
+            completions: self.completions.clone(),
+        }
     }
 }
 
@@ -271,6 +298,21 @@ impl ExpressionType {
         let data = data.into_iter().collect();
         let state = ExpressionExecutionState::new(&data);
         self.resolve(&state)
+    }
+
+    #[cfg(feature = "completions")]
+    /// Run the expression, and return the result along with a map from range in the input
+    /// to possible completions in that range. These are only collected from selectors.
+    pub fn run_get_completions<'a: 'c, 'c>(
+        &'a self,
+        data: impl IntoIterator<Item = &'c Value>,
+    ) -> Result<(ResolveResult<'c>, Completions), TransformError> {
+        let data = data.into_iter().collect();
+        let mut state = ExpressionExecutionState::new(&data);
+        state.completions = Some(Default::default());
+        let r = self.resolve(&state)?;
+        let k = state.completions.unwrap().take();
+        Ok((r, k))
     }
 }
 
