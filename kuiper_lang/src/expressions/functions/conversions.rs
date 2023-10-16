@@ -1,25 +1,57 @@
+use crate::expressions::base::map_cow_clone_string;
+use crate::expressions::numbers::JsonNumber;
 use crate::expressions::{Expression, ExpressionExecutionState, ResolveResult};
 use crate::TransformError;
 use serde_json::Value;
 
 function_def!(TryFloatFunction, "try_float", 2);
 
+/// Replaces ',' with '.' and trims any ' ' and '_' in the string.
+/// Returns None if the string is not ASCII.
+fn replace_for_parse(mut inp: String) -> Option<String> {
+    // SAFETY: We terminate early if we encounter a non-ascii byte,
+    // meaning that we never create invalid UTF-8
+    let inner = unsafe { inp.as_mut_vec() };
+    let mut offset = 0;
+    // Efficiently replace characters in string for replace
+    // Normal replace allocates a new vector, which is generally necessary when
+    // replacing in strings, since the string might grow.
+    // We know that the string cannot grow, it can only shrink,
+    // so we can replace-in-place, by just shifting characters backwards for
+    // each character we should skip that we encounter.
+    for i in 0..inner.len() {
+        let c = inner[i];
+        // This is necessary for safety! Removing this is a source of UB,
+        // as then we might accidentally create invalid UTF-8.
+        if !c.is_ascii() {
+            return None;
+        }
+        match c {
+            b',' => inner[i - offset] = b'.',
+            b' ' | b'_' => offset += 1,
+            _ => inner[i - offset] = c,
+        }
+    }
+    inp.truncate(inp.len() - offset);
+    Some(inp)
+}
+
 impl<'a: 'c, 'c> Expression<'a, 'c> for TryFloatFunction {
     fn resolve(
         &'a self,
         state: &ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
-        match self.args[0]
-            .resolve(state)?
-            .to_string()
-            .trim_matches('"')
-            .replace([' ', '_'], "")
-            .replace(',', ".")
-            .parse::<f64>()
-        {
-            Ok(value) => Ok(ResolveResult::Owned(Value::from(value))),
-            Err(_) => Ok(self.args[1].resolve(state)?),
-        }
+        map_cow_clone_string(
+            self.args[0].resolve(state)?,
+            |s| match replace_for_parse(s).map(|r| r.parse::<f64>()) {
+                Some(Ok(value)) => Ok(ResolveResult::Owned(value.into())),
+                _ => Ok(self.args[1].resolve(state)?),
+            },
+            |v| match v {
+                Value::Number(n) => Ok(ResolveResult::Owned(n.as_f64().unwrap().into())),
+                _ => Ok(self.args[1].resolve(state)?),
+            },
+        )
     }
 }
 
@@ -30,17 +62,22 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryIntFunction {
         &'a self,
         state: &ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
-        match self.args[0]
-            .resolve(state)?
-            .to_string()
-            .trim_matches('"')
-            .trim()
-            .to_string()
-            .parse::<i64>()
-        {
-            Ok(value) => Ok(ResolveResult::Owned(Value::from(value))),
-            Err(_) => Ok(self.args[1].resolve(state)?),
-        }
+        map_cow_clone_string(
+            self.args[0].resolve(state)?,
+            |s| match replace_for_parse(s).map(|r| r.parse::<i64>()) {
+                Some(Ok(value)) => Ok(ResolveResult::Owned(value.into())),
+                _ => Ok(self.args[1].resolve(state)?),
+            },
+            |v| match v {
+                Value::Number(n) => Ok(ResolveResult::Owned(
+                    JsonNumber::from(n)
+                        .try_cast_integer(&self.span)?
+                        .try_into_json()
+                        .unwrap(),
+                )),
+                _ => Ok(self.args[1].resolve(state)?),
+            },
+        )
     }
 }
 
@@ -51,17 +88,15 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryBoolFunction {
         &'a self,
         state: &ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
-        match self.args[0]
-            .resolve(state)?
-            .to_string()
-            .trim_matches('"')
-            .trim()
-            .to_lowercase()
-            .parse::<bool>()
-        {
-            Ok(value) => Ok(ResolveResult::Owned(Value::from(value))),
-            Err(_) => Ok(self.args[1].resolve(state)?),
-        }
+        let r = match self.args[0].resolve(state)?.as_ref() {
+            Value::Bool(b) => *b,
+            Value::String(s) => match s.trim_matches('"').trim().to_lowercase().parse::<bool>() {
+                Ok(value) => value,
+                Err(_) => return self.args[1].resolve(state),
+            },
+            _ => return self.args[1].resolve(state),
+        };
+        Ok(ResolveResult::Owned(Value::from(r)))
     }
 }
 
@@ -81,7 +116,7 @@ mod tests {
             "test5": try_float(6.2, 4),
             "test6": try_float("not a float", 6.3),
             "test7": try_float("   4.2  ", 6.3),
-            "test8": try_float("not a float", "also not a float"),
+            "test8": try_float("not a float æøåæøå", "also not a float"),
             "test9": try_float("5,2", "9"),
             "test10": try_float("1 234,56", "9"),
             "test11": try_float("1_000", "6"),

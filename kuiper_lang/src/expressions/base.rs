@@ -387,16 +387,7 @@ pub(crate) fn get_number_from_value(
             ))
         }
     };
-    v.as_u64()
-        .map(JsonNumber::PosInteger)
-        .or_else(|| v.as_i64().map(JsonNumber::NegInteger))
-        .or_else(|| v.as_f64().map(JsonNumber::Float))
-        .ok_or_else(|| {
-            TransformError::new_conversion_failed(
-                format!("Failed to convert input into number for operator {desc}"),
-                span,
-            )
-        })
+    Ok(v.into())
 }
 
 /// Convert a JSON value into a string. May return a direct reference to the JSON string itself if it is already a string.
@@ -410,12 +401,12 @@ pub(crate) fn get_string_from_value<'a>(
     desc: &str,
     val: &'a Value,
     span: &Span,
-) -> Result<Cow<'a, String>, TransformError> {
+) -> Result<Cow<'a, str>, TransformError> {
     match val {
-        Value::Null => Ok(Cow::Owned("".to_string())),
-        Value::Bool(n) => Ok(Cow::Owned(match n {
-            true => "true".to_string(),
-            false => "false".to_string(),
+        Value::Null => Ok(Cow::Borrowed("")),
+        Value::Bool(n) => Ok(Cow::Borrowed(match n {
+            true => "true",
+            false => "false",
         })),
         Value::Number(n) => Ok(Cow::Owned(n.to_string())),
         Value::String(s) => Ok(Cow::Borrowed(s)),
@@ -427,6 +418,56 @@ pub(crate) fn get_string_from_value<'a>(
                 span,
             ))
         }
+    }
+}
+
+pub(crate) fn get_string_from_value_owned<'a>(
+    desc: &str,
+    val: Value,
+    span: &Span,
+) -> Result<Cow<'a, str>, TransformError> {
+    match val {
+        Value::Null => Ok(Cow::Borrowed("")),
+        Value::Bool(n) => Ok(Cow::Borrowed(match n {
+            true => "true",
+            false => "false",
+        })),
+        Value::Number(n) => Ok(Cow::Owned(n.to_string())),
+        Value::String(s) => Ok(Cow::Owned(s)),
+        _ => {
+            return Err(TransformError::new_incorrect_type(
+                desc,
+                "string or number",
+                TransformError::value_desc(&val),
+                span,
+            ))
+        }
+    }
+}
+
+pub(crate) fn map_cow_clone_string<T>(
+    value: ResolveResult<'_>,
+    string: impl FnOnce(String) -> T,
+    other: impl FnOnce(&Value) -> T,
+) -> T {
+    match value {
+        Cow::Owned(Value::String(s)) => string(s),
+        Cow::Borrowed(Value::String(s)) => string(s.to_string()),
+        c => other(c.as_ref()),
+    }
+}
+
+// This isn't using map_cow_clone_string because it is so critical,
+// and it seems that the complexity of this prevents some optimizations which eliminates
+// allocations in object functions and elsewhere.
+pub(crate) fn get_string_from_cow_value<'a>(
+    desc: &str,
+    val: ResolveResult<'a>,
+    span: &Span,
+) -> Result<Cow<'a, str>, TransformError> {
+    match val {
+        Cow::Borrowed(v) => get_string_from_value(desc, v, span),
+        Cow::Owned(v) => get_string_from_value_owned(desc, v, span),
     }
 }
 

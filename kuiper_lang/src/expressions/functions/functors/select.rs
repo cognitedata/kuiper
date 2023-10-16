@@ -134,20 +134,17 @@ mod tests {
     #[test]
     fn test_select_fails_for_other_types() {
         match compile_expression(r#"select({'a':1}, ['a',2,3])"#, &[]) {
-            Ok(_) => assert!(false, "Should not be able to resolve"),
-            Err(err) => {
-                match err {
-                    CompileError::Optimizer(TransformError::IncorrectTypeInField(t_err)) => {
-                        assert_eq!(
-                            t_err.desc,
-                            "Filter values should be of type string. Got number, expected string"
-                        );
-                        assert_eq!(t_err.span, Span { start: 0, end: 26 })
-                    }
-                    _ => assert!(false, "Should be an optimizer error"),
+            Ok(_) => panic!("Should not be able to resolve"),
+            Err(err) => match err {
+                CompileError::Optimizer(TransformError::IncorrectTypeInField(t_err)) => {
+                    assert_eq!(
+                        t_err.desc,
+                        "Filter values should be of type string. Got number, expected string"
+                    );
+                    assert_eq!(t_err.span, Span { start: 0, end: 26 })
                 }
-                assert!(true);
-            }
+                _ => panic!("Should be an optimizer error"),
+            },
         }
     }
 }

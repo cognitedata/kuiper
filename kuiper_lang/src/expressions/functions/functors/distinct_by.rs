@@ -78,20 +78,17 @@ mod tests {
     #[test]
     fn test_distinct_by_fails_for_unknown_types() {
         match compile_expression(r#"distinct_by(1234567890, (a) => a)"#, &[]) {
-            Ok(_) => assert!(false, "Should not be able to resolve"),
-            Err(err) => {
-                match err {
-                    CompileError::Optimizer(TransformError::IncorrectTypeInField(t_err)) => {
-                        assert_eq!(
-                            t_err.desc,
-                            "Incorrect input to distinct_by. Got number, expected array or object"
-                        );
-                        assert_eq!(t_err.span, Span { start: 0, end: 33 })
-                    }
-                    _ => assert!(false, "Should be an optimizer error"),
+            Ok(_) => panic!("Should not be able to resolve"),
+            Err(err) => match err {
+                CompileError::Optimizer(TransformError::IncorrectTypeInField(t_err)) => {
+                    assert_eq!(
+                        t_err.desc,
+                        "Incorrect input to distinct_by. Got number, expected array or object"
+                    );
+                    assert_eq!(t_err.span, Span { start: 0, end: 33 })
                 }
-                assert!(true);
-            }
+                _ => panic!("Should be an optimizer error"),
+            },
         }
     }
 

@@ -1,6 +1,6 @@
 use crate::{
     expressions::{
-        base::{get_number_from_value, get_string_from_value},
+        base::{get_number_from_value, get_string_from_cow_value},
         functions::FunctionExpression,
         Expression, ResolveResult,
     },
@@ -18,10 +18,10 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ToUnixTimeFunction {
         state: &crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let dat = self.args.get(0).unwrap().resolve(state)?;
-        let val = get_string_from_value(Self::INFO.name, &dat, &self.span)?;
+        let val = get_string_from_cow_value(Self::INFO.name, dat, &self.span)?;
         let val_ref = val.as_ref();
         let fmt = self.args.get(1).unwrap().resolve(state)?;
-        let fmt_val = get_string_from_value(Self::INFO.name, &fmt, &self.span)?;
+        let fmt_val = get_string_from_cow_value(Self::INFO.name, fmt, &self.span)?;
         let fmt_ref = fmt_val.as_ref();
         // If the format string contains timezone, create a timestamp with timezone directly
         if fmt_ref.contains("%z") {
@@ -107,7 +107,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FormatTimestampFunction {
         let timestamp_num =
             get_number_from_value("format_timestamp", timestamp.as_ref(), &self.span)?
                 .try_as_i64(&self.span)?;
-        let format_str = get_string_from_value("format_timestamp", format.as_ref(), &self.span)?;
+        let format_str = get_string_from_cow_value("format_timestamp", format, &self.span)?;
 
         let datetime = Utc.timestamp_millis_opt(timestamp_num).single().ok_or(
             TransformError::new_conversion_failed(

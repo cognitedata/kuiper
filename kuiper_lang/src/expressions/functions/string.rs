@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::expressions::{base::get_string_from_value, Expression, ResolveResult};
+use crate::expressions::{base::get_string_from_cow_value, Expression, ResolveResult};
 
 // Example function definition
 
@@ -23,13 +23,13 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ConcatFunction {
         state: &crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
         // Create a mutable string we can write to, in rust this is fast, a string is just Vec<u8>
-        let mut res = "".to_string();
+        let mut res = String::new();
         // Iterate over the arguments to the function
         for expr in self.args.iter() {
             // Resolve each argument by passing the state, then return any errors if they occur.
             let resolved = expr.resolve(state)?;
             // Convert the value to string
-            let dat = get_string_from_value("concat", &resolved, &self.span)?;
+            let dat = get_string_from_cow_value("concat", resolved, &self.span)?;
             // Push the resulting string to the result vector.
             res.push_str(&dat);
         }
