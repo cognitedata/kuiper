@@ -6,7 +6,7 @@
 
 Result(Expression(Operator(
     Expression(Term(Number)),
-    ArithOp,
+    ArithOp("+"),
     Expression(Term(Number))
 )))
 
@@ -19,10 +19,10 @@ Result(Expression(Operator(
 Result(Expression(Operator(
     Expression(Operator(
         Expression(Term(Number)),
-        ArithOp,
+        ArithOp("*"),
         Expression(Term(Number))
     )),
-    ArithOp,
+    ArithOp("+"),
     Expression(Term(Number))
 )))
 
@@ -34,10 +34,10 @@ Result(Expression(Operator(
 
 Result(Expression(Operator(
     Expression(Term(Number)),
-    ArithOp,
+    ArithOp("+"),
     Expression(Operator(
         Expression(Term(Number)),
-        ArithOp,
+        ArithOp("*"),
         Expression(Term(Number))
     ))
 )))
@@ -52,31 +52,31 @@ Result(Expression(Operator(
     Expression(Operator(
         Expression(Operator(
             Expression(Term(Number)),
-            CompareOp,
+            CompareOp("=="),
             Expression(Term(Number))
         )),
-        LogicOp,
+        LogicOp("&&"),
         Expression(Operator(
             Expression(Term(Number)),
-            CompareOp,
+            CompareOp("!="),
             Expression(Term(Number))
         )),
     )),
-    LogicOp,
+    LogicOp("||"),
     Expression(Operator(
         Expression(Operator(
             Expression(Term(Number)),
-            ArithOp,
+            ArithOp("+"),
             Expression(Operator(
                 Expression(Term(Number)),
-                ArithOp,
+                ArithOp("*"),
                 Expression(Term(Number))
             )),
         )),
-        ArithOp,
+        ArithOp("-"),
         Expression(Operator(
             Expression(Term(Number)),
-            ArithOp,
+            ArithOp("/"),
             Expression(Term(Number))
         )),
     )),
@@ -90,20 +90,20 @@ Result(Expression(Operator(
 
 Result(Expression(Operator(
     Expression(Term(Number)),
-    ArithOp,
+    ArithOp("+"),
     Expression(Operator(
-        LogicOp,
+        LogicOp("!"),
         Expression(Term(
             Expression(Operator(
                 Expression(Operator(
                     Expression(Term(Number)),
-                    ArithOp,
+                    ArithOp("+"),
                     Expression(Operator(
-                        LogicOp,
+                        LogicOp("!"),
                         Expression(Term(Number))
                     ))
                 )),
-                ArithOp,
+                ArithOp("-"),
                 Expression(Term(Number))
             ))
         ))
@@ -118,13 +118,13 @@ Result(Expression(Operator(
 
 Result(Expression(Operator(
     Expression(Term(Number)),
-    ArithOp,
+    ArithOp("+"),
     Expression(Operator(
-        LogicOp,
+        LogicOp("!"),
         Expression(Operator(
-            LogicOp,
+            LogicOp("!"),
             Expression(Operator(
-                LogicOp,
+                LogicOp("!"),
                 Expression(Term(Number))
             ))
         ))
@@ -140,7 +140,35 @@ Result(Expression(Operator(
 Result(Expression(Operator(
     Expression(Term(Number)),
     BlockComment,
-    ArithOp,
+    ArithOp("+"),
     BlockComment,
     Expression(Term(Number))
 )), BlockComment)
+
+# "is" operator
+
+1 is number && "wow" is string && null is null
+
+==>
+
+Result(Expression(Operator(
+    Expression(Operator(
+        Expression(Operator(
+            Expression(Term(Number)),
+            CompareOp("is"),
+            NumberTy
+        ))
+        LogicOp("&&"),
+        Expression(Operator(
+            Expression(Term(String)),
+            CompareOp("is"),
+            StringTy
+        ))
+    )),
+    LogicOp("&&"),
+    Expression(Operator(
+        Expression(Term(Null)),
+        CompareOp("is"),
+        Null
+    ))
+)))

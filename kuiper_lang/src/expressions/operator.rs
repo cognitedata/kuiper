@@ -90,12 +90,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
         state: &ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         let lhs = self.elements[0].resolve(state)?;
-        if matches!(self.operator, Operator::Is) {
-            return self.resolve_is(&lhs, state);
-        }
-
-        if lhs.is_number() {
-            self.resolve_numeric_operator(&lhs, state)
+        if matches!(self.operator, Operator::And | Operator::Or) {
+            self.resolve_boolean_operator(&lhs, state)
         } else if lhs.is_string()
             && !matches!(
                 self.operator,
@@ -103,8 +99,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
             )
         {
             self.resolve_string_operator(lhs, state)
-        } else if matches!(self.operator, Operator::And | Operator::Or) {
-            self.resolve_boolean_operator(&lhs, state)
+        } else if lhs.is_number() {
+            self.resolve_numeric_operator(&lhs, state)
         } else {
             self.resolve_generic_operator(&lhs, state)
         }
@@ -158,35 +154,6 @@ impl OpExpression {
             elements: [Box::new(lhs), Box::new(rhs)],
             span,
         })
-    }
-
-    fn resolve_is<'a>(
-        &self,
-        lhs: &Value,
-        state: &ExpressionExecutionState,
-    ) -> Result<ResolveResult<'a>, TransformError> {
-        let rhs = self.elements[1].resolve(state)?;
-        let rhs_ref = rhs.as_ref().as_str();
-        let Some(rhs_ref) = rhs_ref else {
-            return Err(TransformError::new_incorrect_type(
-                "Right hand side of `is` operator",
-                "string",
-                TransformError::value_desc(&rhs),
-                &self.span,
-            ));
-        };
-        let res = match rhs_ref {
-            "null" => lhs.is_null(),
-            "object" => lhs.is_object(),
-            "array" => lhs.is_array(),
-            "string" => lhs.is_string(),
-            "number" => lhs.is_number(),
-            "float" => lhs.is_f64(),
-            "int" => lhs.is_i64() || lhs.is_u64(),
-            "bool" => lhs.is_boolean(),
-            x => return Err(TransformError::new_invalid_operation(format!("{x} is not a valid type, expected 'null', 'object', 'array', 'string', 'number', 'float', 'int' or 'bool"), &self.span))
-        };
-        Ok(ResolveResult::Owned(Value::Bool(res)))
     }
 
     fn resolve_generic_operator<'a>(

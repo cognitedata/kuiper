@@ -5,7 +5,7 @@ use thiserror::Error;
 
 use crate::{
     expressions::{
-        get_function_expression, ArrayExpression, ExpressionType, LambdaExpression,
+        get_function_expression, ArrayExpression, ExpressionType, IsExpression, LambdaExpression,
         ObjectExpression, OpExpression, SelectorElement, SelectorExpression, SourceElement,
         UnaryOpExpression,
     },
@@ -50,7 +50,7 @@ impl BuildError {
     pub(crate) fn unexpected_lambda(position: &Span) -> Self {
         Self::UnexpectedLambda(CompileErrorData {
             position: position.clone(),
-            detail: None,
+            detail: Some("Expected expression, got lambda".to_owned()),
         })
     }
     pub(crate) fn unrecognized_function(position: Span, symbol: &str) -> Self {
@@ -136,6 +136,10 @@ pub fn from_ast(ast: Expression) -> Result<ExpressionType, BuildError> {
             SourceElement::Input(v),
             vec![],
             span,
+        )?)),
+        Expression::Is(i) => Ok(ExpressionType::Is(IsExpression::new(
+            from_ast(*i.lhs)?,
+            i.rhs,
         )?)),
     }
 }

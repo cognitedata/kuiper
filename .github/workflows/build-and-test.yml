@@ -8,7 +8,7 @@ jobs:
   build_and_test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -26,7 +26,7 @@ jobs:
         python-version: ["3.10", "3.11"]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -35,11 +35,15 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dev deps
-        run: pip install pre-commit toml
+        run: pip install pre-commit toml pyyaml
       - name: Check style
         run: pre-commit run --all
+      - name: Check that docs are up to date
+        run: |
+          python kuiper_documentation/codegen.py
+          git diff --quiet
       - name: Setup QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
       - uses: PyO3/maturin-action@v1
         with:
           command: build
@@ -54,7 +58,7 @@ jobs:
         arch: ["x86_64-apple-darwin", "aarch64-apple-darwin"]
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -76,7 +80,7 @@ jobs:
   build_js_modules:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set Node.js 18.x
         uses: actions/setup-node@v3
         with:

@@ -282,7 +282,9 @@ mod tests {
     pub fn test_boolean_operators() {
         let expr = compile_expression(
             r#"{
-            "v1": input.v1 && input.v2 || input.v3
+            "v1": input.v1 && input.v2 || input.v3,
+            "v2": 1 && 2 && 3,
+            "v3": null && "wow"
         }"#,
             &["input"],
         )
@@ -294,6 +296,8 @@ mod tests {
         });
         let res = expr.run([&input]).unwrap();
         assert!(res.get("v1").unwrap().as_bool().unwrap());
+        assert!(res.get("v2").unwrap().as_bool().unwrap());
+        assert!(!res.get("v3").unwrap().as_bool().unwrap());
     }
 
     #[test]
@@ -450,13 +454,13 @@ mod tests {
     pub fn test_is_operator() {
         let expr = compile_expression(
             r#"{
-            "v1": "test" is "string",
-            "v2": "test" is "number",
-            "v3": 123 is "number",
-            "v4": 123.0 is "int",
-            "v5": true is "bool",
-            "v6": [1, 2, 3] is "object",
-            "v7": [1, 2, 3] is "array"
+            "v1": "test" is string,
+            "v2": "test" is number,
+            "v3": 123 is number,
+            "v4": 123.0 is int,
+            "v5": true is bool,
+            "v6": [1, 2, 3] is object,
+            "v7": [1, 2, 3] is array
         }"#,
             &[],
         )

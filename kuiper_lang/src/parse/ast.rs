@@ -3,7 +3,7 @@ use std::fmt::Display;
 use logos::Span;
 use serde_json::{Number, Value};
 
-use crate::expressions::{Operator, UnaryOperator};
+use crate::expressions::{Operator, TypeLiteral, UnaryOperator};
 
 #[derive(Debug)]
 pub enum Selector {
@@ -101,8 +101,15 @@ pub struct OpExpression {
 }
 
 #[derive(Debug)]
+pub struct IsExpression {
+    pub lhs: Box<Expression>,
+    pub rhs: TypeLiteral,
+}
+
+#[derive(Debug)]
 pub enum Expression {
     BinaryOperation(OpExpression, Span),
+    Is(IsExpression),
     UnaryOperation {
         operator: UnaryOperator,
         rhs: Box<Expression>,
@@ -175,6 +182,7 @@ impl Display for Expression {
                 write!(f, ")")
             }
             Expression::Variable(v, _) => write!(f, "{v}"),
+            Expression::Is(i) => write!(f, "({} is {})", i.lhs, i.rhs),
         }
     }
 }

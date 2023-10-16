@@ -10,6 +10,7 @@ use super::{
         flatmap::FlatMapFunction, map::MapFunction, reduce::ReduceFunction, select::SelectFunction,
         zip::ZipFunction, *,
     },
+    is_operator::IsExpression,
     lambda::LambdaExpression,
     numbers::JsonNumber,
     operator::UnaryOpExpression,
@@ -257,6 +258,7 @@ pub enum ExpressionType {
     Array(ArrayExpression),
     Object(ObjectExpression),
     Lambda(LambdaExpression),
+    Is(IsExpression),
 }
 
 impl ExpressionType {
