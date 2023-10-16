@@ -49,7 +49,7 @@ Term {
 @precedence { t8 @right, t7 @left, t6 @left, t5 @left, t4 @left, t3 @left, t2 @left }
 
 Operator {
-    !t8 LogicOp<"!"> Expression |
+    !t8 (LogicOp<"!"> | ArithOp<"-">) Expression |
     Expression !t7 (ArithOp<"*"> | ArithOp<"/"> | ArithOp<"%">) Expression |
     Expression !t6 (ArithOp<"+"> | ArithOp<"-">) Expression |
     Expression !t5 (CompareOp<">"> | CompareOp<"<"> | CompareOp<">="> | CompareOp<"<=">) Expression |

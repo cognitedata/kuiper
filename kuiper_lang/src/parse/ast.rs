@@ -23,8 +23,7 @@ impl Display for Selector {
 #[derive(Debug, PartialEq)]
 pub enum Constant {
     String(String),
-    PositiveInteger(u64),
-    NegativeInteger(i64),
+    Integer(u64),
     Float(f64),
     Bool(bool),
     Null,
@@ -34,8 +33,7 @@ impl Display for Constant {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Constant::String(x) => write!(f, r#""{x}""#),
-            Constant::PositiveInteger(x) => write!(f, "{x}"),
-            Constant::NegativeInteger(x) => write!(f, "{x}"),
+            Constant::Integer(x) => write!(f, "{x}"),
             Constant::Float(x) => write!(f, "{x}"),
             Constant::Bool(x) => write!(f, "{x}"),
             Constant::Null => write!(f, "null"),
@@ -47,8 +45,7 @@ impl From<Constant> for Value {
     fn from(val: Constant) -> Self {
         match val {
             Constant::String(s) => Value::String(s),
-            Constant::PositiveInteger(x) => Value::Number(x.into()),
-            Constant::NegativeInteger(x) => Value::Number(x.into()),
+            Constant::Integer(x) => Value::Number(x.into()),
             Constant::Float(x) => {
                 Value::Number(Number::from_f64(x).unwrap_or_else(|| Number::from_f64(0.0).unwrap()))
             }

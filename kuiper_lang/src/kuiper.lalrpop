@@ -9,11 +9,8 @@ use logos::Span;
 grammar;
 
 Const: ast::Constant = {
-    <val:"int"> => {
-        ast::Constant::NegativeInteger(val)
-    },
     <val:"uint"> => {
-        ast::Constant::PositiveInteger(val)
+        ast::Constant::Integer(val)
     },
     <val:"string"> => {
         ast::Constant::String(val)
@@ -135,6 +132,7 @@ Op5Expr: ast::Expression = {
         lhs: Box::new(lhs),
         rhs,
     }),
+
     Op6Expr
 }
 
@@ -157,11 +155,16 @@ Op7: Operator = {
     "/" => Operator::Divide,
     "%" => Operator::Modulo
 }
+
+UnaryOp: UnaryOperator = {
+    "!" => UnaryOperator::Negate,
+    "-" => UnaryOperator::Minus
+}
 Op8Expr: ast::Expression = {
-    <start:@L> "!" <end:@R> <e:Op8Expr> => ast::Expression::UnaryOperation {
-        operator: UnaryOperator::Negate,
+    <op:Spanned<UnaryOp>> <e:Op8Expr> => ast::Expression::UnaryOperation {
+        operator: op.0,
         rhs: Box::new(e),
-        loc: Span { start, end }
+        loc: op.1
     },
     Term
 }
@@ -177,8 +180,7 @@ extern {
         ")" => Token::CloseParenthesis,
         "," => Token::Comma,
         "float" => Token::Float(<f64>),
-        "int" => Token::Integer(<i64>),
-        "uint" => Token::UInteger(<u64>),
+        "uint" => Token::Integer(<u64>),
         "bool" => Token::Boolean(<bool>),
         "string" => Token::String(<String>),
         "+" => Token::Operator(Operator::Plus),

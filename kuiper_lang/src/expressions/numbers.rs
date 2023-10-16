@@ -332,4 +332,24 @@ impl JsonNumber {
             }
         }
     }
+
+    pub fn neg(self) -> JsonNumber {
+        match self {
+            JsonNumber::NegInteger(x) => {
+                if x < 0 {
+                    JsonNumber::PosInteger((-x) as u64)
+                } else {
+                    JsonNumber::NegInteger(-x)
+                }
+            }
+            JsonNumber::PosInteger(x) => {
+                if x <= i64::MAX as u64 {
+                    JsonNumber::NegInteger(-(x as i64))
+                } else {
+                    JsonNumber::Float(-(x as f64))
+                }
+            }
+            JsonNumber::Float(x) => JsonNumber::Float(-x),
+        }
+    }
 }
