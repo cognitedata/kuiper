@@ -2,7 +2,7 @@ use serde_json::Value;
 
 use crate::{
     expressions::{
-        base::{get_boolean_from_value, get_number_from_value, get_string_from_value},
+        base::{get_boolean_from_value, get_number_from_value, get_string_from_cow_value},
         Expression, ResolveResult,
     },
     TransformError,
@@ -43,7 +43,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for CaseFunction {
         let result = if lhs.is_number() {
             self.resolve_number(state, &lhs, pairs)?
         } else if lhs.is_string() {
-            self.resolve_string(state, &lhs, pairs)?
+            self.resolve_string(state, lhs, pairs)?
         } else {
             self.resolve_generic(state, &lhs, pairs)?
         };
@@ -95,14 +95,14 @@ impl CaseFunction {
     fn resolve_string<'a>(
         &'a self,
         state: &'a crate::expressions::ExpressionExecutionState,
-        lhs: &Value,
+        lhs: ResolveResult<'a>,
         pairs: usize,
     ) -> Result<Option<usize>, TransformError> {
-        let lhs_val = get_string_from_value("case", lhs, &self.span)?;
+        let lhs_val = get_string_from_cow_value("case", lhs, &self.span)?;
         for idx in 0..pairs {
             let cmp = self.args[idx * 2 + 1].resolve(state)?;
             let rhs = cmp;
-            let rhs_val = get_string_from_value("case", &rhs, &self.span)?;
+            let rhs_val = get_string_from_cow_value("case", rhs, &self.span)?;
             if lhs_val == rhs_val {
                 return Ok(Some(idx * 2 + 2));
             }

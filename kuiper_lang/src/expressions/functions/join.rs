@@ -89,20 +89,17 @@ mod tests {
     #[test]
     fn test_join_fails_for_other_types() {
         match compile_expression(r#"join({'a':1}, [1,2,3])"#, &[]) {
-            Ok(_) => assert!(false, "Should not be able to resolve"),
-            Err(err) => {
-                match err {
-                    CompileError::Optimizer(TransformError::IncorrectTypeInField(t_err)) => {
-                        assert_eq!(
-                            t_err.desc,
-                            "Incorrect type provided for join. Got array, expected object"
-                        );
-                        assert_eq!(t_err.span, Span { start: 0, end: 22 })
-                    }
-                    _ => assert!(false, "Should be an optimizer error"),
+            Ok(_) => panic!("Should not be able to resolve"),
+            Err(err) => match err {
+                CompileError::Optimizer(TransformError::IncorrectTypeInField(t_err)) => {
+                    assert_eq!(
+                        t_err.desc,
+                        "Incorrect type provided for join. Got array, expected object"
+                    );
+                    assert_eq!(t_err.span, Span { start: 0, end: 22 })
                 }
-                assert!(true);
-            }
+                _ => panic!("Should be an optimizer error"),
+            },
         }
     }
 }

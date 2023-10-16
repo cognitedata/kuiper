@@ -13,6 +13,44 @@ pub(crate) enum JsonNumber {
     Float(f64),
 }
 
+impl From<&serde_json::Number> for JsonNumber {
+    fn from(v: &serde_json::Number) -> Self {
+        v.as_u64()
+            .map(JsonNumber::PosInteger)
+            .or_else(|| v.as_i64().map(JsonNumber::NegInteger))
+            .or_else(|| v.as_f64().map(JsonNumber::Float))
+            .unwrap()
+    }
+}
+
+impl From<serde_json::Number> for JsonNumber {
+    fn from(v: serde_json::Number) -> Self {
+        Self::from(&v)
+    }
+}
+
+impl From<i64> for JsonNumber {
+    fn from(value: i64) -> Self {
+        if value < 0 {
+            Self::NegInteger(value)
+        } else {
+            Self::PosInteger(value as u64)
+        }
+    }
+}
+
+impl From<u64> for JsonNumber {
+    fn from(value: u64) -> Self {
+        Self::PosInteger(value)
+    }
+}
+
+impl From<f64> for JsonNumber {
+    fn from(value: f64) -> Self {
+        Self::Float(value)
+    }
+}
+
 impl JsonNumber {
     /// Convert to a float, this cannot fail, but it can lose precision.
     pub fn as_f64(self) -> f64 {
