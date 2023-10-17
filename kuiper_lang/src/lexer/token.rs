@@ -68,17 +68,13 @@ pub enum Token {
     Comma,
 
     /// A floating point number. Strictly not an integer.
-    #[regex(r#"[-]?(\d*\.)?\d+"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseFloat((e, lex.span()))))]
-    #[regex(r#"[-]?(\d*\.)?\d+[eE][+-]?(\d)"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseFloat((e, lex.span()))))]
+    #[regex(r#"(\d*\.)?\d+"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseFloat((e, lex.span()))))]
+    #[regex(r#"(\d*\.)?\d+[eE][+-]?(\d)"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseFloat((e, lex.span()))))]
     Float(f64),
-
-    /// A negative integer.
-    #[regex(r#"-(\d)+"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseInt((e, lex.span()))))]
-    Integer(i64),
 
     /// A positive integer.
     #[regex(r#"(\d)+"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseInt((e, lex.span()))), priority = 2)]
-    UInteger(u64),
+    Integer(u64),
 
     #[token("true", |_| true)]
     #[token("false", |_| false)]
@@ -174,7 +170,6 @@ impl Display for Token {
             Token::OpenBracket => write!(f, "["),
             Token::CloseBracket => write!(f, "]"),
             Token::Integer(x) => write!(f, "{x}"),
-            Token::UInteger(x) => write!(f, "{x}"),
             Token::TypeLiteral(x) => write!(f, "{x}"),
             Token::Boolean(b) => write!(f, "{}", if *b { "true" } else { "false" }),
             Token::OpenBrace => write!(f, "{{"),
@@ -202,7 +197,7 @@ mod test {
         )
         .map(|t| t.unwrap());
 
-        assert_eq!(lex.next(), Some(Token::UInteger(123)));
+        assert_eq!(lex.next(), Some(Token::Integer(123)));
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
         assert_eq!(lex.next(), Some(Token::Identifier("id".to_string())));
         assert_eq!(lex.next(), Some(Token::Period));
@@ -213,7 +208,7 @@ mod test {
             Some(Token::Identifier("seg2 complex".to_string()))
         );
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Divide)));
-        assert_eq!(lex.next(), Some(Token::UInteger(3)));
+        assert_eq!(lex.next(), Some(Token::Integer(3)));
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Minus)));
         assert_eq!(
             lex.next(),
@@ -229,9 +224,9 @@ mod test {
         assert_eq!(lex.next(), Some(Token::Comma));
         assert_eq!(lex.next(), Some(Token::Identifier("nested".to_string())));
         assert_eq!(lex.next(), Some(Token::OpenParenthesis));
-        assert_eq!(lex.next(), Some(Token::UInteger(3)));
+        assert_eq!(lex.next(), Some(Token::Integer(3)));
         assert_eq!(lex.next(), Some(Token::Comma));
-        assert_eq!(lex.next(), Some(Token::UInteger(4)));
+        assert_eq!(lex.next(), Some(Token::Integer(4)));
         assert_eq!(lex.next(), Some(Token::CloseParenthesis));
         assert_eq!(lex.next(), Some(Token::CloseParenthesis));
     }
@@ -244,14 +239,15 @@ mod test {
         assert_eq!(lex.next(), Some(Token::OpenBracket));
         assert_eq!(lex.next(), Some(Token::String("some".to_string())));
         assert_eq!(lex.next(), Some(Token::Comma));
-        assert_eq!(lex.next(), Some(Token::UInteger(123)));
+        assert_eq!(lex.next(), Some(Token::Integer(123)));
         assert_eq!(lex.next(), Some(Token::Comma));
         assert_eq!(lex.next(), Some(Token::String("array".to_string())));
         assert_eq!(lex.next(), Some(Token::Comma));
         assert_eq!(lex.next(), Some(Token::OpenBracket));
-        assert_eq!(lex.next(), Some(Token::UInteger(0)));
+        assert_eq!(lex.next(), Some(Token::Integer(0)));
         assert_eq!(lex.next(), Some(Token::Comma));
-        assert_eq!(lex.next(), Some(Token::Integer(-1)));
+        assert_eq!(lex.next(), Some(Token::Operator(Operator::Minus)));
+        assert_eq!(lex.next(), Some(Token::Integer(1)));
         assert_eq!(lex.next(), Some(Token::Comma));
         assert_eq!(lex.next(), Some(Token::Float(2.2f64)));
         assert_eq!(lex.next(), Some(Token::CloseBracket));
@@ -262,12 +258,12 @@ mod test {
         assert_eq!(lex.next(), Some(Token::String("test".to_string())));
         assert_eq!(lex.next(), Some(Token::CloseBracket));
         assert_eq!(lex.next(), Some(Token::OpenBracket));
-        assert_eq!(lex.next(), Some(Token::UInteger(0)));
+        assert_eq!(lex.next(), Some(Token::Integer(0)));
         assert_eq!(lex.next(), Some(Token::CloseBracket));
         assert_eq!(lex.next(), Some(Token::OpenBracket));
-        assert_eq!(lex.next(), Some(Token::UInteger(1)));
+        assert_eq!(lex.next(), Some(Token::Integer(1)));
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
-        assert_eq!(lex.next(), Some(Token::UInteger(1)));
+        assert_eq!(lex.next(), Some(Token::Integer(1)));
         assert_eq!(lex.next(), Some(Token::CloseBracket));
     }
 
@@ -275,7 +271,7 @@ mod test {
     pub fn test_operators() {
         let mut lex = Token::lexer("1 + !!!2 - 3 * 4 / 5 != 6").map(|t| t.unwrap());
 
-        assert_eq!(lex.next(), Some(Token::UInteger(1)));
+        assert_eq!(lex.next(), Some(Token::Integer(1)));
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
         assert_eq!(
             lex.next(),
@@ -289,15 +285,15 @@ mod test {
             lex.next(),
             Some(Token::UnaryOperator(UnaryOperator::Negate))
         );
-        assert_eq!(lex.next(), Some(Token::UInteger(2)));
+        assert_eq!(lex.next(), Some(Token::Integer(2)));
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Minus)));
-        assert_eq!(lex.next(), Some(Token::UInteger(3)));
+        assert_eq!(lex.next(), Some(Token::Integer(3)));
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Multiply)));
-        assert_eq!(lex.next(), Some(Token::UInteger(4)));
+        assert_eq!(lex.next(), Some(Token::Integer(4)));
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Divide)));
-        assert_eq!(lex.next(), Some(Token::UInteger(5)));
+        assert_eq!(lex.next(), Some(Token::Integer(5)));
         assert_eq!(lex.next(), Some(Token::Operator(Operator::NotEquals)));
-        assert_eq!(lex.next(), Some(Token::UInteger(6)));
+        assert_eq!(lex.next(), Some(Token::Integer(6)));
     }
 
     #[test]
@@ -308,7 +304,7 @@ mod test {
         assert_eq!(lex.next(), Some(Token::Colon));
         assert_eq!(lex.next(), Some(Token::String("test".to_string())));
         assert_eq!(lex.next(), Some(Token::Comma));
-        assert_eq!(lex.next(), Some(Token::UInteger(123)));
+        assert_eq!(lex.next(), Some(Token::Integer(123)));
         assert_eq!(lex.next(), Some(Token::Colon));
         assert_eq!(lex.next(), Some(Token::String("test".to_string())));
         assert_eq!(lex.next(), Some(Token::CloseBrace));
@@ -319,7 +315,7 @@ mod test {
         let mut lex = Token::lexer("test => 1, (test, test) => 2").map(|t| t.unwrap());
         assert_eq!(lex.next(), Some(Token::Identifier("test".to_string())));
         assert_eq!(lex.next(), Some(Token::Arrow));
-        assert_eq!(lex.next(), Some(Token::UInteger(1)));
+        assert_eq!(lex.next(), Some(Token::Integer(1)));
         assert_eq!(lex.next(), Some(Token::Comma));
         assert_eq!(lex.next(), Some(Token::OpenParenthesis));
         assert_eq!(lex.next(), Some(Token::Identifier("test".to_string())));
@@ -327,7 +323,7 @@ mod test {
         assert_eq!(lex.next(), Some(Token::Identifier("test".to_string())));
         assert_eq!(lex.next(), Some(Token::CloseParenthesis));
         assert_eq!(lex.next(), Some(Token::Arrow));
-        assert_eq!(lex.next(), Some(Token::UInteger(2)));
+        assert_eq!(lex.next(), Some(Token::Integer(2)));
     }
 
     #[test]
@@ -342,9 +338,9 @@ mod test {
         assert_eq!(lex.next(), Some(Token::Identifier("arg1".to_string())));
         assert_eq!(lex.next(), Some(Token::CloseParenthesis));
         assert_eq!(lex.next(), Some(Token::Arrow));
-        assert_eq!(lex.next(), Some(Token::UInteger(1)));
+        assert_eq!(lex.next(), Some(Token::Integer(1)));
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
-        assert_eq!(lex.next(), Some(Token::UInteger(1)));
+        assert_eq!(lex.next(), Some(Token::Integer(1)));
         assert_eq!(lex.next(), Some(Token::CloseParenthesis));
         assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
         assert_eq!(lex.next(), Some(Token::Identifier("arg1".to_string())));
@@ -382,7 +378,8 @@ mod test {
         assert_eq!(lex.next(), Some(Token::Float(123.456)));
         assert_eq!(lex.next(), Some(Token::Float(123000000.0)));
         assert_eq!(lex.next(), Some(Token::Float(32100000.0)));
-        assert_eq!(lex.next(), Some(Token::Float(-400.0)));
+        assert_eq!(lex.next(), Some(Token::Operator(Operator::Minus)));
+        assert_eq!(lex.next(), Some(Token::Float(400.0)));
         assert_eq!(lex.next(), Some(Token::Float(0.014)));
     }
 
