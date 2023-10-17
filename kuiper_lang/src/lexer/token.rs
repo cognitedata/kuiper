@@ -395,7 +395,7 @@ mod test {
         assert_eq!(lex.next(), Some(Token::String(r#"test\"""#.to_string())));
         assert_eq!(lex.next(), Some(Token::String(r#"test'"#.to_string())));
 
-        let mut lex = Token::lexer(r#"'test\b'"#);
+        let mut lex = Token::lexer(r"'test\b'");
         assert_eq!(
             lex.next(),
             Some(Err(crate::lexer::LexerError::InvalidEscapeChar((

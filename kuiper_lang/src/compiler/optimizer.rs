@@ -29,7 +29,7 @@ fn resolve_constants<'a: 'b, 'b>(
     let data = Vec::new();
     let mut state = ExpressionExecutionState::new(&data, opcount, 100_000);
     if let ExpressionType::Selector(s) = root {
-        s.resolve_first_item(&mut state, known_inputs)?;
+        s.resolve_first_item(&state, known_inputs)?;
     }
 
     // If there are no children, no further optimization may be done
