@@ -55,12 +55,14 @@ impl Display for Operator {
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum UnaryOperator {
     Negate,
+    Minus,
 }
 
 impl Display for UnaryOperator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Negate => write!(f, "!"),
+            Self::Minus => write!(f, "-"),
         }
     }
 }
@@ -289,10 +291,8 @@ impl OpExpression {
 #[derive(Debug, Clone)]
 pub struct UnaryOpExpression {
     operator: UnaryOperator,
-    #[allow(dead_code)]
     descriptor: String,
     element: Box<ExpressionType>,
-    #[allow(dead_code)]
     span: Span,
 }
 
@@ -307,9 +307,19 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for UnaryOpExpression {
         &'a self,
         state: &ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
-        let val = get_boolean_from_value(self.element.resolve(state)?.as_ref());
+        let rhs = self.element.resolve(state)?;
         match self.operator {
-            UnaryOperator::Negate => Ok(ResolveResult::Owned(Value::Bool(!val))),
+            UnaryOperator::Negate => {
+                let val = get_boolean_from_value(rhs.as_ref());
+                Ok(ResolveResult::Owned(Value::Bool(!val)))
+            }
+            UnaryOperator::Minus => {
+                let val = get_number_from_value(&self.descriptor, rhs.as_ref(), &self.span)?;
+                Ok(ResolveResult::Owned(
+                    // This being option shouldn't be possible. We should never be able to get a NaN here.
+                    val.neg().try_into_json().unwrap_or_default(),
+                ))
+            }
         }
     }
 }

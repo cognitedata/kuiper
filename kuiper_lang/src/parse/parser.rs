@@ -1,8 +1,8 @@
 use lalrpop_util::lalrpop_mod;
 
-lalrpop_mod!(jsontf);
+lalrpop_mod!(kuiper);
 
-pub use jsontf::ExprParser;
+pub use kuiper::ExprParser;
 
 #[cfg(test)]
 mod tests {
@@ -14,7 +14,7 @@ mod tests {
         parse::ast::{Constant, Expression},
     };
 
-    use super::jsontf::ExprParser;
+    use super::kuiper::ExprParser;
 
     fn parse(dat: &str) -> Result<Expression, ParseError> {
         let p = ExprParser::new();
@@ -40,8 +40,7 @@ mod tests {
             }
         }
 
-        assert_eq!(Constant::PositiveInteger(123), parse_const("123"));
-        assert_eq!(Constant::NegativeInteger(-123), parse_const("-123"));
+        assert_eq!(Constant::Integer(123), parse_const("123"));
         assert_eq!(Constant::Float(123.123), parse_const("123.123"));
         assert_eq!(Constant::Bool(true), parse_const("true"));
         assert_eq!(
@@ -189,6 +188,12 @@ mod tests {
     pub fn test_negate_expr() {
         let res = parse("2 + !(1 + !3 - 5)").unwrap();
         assert_eq!("(2 + !((1 + !3) - 5))", res.to_string());
+    }
+
+    #[test]
+    pub fn test_unary_minus() {
+        let res = parse("2 + -1-5 + -(1 + 3)").unwrap();
+        assert_eq!("(((2 + -1) - 5) + -(1 + 3))", res.to_string());
     }
 
     #[test]
