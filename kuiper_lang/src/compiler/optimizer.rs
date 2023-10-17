@@ -21,13 +21,15 @@ fn is_deterministic(expr: &ExpressionType) -> bool {
     true
 }
 
-fn resolve_constants(
-    root: &mut ExpressionType,
+fn resolve_constants<'a: 'b, 'b>(
+    root: &'a mut ExpressionType,
     known_inputs: &mut HashMap<String, usize>,
-    empty_state: &ExpressionExecutionState,
+    opcount: &mut i64,
 ) -> Result<Option<ExpressionType>, TransformError> {
+    let data = Vec::new();
+    let mut state = ExpressionExecutionState::new(&data, opcount, 100_000);
     if let ExpressionType::Selector(s) = root {
-        s.resolve_first_item(empty_state, known_inputs)?;
+        s.resolve_first_item(&mut state, known_inputs)?;
     }
 
     // If there are no children, no further optimization may be done
@@ -55,11 +57,9 @@ fn resolve_constants(
         temp_inputs = Some(inputs);
     }
 
-    let res = match root.resolve(empty_state) {
+    let res = match root.resolve(&mut state).map(|r| r.into_owned()) {
         // If resolution succeeds, we can replace this operator with a constant
-        Ok(x) if is_deterministic(root) => Ok(Some(ExpressionType::Constant(Constant::new(
-            x.into_owned(),
-        )))),
+        Ok(x) if is_deterministic(root) => Ok(Some(ExpressionType::Constant(Constant::new(x)))),
         Ok(_) => Ok(None),
         Err(e) => match e {
             // Any error that is not a source missing error would be a bug in this position,
@@ -67,11 +67,8 @@ fn resolve_constants(
             TransformError::SourceMissingError(_) => {
                 // If the source is missing we should try to optimize each child.
                 for idx in 0..root.num_children() {
-                    let res: Option<ExpressionType> = resolve_constants(
-                        root.get_child_mut(idx).unwrap(),
-                        known_inputs,
-                        empty_state,
-                    )?;
+                    let res: Option<ExpressionType> =
+                        resolve_constants(root.get_child_mut(idx).unwrap(), known_inputs, opcount)?;
                     if let Some(res) = res {
                         root.set_child(idx, res);
                     }
@@ -95,15 +92,14 @@ pub fn optimize(
     mut root: ExpressionType,
     known_inputs: &[&str],
 ) -> Result<ExpressionType, TransformError> {
-    let data = Vec::new();
-    let empty_state = ExpressionExecutionState::new(&data);
+    let mut opcount = 0;
 
     let mut known_inputs_map = HashMap::new();
     for (idx, inp) in known_inputs.iter().enumerate() {
         known_inputs_map.insert(inp.to_string(), idx);
     }
 
-    let res = resolve_constants(&mut root, &mut known_inputs_map, &empty_state)?;
+    let res = resolve_constants(&mut root, &mut known_inputs_map, &mut opcount)?;
     match res {
         Some(x) => Ok(x),
         None => Ok(root),

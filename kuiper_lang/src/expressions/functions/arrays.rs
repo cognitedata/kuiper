@@ -11,7 +11,7 @@ function_def!(LengthFunction, "length", 1);
 impl<'a: 'c, 'c> Expression<'a, 'c> for LengthFunction {
     fn resolve(
         &'a self,
-        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let source = self.args[0].resolve(state)?;
 
@@ -38,7 +38,7 @@ function_def!(ChunkFunction, "chunk", 2);
 impl<'a: 'c, 'c> Expression<'a, 'c> for ChunkFunction {
     fn resolve(
         &'a self,
-        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         let source = self.args[0].resolve(state)?;
 

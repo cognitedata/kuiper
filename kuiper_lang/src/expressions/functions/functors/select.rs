@@ -12,7 +12,7 @@ function_def!(SelectFunction, "select", 2, lambda);
 impl<'a: 'c, 'c> Expression<'a, 'c> for SelectFunction {
     fn resolve(
         &'a self,
-        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let source = self.args[0].resolve(state)?;
         match source.into_owned() {

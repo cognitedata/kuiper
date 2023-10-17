@@ -32,6 +32,8 @@ pub enum TransformError {
     InvalidOperation(TransformErrorData),
     #[error("Program is invalid: {0}")]
     InvalidProgramError(String),
+    #[error("Operation limit exceeded")]
+    OperationLimitExceeded,
 }
 
 impl TransformError {
@@ -86,6 +88,7 @@ impl TransformError {
             TransformError::ConversionFailed(x) => Some(x.span.clone()),
             TransformError::InvalidOperation(x) => Some(x.span.clone()),
             TransformError::InvalidProgramError(_) => None,
+            TransformError::OperationLimitExceeded => None,
         }
     }
 }
