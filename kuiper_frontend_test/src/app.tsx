@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { okaidia } from '@uiw/codemirror-theme-okaidia';
 import { createTheme } from '@uiw/codemirror-themes'
 import { tags as t } from '@lezer/highlight';
-import {linter, Diagnostic} from "@codemirror/lint"
+import { linter, Diagnostic } from "@codemirror/lint"
 import { EditorView } from "@codemirror/view"
 import { syntaxTree } from "@codemirror/language"
 import { json } from "@codemirror/lang-json"
@@ -73,8 +73,8 @@ function App() {
 
 
 
-    const [ expression, setExpression ] = React.useState<KuiperExpression | undefined>();
-    const [ sampleData, setSampleData ] = React.useState<string | undefined>("{}");
+    const [expression, setExpression] = React.useState<KuiperExpression | undefined>();
+    const [sampleData, setSampleData] = React.useState<string | undefined>("{}");
 
     const lintReal = (view: EditorView): Diagnostic[] => {
         const data = view.state.doc.toString();
@@ -93,7 +93,6 @@ function App() {
                         message: err.message
                     });
                 }
-                err.free();
                 return diagnostics;
             }
             return [];
@@ -114,11 +113,8 @@ function App() {
                         message: err.message
                     });
                 }
-                err.free();
                 return diagnostics;
             }
-        } finally {
-            expr.free();
         }
         return [];
     }
@@ -130,14 +126,10 @@ function App() {
         catch (err) {
             if (err instanceof KuiperError) {
                 console.log("Failed to compile: " + err.message + ", " + err.start + ":" + err.end);
-                err.free()
             } else {
                 console.log("Unexpected error during compile: " + err)
             }
             return;
-        }
-        if (expression) {
-            expression.free();
         }
         setExpression(expr);
     }, []);
@@ -157,14 +149,10 @@ function App() {
         try {
             let res = expression.run_get_completions([JSON.parse(sampleData), { topic: "my_topic" }]);
             output = JSON.stringify(res.get_result(), undefined, 4);
-            if (completions) {
-                completions.free();
-            }
             completions = res;
         } catch (err) {
             if (err instanceof KuiperError) {
                 console.log("Failed to transform: " + err.message + ", " + err.start + ":" + err.end);
-                err.free()
             } else {
                 console.log("Unexpected error during run: " + err)
             }
@@ -193,23 +181,23 @@ function App() {
     })
 
     return (
-    <div>
-        <CodeMirror
-            value="{}"
-            height='200px'
-            theme={okaidia}
-            extensions={[jsonLang]}
-            onChange={onChangeSample}
-        />
-        <CodeMirror
-            value=""
-            height="200px"
-            theme={okaidia}
-            extensions={[lang, linter(lintReal), extCompletions]}
-            onChange={onChange}
-        />
-        <div><pre>{output}</pre></div>
-    </div>
+        <div>
+            <CodeMirror
+                value="{}"
+                height='200px'
+                theme={okaidia}
+                extensions={[jsonLang]}
+                onChange={onChangeSample}
+            />
+            <CodeMirror
+                value=""
+                height="200px"
+                theme={okaidia}
+                extensions={[lang, linter(lintReal), extCompletions]}
+                onChange={onChange}
+            />
+            <div><pre>{output}</pre></div>
+        </div>
 
     );
 }
