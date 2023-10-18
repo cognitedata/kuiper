@@ -153,15 +153,15 @@ macro_rules! with_temp_values {
 /// In simple terms
 ///```ignore
 ///     'a
-///     
+///
 ///     start program execution
-///     
+///
 ///         'c
-///     
+///
 ///         for transform in program
-///     
+///
 ///             for entry in inputs
-///     
+///
 ///                 'b
 /// ````
 pub trait Expression<'a: 'c, 'c>: Display {
