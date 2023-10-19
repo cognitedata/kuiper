@@ -26,8 +26,8 @@ enum InteropError {
 }
 
 unsafe fn compile_expression_internal(
-    data: *mut c_char,
-    inputs: *mut *mut c_char,
+    data: *const c_char,
+    inputs: *const *const c_char,
     len: usize,
 ) -> Result<ExpressionType, InteropError> {
     let data = unsafe { CStr::from_ptr(data) };
@@ -99,21 +99,21 @@ pub unsafe extern "C" fn get_expression_from_compile_result(
 /// with length `len`. If `len` is 0, `inputs` may be null.
 #[no_mangle]
 pub unsafe extern "C" fn compile_expression(
-    data: *mut c_char,
-    inputs: *mut *mut c_char,
+    data: *const c_char,
+    inputs: *const *const c_char,
     len: usize,
 ) -> *mut CompileResult {
     let res = match compile_expression_internal(data, inputs, len) {
         Ok(expr) => CompileResult {
             error: std::ptr::null_mut(),
-            result: Box::leak(Box::new(expr)),
+            result: Box::into_raw(Box::new(expr)),
         },
         Err(e) => CompileResult {
             error: CString::new(e.to_string()).unwrap().into_raw(),
             result: std::ptr::null_mut(),
         },
     };
-    Box::leak(Box::new(res))
+    Box::into_raw(Box::new(res))
 }
 
 pub struct TransformResult {
@@ -122,9 +122,9 @@ pub struct TransformResult {
 }
 
 unsafe fn run_expression_internal(
-    data: *mut *mut c_char,
+    data: *const *const c_char,
     len: usize,
-    expression: *mut ExpressionType,
+    expression: *const ExpressionType,
 ) -> Result<String, InteropError> {
     let data = if len > 0 {
         let data_raw = unsafe { &*slice_from_raw_parts(data, len) };
@@ -169,7 +169,7 @@ pub unsafe extern "C" fn destroy_transform_result(data: *mut TransformResult) {
 ///
 /// `data` must be a valid pointer to an `ExpressionType`.
 #[no_mangle]
-pub unsafe extern "C" fn expression_to_string(data: *mut ExpressionType) -> *mut c_char {
+pub unsafe extern "C" fn expression_to_string(data: *const ExpressionType) -> *mut c_char {
     let str = unsafe { &*data }.to_string();
     CString::new(str).unwrap().into_raw()
 }
@@ -200,9 +200,9 @@ pub unsafe extern "C" fn destroy_string(data: *mut c_char) {
 /// `compile_expression` and `get_expression_from_compile_result`
 #[no_mangle]
 pub unsafe extern "C" fn run_expression(
-    data: *mut *mut c_char,
+    data: *const *const c_char,
     len: usize,
-    expression: *mut ExpressionType,
+    expression: *const ExpressionType,
 ) -> *mut TransformResult {
     let res = match run_expression_internal(data, len, expression) {
         Ok(expr) => TransformResult {
@@ -214,5 +214,5 @@ pub unsafe extern "C" fn run_expression(
             result: std::ptr::null_mut(),
         },
     };
-    Box::leak(Box::new(res))
+    Box::into_raw(Box::new(res))
 }
