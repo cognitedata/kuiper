@@ -19,7 +19,7 @@ serde_json = "1.0.107"
 regex = "1.10.2"
 kuiper_lang_macros = { path = "../kuiper_lang_macros" }
 lalrpop-util = "0.20.1"
-thiserror = "1.0.49"
+thiserror = "1.0.50"
 
 [dev-dependencies]
 pprof = { version = "0.13", features = ["flamegraph"] }
