@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
 use logos::Span;
 use thiserror::Error;
@@ -15,16 +15,16 @@ use crate::{
 #[derive(Debug, Error)]
 pub struct CompileErrorData {
     pub position: Span,
-    pub detail: Option<String>,
+    pub detail: String,
 }
 
 impl Display for CompileErrorData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(e) = &self.detail {
-            write!(f, "{} at {}..{}", e, self.position.start, self.position.end)
-        } else {
-            write!(f, "at {}..{}", self.position.start, self.position.end)
-        }
+        write!(
+            f,
+            "{} at {}..{}",
+            self.detail, self.position.start, self.position.end
+        )
     }
 }
 
@@ -36,110 +36,200 @@ pub enum BuildError {
     NFunctionArgs(CompileErrorData),
     #[error("{0}")]
     UnexpectedLambda(CompileErrorData),
-    #[error("{0}")]
+    #[error("Unrecognized function: {0}")]
     UnrecognizedFunction(CompileErrorData),
+    #[error("Unknown variable: {0}")]
+    UnknownVariable(CompileErrorData),
+    #[error("Variable already defined: {0}")]
+    VariableConflict(CompileErrorData),
 }
 
 impl BuildError {
     pub(crate) fn n_function_args(position: Span, detail: &str) -> Self {
         Self::NFunctionArgs(CompileErrorData {
             position,
-            detail: Some(format!("Incorrect number of function args: {detail}")),
+            detail: format!("Incorrect number of function args: {detail}"),
         })
     }
     pub(crate) fn unexpected_lambda(position: &Span) -> Self {
         Self::UnexpectedLambda(CompileErrorData {
             position: position.clone(),
-            detail: Some("Expected expression, got lambda".to_owned()),
+            detail: "Expected expression, got lambda".to_owned(),
         })
     }
     pub(crate) fn unrecognized_function(position: Span, symbol: &str) -> Self {
         Self::UnrecognizedFunction(CompileErrorData {
             position,
-            detail: Some(format!("Unrecognized function: {symbol}")),
+            detail: symbol.to_string(),
+        })
+    }
+    pub(crate) fn unknown_variable(position: Span, var: &str) -> Self {
+        Self::UnknownVariable(CompileErrorData {
+            position,
+            detail: var.to_string(),
+        })
+    }
+    pub(crate) fn variable_conflict(position: Span, var: &str) -> Self {
+        Self::VariableConflict(CompileErrorData {
+            position,
+            detail: var.to_string(),
         })
     }
 }
 
-fn build_selector(lhs: Expression, sel: Selector) -> Result<Vec<SelectorElement>, BuildError> {
-    let x = match sel {
-        Selector::Expression(x) => SelectorElement::Expression(Box::new(from_ast(*x)?)),
-        Selector::String(x, s) => SelectorElement::Constant(x, s),
-    };
+pub(crate) struct ExecTreeBuilder {
+    inner: BuilderInner,
+    expression: Expression,
+}
 
-    match lhs {
-        Expression::Selector { lhs, sel, loc: _ } => {
-            let mut ch = build_selector(*lhs, sel)?;
-            ch.push(x);
-            Ok(ch)
+struct BuilderInner {
+    known_inputs: HashMap<String, usize>,
+}
+
+impl ExecTreeBuilder {
+    pub fn new(expr: Expression, known_inputs: &[&str]) -> Self {
+        let mut inputs = HashMap::new();
+        for inp in known_inputs {
+            inputs.insert((*inp).to_owned(), inputs.len());
         }
-        Expression::Variable(v, s) => Ok(vec![SelectorElement::Constant(v, s), x]),
-        r => Ok(vec![SelectorElement::Expression(Box::new(from_ast(r)?)), x]),
+        Self {
+            inner: BuilderInner {
+                known_inputs: inputs,
+            },
+            expression: expr,
+        }
+    }
+
+    pub fn build(mut self) -> Result<ExpressionType, BuildError> {
+        self.inner.build_expression(self.expression)
     }
 }
 
-fn from_function_param(expr: FunctionParameter) -> Result<ExpressionType, BuildError> {
-    match expr {
-        FunctionParameter::Expression(x) => Ok(from_ast(x)?),
-        FunctionParameter::Lambda { args, inner, loc } => Ok(ExpressionType::Lambda(
-            LambdaExpression::new(args, from_ast(inner)?, loc)?,
-        )),
-    }
-}
+impl BuilderInner {
+    fn build_selector(
+        &mut self,
+        lhs: Expression,
+        sel: Selector,
+    ) -> Result<Vec<SelectorElement>, BuildError> {
+        let x = match sel {
+            Selector::Expression(x) => {
+                SelectorElement::Expression(Box::new(self.build_expression(*x)?))
+            }
+            Selector::String(x, s) => SelectorElement::Constant(x, s),
+        };
 
-pub fn from_ast(ast: Expression) -> Result<ExpressionType, BuildError> {
-    match ast {
-        Expression::BinaryOperation(b, span) => Ok(ExpressionType::Operator(OpExpression::new(
-            b.operator,
-            from_ast(*b.lhs)?,
-            from_ast(*b.rhs)?,
-            span,
-        )?)),
-        Expression::UnaryOperation { operator, rhs, loc } => Ok(ExpressionType::UnaryOperator(
-            UnaryOpExpression::new(operator, from_ast(*rhs)?, loc)?,
-        )),
-        Expression::Array(arr, span) => Ok(ExpressionType::Array(ArrayExpression::new(
-            arr.into_iter()
-                .map(from_ast)
-                .collect::<Result<Vec<_>, _>>()?,
-            span,
-        )?)),
-        Expression::Object(it, span) => Ok(ExpressionType::Object(ObjectExpression::new(
-            it.into_iter()
-                .map::<Result<(ExpressionType, ExpressionType), BuildError>, _>(|(v1, v2)| {
-                    Ok((from_ast(v1)?, from_ast(v2)?))
-                })
-                .collect::<Result<Vec<_>, _>>()?,
-            span,
-        )?)),
-        Expression::Selector { lhs, sel, loc } => {
-            let elems = build_selector(*lhs, sel)?;
-            let mut iter = elems.into_iter();
-            let first = iter.next().unwrap();
-            Ok(ExpressionType::Selector(SelectorExpression::new(
-                first.into(),
-                iter.collect(),
+        match lhs {
+            Expression::Selector { lhs, sel, loc: _ } => {
+                let mut ch = self.build_selector(*lhs, sel)?;
+                ch.push(x);
+                Ok(ch)
+            }
+            Expression::Variable(v, s) => Ok(vec![SelectorElement::Constant(v, s), x]),
+            r => Ok(vec![
+                SelectorElement::Expression(Box::new(self.build_expression(r)?)),
+                x,
+            ]),
+        }
+    }
+
+    fn build_function_param(
+        &mut self,
+        expr: FunctionParameter,
+    ) -> Result<ExpressionType, BuildError> {
+        match expr {
+            FunctionParameter::Expression(x) => Ok(self.build_expression(x)?),
+            FunctionParameter::Lambda { args, inner, loc } => {
+                // Temporarily add lambda arguments as variables.
+                let mut temp_variables = vec![];
+                for inp in args.iter() {
+                    temp_variables.push(inp.clone());
+                    if self
+                        .known_inputs
+                        .insert(inp.clone(), self.known_inputs.len())
+                        .is_some()
+                    {
+                        return Err(BuildError::variable_conflict(loc, inp));
+                    }
+                }
+                let r = LambdaExpression::new(args, self.build_expression(inner)?, loc)?;
+                for var in temp_variables {
+                    self.known_inputs.remove(&var);
+                }
+                Ok(ExpressionType::Lambda(r))
+            }
+        }
+    }
+
+    fn resolve_input(&self, source: &str, span: Span) -> Result<SourceElement, BuildError> {
+        if let Some(idx) = self.known_inputs.get(source) {
+            Ok(SourceElement::CompiledInput(*idx))
+        } else {
+            Err(BuildError::unknown_variable(span, source))
+        }
+    }
+
+    pub fn build_expression(&mut self, ast: Expression) -> Result<ExpressionType, BuildError> {
+        match ast {
+            Expression::BinaryOperation(b, span) => {
+                Ok(ExpressionType::Operator(OpExpression::new(
+                    b.operator,
+                    self.build_expression(*b.lhs)?,
+                    self.build_expression(*b.rhs)?,
+                    span,
+                )?))
+            }
+            Expression::UnaryOperation { operator, rhs, loc } => Ok(ExpressionType::UnaryOperator(
+                UnaryOpExpression::new(operator, self.build_expression(*rhs)?, loc)?,
+            )),
+            Expression::Array(arr, span) => Ok(ExpressionType::Array(ArrayExpression::new(
+                arr.into_iter()
+                    .map(|e| self.build_expression(e))
+                    .collect::<Result<Vec<_>, _>>()?,
+                span,
+            )?)),
+            Expression::Object(it, span) => Ok(ExpressionType::Object(ObjectExpression::new(
+                it.into_iter()
+                    .map::<Result<(ExpressionType, ExpressionType), BuildError>, _>(|(v1, v2)| {
+                        Ok((self.build_expression(v1)?, self.build_expression(v2)?))
+                    })
+                    .collect::<Result<Vec<_>, _>>()?,
+                span,
+            )?)),
+            Expression::Selector { lhs, sel, loc } => {
+                let elems = self.build_selector(*lhs, sel)?;
+                let mut iter = elems.into_iter();
+                let first = iter.next().unwrap();
+
+                let source = match first {
+                    SelectorElement::Constant(x, s) => self.resolve_input(&x, s)?,
+                    SelectorElement::Expression(e) => SourceElement::Expression(e),
+                };
+
+                Ok(ExpressionType::Selector(SelectorExpression::new(
+                    source,
+                    iter.collect(),
+                    loc,
+                )?))
+            }
+            Expression::Constant(c, _span) => Ok(ExpressionType::Constant(
+                crate::expressions::Constant::new(c.into()),
+            )),
+            Expression::Function { name, args, loc } => Ok(get_function_expression(
                 loc,
-            )?))
+                &name,
+                args.into_iter()
+                    .map(|e| self.build_function_param(e))
+                    .collect::<Result<Vec<_>, _>>()?,
+            )?),
+            Expression::Variable(v, span) => Ok(ExpressionType::Selector(SelectorExpression::new(
+                self.resolve_input(&v, span.clone())?,
+                vec![],
+                span,
+            )?)),
+            Expression::Is(i) => Ok(ExpressionType::Is(IsExpression::new(
+                self.build_expression(*i.lhs)?,
+                i.rhs,
+            )?)),
         }
-        Expression::Constant(c, _span) => Ok(ExpressionType::Constant(
-            crate::expressions::Constant::new(c.into()),
-        )),
-        Expression::Function { name, args, loc } => Ok(get_function_expression(
-            loc,
-            &name,
-            args.into_iter()
-                .map(from_function_param)
-                .collect::<Result<Vec<_>, _>>()?,
-        )?),
-        Expression::Variable(v, span) => Ok(ExpressionType::Selector(SelectorExpression::new(
-            SourceElement::Input(v),
-            vec![],
-            span,
-        )?)),
-        Expression::Is(i) => Ok(ExpressionType::Is(IsExpression::new(
-            from_ast(*i.lhs)?,
-            i.rhs,
-        )?)),
     }
 }

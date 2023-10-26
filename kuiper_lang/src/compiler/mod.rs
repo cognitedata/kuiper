@@ -3,10 +3,12 @@ mod optimizer;
 
 use std::fmt::Display;
 
-pub use exec_tree::{from_ast, BuildError};
+pub use exec_tree::BuildError;
 pub use optimizer::optimize;
 
 use crate::{expressions::ExpressionType, lexer::Lexer, parse::ExprParser, CompileError};
+
+use self::exec_tree::ExecTreeBuilder;
 
 /// Compile an expression. The `known_inputs` map should contain map from
 /// valid input strings to indexes in the input array. You are responsible for ensuring that
@@ -30,8 +32,8 @@ pub fn compile_expression(
     let inp = Lexer::new(data);
     let parser = ExprParser::new();
     let res = parser.parse(inp)?;
-    let res = from_ast(res)?;
-    let optimized = optimize(res, known_inputs)?;
+    let res = ExecTreeBuilder::new(res, known_inputs).build()?;
+    let optimized = optimize(res)?;
     Ok(optimized)
 }
 
@@ -95,13 +97,13 @@ impl ExpressionDebugInfo {
             clean: ast.to_string(),
         };
 
-        let exec_tree = from_ast(ast)?;
+        let exec_tree = ExecTreeBuilder::new(ast, known_inputs).build()?;
         let exec_tree_info = DebugInfo {
             debug: format!("{:?}", exec_tree),
             clean: exec_tree.to_string(),
         };
 
-        let optimized = optimize(exec_tree, known_inputs)?;
+        let optimized = optimize(exec_tree)?;
         let optimized_info = DebugInfo {
             debug: format!("{:?}", optimized),
             clean: optimized.to_string(),

@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::{
     expressions::{Constant, Expression, ExpressionExecutionState, ExpressionMeta, ExpressionType},
     TransformError,
@@ -23,36 +21,11 @@ fn is_deterministic(expr: &ExpressionType) -> bool {
 
 fn resolve_constants(
     root: &mut ExpressionType,
-    known_inputs: &mut HashMap<String, usize>,
     empty_state: &ExpressionExecutionState,
 ) -> Result<Option<ExpressionType>, TransformError> {
-    if let ExpressionType::Selector(s) = root {
-        s.resolve_first_item(empty_state, known_inputs)?;
-    }
-
     // If there are no children, no further optimization may be done
     if root.num_children() == 0 {
         return Ok(None);
-    }
-
-    let mut temp_inputs: Option<Vec<String>> = None;
-    if let ExpressionType::Lambda(l) = root {
-        let mut max_inputs = known_inputs.values().max().copied();
-        let inputs = l.input_names.clone();
-        for inp in &inputs {
-            if known_inputs.contains_key(inp) {
-                return Err(TransformError::new_invalid_operation(
-                    format!("Function input {inp} is already defined"),
-                    &l.span,
-                ));
-            }
-            max_inputs = match max_inputs {
-                Some(x) => Some(x + 1),
-                None => Some(0),
-            };
-            known_inputs.insert(inp.clone(), max_inputs.unwrap());
-        }
-        temp_inputs = Some(inputs);
     }
 
     let res = match root.resolve(empty_state) {
@@ -67,11 +40,8 @@ fn resolve_constants(
             TransformError::SourceMissingError(_) => {
                 // If the source is missing we should try to optimize each child.
                 for idx in 0..root.num_children() {
-                    let res: Option<ExpressionType> = resolve_constants(
-                        root.get_child_mut(idx).unwrap(),
-                        known_inputs,
-                        empty_state,
-                    )?;
+                    let res: Option<ExpressionType> =
+                        resolve_constants(root.get_child_mut(idx).unwrap(), empty_state)?;
                     if let Some(res) = res {
                         root.set_child(idx, res);
                     }
@@ -81,29 +51,15 @@ fn resolve_constants(
             _ => Err(e),
         },
     };
-
-    if let Some(inputs) = temp_inputs {
-        for inp in &inputs {
-            known_inputs.remove(inp);
-        }
-    }
     res
 }
 
 /// Run the optimizer. For now this only catches a few consistency errors and resolves any constant expressions.
-pub fn optimize(
-    mut root: ExpressionType,
-    known_inputs: &[&str],
-) -> Result<ExpressionType, TransformError> {
+pub fn optimize(mut root: ExpressionType) -> Result<ExpressionType, TransformError> {
     let data = Vec::new();
     let empty_state = ExpressionExecutionState::new(&data);
 
-    let mut known_inputs_map = HashMap::new();
-    for (idx, inp) in known_inputs.iter().enumerate() {
-        known_inputs_map.insert(inp.to_string(), idx);
-    }
-
-    let res = resolve_constants(&mut root, &mut known_inputs_map, &empty_state)?;
+    let res = resolve_constants(&mut root, &empty_state)?;
     match res {
         Some(x) => Ok(x),
         None => Ok(root),
@@ -115,8 +71,8 @@ mod tests {
     use logos::Span;
 
     use crate::{
-        compiler::from_ast, expressions::ExpressionType, lexer::Lexer, parse::ExprParser,
-        CompileError, TransformError,
+        compiler::exec_tree::ExecTreeBuilder, expressions::ExpressionType, lexer::Lexer,
+        parse::ExprParser, CompileError, TransformError,
     };
 
     use super::optimize;
@@ -125,8 +81,8 @@ mod tests {
         let lex = Lexer::new(inp);
         let parser = ExprParser::new();
         let res = parser.parse(lex)?;
-        let res = from_ast(res)?;
-        let res = optimize(res, inputs)?;
+        let res = ExecTreeBuilder::new(res, inputs).build()?;
+        let res = optimize(res)?;
         Ok(res)
     }
 

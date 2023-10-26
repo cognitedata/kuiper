@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, fmt::Display};
+use std::{borrow::Cow, fmt::Display};
 
 use serde_json::{Map, Value};
 
@@ -20,18 +20,8 @@ pub struct SelectorExpression {
 
 #[derive(Debug, Clone)]
 pub enum SourceElement {
-    Input(String),
     CompiledInput(usize),
     Expression(Box<ExpressionType>),
-}
-
-impl From<SelectorElement> for SourceElement {
-    fn from(value: SelectorElement) -> Self {
-        match value {
-            SelectorElement::Constant(x, _) => Self::Input(x),
-            SelectorElement::Expression(x) => Self::Expression(x),
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -52,7 +42,6 @@ impl Display for SelectorElement {
 impl Display for SourceElement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SourceElement::Input(s) => write!(f, "{s}"),
             SourceElement::CompiledInput(s) => write!(f, "${s}"),
             SourceElement::Expression(e) => write!(f, "{e}"),
         }
@@ -90,10 +79,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SelectorExpression {
                 };
                 self.resolve_by_reference(source_ref, state)
             }
-            SourceElement::Input(s) => Err(TransformError::new_source_missing(
-                s.to_string(),
-                &self.span,
-            )),
             SourceElement::Expression(e) => {
                 let src = e.resolve(state)?;
                 match src {
@@ -328,21 +313,5 @@ impl SelectorExpression {
             };
         }
         Ok(ResolveResult::Owned(elem))
-    }
-
-    pub fn resolve_first_item(
-        &mut self,
-        _state: &ExpressionExecutionState<'_, '_>,
-        map: &HashMap<String, usize>,
-    ) -> Result<(), TransformError> {
-        let new_source = match &self.source {
-            SourceElement::Input(x) => map
-                .get(x)
-                .copied()
-                .ok_or_else(|| TransformError::new_source_missing(x.to_string(), &self.span))?,
-            _ => return Ok(()),
-        };
-        self.source = SourceElement::CompiledInput(new_source);
-        Ok(())
     }
 }

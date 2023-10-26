@@ -47,19 +47,6 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
         }
     }
 
-    pub fn get_temporary_clone(&self, extra_cap: usize) -> InternalExpressionExecutionState<'data> {
-        let mut data = Vec::with_capacity(self.data.len() + extra_cap);
-        for elem in self.data {
-            data.push(*elem);
-        }
-        InternalExpressionExecutionState {
-            data,
-            base_length: self.data.len(),
-            #[cfg(feature = "completions")]
-            completions: self.completions.clone(),
-        }
-    }
-
     pub fn get_temporary_clone_inner(
         &self,
         extra_values: impl Iterator<Item = &'data Value>,
