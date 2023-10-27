@@ -33,7 +33,7 @@ pub fn compile_expression(
     let parser = ExprParser::new();
     let res = parser.parse(inp)?;
     let res = ExecTreeBuilder::new(res, known_inputs).build()?;
-    let optimized = optimize(res)?;
+    let optimized = optimize(res, known_inputs.len())?;
     Ok(optimized)
 }
 
@@ -103,7 +103,7 @@ impl ExpressionDebugInfo {
             clean: exec_tree.to_string(),
         };
 
-        let optimized = optimize(exec_tree)?;
+        let optimized = optimize(exec_tree, known_inputs.len())?;
         let optimized_info = DebugInfo {
             debug: format!("{:?}", optimized),
             clean: optimized.to_string(),

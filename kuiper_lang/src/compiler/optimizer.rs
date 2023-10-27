@@ -21,6 +21,7 @@ fn is_deterministic(expr: &ExpressionType) -> bool {
 
 fn resolve_constants(
     root: &mut ExpressionType,
+    num_inputs: usize,
     opcount: &mut i64,
 ) -> Result<Option<ExpressionType>, TransformError> {
     // If there are no children, no further optimization may be done
@@ -28,7 +29,7 @@ fn resolve_constants(
         return Ok(None);
     }
 
-    let data = Vec::new();
+    let data = vec![None; num_inputs];
     let mut state = ExpressionExecutionState::new(&data, opcount, 100_000);
 
     let res = match root.resolve(&mut state).map(|r| r.into_owned()) {
@@ -42,7 +43,7 @@ fn resolve_constants(
                 // If the source is missing we should try to optimize each child.
                 for idx in 0..root.num_children() {
                     let res: Option<ExpressionType> =
-                        resolve_constants(root.get_child_mut(idx).unwrap(), opcount)?;
+                        resolve_constants(root.get_child_mut(idx).unwrap(), num_inputs, opcount)?;
                     if let Some(res) = res {
                         root.set_child(idx, res);
                     }
@@ -56,10 +57,13 @@ fn resolve_constants(
 }
 
 /// Run the optimizer. For now this only catches a few consistency errors and resolves any constant expressions.
-pub fn optimize(mut root: ExpressionType) -> Result<ExpressionType, TransformError> {
+pub fn optimize(
+    mut root: ExpressionType,
+    num_inputs: usize,
+) -> Result<ExpressionType, TransformError> {
     let mut opcount = 0;
 
-    let res = resolve_constants(&mut root, &mut opcount)?;
+    let res = resolve_constants(&mut root, num_inputs, &mut opcount)?;
     match res {
         Some(x) => Ok(x),
         None => Ok(root),
@@ -82,7 +86,7 @@ mod tests {
         let parser = ExprParser::new();
         let res = parser.parse(lex)?;
         let res = ExecTreeBuilder::new(res, inputs).build()?;
-        let res = optimize(res)?;
+        let res = optimize(res, inputs.len())?;
         Ok(res)
     }
 
@@ -142,5 +146,15 @@ mod tests {
             }
             _ => panic!("Wrong type of error {err:?}"),
         }
+    }
+
+    #[test]
+    pub fn test_mixed_optimizer_order() {
+        let expr = parse(
+            "[1, 2, 3].map(a => a + 1)[0] + input + input2 + [1, 2, 3].map(a => a + 2)[1]",
+            &["input", "input2"],
+        )
+        .unwrap();
+        assert_eq!("(((2 + $0) + $1) + 4)", expr.to_string());
     }
 }
