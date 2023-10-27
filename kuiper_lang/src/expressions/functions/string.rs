@@ -20,7 +20,7 @@ function_def!(ConcatFunction, "concat", 2, None);
 impl<'a: 'c, 'c> Expression<'a, 'c> for ConcatFunction {
     fn resolve(
         &'a self,
-        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
         // Create a mutable string we can write to, in rust this is fast, a string is just Vec<u8>
         let mut res = String::new();
@@ -45,7 +45,7 @@ function_def!(StringFunction, "string", 1);
 impl<'a: 'c, 'c> Expression<'a, 'c> for StringFunction {
     fn resolve(
         &'a self,
-        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
         let dat = self.args[0].resolve(state)?;
         let val = dat.as_ref();

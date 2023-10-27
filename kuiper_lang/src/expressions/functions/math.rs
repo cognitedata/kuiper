@@ -15,8 +15,8 @@ macro_rules! arg2_math_func {
 
         impl<'a: 'c, 'c> $crate::expressions::base::Expression<'a, 'c> for $typ {
             fn resolve(
-                &self,
-                state: &$crate::expressions::base::ExpressionExecutionState<'c, '_>,
+                &'a self,
+                state: &mut $crate::expressions::base::ExpressionExecutionState<'c, '_>,
             ) -> Result<$crate::expressions::base::ResolveResult<'c>, $crate::expressions::transform_error::TransformError> {
                 let lhs = $crate::expressions::base::get_number_from_value(
                     &<Self as $crate::expressions::functions::FunctionExpression>::INFO.name,
@@ -59,8 +59,8 @@ macro_rules! arg1_math_func {
 
         impl<'a: 'c, 'c> $crate::expressions::base::Expression<'a, 'c> for $typ {
             fn resolve(
-                &self,
-                state: &$crate::expressions::base::ExpressionExecutionState<'c, '_>,
+                &'a self,
+                state: &mut $crate::expressions::base::ExpressionExecutionState<'c, '_>,
             ) -> Result<
                 $crate::expressions::base::ResolveResult<'c>,
                 $crate::expressions::transform_error::TransformError,
@@ -105,7 +105,7 @@ function_def!(IntFunction, "int", 1);
 impl<'a: 'c, 'c> Expression<'a, 'c> for IntFunction {
     fn resolve(
         &'a self,
-        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let dat = self.args[0].resolve(state)?;
         let val = dat.as_ref();
@@ -175,7 +175,7 @@ function_def!(FloatFunction, "float", 1);
 impl<'a: 'c, 'c> Expression<'a, 'c> for FloatFunction {
     fn resolve(
         &'a self,
-        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let dat = self.args[0].resolve(state)?;
         let val = dat.as_ref();

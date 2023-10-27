@@ -28,8 +28,10 @@ type Completions = std::collections::HashMap<Span, std::collections::HashSet<Str
 /// `'b` is the lifetime of the transform execution, so the temporary data in the transform.
 pub struct ExpressionExecutionState<'data, 'exec> {
     data: &'exec Vec<&'data Value>,
+    opcount: &'exec mut i64,
+    max_opcount: i64,
     #[cfg(feature = "completions")]
-    completions: Option<std::rc::Rc<std::cell::RefCell<Completions>>>,
+    completions: Option<&'exec mut Completions>,
 }
 
 impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
@@ -39,32 +41,24 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
         self.data.get(key).copied()
     }
 
-    pub fn new(data: &'exec Vec<&'data Value>) -> Self {
+    pub fn new(data: &'exec Vec<&'data Value>, opcount: &'exec mut i64, max_opcount: i64) -> Self {
         Self {
             data,
+            opcount,
+            max_opcount,
             #[cfg(feature = "completions")]
             completions: Default::default(),
         }
     }
 
-    pub fn get_temporary_clone(&self, extra_cap: usize) -> InternalExpressionExecutionState<'data> {
-        let mut data = Vec::with_capacity(self.data.len() + extra_cap);
-        for elem in self.data {
-            data.push(*elem);
-        }
-        InternalExpressionExecutionState {
-            data,
-            base_length: self.data.len(),
-            #[cfg(feature = "completions")]
-            completions: self.completions.clone(),
-        }
-    }
-
-    pub fn get_temporary_clone_inner(
-        &self,
-        extra_values: impl Iterator<Item = &'data Value>,
+    pub fn get_temporary_clone<'inner>(
+        &'inner mut self,
+        extra_values: impl Iterator<Item = &'inner Value>,
         num_values: usize,
-    ) -> InternalExpressionExecutionState<'data> {
+    ) -> InternalExpressionExecutionState<'inner, 'inner>
+    where
+        'data: 'inner,
+    {
         let mut data = Vec::with_capacity(self.data.len() + num_values);
         for elem in self.data.iter() {
             data.push(*elem);
@@ -82,35 +76,51 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
 
         InternalExpressionExecutionState {
             data,
-            base_length: self.data.len(),
+            opcount: self.opcount,
+            max_opcount: self.max_opcount,
             #[cfg(feature = "completions")]
-            completions: self.completions.clone(),
+            completions: self.completions.as_deref_mut(),
+        }
+    }
+
+    pub fn inc_op(&mut self) -> Result<(), TransformError> {
+        *self.opcount += 1;
+        if *self.opcount > self.max_opcount && self.max_opcount > 0 {
+            Err(TransformError::OperationLimitExceeded)
+        } else {
+            Ok(())
         }
     }
 
     #[cfg(feature = "completions")]
-    pub fn add_completion_entries(&self, it: impl Iterator<Item = impl Into<String>>, span: Span) {
-        if let Some(c) = &self.completions {
-            let mut r = c.borrow_mut();
-            r.entry(span).or_default().extend(it.map(|i| i.into()));
+    pub fn add_completion_entries(
+        &mut self,
+        it: impl Iterator<Item = impl Into<String>>,
+        span: Span,
+    ) {
+        if let Some(c) = &mut self.completions {
+            c.entry(span).or_default().extend(it.map(|i| i.into()));
         }
     }
 }
 
 #[derive(Debug)]
-pub struct InternalExpressionExecutionState<'data> {
-    pub data: Vec<&'data Value>,
-    pub base_length: usize,
+pub struct InternalExpressionExecutionState<'data, 'exec> {
+    data: Vec<&'data Value>,
+    opcount: &'exec mut i64,
+    max_opcount: i64,
     #[cfg(feature = "completions")]
-    completions: Option<std::rc::Rc<std::cell::RefCell<Completions>>>,
+    completions: Option<&'exec mut Completions>,
 }
 
-impl<'data> InternalExpressionExecutionState<'data> {
-    pub fn get_temp_state<'slf>(&'slf self) -> ExpressionExecutionState<'data, 'slf> {
+impl<'data, 'exec> InternalExpressionExecutionState<'data, 'exec> {
+    pub fn get_temp_state<'slf>(&'slf mut self) -> ExpressionExecutionState<'data, 'slf> {
         ExpressionExecutionState {
             data: &self.data,
+            opcount: self.opcount,
+            max_opcount: self.max_opcount,
             #[cfg(feature = "completions")]
-            completions: self.completions.clone(),
+            completions: self.completions.as_deref_mut(),
         }
     }
 }
@@ -133,24 +143,33 @@ macro_rules! with_temp_values {
 
 /// Trait for top-level expressions.
 /// The three lifetimes represent the three separate lifetimes in transform execution:
+///
 /// 'a is the lifetime of the transform itself
+///
 /// 'b is the lifetime of the current execution of the transform.
+///
 /// 'c is the lifetime of the execution of the program itself, so it goes beyond this transform.
 ///
 /// In simple terms
+///```ignore
+///     'a
 ///
-/// 'a
-/// start program execution
-///     'c
-///     for transform in program
-///         for entry in inputs
-///             'b
+///     start program execution
+///
+///         'c
+///
+///         for transform in program
+///
+///             for entry in inputs
+///
+///                 'b
+/// ````
 pub trait Expression<'a: 'c, 'c>: Display {
     const IS_DETERMINISTIC: bool = true;
     /// Resolve an expression.
     fn resolve(
         &'a self,
-        state: &ExpressionExecutionState<'c, '_>,
+        state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError>;
 
     fn get_is_deterministic(&self) -> bool {
@@ -159,7 +178,7 @@ pub trait Expression<'a: 'c, 'c>: Display {
 
     fn call(
         &'a self,
-        state: &ExpressionExecutionState<'c, '_>,
+        state: &mut ExpressionExecutionState<'c, '_>,
         _values: &[&Value],
     ) -> Result<ResolveResult<'c>, TransformError> {
         self.resolve(state)
@@ -180,8 +199,8 @@ pub trait ExpressionMeta {
 /// A function expression, new functions must be added here.
 #[derive(PassThrough, Debug, Clone)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
-#[pass_through(fn resolve(&'a self, state: &ExpressionExecutionState<'c, '_>) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
-#[pass_through(fn call(&'a self, state: &ExpressionExecutionState<'c, '_>, _values: &[&Value]) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
+#[pass_through(fn resolve(&'a self, state: &mut ExpressionExecutionState<'c, '_>) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
+#[pass_through(fn call(&'a self, state: &mut ExpressionExecutionState<'c, '_>, _values: &[&Value]) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn get_is_deterministic(&self) -> bool, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta)]
 #[pass_through(fn get_child(&self, idx: usize) -> Option<&ExpressionType>, "", ExpressionMeta<'a>)]
@@ -269,9 +288,9 @@ pub fn get_function_expression(
 /// This type can be executed with the `run` function, to yield a transformed Value.
 #[derive(PassThrough, Debug, Clone)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
-#[pass_through(fn resolve(&'a self, state: &ExpressionExecutionState<'c, '_>) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
+#[pass_through(fn resolve(&'a self, state: &mut ExpressionExecutionState<'c, '_>) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn get_is_deterministic(&self) -> bool, "", Expression<'a, 'c>, where 'a: 'c)]
-#[pass_through(fn call(&'a self, state: &ExpressionExecutionState<'c, '_>, _values: &[&Value]) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
+#[pass_through(fn call(&'a self, state: &mut ExpressionExecutionState<'c, '_>, _values: &[&Value]) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta)]
 #[pass_through(fn get_child(&self, idx: usize) -> Option<&ExpressionType>, "", ExpressionMeta<'a>)]
 #[pass_through(fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType>, "", ExpressionMeta<'a>)]
@@ -291,13 +310,30 @@ pub enum ExpressionType {
 impl ExpressionType {
     /// Run the expression. Takes a list of values and a chunk_id, the id is just used for
     /// errors and logging.
+    ///
+    /// * `data` - An iterator over the inputs to the expression. The count must match the count provided when the expression was compiled
     pub fn run<'a: 'c, 'c>(
         &'a self,
         data: impl IntoIterator<Item = &'c Value>,
     ) -> Result<ResolveResult<'c>, TransformError> {
+        self.run_limited(data, -1)
+    }
+
+    /// Run the expression. Takes a list of values and a chunk_id, the id is just used for
+    /// errors and logging.
+    ///
+    /// * `data` - An iterator over the inputs to the expression. The count must match the count provided when the expression was compiled
+    /// * `max_operation_count` - The maximum number of operations performed by the program. This is a rough estimate of the complexity of
+    /// the program. If set to -1, no limit is enforced.
+    pub fn run_limited<'a: 'c, 'c>(
+        &'a self,
+        data: impl IntoIterator<Item = &'c Value>,
+        max_operation_count: i64,
+    ) -> Result<ResolveResult<'c>, TransformError> {
+        let mut opcount = 0;
         let data = data.into_iter().collect();
-        let state = ExpressionExecutionState::new(&data);
-        self.resolve(&state)
+        let mut state = ExpressionExecutionState::new(&data, &mut opcount, max_operation_count);
+        self.resolve(&mut state)
     }
 
     #[cfg(feature = "completions")]
@@ -307,12 +343,15 @@ impl ExpressionType {
         &'a self,
         data: impl IntoIterator<Item = &'c Value>,
     ) -> Result<(ResolveResult<'c>, Completions), TransformError> {
+        use std::collections::HashMap;
+
         let data = data.into_iter().collect();
-        let mut state = ExpressionExecutionState::new(&data);
-        state.completions = Some(Default::default());
-        let r = self.resolve(&state)?;
-        let k = state.completions.unwrap().take();
-        Ok((r, k))
+        let mut opcount = 0;
+        let mut state = ExpressionExecutionState::new(&data, &mut opcount, -1);
+        let mut completions = HashMap::new();
+        state.completions = Some(&mut completions);
+        let r = self.resolve(&mut state)?;
+        Ok((r, completions))
     }
 }
 
@@ -336,8 +375,9 @@ impl Display for Constant {
 impl<'a: 'c, 'c> Expression<'a, 'c> for Constant {
     fn resolve(
         &'a self,
-        _state: &ExpressionExecutionState<'c, '_>,
+        state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
+        state.inc_op()?;
         Ok(ResolveResult::Borrowed(&self.val))
     }
 }
@@ -445,15 +485,16 @@ pub(crate) fn get_string_from_value_owned<'a>(
     }
 }
 
-pub(crate) fn map_cow_clone_string<T>(
+pub(crate) fn map_cow_clone_string<'a, 'b, 'c, T>(
     value: ResolveResult<'_>,
-    string: impl FnOnce(String) -> T,
-    other: impl FnOnce(&Value) -> T,
+    state: &'a mut ExpressionExecutionState<'b, 'c>,
+    string: impl FnOnce(String, &'a mut ExpressionExecutionState<'b, 'c>) -> T,
+    other: impl FnOnce(&Value, &'a mut ExpressionExecutionState<'b, 'c>) -> T,
 ) -> T {
     match value {
-        Cow::Owned(Value::String(s)) => string(s),
-        Cow::Borrowed(Value::String(s)) => string(s.to_string()),
-        c => other(c.as_ref()),
+        Cow::Owned(Value::String(s)) => string(s, state),
+        Cow::Borrowed(Value::String(s)) => string(s.to_string(), state),
+        c => other(c.as_ref(), state),
     }
 }
 

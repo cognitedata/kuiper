@@ -11,7 +11,7 @@ function_def!(MapFunction, "map", 2, lambda);
 impl<'a: 'c, 'c> Expression<'a, 'c> for MapFunction {
     fn resolve(
         &'a self,
-        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, TransformError> {
         let source = self.args[0].resolve(state)?;
 

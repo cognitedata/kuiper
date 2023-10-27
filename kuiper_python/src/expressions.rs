@@ -1,7 +1,7 @@
 use crate::exceptions::raise_kuiper_error;
 use kuiper_lang::ExpressionType;
 use pyo3::{pyclass, pymethods, PyResult};
-use serde_json::from_str;
+use serde_json::{from_str, Value};
 
 #[pyclass]
 pub struct KuiperExpression {
@@ -15,7 +15,7 @@ impl KuiperExpression {
 }
 
 impl KuiperExpression {
-    fn run_internal<'a>(&self, input: impl IntoIterator<Item = &'a str>) -> PyResult<String> {
+    fn get_expression_input<'a>(input: impl IntoIterator<Item = &'a str>) -> PyResult<Vec<Value>> {
         let json = input
             .into_iter()
             .map(from_str)
@@ -31,7 +31,29 @@ impl KuiperExpression {
                 ))
             }
         };
+        Ok(json)
+    }
+
+    fn run_internal<'a>(&self, input: impl IntoIterator<Item = &'a str>) -> PyResult<String> {
+        let json = Self::get_expression_input(input)?;
         match self.expression.run(json.iter()) {
+            Ok(result) => Ok(result.to_string()),
+            Err(transform_error) => Err(raise_kuiper_error(
+                "KuiperRuntimeError",
+                transform_error.to_string(),
+                transform_error.span().map(|s| s.start),
+                transform_error.span().map(|s| s.end),
+            )),
+        }
+    }
+
+    fn run_limited_internal<'a>(
+        &self,
+        input: impl IntoIterator<Item = &'a str>,
+        max_operations: i64,
+    ) -> PyResult<String> {
+        let json = Self::get_expression_input(input)?;
+        match self.expression.run_limited(json.iter(), max_operations) {
             Ok(result) => Ok(result.to_string()),
             Err(transform_error) => Err(raise_kuiper_error(
                 "KuiperRuntimeError",
@@ -55,5 +77,9 @@ impl KuiperExpression {
 
     fn run_multiple_inputs(&self, inputs: Vec<String>) -> PyResult<String> {
         self.run_internal(inputs.iter().map(|s| s.as_str()))
+    }
+
+    fn run_limited(&self, inputs: Vec<String>, max_operations: i64) -> PyResult<String> {
+        self.run_limited_internal(inputs.iter().map(|s| s.as_str()), max_operations)
     }
 }

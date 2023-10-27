@@ -10,7 +10,7 @@ function_def!(PairsFunction, "pairs", 1);
 impl<'a: 'c, 'c> Expression<'a, 'c> for PairsFunction {
     fn resolve(
         &'a self,
-        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         let inp = self.args[0].resolve(state)?;
         let obj = match inp.into_owned() {

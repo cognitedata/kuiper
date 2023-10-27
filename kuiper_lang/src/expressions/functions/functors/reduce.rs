@@ -8,7 +8,7 @@ function_def!(ReduceFunction, "reduce", 3, lambda);
 impl<'a: 'c, 'c> Expression<'a, 'c> for ReduceFunction {
     fn resolve(
         &'a self,
-        state: &ExpressionExecutionState<'c, '_>,
+        state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         let source = self.args[0].resolve(state)?;
 

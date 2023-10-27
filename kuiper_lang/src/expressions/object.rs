@@ -35,8 +35,9 @@ impl Display for ObjectExpression {
 impl<'a: 'c, 'c> Expression<'a, 'c> for ObjectExpression {
     fn resolve(
         &'a self,
-        state: &super::ExpressionExecutionState<'c, '_>,
+        state: &mut super::ExpressionExecutionState<'c, '_>,
     ) -> Result<super::ResolveResult<'c>, crate::TransformError> {
+        state.inc_op()?;
         let mut output = Map::with_capacity(self.pairs.len());
         for (key, value) in self.pairs.iter() {
             let key_res = key.resolve(state)?;
