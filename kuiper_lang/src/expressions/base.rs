@@ -335,7 +335,7 @@ impl ExpressionType {
         max_operation_count: i64,
     ) -> Result<ResolveResult<'c>, TransformError> {
         let mut opcount = 0;
-        let data = data.into_iter().map(|a| Some(a)).collect();
+        let data = data.into_iter().map(Some).collect();
         let mut state = ExpressionExecutionState::new(&data, &mut opcount, max_operation_count);
         self.resolve(&mut state)
     }
@@ -349,7 +349,7 @@ impl ExpressionType {
     ) -> Result<(ResolveResult<'c>, Completions), TransformError> {
         use std::collections::HashMap;
 
-        let data = data.into_iter().map(|a| Some(a)).collect();
+        let data = data.into_iter().map(Some).collect();
         let mut opcount = 0;
         let mut state = ExpressionExecutionState::new(&data, &mut opcount, -1);
         let mut completions = HashMap::new();
