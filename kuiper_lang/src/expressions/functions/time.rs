@@ -15,7 +15,7 @@ function_def!(ToUnixTimeFunction, "to_unix_timestamp", 2, Some(3));
 impl<'a: 'c, 'c> Expression<'a, 'c> for ToUnixTimeFunction {
     fn resolve(
         &'a self,
-        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let dat = self.args.get(0).unwrap().resolve(state)?;
         let val = get_string_from_cow_value(Self::INFO.name, dat, &self.span)?;
@@ -87,7 +87,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for NowFunction {
     const IS_DETERMINISTIC: bool = false;
     fn resolve(
         &'a self,
-        _state: &crate::expressions::ExpressionExecutionState<'c, '_>,
+        _state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let res = Utc::now().timestamp_millis();
         Ok(ResolveResult::Owned(Value::Number(res.into())))
@@ -99,7 +99,7 @@ function_def!(FormatTimestampFunction, "format_timestamp", 2);
 impl<'a: 'c, 'c> Expression<'a, 'c> for FormatTimestampFunction {
     fn resolve(
         &'a self,
-        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
         let timestamp = self.args[0].resolve(state)?;
         let format = self.args[1].resolve(state)?;

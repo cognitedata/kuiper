@@ -36,9 +36,11 @@ impl Display for ArrayExpression {
 
 impl<'a: 'c, 'c> Expression<'a, 'c> for ArrayExpression {
     fn resolve(
-        &self,
-        state: &ExpressionExecutionState<'c, '_>,
+        &'a self,
+        state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
+        state.inc_op()?;
+
         let mut arr = vec![];
         for expr in self.items.iter() {
             arr.push(expr.resolve(state)?.into_owned());

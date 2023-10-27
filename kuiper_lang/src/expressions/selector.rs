@@ -64,7 +64,7 @@ impl Display for SelectorExpression {
 impl<'a: 'c, 'c> Expression<'a, 'c> for SelectorExpression {
     fn resolve(
         &'a self,
-        state: &ExpressionExecutionState<'c, '_>,
+        state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         match &self.source {
             SourceElement::CompiledInput(i) => {
@@ -169,13 +169,16 @@ impl SelectorExpression {
         Ok(Self { source, path, span })
     }
 
-    fn resolve_by_reference<'a: 'c, 'b, 'c>(
+    fn resolve_by_reference<'a: 'c, 'c>(
         &'a self,
         source: &'c Value,
-        state: &'b ExpressionExecutionState<'c, 'b>,
+        state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         let mut elem = source;
+        state.inc_op()?;
         for p in self.path.iter() {
+            state.inc_op()?;
+
             #[cfg(feature = "completions")]
             Self::register_completions(state, p, elem);
 
@@ -226,7 +229,7 @@ impl SelectorExpression {
 
     #[cfg(feature = "completions")]
     fn register_completions(
-        state: &ExpressionExecutionState<'_, '_>,
+        state: &mut ExpressionExecutionState<'_, '_>,
         p: &SelectorElement,
         source: &Value,
     ) {
@@ -252,13 +255,16 @@ impl SelectorExpression {
         }
     }
 
-    fn resolve_by_value(
-        &self,
+    fn resolve_by_value<'a: 'b, 'b>(
+        &'a self,
         source: Value,
-        state: &ExpressionExecutionState<'_, '_>,
-    ) -> Result<ResolveResult<'_>, TransformError> {
+        state: &mut ExpressionExecutionState<'b, '_>,
+    ) -> Result<ResolveResult<'b>, TransformError> {
         let mut elem = source;
+        state.inc_op()?;
         for p in self.path.iter() {
+            state.inc_op()?;
+
             #[cfg(feature = "completions")]
             Self::register_completions(state, p, &elem);
 

@@ -21,18 +21,19 @@ fn is_deterministic(expr: &ExpressionType) -> bool {
 
 fn resolve_constants(
     root: &mut ExpressionType,
-    empty_state: &ExpressionExecutionState,
+    opcount: &mut i64,
 ) -> Result<Option<ExpressionType>, TransformError> {
     // If there are no children, no further optimization may be done
     if root.num_children() == 0 {
         return Ok(None);
     }
 
-    let res = match root.resolve(empty_state) {
+    let data = Vec::new();
+    let mut state = ExpressionExecutionState::new(&data, opcount, 100_000);
+
+    let res = match root.resolve(&mut state).map(|r| r.into_owned()) {
         // If resolution succeeds, we can replace this operator with a constant
-        Ok(x) if is_deterministic(root) => Ok(Some(ExpressionType::Constant(Constant::new(
-            x.into_owned(),
-        )))),
+        Ok(x) if is_deterministic(root) => Ok(Some(ExpressionType::Constant(Constant::new(x)))),
         Ok(_) => Ok(None),
         Err(e) => match e {
             // Any error that is not a source missing error would be a bug in this position,
@@ -41,7 +42,7 @@ fn resolve_constants(
                 // If the source is missing we should try to optimize each child.
                 for idx in 0..root.num_children() {
                     let res: Option<ExpressionType> =
-                        resolve_constants(root.get_child_mut(idx).unwrap(), empty_state)?;
+                        resolve_constants(root.get_child_mut(idx).unwrap(), opcount)?;
                     if let Some(res) = res {
                         root.set_child(idx, res);
                     }
@@ -56,10 +57,9 @@ fn resolve_constants(
 
 /// Run the optimizer. For now this only catches a few consistency errors and resolves any constant expressions.
 pub fn optimize(mut root: ExpressionType) -> Result<ExpressionType, TransformError> {
-    let data = Vec::new();
-    let empty_state = ExpressionExecutionState::new(&data);
+    let mut opcount = 0;
 
-    let res = resolve_constants(&mut root, &empty_state)?;
+    let res = resolve_constants(&mut root, &mut opcount)?;
     match res {
         Some(x) => Ok(x),
         None => Ok(root),

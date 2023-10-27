@@ -13,7 +13,7 @@ function_def!(ZipFunction, "zip", 3, None, lambda);
 impl<'a: 'c, 'c> Expression<'a, 'c> for ZipFunction {
     fn resolve(
         &'a self,
-        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let mut sources = Vec::with_capacity(self.args.len() - 1);
         let mut output_len = 0;

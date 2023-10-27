@@ -89,8 +89,9 @@ impl Display for OpExpression {
 impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
     fn resolve(
         &'a self,
-        state: &ExpressionExecutionState<'c, '_>,
+        state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
+        state.inc_op()?;
         let lhs = self.elements[0].resolve(state)?;
         if matches!(self.operator, Operator::And | Operator::Or) {
             self.resolve_boolean_operator(&lhs, state)
@@ -158,10 +159,10 @@ impl OpExpression {
         })
     }
 
-    fn resolve_generic_operator<'a>(
-        &self,
+    fn resolve_generic_operator<'a: 'b, 'b>(
+        &'a self,
         lhs: &Value,
-        state: &ExpressionExecutionState,
+        state: &mut ExpressionExecutionState<'b, '_>,
     ) -> Result<ResolveResult<'a>, TransformError> {
         let rhs = self.elements[1].resolve(state)?;
         let rhs_ref = rhs.as_ref();
@@ -185,11 +186,11 @@ impl OpExpression {
         Ok(ResolveResult::Owned(Value::Bool(res)))
     }
 
-    fn resolve_boolean_operator<'a>(
-        &self,
+    fn resolve_boolean_operator<'a: 'b, 'b>(
+        &'a self,
         lhs: &Value,
-        state: &ExpressionExecutionState,
-    ) -> Result<ResolveResult<'a>, TransformError> {
+        state: &mut ExpressionExecutionState<'b, '_>,
+    ) -> Result<ResolveResult<'b>, TransformError> {
         let lhs = get_boolean_from_value(lhs);
         let rhs = get_boolean_from_value(self.elements[1].resolve(state)?.as_ref());
 
@@ -207,10 +208,10 @@ impl OpExpression {
         Ok(ResolveResult::Owned(Value::Bool(res)))
     }
 
-    fn resolve_string_operator<'a>(
-        &self,
-        lhs: ResolveResult<'a>,
-        state: &ExpressionExecutionState,
+    fn resolve_string_operator<'a: 'b, 'b>(
+        &'a self,
+        lhs: ResolveResult<'b>,
+        state: &mut ExpressionExecutionState<'b, '_>,
     ) -> Result<ResolveResult<'a>, TransformError> {
         let lhs = get_string_from_cow_value(&self.descriptor, lhs, &self.span)?;
         let rhs = self.elements[1].resolve(state)?;
@@ -233,11 +234,11 @@ impl OpExpression {
         Ok(ResolveResult::Owned(Value::Bool(res)))
     }
 
-    fn resolve_numeric_operator<'a>(
-        &self,
+    fn resolve_numeric_operator<'a: 'b, 'b>(
+        &'a self,
         lhs: &Value,
-        state: &ExpressionExecutionState,
-    ) -> Result<ResolveResult<'a>, TransformError> {
+        state: &mut ExpressionExecutionState<'b, '_>,
+    ) -> Result<ResolveResult<'b>, TransformError> {
         let lhs = get_number_from_value(&self.descriptor, lhs, &self.span)?;
         let rhs = get_number_from_value(
             &self.descriptor,
@@ -305,7 +306,7 @@ impl Display for UnaryOpExpression {
 impl<'a: 'c, 'c> Expression<'a, 'c> for UnaryOpExpression {
     fn resolve(
         &'a self,
-        state: &ExpressionExecutionState<'c, '_>,
+        state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         let rhs = self.element.resolve(state)?;
         match self.operator {

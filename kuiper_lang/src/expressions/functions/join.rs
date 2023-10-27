@@ -10,7 +10,7 @@ function_def!(JoinFunction, "join", 2, None);
 impl<'a: 'c, 'c> Expression<'a, 'c> for JoinFunction {
     fn resolve(
         &'a self,
-        state: &crate::expressions::ExpressionExecutionState<'c, '_>,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let source = self.args[0].resolve(state)?;
 

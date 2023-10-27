@@ -50,19 +50,21 @@ impl LambdaExpression {
 impl<'a: 'c, 'c> Expression<'a, 'c> for LambdaExpression {
     fn resolve(
         &'a self,
-        state: &super::ExpressionExecutionState<'c, '_>,
+        state: &mut super::ExpressionExecutionState<'c, '_>,
     ) -> Result<super::ResolveResult<'c>, crate::TransformError> {
+        state.inc_op()?;
         self.expr.resolve(state)
     }
 
     fn call<'d>(
         &'a self,
-        state: &super::ExpressionExecutionState<'c, '_>,
+        state: &mut super::ExpressionExecutionState<'c, '_>,
         values: &[&'d serde_json::Value],
     ) -> Result<super::ResolveResult<'c>, crate::TransformError> {
-        let inner = state.get_temporary_clone_inner(values.iter().copied(), self.input_names.len());
-        let state = inner.get_temp_state();
-        let r = self.expr.resolve(&state)?;
+        state.inc_op()?;
+        let mut inner = state.get_temporary_clone(values.iter().copied(), self.input_names.len());
+        let mut state = inner.get_temp_state();
+        let r = self.expr.resolve(&mut state)?;
         Ok(ResolveResult::Owned(r.into_owned()))
     }
 }

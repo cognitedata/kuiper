@@ -39,15 +39,16 @@ fn replace_for_parse(mut inp: String) -> Option<String> {
 impl<'a: 'c, 'c> Expression<'a, 'c> for TryFloatFunction {
     fn resolve(
         &'a self,
-        state: &ExpressionExecutionState<'c, '_>,
+        state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         map_cow_clone_string(
             self.args[0].resolve(state)?,
-            |s| match replace_for_parse(s).map(|r| r.parse::<f64>()) {
+            state,
+            |s, state| match replace_for_parse(s).map(|r| r.parse::<f64>()) {
                 Some(Ok(value)) => Ok(ResolveResult::Owned(value.into())),
                 _ => Ok(self.args[1].resolve(state)?),
             },
-            |v| match v {
+            |v, state| match v {
                 Value::Number(n) => Ok(ResolveResult::Owned(n.as_f64().unwrap().into())),
                 _ => Ok(self.args[1].resolve(state)?),
             },
@@ -60,15 +61,16 @@ function_def!(TryIntFunction, "try_int", 2);
 impl<'a: 'c, 'c> Expression<'a, 'c> for TryIntFunction {
     fn resolve(
         &'a self,
-        state: &ExpressionExecutionState<'c, '_>,
+        state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         map_cow_clone_string(
             self.args[0].resolve(state)?,
-            |s| match replace_for_parse(s).map(|r| r.parse::<i64>()) {
+            state,
+            |s, state| match replace_for_parse(s).map(|r| r.parse::<i64>()) {
                 Some(Ok(value)) => Ok(ResolveResult::Owned(value.into())),
                 _ => Ok(self.args[1].resolve(state)?),
             },
-            |v| match v {
+            |v, state| match v {
                 Value::Number(n) => Ok(ResolveResult::Owned(
                     JsonNumber::from(n)
                         .try_cast_integer(&self.span)?
@@ -86,7 +88,7 @@ function_def!(TryBoolFunction, "try_bool", 2);
 impl<'a: 'c, 'c> Expression<'a, 'c> for TryBoolFunction {
     fn resolve(
         &'a self,
-        state: &ExpressionExecutionState<'c, '_>,
+        state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         let r = match self.args[0].resolve(state)?.as_ref() {
             Value::Bool(b) => *b,

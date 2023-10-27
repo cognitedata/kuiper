@@ -48,8 +48,9 @@ impl Display for IsExpression {
 impl<'a: 'c, 'c> Expression<'a, 'c> for IsExpression {
     fn resolve(
         &'a self,
-        state: &ExpressionExecutionState<'c, '_>,
+        state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
+        state.inc_op()?;
         let lhs = self.lhs.resolve(state)?;
         let res = match self.rhs {
             TypeLiteral::Null => lhs.is_null(),

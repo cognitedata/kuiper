@@ -488,4 +488,37 @@ mod tests {
         assert!(!res_obj.get("v6").unwrap().as_bool().unwrap());
         assert!(res_obj.get("v7").unwrap().as_bool().unwrap());
     }
+
+    #[cfg(feature = "completions")]
+    #[test]
+    pub fn test_completions() {
+        let expr = compile_expression("input.test.foo", &["input"]).unwrap();
+
+        let data = json! {{
+            "test": {
+                "wow": 123,
+                "foo": {
+                    "ho-boy": [1, 2, 3]
+                }
+            },
+            "dos": 5
+        }};
+
+        let (_, comp) = expr.run_get_completions([&data]).unwrap();
+        for c in &comp {
+            println!("{c:?}");
+        }
+        assert_eq!(2, comp.get(&Span { start: 6, end: 10 }).unwrap().len());
+        assert_eq!(2, comp.get(&Span { start: 11, end: 14 }).unwrap().len());
+    }
+
+    #[test]
+    pub fn test_op_limit() {
+        let expr = compile_expression("[input, input, input, input, input]", &["input"]).unwrap();
+
+        let data = json! { 1 };
+
+        assert!(expr.run_limited([&data], 5).is_err());
+        assert!(expr.run_limited([&data], 6).is_ok());
+    }
 }
