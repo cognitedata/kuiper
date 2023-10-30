@@ -30,8 +30,6 @@ pub enum TransformError {
     ConversionFailed(TransformErrorData),
     #[error("{0}")]
     InvalidOperation(TransformErrorData),
-    #[error("Program is invalid: {0}")]
-    InvalidProgramError(String),
     #[error("Operation limit exceeded")]
     OperationLimitExceeded,
 }
@@ -87,7 +85,6 @@ impl TransformError {
             TransformError::IncorrectTypeInField(x) => Some(x.span.clone()),
             TransformError::ConversionFailed(x) => Some(x.span.clone()),
             TransformError::InvalidOperation(x) => Some(x.span.clone()),
-            TransformError::InvalidProgramError(_) => None,
             TransformError::OperationLimitExceeded => None,
         }
     }

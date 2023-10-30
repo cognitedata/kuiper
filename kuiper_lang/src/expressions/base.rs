@@ -27,7 +27,7 @@ type Completions = std::collections::HashMap<Span, std::collections::HashSet<Str
 /// Notably lifetime heavy. `'a` is the lifetime of the input data.
 /// `'b` is the lifetime of the transform execution, so the temporary data in the transform.
 pub struct ExpressionExecutionState<'data, 'exec> {
-    data: &'exec Vec<&'data Value>,
+    data: &'exec Vec<Option<&'data Value>>,
     opcount: &'exec mut i64,
     max_opcount: i64,
     #[cfg(feature = "completions")]
@@ -38,10 +38,14 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
     /// Try to obtain a value with the given key from the state.
     #[inline]
     pub fn get_value(&self, key: usize) -> Option<&'data Value> {
-        self.data.get(key).copied()
+        self.data.get(key).copied().and_then(|o| o)
     }
 
-    pub fn new(data: &'exec Vec<&'data Value>, opcount: &'exec mut i64, max_opcount: i64) -> Self {
+    pub fn new(
+        data: &'exec Vec<Option<&'data Value>>,
+        opcount: &'exec mut i64,
+        max_opcount: i64,
+    ) -> Self {
         Self {
             data,
             opcount,
@@ -65,12 +69,12 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
         }
         let mut pushed = 0;
         for elem in extra_values.take(num_values) {
-            data.push(elem);
+            data.push(Some(elem));
             pushed += 1;
         }
         if pushed < num_values {
             for _ in pushed..num_values {
-                data.push(&NULL_CONST);
+                data.push(Some(&NULL_CONST));
             }
         }
 
@@ -106,7 +110,7 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
 
 #[derive(Debug)]
 pub struct InternalExpressionExecutionState<'data, 'exec> {
-    data: Vec<&'data Value>,
+    data: Vec<Option<&'data Value>>,
     opcount: &'exec mut i64,
     max_opcount: i64,
     #[cfg(feature = "completions")]
@@ -331,7 +335,7 @@ impl ExpressionType {
         max_operation_count: i64,
     ) -> Result<ResolveResult<'c>, TransformError> {
         let mut opcount = 0;
-        let data = data.into_iter().collect();
+        let data = data.into_iter().map(Some).collect();
         let mut state = ExpressionExecutionState::new(&data, &mut opcount, max_operation_count);
         self.resolve(&mut state)
     }
@@ -345,7 +349,7 @@ impl ExpressionType {
     ) -> Result<(ResolveResult<'c>, Completions), TransformError> {
         use std::collections::HashMap;
 
-        let data = data.into_iter().collect();
+        let data = data.into_iter().map(Some).collect();
         let mut opcount = 0;
         let mut state = ExpressionExecutionState::new(&data, &mut opcount, -1);
         let mut completions = HashMap::new();

@@ -55,6 +55,8 @@ impl CompileError {
                 BuildError::NFunctionArgs(x) => Some(x.position.clone()),
                 BuildError::UnexpectedLambda(x) => Some(x.position.clone()),
                 BuildError::UnrecognizedFunction(x) => Some(x.position.clone()),
+                BuildError::UnknownVariable(x) => Some(x.position.clone()),
+                BuildError::VariableConflict(x) => Some(x.position.clone()),
             },
             CompileError::Parser(x) => match x {
                 lalrpop_util::ParseError::InvalidToken { location } => Some(Span {
@@ -119,10 +121,7 @@ mod tests {
             CompileError::Build(BuildError::NFunctionArgs(d)) => {
                 assert_eq!(
                     d.detail,
-                    Some(
-                        "Incorrect number of function args: function pow takes 2 arguments"
-                            .to_string()
-                    )
+                    "Incorrect number of function args: function pow takes 2 arguments".to_string()
                 );
                 assert_eq!(d.position, Span { start: 0, end: 15 });
             }
@@ -198,9 +197,21 @@ mod tests {
     pub fn test_source_missing_error() {
         let result = compile_err("pow(10, foo.val)", &[]);
         match result {
-            CompileError::Optimizer(TransformError::SourceMissingError(d)) => {
-                assert_eq!(d.desc, "foo");
-                assert_eq!(d.span, Span { start: 11, end: 15 });
+            CompileError::Build(BuildError::UnknownVariable(d)) => {
+                assert_eq!(d.detail, "foo".to_string());
+                assert_eq!(d.position, Span { start: 8, end: 11 });
+            }
+            _ => panic!("Wrong type of error {result:?}"),
+        }
+    }
+
+    #[test]
+    pub fn test_source_conflict_error() {
+        let result = compile_err("a.map(a => a.foo)", &["a"]);
+        match result {
+            CompileError::Build(BuildError::VariableConflict(d)) => {
+                assert_eq!("a".to_string(), d.detail);
+                assert_eq!(d.position, Span { start: 6, end: 16 });
             }
             _ => panic!("Wrong type of error {result:?}"),
         }
