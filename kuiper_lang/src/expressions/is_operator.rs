@@ -68,9 +68,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IsExpression {
 
 impl IsExpression {
     pub fn new(lhs: ExpressionType, rhs: TypeLiteral) -> Result<Self, BuildError> {
-        if let ExpressionType::Lambda(lambda) = &lhs {
-            return Err(BuildError::unexpected_lambda(&lambda.span));
-        }
+        lhs.fail_if_lambda()?;
         Ok(Self {
             lhs: Box::new(lhs),
             rhs,

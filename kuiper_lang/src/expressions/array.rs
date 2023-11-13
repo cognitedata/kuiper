@@ -99,9 +99,7 @@ impl ArrayExpression {
                 ArrayElement::Expression(x) => x,
                 ArrayElement::Concat(x) => x,
             };
-            if let ExpressionType::Lambda(lambda) = &expr {
-                return Err(BuildError::unexpected_lambda(&lambda.span));
-            }
+            expr.fail_if_lambda()?;
         }
         Ok(Self { items, span })
     }

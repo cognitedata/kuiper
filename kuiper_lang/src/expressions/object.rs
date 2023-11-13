@@ -98,17 +98,11 @@ impl ObjectExpression {
         for k in &items {
             match k {
                 ObjectElement::Pair(key, val) => {
-                    if let ExpressionType::Lambda(lambda) = key {
-                        return Err(BuildError::unexpected_lambda(&lambda.span));
-                    }
-                    if let ExpressionType::Lambda(lambda) = val {
-                        return Err(BuildError::unexpected_lambda(&lambda.span));
-                    }
+                    key.fail_if_lambda()?;
+                    val.fail_if_lambda()?;
                 }
                 ObjectElement::Concat(x) => {
-                    if let ExpressionType::Lambda(lambda) = x {
-                        return Err(BuildError::unexpected_lambda(&lambda.span));
-                    }
+                    x.fail_if_lambda()?;
                 }
             }
         }

@@ -110,15 +110,11 @@ impl SelectorExpression {
         span: Span,
     ) -> Result<Self, BuildError> {
         if let SourceElement::Expression(expr) = &source {
-            if let ExpressionType::Lambda(lambda) = expr.as_ref() {
-                return Err(BuildError::unexpected_lambda(&lambda.span));
-            }
+            expr.fail_if_lambda()?;
         }
         for item in &path {
             if let SelectorElement::Expression(expr) = &item {
-                if let ExpressionType::Lambda(lambda) = expr.as_ref() {
-                    return Err(BuildError::unexpected_lambda(&lambda.span));
-                }
+                expr.fail_if_lambda()?;
             }
         }
         Ok(Self { source, path, span })

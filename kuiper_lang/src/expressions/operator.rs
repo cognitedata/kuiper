@@ -123,11 +123,8 @@ impl OpExpression {
         rhs: ExpressionType,
         span: Span,
     ) -> Result<Self, BuildError> {
-        for item in &[&lhs, &rhs] {
-            if let ExpressionType::Lambda(lambda) = &item {
-                return Err(BuildError::unexpected_lambda(&lambda.span));
-            }
-        }
+        lhs.fail_if_lambda()?;
+        rhs.fail_if_lambda()?;
         Ok(Self {
             operator: op,
             descriptor: format!("'{}'", &op),
@@ -310,9 +307,7 @@ impl ExpressionMeta for UnaryOpExpression {
 
 impl UnaryOpExpression {
     pub fn new(op: UnaryOperator, el: ExpressionType, span: Span) -> Result<Self, BuildError> {
-        if let ExpressionType::Lambda(lambda) = &el {
-            return Err(BuildError::unexpected_lambda(&lambda.span));
-        }
+        el.fail_if_lambda()?;
         Ok(Self {
             operator: op,
             descriptor: format!("'{}'", &op),

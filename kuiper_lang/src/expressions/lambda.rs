@@ -36,9 +36,7 @@ impl LambdaExpression {
         inner: ExpressionType,
         span: Span,
     ) -> Result<Self, BuildError> {
-        if let ExpressionType::Lambda(lambda) = &inner {
-            return Err(BuildError::unexpected_lambda(&lambda.span));
-        }
+        inner.fail_if_lambda()?;
         Ok(Self {
             input_names,
             expr: Box::new(inner),

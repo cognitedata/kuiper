@@ -347,6 +347,14 @@ impl ExpressionType {
         let r = self.resolve(&mut state)?;
         Ok((r, completions))
     }
+
+    pub(crate) fn fail_if_lambda(&self) -> Result<(), BuildError> {
+        if let ExpressionType::Lambda(lambda) = self {
+            Err(BuildError::unexpected_lambda(&lambda.span))
+        } else {
+            Ok(())
+        }
+    }
 }
 
 /// The result of an expression resolution. The signature is a little weird.
