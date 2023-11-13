@@ -191,15 +191,7 @@ pub trait Expression<'a: 'c, 'c>: Display {
 
 /// Additional trait for expressions, separate from Expression to make it easier to implement in macros
 pub trait ExpressionMeta {
-    fn iter_children(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_>;
-
-    fn num_children(&self) -> usize;
-
-    fn get_child(&self, idx: usize) -> Option<&ExpressionType>;
-
-    fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType>;
-
-    fn set_child(&mut self, idx: usize, item: ExpressionType);
+    fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_>;
 }
 
 /// A function expression, new functions must be added here.
@@ -208,11 +200,7 @@ pub trait ExpressionMeta {
 #[pass_through(fn resolve(&'a self, state: &mut ExpressionExecutionState<'c, '_>) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn call(&'a self, state: &mut ExpressionExecutionState<'c, '_>, _values: &[&Value]) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn get_is_deterministic(&self) -> bool, "", Expression<'a, 'c>, where 'a: 'c)]
-#[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta)]
-#[pass_through(fn get_child(&self, idx: usize) -> Option<&ExpressionType>, "", ExpressionMeta<'a>)]
-#[pass_through(fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType>, "", ExpressionMeta<'a>)]
-#[pass_through(fn set_child(&mut self, idx: usize, item: ExpressionType), "", ExpressionMeta<'a>)]
-#[pass_through(fn iter_children(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_>, "", ExpressionMeta<'a>)]
+#[pass_through(fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_>, "", ExpressionMeta)]
 pub enum FunctionType {
     Pow(PowFunction),
     Log(LogFunction),
@@ -300,11 +288,7 @@ pub fn get_function_expression(
 #[pass_through(fn resolve(&'a self, state: &mut ExpressionExecutionState<'c, '_>) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn get_is_deterministic(&self) -> bool, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn call(&'a self, state: &mut ExpressionExecutionState<'c, '_>, _values: &[&Value]) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
-#[pass_through(fn num_children(&self) -> usize, "", ExpressionMeta)]
-#[pass_through(fn get_child(&self, idx: usize) -> Option<&ExpressionType>, "", ExpressionMeta<'a>)]
-#[pass_through(fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType>, "", ExpressionMeta<'a>)]
-#[pass_through(fn set_child(&mut self, idx: usize, item: ExpressionType), "", ExpressionMeta<'a>)]
-#[pass_through(fn iter_children(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_>, "", ExpressionMeta<'a>)]
+#[pass_through(fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_>, "", ExpressionMeta)]
 pub enum ExpressionType {
     Constant(Constant),
     Operator(OpExpression),
@@ -393,23 +377,9 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for Constant {
 }
 
 impl ExpressionMeta for Constant {
-    fn iter_children(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+    fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
         Box::new([].into_iter())
     }
-
-    fn num_children(&self) -> usize {
-        0
-    }
-
-    fn get_child(&self, _idx: usize) -> Option<&ExpressionType> {
-        None
-    }
-
-    fn get_child_mut(&mut self, _idx: usize) -> Option<&mut ExpressionType> {
-        None
-    }
-
-    fn set_child(&mut self, _idx: usize, _item: ExpressionType) {}
 }
 
 impl Constant {

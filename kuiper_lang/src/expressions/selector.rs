@@ -91,70 +91,14 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SelectorExpression {
 }
 
 impl ExpressionMeta for SelectorExpression {
-    fn iter_children(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+    fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
         let iter = self.path.iter_mut().filter_map(|f| match f {
             SelectorElement::Expression(e) => Some(e.as_mut()),
             _ => None,
         });
         match &mut self.source {
-            SourceElement::Expression(e) => Box::new(iter.chain([e.as_mut()].into_iter())),
+            SourceElement::Expression(e) => Box::new(iter.chain([e.as_mut()])),
             _ => Box::new(iter),
-        }
-    }
-
-    fn num_children(&self) -> usize {
-        let path = self.path.iter().filter_map(|f| match f {
-            SelectorElement::Expression(e) => Some(e.as_ref()),
-            _ => None,
-        });
-        match &self.source {
-            SourceElement::Expression(e) => [e.as_ref()].into_iter().chain(path).count(),
-            _ => path.count(),
-        }
-    }
-
-    fn get_child(&self, idx: usize) -> Option<&ExpressionType> {
-        let mut path = self.path.iter().filter_map(|f| match f {
-            SelectorElement::Expression(e) => Some(e.as_ref()),
-            _ => None,
-        });
-        match &self.source {
-            SourceElement::Expression(e) => [e.as_ref()].into_iter().chain(path).nth(idx),
-            _ => path.nth(idx),
-        }
-    }
-
-    fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType> {
-        let mut path = self.path.iter_mut().filter_map(|f| match f {
-            SelectorElement::Expression(e) => Some(e.as_mut()),
-            _ => None,
-        });
-        match &mut self.source {
-            SourceElement::Expression(e) => [e.as_mut()].into_iter().chain(path).nth(idx),
-            _ => path.nth(idx),
-        }
-    }
-
-    fn set_child(&mut self, idx: usize, item: ExpressionType) {
-        let add = if matches!(self.source, SourceElement::Expression(_)) {
-            1
-        } else {
-            0
-        };
-        let mut path = self.path.iter().enumerate().filter_map(|(idx, f)| match f {
-            SelectorElement::Expression(e) => Some((idx + add, e.as_ref())),
-            _ => None,
-        });
-        let real_idx = match &self.source {
-            SourceElement::Expression(e) => [(0usize, e.as_ref())].into_iter().chain(path).nth(idx),
-            _ => path.nth(idx),
-        };
-        if let Some((real_idx, _)) = real_idx {
-            if idx == 0 && matches!(self.source, SourceElement::Expression(_)) {
-                self.source = SourceElement::Expression(Box::new(item));
-            } else {
-                self.path[real_idx - add] = SelectorElement::Expression(Box::new(item));
-            }
         }
     }
 }

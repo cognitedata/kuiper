@@ -70,33 +70,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for LambdaExpression {
 }
 
 impl ExpressionMeta for LambdaExpression {
-    fn iter_children(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+    fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
         Box::new([self.expr.as_mut()].into_iter())
-    }
-
-    fn num_children(&self) -> usize {
-        1
-    }
-
-    fn get_child(&self, idx: usize) -> Option<&ExpressionType> {
-        if idx > 0 {
-            None
-        } else {
-            Some(self.expr.as_ref())
-        }
-    }
-
-    fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType> {
-        if idx > 0 {
-            None
-        } else {
-            Some(self.expr.as_mut())
-        }
-    }
-
-    fn set_child(&mut self, idx: usize, item: ExpressionType) {
-        if idx == 0 {
-            self.expr = Box::new(item);
-        }
     }
 }

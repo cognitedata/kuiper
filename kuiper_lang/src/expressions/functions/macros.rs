@@ -6,13 +6,12 @@ macro_rules! function_def {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(f, "{}(", <Self as $crate::expressions::functions::FunctionExpression>::INFO.name)?;
                 let mut is_first = true;
-                for idx in 0..$crate::expressions::base::ExpressionMeta::num_children(self) {
-                    let expr = $crate::expressions::base::ExpressionMeta::get_child(self, idx).unwrap();
+                for item in &self.args {
                     if !is_first {
                         write!(f, ", ")?;
                     }
                     is_first = false;
-                    write!(f, "{}", expr)?;
+                    write!(f, "{}", item)?;
                 }
                 write!(f, ")")
             }
@@ -66,38 +65,8 @@ macro_rules! function_def {
         }
 
         impl $crate::expressions::base::ExpressionMeta for $typ {
-            fn iter_children(&mut self) -> Box<dyn Iterator<Item = &mut $crate::expressions::base::ExpressionType> + '_> {
+            fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut $crate::expressions::base::ExpressionType> + '_> {
                 Box::new(self.args.iter_mut().map(|m| m.as_mut()))
-            }
-
-            fn num_children(&self) -> usize {
-                $nargs
-            }
-
-            fn get_child(&self, idx: usize) -> Option<&$crate::expressions::base::ExpressionType> {
-                #[allow(unused_comparisons)]
-                if idx >= $nargs {
-                    None
-                } else {
-                    Some(&self.args[idx])
-                }
-            }
-
-            fn get_child_mut(&mut self, idx: usize) -> Option<&mut $crate::expressions::base::ExpressionType> {
-                #[allow(unused_comparisons)]
-                if idx >= $nargs {
-                    None
-                } else {
-                    Some(&mut self.args[idx])
-                }
-            }
-
-            fn set_child(&mut self, idx: usize, item: $crate::expressions::base::ExpressionType) {
-                #[allow(unused_comparisons)]
-                if idx >= $nargs {
-                    return;
-                }
-                self.args[idx] = Box::new(item);
             }
         }
     };
@@ -146,27 +115,8 @@ macro_rules! function_def {
         }
 
         impl $crate::expressions::base::ExpressionMeta for $typ {
-            fn iter_children(&mut self) -> Box<dyn Iterator<Item = &mut $crate::expressions::base::ExpressionType> + '_> {
+            fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut $crate::expressions::base::ExpressionType> + '_> {
                 Box::new(self.args.iter_mut())
-            }
-
-            fn num_children(&self) -> usize {
-                self.args.len()
-            }
-
-            fn get_child(&self, idx: usize) -> Option<&$crate::expressions::base::ExpressionType> {
-                self.args.get(idx)
-            }
-
-            fn get_child_mut(&mut self, idx: usize) -> Option<&mut $crate::expressions::base::ExpressionType> {
-                self.args.get_mut(idx)
-            }
-
-            fn set_child(&mut self, idx: usize, item: $crate::expressions::base::ExpressionType) {
-                if idx >= self.args.len() {
-                    return;
-                }
-                self.args[idx] = item;
             }
         }
     }

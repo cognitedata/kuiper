@@ -85,99 +85,11 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ObjectExpression {
 }
 
 impl ExpressionMeta for ObjectExpression {
-    fn iter_children(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+    fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
         Box::new(self.items.iter_mut().flat_map(|f| match f {
             ObjectElement::Pair(x, y) => vec![x, y].into_iter(),
             ObjectElement::Concat(x) => vec![x].into_iter(),
         }))
-    }
-
-    fn num_children(&self) -> usize {
-        let mut len = 0;
-        for it in &self.items {
-            match it {
-                ObjectElement::Pair(_, _) => len += 2,
-                ObjectElement::Concat(_) => len += 1,
-            }
-        }
-        len
-    }
-
-    fn get_child(&self, mut idx: usize) -> Option<&ExpressionType> {
-        for it in &self.items {
-            match it {
-                ObjectElement::Pair(x, y) => {
-                    if idx == 0 {
-                        return Some(x);
-                    } else if idx == 1 {
-                        return Some(y);
-                    } else {
-                        idx -= 2;
-                    }
-                }
-                ObjectElement::Concat(x) => {
-                    if idx == 0 {
-                        return Some(x);
-                    } else {
-                        idx -= 1;
-                    }
-                }
-            }
-        }
-        None
-    }
-
-    fn get_child_mut(&mut self, mut idx: usize) -> Option<&mut ExpressionType> {
-        for it in &mut self.items {
-            match it {
-                ObjectElement::Pair(x, y) => {
-                    if idx == 0 {
-                        return Some(x);
-                    } else if idx == 1 {
-                        return Some(y);
-                    } else {
-                        idx -= 2;
-                    }
-                }
-                ObjectElement::Concat(x) => {
-                    if idx == 0 {
-                        return Some(x);
-                    } else {
-                        idx -= 1;
-                    }
-                }
-            }
-        }
-        None
-    }
-
-    fn set_child(&mut self, mut idx: usize, item: ExpressionType) {
-        if idx >= self.items.len() * 2 {
-            return;
-        }
-        for it in &mut self.items {
-            match it {
-                ObjectElement::Pair(x, y) => {
-                    if idx == 0 {
-                        *x = item;
-                        return;
-                    } else if idx == 1 {
-                        *y = item;
-                        return;
-                    } else {
-                        idx -= 2;
-                    }
-                }
-                ObjectElement::Concat(x) => {
-                    if idx == 0 {
-                        *x = item;
-                        return;
-                    } else {
-                        idx -= 1;
-                    }
-                }
-            }
-        }
     }
 }
 
