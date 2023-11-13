@@ -31,8 +31,8 @@ Result(Expression(Term(FunctionCall(
     FunctionName(Var(PlainVar)),
     CommaSep(
         FunctionArg(Expression(Term(Array(CommaSep(
-            Expression(Term(Number)),
-            Expression(Term(Number))
+            ArrElem(Expression(Term(Number))),
+            ArrElem(Expression(Term(Number)))
         ))))),
         FunctionArg(Lambda(
             Var(PlainVar),
@@ -54,8 +54,8 @@ Result(Expression(Term(FunctionCall(
 
 Result(Expression(Term(FunctionCall(
     Term(Array(CommaSep(
-        Expression(Term(Number)),
-        Expression(Term(Number))
+        ArrElem(Expression(Term(Number))),
+        ArrElem(Expression(Term(Number)))
     ))),
     FunctionName(Var(PlainVar)),
     CommaSep(

@@ -1,0 +1,15 @@
+# Array concat
+
+[1, 2, ...[3, 4], ...input]
+
+==>
+
+Result(Expression(Term(Array(CommaSep(
+    ArrElem(Expression(Term(Number))),
+    ArrElem(Expression(Term(Number))),
+    ArrElem(Expression(Term(Array(CommaSep(
+        ArrElem(Expression(Term(Number))),
+        ArrElem(Expression(Term(Number)))
+    ))))),
+    ArrElem(Expression(Term(Var(PlainVar))))
+)))))

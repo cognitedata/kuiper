@@ -12,10 +12,16 @@ use super::{
 };
 
 #[derive(Debug, Clone)]
+pub enum ArrayElement {
+    Expression(ExpressionType),
+    Concat(ExpressionType),
+}
+
+#[derive(Debug, Clone)]
 /// Array expression. This contains a list of expressions and returns an array.
 pub struct ArrayExpression {
-    items: Vec<ExpressionType>,
-    _span: Span,
+    items: Vec<ArrayElement>,
+    span: Span,
 }
 
 impl Display for ArrayExpression {
@@ -27,7 +33,10 @@ impl Display for ArrayExpression {
                 write!(f, ", ")?;
             }
             needs_comma = true;
-            write!(f, "{it}")?;
+            match it {
+                ArrayElement::Expression(x) => write!(f, "{x}")?,
+                ArrayElement::Concat(x) => write!(f, "..{x}")?,
+            }
         }
         write!(f, "]")?;
         Ok(())
@@ -43,7 +52,26 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ArrayExpression {
 
         let mut arr = vec![];
         for expr in self.items.iter() {
-            arr.push(expr.resolve(state)?.into_owned());
+            match expr {
+                ArrayElement::Expression(x) => arr.push(x.resolve(state)?.into_owned()),
+                ArrayElement::Concat(x) => {
+                    let conc = x.resolve(state)?;
+                    let conc_arr = match conc.into_owned() {
+                        Value::Array(x) => x,
+                        x => {
+                            return Err(TransformError::new_incorrect_type(
+                                "array",
+                                "array",
+                                TransformError::value_desc(&x),
+                                &self.span,
+                            ))
+                        }
+                    };
+                    for elem in conc_arr {
+                        arr.push(elem);
+                    }
+                }
+            }
         }
         Ok(ResolveResult::Owned(Value::Array(arr)))
     }
@@ -55,28 +83,42 @@ impl ExpressionMeta for ArrayExpression {
     }
 
     fn get_child(&self, idx: usize) -> Option<&ExpressionType> {
-        self.items.get(idx)
+        self.items.get(idx).map(|e| match e {
+            ArrayElement::Expression(x) => x,
+            ArrayElement::Concat(x) => x,
+        })
     }
 
     fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType> {
-        self.items.get_mut(idx)
+        self.items.get_mut(idx).map(|e| match e {
+            ArrayElement::Expression(x) => x,
+            ArrayElement::Concat(x) => x,
+        })
     }
 
     fn set_child(&mut self, idx: usize, item: ExpressionType) {
         if idx >= self.items.len() {
             return;
         }
-        self.items[idx] = item;
+        let rf = &mut self.items[idx];
+        match rf {
+            ArrayElement::Expression(x) => *x = item,
+            ArrayElement::Concat(x) => *x = item,
+        }
     }
 }
 
 impl ArrayExpression {
-    pub fn new(items: Vec<ExpressionType>, span: Span) -> Result<Self, BuildError> {
+    pub fn new(items: Vec<ArrayElement>, span: Span) -> Result<Self, BuildError> {
         for item in &items {
-            if let ExpressionType::Lambda(lambda) = &item {
+            let expr = match item {
+                ArrayElement::Expression(x) => x,
+                ArrayElement::Concat(x) => x,
+            };
+            if let ExpressionType::Lambda(lambda) = &expr {
                 return Err(BuildError::unexpected_lambda(&lambda.span));
             }
         }
-        Ok(Self { items, _span: span })
+        Ok(Self { items, span })
     }
 }
