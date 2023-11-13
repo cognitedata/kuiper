@@ -1,6 +1,9 @@
 use serde_json::Value;
 
-use crate::expressions::{base::get_string_from_cow_value, Expression, ResolveResult};
+use crate::expressions::{
+    base::{get_number_from_value, get_string_from_cow_value},
+    Expression, ResolveResult,
+};
 
 // Example function definition
 
@@ -66,6 +69,70 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for StringFunction {
     }
 }
 
+function_def!(SubstringFunction, "substring", 2, Some(3));
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for SubstringFunction {
+    fn resolve(
+        &'a self,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        let inp_value = self.args[0].resolve(state)?;
+        let inp_string = get_string_from_cow_value("substring", inp_value, &self.span)?;
+        let input = inp_string.as_ref();
+
+        let start_value = self.args[1].resolve(state)?;
+        let start =
+            get_number_from_value("substring", &start_value, &self.span)?.try_as_i64(&self.span)?;
+
+        let end_value: Option<Result<i64, crate::TransformError>> = self.args.get(2).map(|c| {
+            let val = c.resolve(state)?;
+            let end =
+                get_number_from_value("substring", &val, &self.span)?.try_as_i64(&self.span)?;
+            Ok(end)
+        });
+        let end = end_value.transpose()?;
+        if end.is_some_and(|v| v == start) {
+            return Ok(ResolveResult::Owned(Value::String(String::new())));
+        }
+
+        // Translate indices to proper byte indices
+        let start = match get_byte_index(input, start) {
+            Some(idx) => idx,
+            None => {
+                if start < 0 {
+                    0
+                } else {
+                    return Ok(ResolveResult::Owned(Value::String(String::new())));
+                }
+            }
+        };
+
+        if let Some(end) = end.and_then(|end| get_byte_index(input, end)) {
+            if end <= start {
+                return Ok(ResolveResult::Owned(Value::String(String::new())));
+            }
+
+            Ok(ResolveResult::Owned(Value::String(
+                input[start..end].to_string(),
+            )))
+        } else {
+            Ok(ResolveResult::Owned(Value::String(
+                input[start..].to_string(),
+            )))
+        }
+    }
+}
+fn get_byte_index(str: &str, idx: i64) -> Option<usize> {
+    if idx < 0 {
+        str.char_indices()
+            .rev()
+            .nth((-idx - 1) as usize)
+            .map(|v| v.0)
+    } else {
+        str.char_indices().nth(idx as usize).map(|v| v.0)
+    }
+}
+
 // Once the function is defined it should be added to the main function enum in expressions/base.rs, and to the get_function_expression function.
 // We can just add a test in this file:
 #[cfg(test)]
@@ -116,5 +183,44 @@ mod tests {
         assert_eq!("123", res.get("s2").unwrap().as_str().unwrap());
         assert_eq!("", res.get("s3").unwrap().as_str().unwrap());
         assert_eq!("123.123", res.get("s4").unwrap().as_str().unwrap());
+    }
+
+    #[test]
+    pub fn test_substring_function() {
+        let expr = compile_expression(
+            r#"{
+            "s1": "test".substring(2),
+            "s2": "test".substring(2, 3),
+            "s3": "string".substring(15, 16),
+            "s4": "string".substring(2, 2),
+            "s5": "string".substring(2, 0),
+            "s6": "string".substring(15),
+            "s7": "æææææææ".substring(3),
+            "s8": "string".substring(2, 15),
+            "s9": "string".substring(-3, -2),
+            "s10": "string".substring(-4),
+            "s11": "string".substring(0, -2),
+            "s12": "string".substring(0, -1),
+            "s13": "string".substring(-15)
+            }"#,
+            &[],
+        )
+        .unwrap();
+
+        let res = expr.run(&[]).unwrap();
+
+        assert_eq!("st", res.get("s1").unwrap().as_str().unwrap());
+        assert_eq!("s", res.get("s2").unwrap().as_str().unwrap());
+        assert_eq!("", res.get("s3").unwrap().as_str().unwrap());
+        assert_eq!("", res.get("s4").unwrap().as_str().unwrap());
+        assert_eq!("", res.get("s5").unwrap().as_str().unwrap());
+        assert_eq!("", res.get("s6").unwrap().as_str().unwrap());
+        assert_eq!("ææææ", res.get("s7").unwrap().as_str().unwrap());
+        assert_eq!("ring", res.get("s8").unwrap().as_str().unwrap());
+        assert_eq!("i", res.get("s9").unwrap().as_str().unwrap());
+        assert_eq!("ring", res.get("s10").unwrap().as_str().unwrap());
+        assert_eq!("stri", res.get("s11").unwrap().as_str().unwrap());
+        assert_eq!("strin", res.get("s12").unwrap().as_str().unwrap());
+        assert_eq!("string", res.get("s13").unwrap().as_str().unwrap());
     }
 }

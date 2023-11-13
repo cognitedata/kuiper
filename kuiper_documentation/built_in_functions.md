@@ -424,6 +424,20 @@ Converts `x` into a string.
 string(true) -> "true"
 ```
 
+## substring
+
+`substring(x, start(, end))`
+
+Creates a substring of an input string `x` from `start` to `end`. If `end` is not specified, go from `start` to end of string. If `start` or `end` are negative, count from the end of the string.
+
+**Code examples**
+```
+"hello world".substring(3, 8) -> "lo wo"
+```
+```
+"hello world".substring(0, -3) -> "hello wo"
+```
+
 ## to_unix_timestamp
 
 `to_unix_timestamp(x, f)`

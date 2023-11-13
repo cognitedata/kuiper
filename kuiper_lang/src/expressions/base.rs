@@ -241,6 +241,7 @@ pub enum FunctionType {
     Except(ExceptFunction),
     Select(SelectFunction),
     DistinctBy(DistinctByFunction),
+    Substring(SubstringFunction),
 }
 
 /// Create a function expression from its name, or return a parser exception if it has the wrong number of arguments,
@@ -283,6 +284,7 @@ pub fn get_function_expression(
         "except" => FunctionType::Except(ExceptFunction::new(args, pos)?),
         "select" => FunctionType::Select(SelectFunction::new(args, pos)?),
         "distinct_by" => FunctionType::DistinctBy(DistinctByFunction::new(args, pos)?),
+        "substring" => FunctionType::Substring(SubstringFunction::new(args, pos)?),
         _ => return Err(BuildError::unrecognized_function(pos, name)),
     };
     Ok(ExpressionType::Function(expr))
