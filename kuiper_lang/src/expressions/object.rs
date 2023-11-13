@@ -57,8 +57,17 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ObjectExpression {
                 }
                 ObjectElement::Concat(x) => {
                     let conc = x.resolve(state)?;
-                    let conc_obj = match conc.into_owned() {
-                        Value::Object(x) => x,
+                    match conc {
+                        ResolveResult::Owned(Value::Object(x)) => {
+                            for (k, v) in x {
+                                output.insert(k, v);
+                            }
+                        }
+                        ResolveResult::Borrowed(Value::Object(x)) => {
+                            for (k, v) in x {
+                                output.insert(k.to_owned(), v.to_owned());
+                            }
+                        }
                         x => {
                             return Err(TransformError::new_incorrect_type(
                                 "object",
@@ -68,9 +77,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ObjectExpression {
                             ))
                         }
                     };
-                    for (k, v) in conc_obj {
-                        output.insert(k, v);
-                    }
                 }
             }
         }

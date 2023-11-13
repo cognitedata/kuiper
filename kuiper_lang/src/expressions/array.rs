@@ -56,8 +56,17 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ArrayExpression {
                 ArrayElement::Expression(x) => arr.push(x.resolve(state)?.into_owned()),
                 ArrayElement::Concat(x) => {
                     let conc = x.resolve(state)?;
-                    let conc_arr = match conc.into_owned() {
-                        Value::Array(x) => x,
+                    match conc {
+                        ResolveResult::Owned(Value::Array(x)) => {
+                            for elem in x {
+                                arr.push(elem);
+                            }
+                        }
+                        ResolveResult::Borrowed(Value::Array(x)) => {
+                            for elem in x {
+                                arr.push(elem.to_owned());
+                            }
+                        }
                         x => {
                             return Err(TransformError::new_incorrect_type(
                                 "array",
@@ -67,9 +76,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ArrayExpression {
                             ))
                         }
                     };
-                    for elem in conc_arr {
-                        arr.push(elem);
-                    }
                 }
             }
         }
