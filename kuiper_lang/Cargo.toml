@@ -1,6 +1,6 @@
 [package]
 name = "kuiper_lang"
-version = "0.5.0"
+version = "0.5.1"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -18,7 +18,7 @@ serde = { version = "1.0.192", features = ["derive"] }
 serde_json = "1.0.108"
 regex = "1.10.2"
 kuiper_lang_macros = { path = "../kuiper_lang_macros" }
-lalrpop-util = "0.20.1"
+lalrpop-util = "0.20.0"
 thiserror = "1.0.50"
 
 [dev-dependencies]
@@ -26,7 +26,7 @@ pprof = { version = "0.13", features = ["flamegraph"] }
 criterion = "0.5"
 
 [build-dependencies]
-lalrpop = "0.20.1"
+lalrpop = "0.20.0"
 
 [[bench]]
 name = "bench_execute"
