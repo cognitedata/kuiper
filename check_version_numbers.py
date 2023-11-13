@@ -26,6 +26,7 @@ FILES = {
     Path(__file__).resolve().parent / "kuiper_python" / "pyproject.toml": get_pyproject_version,
     Path(__file__).resolve().parent / "kuiper_lezer" / "package.json": get_js_package_version,
     Path(__file__).resolve().parent / "kuiper_js" / "Cargo.toml": get_cargo_version,
+    Path(__file__).resolve().parent / "kuiper_lang_macros" / "Cargo.toml": get_cargo_version,
 }
 
 
