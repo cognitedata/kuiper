@@ -84,6 +84,13 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ArrayExpression {
 }
 
 impl ExpressionMeta for ArrayExpression {
+    fn iter_children(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+        Box::new(self.items.iter_mut().map(|e| match e {
+            ArrayElement::Expression(x) => x,
+            ArrayElement::Concat(x) => x,
+        }))
+    }
+
     fn num_children(&self) -> usize {
         self.items.len()
     }

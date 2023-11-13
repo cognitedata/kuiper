@@ -85,6 +85,13 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ObjectExpression {
 }
 
 impl ExpressionMeta for ObjectExpression {
+    fn iter_children(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+        Box::new(self.items.iter_mut().flat_map(|f| match f {
+            ObjectElement::Pair(x, y) => vec![x, y].into_iter(),
+            ObjectElement::Concat(x) => vec![x].into_iter(),
+        }))
+    }
+
     fn num_children(&self) -> usize {
         let mut len = 0;
         for it in &self.items {

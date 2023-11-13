@@ -66,6 +66,10 @@ macro_rules! function_def {
         }
 
         impl $crate::expressions::base::ExpressionMeta for $typ {
+            fn iter_children(&mut self) -> Box<dyn Iterator<Item = &mut $crate::expressions::base::ExpressionType> + '_> {
+                Box::new(self.args.iter_mut().map(|m| m.as_mut()))
+            }
+
             fn num_children(&self) -> usize {
                 $nargs
             }
@@ -142,6 +146,10 @@ macro_rules! function_def {
         }
 
         impl $crate::expressions::base::ExpressionMeta for $typ {
+            fn iter_children(&mut self) -> Box<dyn Iterator<Item = &mut $crate::expressions::base::ExpressionType> + '_> {
+                Box::new(self.args.iter_mut())
+            }
+
             fn num_children(&self) -> usize {
                 self.args.len()
             }

@@ -3,14 +3,12 @@ use crate::{
     TransformError,
 };
 
-fn is_deterministic(expr: &ExpressionType) -> bool {
+fn is_deterministic(expr: &mut ExpressionType) -> bool {
     if !expr.get_is_deterministic() {
         return false;
     }
 
-    for idx in 0..expr.num_children() {
-        let child = expr.get_child(idx).unwrap();
-
+    for child in expr.iter_children() {
         if !is_deterministic(child) {
             return false;
         }
@@ -25,7 +23,7 @@ fn resolve_constants(
     opcount: &mut i64,
 ) -> Result<Option<ExpressionType>, TransformError> {
     // If there are no children, no further optimization may be done
-    if root.num_children() == 0 {
+    if root.iter_children().next().is_none() {
         return Ok(None);
     }
 
@@ -41,11 +39,11 @@ fn resolve_constants(
             // since any execution that is variable between runs would return a source missing error before anything else.
             TransformError::SourceMissingError(_) => {
                 // If the source is missing we should try to optimize each child.
-                for idx in 0..root.num_children() {
+                for child in root.iter_children() {
                     let res: Option<ExpressionType> =
-                        resolve_constants(root.get_child_mut(idx).unwrap(), num_inputs, opcount)?;
+                        resolve_constants(child, num_inputs, opcount)?;
                     if let Some(res) = res {
-                        root.set_child(idx, res);
+                        *child = res;
                     }
                 }
                 Ok(None)

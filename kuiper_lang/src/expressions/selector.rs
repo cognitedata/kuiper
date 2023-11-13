@@ -91,6 +91,17 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SelectorExpression {
 }
 
 impl ExpressionMeta for SelectorExpression {
+    fn iter_children(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+        let iter = self.path.iter_mut().filter_map(|f| match f {
+            SelectorElement::Expression(e) => Some(e.as_mut()),
+            _ => None,
+        });
+        match &mut self.source {
+            SourceElement::Expression(e) => Box::new(iter.chain([e.as_mut()].into_iter())),
+            _ => Box::new(iter),
+        }
+    }
+
     fn num_children(&self) -> usize {
         let path = self.path.iter().filter_map(|f| match f {
             SelectorElement::Expression(e) => Some(e.as_ref()),

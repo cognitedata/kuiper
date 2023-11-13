@@ -79,6 +79,10 @@ impl IsExpression {
 }
 
 impl ExpressionMeta for IsExpression {
+    fn iter_children(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+        Box::new([self.lhs.as_mut()].into_iter())
+    }
+
     fn num_children(&self) -> usize {
         1
     }

@@ -111,6 +111,10 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
 }
 
 impl ExpressionMeta for OpExpression {
+    fn iter_children(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+        Box::new(self.elements.iter_mut().map(|m| m.as_mut()))
+    }
+
     fn num_children(&self) -> usize {
         2
     }
@@ -326,6 +330,10 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for UnaryOpExpression {
 }
 
 impl ExpressionMeta for UnaryOpExpression {
+    fn iter_children(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+        Box::new([self.element.as_mut()].into_iter())
+    }
+
     fn num_children(&self) -> usize {
         1
     }

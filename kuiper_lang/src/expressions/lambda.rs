@@ -70,6 +70,10 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for LambdaExpression {
 }
 
 impl ExpressionMeta for LambdaExpression {
+    fn iter_children(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+        Box::new([self.expr.as_mut()].into_iter())
+    }
+
     fn num_children(&self) -> usize {
         1
     }
