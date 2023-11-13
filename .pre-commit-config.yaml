@@ -1,9 +1,10 @@
 repos:
--   repo: https://github.com/psf/black
-    rev: 23.11.0
+-   repo: https://github.com/charliermarsh/ruff-pre-commit
     hooks:
-      - id: black
-        args: [--config=kuiper_python/pyproject.toml]
+    -   id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+    -   id: ruff-format
+    rev: v0.1.5
 -   repo: local
     hooks:
     -   id: cargo-fmt

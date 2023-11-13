@@ -16,7 +16,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for LengthFunction {
         let source = self.args[0].resolve(state)?;
 
         let len = match source.as_ref() {
-            serde_json::Value::String(s) => s.len(),
+            serde_json::Value::String(s) => s.chars().count(),
             serde_json::Value::Array(a) => a.len(),
             serde_json::Value::Object(o) => o.len(),
             x => {
