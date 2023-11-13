@@ -242,6 +242,9 @@ pub enum FunctionType {
     Select(SelectFunction),
     DistinctBy(DistinctByFunction),
     Substring(SubstringFunction),
+    Split(SplitFunction),
+    TrimWhitespace(TrimWhitespace),
+    Slice(SliceFunction),
 }
 
 /// Create a function expression from its name, or return a parser exception if it has the wrong number of arguments,
@@ -285,6 +288,9 @@ pub fn get_function_expression(
         "select" => FunctionType::Select(SelectFunction::new(args, pos)?),
         "distinct_by" => FunctionType::DistinctBy(DistinctByFunction::new(args, pos)?),
         "substring" => FunctionType::Substring(SubstringFunction::new(args, pos)?),
+        "split" => FunctionType::Split(SplitFunction::new(args, pos)?),
+        "trim_whitespace" => FunctionType::TrimWhitespace(TrimWhitespace::new(args, pos)?),
+        "slice" => FunctionType::Slice(SliceFunction::new(args, pos)?),
         _ => return Err(BuildError::unrecognized_function(pos, name)),
     };
     Ok(ExpressionType::Function(expr))
