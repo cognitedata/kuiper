@@ -11,6 +11,7 @@ export const builtIns: KuiperInput[] = [
     { label: "atan2", description: "`atan2(x, y)`: Returns the inverse tangent of `x`/`y` in radians between -pi and pi." },
     { label: "case", description: "`case(x, c1, r1, c2, r2, ..., (default))`: Compare `x` to each of `c1`, `c2`, etc. and return the matching `r1`, `r2` of the first match. If no entry matches, a final optional expression can be returned as default." },
     { label: "ceil", description: "`ceil(x)`: Returns `x` rounded up to the nearest integer." },
+    { label: "chars", description: "`chars(x)`: Creates an array of characters from a string." },
     { label: "chunk", description: "`chunk(x, s)`: Converts the list `x` into several lists of length at most `s`" },
     { label: "concat", description: "`concat(x, y, ...)`: Concatenate any number of strings." },
     { label: "distinct_by", description: "`distinct_by(x, s)`: Returns a list or object where the elements are distinct by the returned value of the given lambda function. The lambda function either takes list values, or object (value, key) pairs" },

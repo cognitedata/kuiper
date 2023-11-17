@@ -365,3 +365,9 @@ functions:
       - '[1, 2, 3, 4].slice(0, -3)
         ->
         [1]'
+
+  - name: chars
+    signature: "`chars(x)`"
+    description: Creates an array of characters from a string.
+    examples:
+      - '"test".chars() -> ["t", "e", "s", "t"]'

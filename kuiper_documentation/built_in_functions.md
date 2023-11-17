@@ -42,6 +42,17 @@ Returns `x` rounded up to the nearest integer.
 ceil(16.2) -> 17
 ```
 
+## chars
+
+`chars(x)`
+
+Creates an array of characters from a string.
+
+**Code example**
+```
+"test".chars() -> ["t", "e", "s", "t"]
+```
+
 ## chunk
 
 `chunk(x, s)`

@@ -245,6 +245,18 @@ pub enum FunctionType {
     Split(SplitFunction),
     TrimWhitespace(TrimWhitespace),
     Slice(SliceFunction),
+    Chars(CharsFunction),
+}
+
+struct FunctionBuilder {
+    args: Vec<ExpressionType>,
+    pos: Span,
+}
+
+impl FunctionBuilder {
+    fn new<T: FunctionExpression>(self) -> Result<T, BuildError> {
+        T::new(self.args, self.pos)
+    }
 }
 
 /// Create a function expression from its name, or return a parser exception if it has the wrong number of arguments,
@@ -254,44 +266,45 @@ pub fn get_function_expression(
     name: &str,
     args: Vec<ExpressionType>,
 ) -> Result<ExpressionType, BuildError> {
+    let b = FunctionBuilder { pos, args };
+
     let expr = match name {
-        "pow" => FunctionType::Pow(PowFunction::new(args, pos)?),
-        "log" => FunctionType::Log(LogFunction::new(args, pos)?),
-        "atan2" => FunctionType::Atan2(Atan2Function::new(args, pos)?),
-        "floor" => FunctionType::Floor(FloorFunction::new(args, pos)?),
-        "ceil" => FunctionType::Ceil(CeilFunction::new(args, pos)?),
-        "round" => FunctionType::Round(RoundFunction::new(args, pos)?),
-        "concat" => FunctionType::Concat(ConcatFunction::new(args, pos)?),
-        "string" => FunctionType::String(StringFunction::new(args, pos)?),
-        "int" => FunctionType::Int(IntFunction::new(args, pos)?),
-        "float" => FunctionType::Float(FloatFunction::new(args, pos)?),
-        "try_float" => FunctionType::TryFloat(TryFloatFunction::new(args, pos)?),
-        "try_int" => FunctionType::TryInt(TryIntFunction::new(args, pos)?),
-        "try_bool" => FunctionType::TryBool(TryBoolFunction::new(args, pos)?),
-        "if" => FunctionType::If(IfFunction::new(args, pos)?),
-        "to_unix_timestamp" => FunctionType::ToUnixTime(ToUnixTimeFunction::new(args, pos)?),
-        "format_timestamp" => {
-            FunctionType::FormatTimestamp(FormatTimestampFunction::new(args, pos)?)
-        }
-        "case" => FunctionType::Case(CaseFunction::new(args, pos)?),
-        "pairs" => FunctionType::Pairs(PairsFunction::new(args, pos)?),
-        "map" => FunctionType::Map(MapFunction::new(args, pos)?),
-        "flatmap" => FunctionType::FlatMap(FlatMapFunction::new(args, pos)?),
-        "reduce" => FunctionType::Reduce(ReduceFunction::new(args, pos)?),
-        "filter" => FunctionType::Filter(FilterFunction::new(args, pos)?),
-        "zip" => FunctionType::Zip(ZipFunction::new(args, pos)?),
-        "length" => FunctionType::Length(LengthFunction::new(args, pos)?),
-        "chunk" => FunctionType::Chunk(ChunkFunction::new(args, pos)?),
-        "now" => FunctionType::Now(NowFunction::new(args, pos)?),
-        "join" => FunctionType::Join(JoinFunction::new(args, pos)?),
-        "except" => FunctionType::Except(ExceptFunction::new(args, pos)?),
-        "select" => FunctionType::Select(SelectFunction::new(args, pos)?),
-        "distinct_by" => FunctionType::DistinctBy(DistinctByFunction::new(args, pos)?),
-        "substring" => FunctionType::Substring(SubstringFunction::new(args, pos)?),
-        "split" => FunctionType::Split(SplitFunction::new(args, pos)?),
-        "trim_whitespace" => FunctionType::TrimWhitespace(TrimWhitespace::new(args, pos)?),
-        "slice" => FunctionType::Slice(SliceFunction::new(args, pos)?),
-        _ => return Err(BuildError::unrecognized_function(pos, name)),
+        "pow" => FunctionType::Pow(b.new()?),
+        "log" => FunctionType::Log(b.new()?),
+        "atan2" => FunctionType::Atan2(b.new()?),
+        "floor" => FunctionType::Floor(b.new()?),
+        "ceil" => FunctionType::Ceil(b.new()?),
+        "round" => FunctionType::Round(b.new()?),
+        "concat" => FunctionType::Concat(b.new()?),
+        "string" => FunctionType::String(b.new()?),
+        "int" => FunctionType::Int(b.new()?),
+        "float" => FunctionType::Float(b.new()?),
+        "try_float" => FunctionType::TryFloat(b.new()?),
+        "try_int" => FunctionType::TryInt(b.new()?),
+        "try_bool" => FunctionType::TryBool(b.new()?),
+        "if" => FunctionType::If(b.new()?),
+        "to_unix_timestamp" => FunctionType::ToUnixTime(b.new()?),
+        "format_timestamp" => FunctionType::FormatTimestamp(b.new()?),
+        "case" => FunctionType::Case(b.new()?),
+        "pairs" => FunctionType::Pairs(b.new()?),
+        "map" => FunctionType::Map(b.new()?),
+        "flatmap" => FunctionType::FlatMap(b.new()?),
+        "reduce" => FunctionType::Reduce(b.new()?),
+        "filter" => FunctionType::Filter(b.new()?),
+        "zip" => FunctionType::Zip(b.new()?),
+        "length" => FunctionType::Length(b.new()?),
+        "chunk" => FunctionType::Chunk(b.new()?),
+        "now" => FunctionType::Now(b.new()?),
+        "join" => FunctionType::Join(b.new()?),
+        "except" => FunctionType::Except(b.new()?),
+        "select" => FunctionType::Select(b.new()?),
+        "distinct_by" => FunctionType::DistinctBy(b.new()?),
+        "substring" => FunctionType::Substring(b.new()?),
+        "split" => FunctionType::Split(b.new()?),
+        "trim_whitespace" => FunctionType::TrimWhitespace(b.new()?),
+        "slice" => FunctionType::Slice(b.new()?),
+        "chars" => FunctionType::Chars(b.new()?),
+        _ => return Err(BuildError::unrecognized_function(b.pos, name)),
     };
     Ok(ExpressionType::Function(expr))
 }

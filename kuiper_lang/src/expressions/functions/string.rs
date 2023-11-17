@@ -169,6 +169,24 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TrimWhitespace {
     }
 }
 
+function_def!(CharsFunction, "chars", 1);
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for CharsFunction {
+    fn resolve(
+        &'a self,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        let inp_value = self.args[0].resolve(state)?;
+        let inp_string = get_string_from_cow_value("split", inp_value, &self.span)?;
+
+        let res = inp_string
+            .chars()
+            .map(|c| Value::String(c.to_string()))
+            .collect();
+        Ok(ResolveResult::Owned(res))
+    }
+}
+
 // Once the function is defined it should be added to the main function enum in expressions/base.rs, and to the get_function_expression function.
 // We can just add a test in this file:
 #[cfg(test)]
@@ -324,5 +342,27 @@ mod tests {
         assert_eq!("test", res.get("s1").unwrap().as_str().unwrap());
         assert_eq!("test", res.get("s2").unwrap().as_str().unwrap());
         assert_eq!("test", res.get("s3").unwrap().as_str().unwrap());
+    }
+
+    #[test]
+    pub fn test_chars_function() {
+        let expr = compile_expression(
+            r#"
+        "test æøå".chars()
+        "#,
+            &[],
+        )
+        .unwrap();
+
+        let res = expr.run(&[]).unwrap();
+
+        let arr: Vec<_> = res
+            .as_array()
+            .unwrap()
+            .into_iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+
+        assert_eq!(vec!["t", "e", "s", "t", " ", "æ", "ø", "å"], arr);
     }
 }
