@@ -326,3 +326,14 @@ functions:
       - zip([1, 2, 3], ['a', 'b', 'c'], (a, b) => concat(a, b))
         ->
         ["1a", "2b", "3c"]
+
+  - name: substring
+    signature: "`substring(x, start(, end))`"
+    description: "Creates a substring of an input string `x` from `start` to `end`. If `end` is not specified, go from `start` to end of string. If `start` or `end` are negative, count from the end of the string."
+    examples:
+      - '"hello world".substring(3, 8)
+        ->
+        "lo wo"'
+      - '"hello world".substring(0, -3)
+        ->
+        "hello wo"'
