@@ -67,6 +67,9 @@ pub enum Token {
     #[token(",")]
     Comma,
 
+    #[token("...")]
+    DotDot,
+
     /// A floating point number. Strictly not an integer.
     #[regex(r#"(\d*\.)?\d+"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseFloat((e, lex.span()))))]
     #[regex(r#"(\d*\.)?\d+[eE][+-]?(\d)"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseFloat((e, lex.span()))))]
@@ -178,6 +181,7 @@ impl Display for Token {
             Token::Arrow => write!(f, "=>"),
             Token::CombinedArrow => write!(f, ") =>"),
             Token::Comment => Ok(()),
+            Token::DotDot => write!(f, ".."),
         }
     }
 }

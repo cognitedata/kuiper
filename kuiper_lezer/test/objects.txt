@@ -8,11 +8,11 @@
 ==>
 
 Result(Expression(Term(Object(CommaSep(
-    Pair(
+    ObjElem(
         Expression(Term(String)),
         Expression(Term(Number))
     ),
-    Pair(
+    ObjElem(
         Expression(Term(FunctionCall(
             FunctionName(Var(PlainVar)),
             CommaSep(
@@ -31,3 +31,23 @@ Result(Expression(Term(Object(CommaSep(
 ==>
 
 Result(Expression(Term(Object(CommaSep))))
+
+# Object concat
+
+{
+    "s1": "v1",
+    ...{
+        "s2": "v2"
+    },
+    ...input
+}
+
+==>
+
+Result(Expression(Term(Object(CommaSep(
+    ObjElem(Expression(Term(String)), Expression(Term(String))),
+    ObjElem(Expression(Term(Object(CommaSep(
+        ObjElem(Expression(Term(String)), Expression(Term(String)))
+    ))))),
+    ObjElem(Expression(Term(Var(PlainVar))))
+)))))

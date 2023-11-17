@@ -104,6 +104,18 @@ pub struct IsExpression {
 }
 
 #[derive(Debug)]
+pub enum ArrayElementAst {
+    Expression(Expression),
+    Concat(Expression),
+}
+
+#[derive(Debug)]
+pub enum ObjectElementAst {
+    Pair(Expression, Expression),
+    Concat(Expression),
+}
+
+#[derive(Debug)]
 pub enum Expression {
     BinaryOperation(OpExpression, Span),
     Is(IsExpression),
@@ -112,8 +124,8 @@ pub enum Expression {
         rhs: Box<Expression>,
         loc: Span,
     },
-    Array(Vec<Expression>, Span),
-    Object(Vec<(Expression, Expression)>, Span),
+    Array(Vec<ArrayElementAst>, Span),
+    Object(Vec<ObjectElementAst>, Span),
     Selector {
         lhs: Box<Expression>,
         sel: Selector,
@@ -147,7 +159,10 @@ impl Display for Expression {
                         write!(f, ", ")?;
                     }
                     needs_comma = true;
-                    write!(f, "{arg}")?;
+                    match arg {
+                        ArrayElementAst::Expression(x) => write!(f, "{x}")?,
+                        ArrayElementAst::Concat(x) => write!(f, "..{x}")?,
+                    }
                 }
                 write!(f, "]")?;
                 Ok(())
@@ -155,12 +170,15 @@ impl Display for Expression {
             Expression::Object(a, _) => {
                 write!(f, "{{")?;
                 let mut needs_comma = false;
-                for (lh, rh) in a {
+                for k in a {
                     if needs_comma {
                         write!(f, ", ")?;
                     }
                     needs_comma = true;
-                    write!(f, "{lh}: {rh}")?;
+                    match k {
+                        ObjectElementAst::Pair(lh, rh) => write!(f, "{lh}: {rh}")?,
+                        ObjectElementAst::Concat(x) => write!(f, "..{x}")?,
+                    }
                 }
                 write!(f, "}}")
             }
