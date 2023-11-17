@@ -56,8 +56,14 @@ FunctionArg: ast::FunctionParameter = {
 
 pub Expr: ast::Expression = Op2Expr;
 
-Pair: (ast::Expression, ast::Expression) = {
-    <lh:Expr> ":" <rh:Expr> => (lh, rh)
+ObjElem: ast::ObjectElementAst = {
+    <lh:Expr> ":" <rh:Expr> => ast::ObjectElementAst::Pair(lh, rh),
+    "..." <x:Expr> => ast::ObjectElementAst::Concat(x),
+}
+
+ArrElem: ast::ArrayElementAst = {
+    <x:Expr> => ast::ArrayElementAst::Expression(x),
+    "..." <x:Expr> => ast::ArrayElementAst::Concat(x),
 }
 
 Selector: ast::Selector = {
@@ -78,8 +84,8 @@ Term: ast::Expression = {
         loc: Span { start, end }
     },
     <var:Spanned<"var">> => ast::Expression::Variable(var.0, var.1),
-    <start:@L> "[" <it:Comma<Expr>> "]" <end:@R> => ast::Expression::Array(it, Span { start, end }),
-    <start:@L> "{" <it:Comma<Pair>> "}" <end:@R> => ast::Expression::Object(it, Span { start, end }),
+    <start:@L> "[" <it:Comma<ArrElem>> "]" <end:@R> => ast::Expression::Array(it, Span { start, end }),
+    <start:@L> "{" <it:Comma<ObjElem>> "}" <end:@R> => ast::Expression::Object(it, Span { start, end }),
     <e: Term> "." <start:@L> <fun:Literal> "(" <mut args:Comma<FunctionArg>> ")" <end:@R> => {
         args.insert(0, ast::FunctionParameter::Expression(e));
         ast::Expression::Function {
@@ -207,6 +213,7 @@ extern {
         "}" => Token::CloseBrace,
         ":" => Token::Colon,
         ")=>" => Token::CombinedArrow,
-        "=>" => Token::Arrow
+        "=>" => Token::Arrow,
+        "..." => Token::DotDot
     }
 }

@@ -5,9 +5,9 @@ use thiserror::Error;
 
 use crate::{
     expressions::{
-        get_function_expression, ArrayExpression, ExpressionType, IsExpression, LambdaExpression,
-        ObjectExpression, OpExpression, SelectorElement, SelectorExpression, SourceElement,
-        UnaryOpExpression,
+        get_function_expression, ArrayElement, ArrayExpression, ExpressionType, IsExpression,
+        LambdaExpression, ObjectElement, ObjectExpression, OpExpression, SelectorElement,
+        SelectorExpression, SourceElement, UnaryOpExpression,
     },
     parse::{Expression, FunctionParameter, Selector},
 };
@@ -183,14 +183,27 @@ impl BuilderInner {
             )),
             Expression::Array(arr, span) => Ok(ExpressionType::Array(ArrayExpression::new(
                 arr.into_iter()
-                    .map(|e| self.build_expression(e))
-                    .collect::<Result<Vec<_>, _>>()?,
+                    .map(|e| match e {
+                        crate::parse::ArrayElementAst::Expression(x) => {
+                            Ok(ArrayElement::Expression(self.build_expression(x)?))
+                        }
+                        crate::parse::ArrayElementAst::Concat(x) => {
+                            Ok(ArrayElement::Concat(self.build_expression(x)?))
+                        }
+                    })
+                    .collect::<Result<Vec<ArrayElement>, _>>()?,
                 span,
             )?)),
             Expression::Object(it, span) => Ok(ExpressionType::Object(ObjectExpression::new(
                 it.into_iter()
-                    .map::<Result<(ExpressionType, ExpressionType), BuildError>, _>(|(v1, v2)| {
-                        Ok((self.build_expression(v1)?, self.build_expression(v2)?))
+                    .map::<Result<ObjectElement, BuildError>, _>(|e| match e {
+                        crate::parse::ObjectElementAst::Pair(k, v) => Ok(ObjectElement::Pair(
+                            self.build_expression(k)?,
+                            self.build_expression(v)?,
+                        )),
+                        crate::parse::ObjectElementAst::Concat(x) => {
+                            Ok(ObjectElement::Concat(self.build_expression(x)?))
+                        }
                     })
                     .collect::<Result<Vec<_>, _>>()?,
                 span,

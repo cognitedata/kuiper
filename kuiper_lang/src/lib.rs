@@ -521,4 +521,53 @@ mod tests {
         assert!(expr.run_limited([&data], 5).is_err());
         assert!(expr.run_limited([&data], 6).is_ok());
     }
+
+    #[test]
+    pub fn test_object_concat() {
+        let expr = compile_expression(
+            r#"
+        {
+            "foo": "bar",
+            ...{
+                "s1": "v1",
+                ...{
+                    "s2": "v2"
+                }
+            },
+            ...input
+        }"#,
+            &["input"],
+        )
+        .unwrap();
+
+        let data = json!({ "s3": "v3" });
+        let r = expr.run(&[data]).unwrap().into_owned();
+        let obj = r.as_object().unwrap();
+
+        assert_eq!(4, obj.len());
+        assert_eq!("v1", obj.get("s1").unwrap().as_str().unwrap());
+        assert_eq!("v2", obj.get("s2").unwrap().as_str().unwrap());
+        assert_eq!("v3", obj.get("s3").unwrap().as_str().unwrap());
+        assert_eq!("bar", obj.get("foo").unwrap().as_str().unwrap());
+    }
+
+    #[test]
+    pub fn test_array_concat() {
+        let expr = compile_expression(
+            r#"
+            [1, 2, ...[3, 4], ...[5], ...input]
+        "#,
+            &["input"],
+        )
+        .unwrap();
+
+        let data = json!([6, 7]);
+        let r = expr.run(&[data]).unwrap().into_owned();
+        let arr = r.as_array().unwrap();
+
+        assert_eq!(7, arr.len());
+        for (idx, it) in arr.iter().enumerate() {
+            assert_eq!(idx as u64 + 1, it.as_u64().unwrap());
+        }
+    }
 }

@@ -16,8 +16,13 @@ FunctionArg {
     Expression
 }
 
-Pair {
-    Expression ":" Expression
+ObjElem {
+    Expression ":" Expression |
+    "..." Expression
+}
+
+ArrElem {
+    Expression | "..." Expression
 }
 
 FunctionName {
@@ -29,8 +34,8 @@ FunctionCall {
     Term "." FunctionName "(" CommaSep<FunctionArg> ")"
 }
 
-Object { "{" CommaSep<Pair> "}" }
-Array { "[" CommaSep<Expression> "]" }
+Object { "{" CommaSep<ObjElem> "}" }
+Array { "[" CommaSep<ArrElem> "]" }
 Selector {
     Term "." Var |
     Term "[" Expression "]"
@@ -98,6 +103,6 @@ NumberTy { @specialize<PlainVar, "number"> }
     whitespace { @whitespace+ }
     PlainVar { $[a-zA-Z_]$[a-zA-Z0-9_]* }
     "(" ")" "{" "}" "[" "]" "!" "*" "/" "%" "+" "-" ">" "<" "<=" ">=" "is" "==" "!=" "&&" "||"
-    "," "." ":"
+    "," "." ":" "..."
     "=>"[@name=Arrow]
 }
