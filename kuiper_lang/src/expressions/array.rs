@@ -84,33 +84,11 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ArrayExpression {
 }
 
 impl ExpressionMeta for ArrayExpression {
-    fn num_children(&self) -> usize {
-        self.items.len()
-    }
-
-    fn get_child(&self, idx: usize) -> Option<&ExpressionType> {
-        self.items.get(idx).map(|e| match e {
+    fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+        Box::new(self.items.iter_mut().map(|e| match e {
             ArrayElement::Expression(x) => x,
             ArrayElement::Concat(x) => x,
-        })
-    }
-
-    fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType> {
-        self.items.get_mut(idx).map(|e| match e {
-            ArrayElement::Expression(x) => x,
-            ArrayElement::Concat(x) => x,
-        })
-    }
-
-    fn set_child(&mut self, idx: usize, item: ExpressionType) {
-        if idx >= self.items.len() {
-            return;
-        }
-        let rf = &mut self.items[idx];
-        match rf {
-            ArrayElement::Expression(x) => *x = item,
-            ArrayElement::Concat(x) => *x = item,
-        }
+        }))
     }
 }
 
@@ -121,9 +99,7 @@ impl ArrayExpression {
                 ArrayElement::Expression(x) => x,
                 ArrayElement::Concat(x) => x,
             };
-            if let ExpressionType::Lambda(lambda) = &expr {
-                return Err(BuildError::unexpected_lambda(&lambda.span));
-            }
+            expr.fail_if_lambda()?;
         }
         Ok(Self { items, span })
     }
