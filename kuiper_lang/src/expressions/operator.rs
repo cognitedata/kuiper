@@ -111,31 +111,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
 }
 
 impl ExpressionMeta for OpExpression {
-    fn num_children(&self) -> usize {
-        2
-    }
-
-    fn get_child(&self, idx: usize) -> Option<&ExpressionType> {
-        if idx > 1 {
-            None
-        } else {
-            Some(&self.elements[idx])
-        }
-    }
-
-    fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType> {
-        if idx > 1 {
-            None
-        } else {
-            Some(&mut self.elements[idx])
-        }
-    }
-
-    fn set_child(&mut self, idx: usize, item: ExpressionType) {
-        if idx > 1 {
-            return;
-        }
-        self.elements[idx] = Box::new(item);
+    fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+        Box::new(self.elements.iter_mut().map(|m| m.as_mut()))
     }
 }
 
@@ -146,11 +123,8 @@ impl OpExpression {
         rhs: ExpressionType,
         span: Span,
     ) -> Result<Self, BuildError> {
-        for item in &[&lhs, &rhs] {
-            if let ExpressionType::Lambda(lambda) = &item {
-                return Err(BuildError::unexpected_lambda(&lambda.span));
-            }
-        }
+        lhs.fail_if_lambda()?;
+        rhs.fail_if_lambda()?;
         Ok(Self {
             operator: op,
             descriptor: format!("'{}'", &op),
@@ -326,39 +300,14 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for UnaryOpExpression {
 }
 
 impl ExpressionMeta for UnaryOpExpression {
-    fn num_children(&self) -> usize {
-        1
-    }
-
-    fn get_child(&self, idx: usize) -> Option<&ExpressionType> {
-        if idx > 0 {
-            None
-        } else {
-            Some(&self.element)
-        }
-    }
-
-    fn get_child_mut(&mut self, idx: usize) -> Option<&mut ExpressionType> {
-        if idx > 0 {
-            None
-        } else {
-            Some(&mut self.element)
-        }
-    }
-
-    fn set_child(&mut self, idx: usize, item: ExpressionType) {
-        if idx > 0 {
-            return;
-        }
-        self.element = Box::new(item);
+    fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+        Box::new([self.element.as_mut()].into_iter())
     }
 }
 
 impl UnaryOpExpression {
     pub fn new(op: UnaryOperator, el: ExpressionType, span: Span) -> Result<Self, BuildError> {
-        if let ExpressionType::Lambda(lambda) = &el {
-            return Err(BuildError::unexpected_lambda(&lambda.span));
-        }
+        el.fail_if_lambda()?;
         Ok(Self {
             operator: op,
             descriptor: format!("'{}'", &op),
