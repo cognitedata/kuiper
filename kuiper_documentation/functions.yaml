@@ -345,7 +345,7 @@ functions:
       - '"hello world".split(" ")
         ->
         ["hello", "world"]'
-      - '"hello".split(" ")
+      - '"hello".split("")
         ->
         ["", "h", "e", "l", "l", "o", ""]'
 
