@@ -34,6 +34,7 @@ export const builtIns: KuiperInput[] = [
     { label: "select", description: "`select(x, (v(, k)) => ...)` or `select(x, [1, 2, 3])`: Returs a list or object where the lambda returns true. If the second argument is a list, the list values or object keys found in that list are used to select from the source." },
     { label: "string", description: "`string(x)`: Converts `x` into a string." },
     { label: "substring", description: "`substring(x, start(, end))`: Creates a substring of an input string `x` from `start` to `end`. If `end` is not specified, go from `start` to end of string. If `start` or `end` are negative, count from the end of the string." },
+    { label: "tail", description: "`tail(x(, n))`: Takes the last element of the list `x`. If `n` is given, takes the last `n` elements, and returns a list if `n` > 1." },
     { label: "to_unix_timestamp", description: "`to_unix_timestamp(x, f)`: Converts the string `x` into a millisecond unix timestamp using the format string `f`." },
     { label: "try_bool", description: "`try_bool(a, b)`: Try convert `a` to a boolean, if it fails, return `b`" },
     { label: "try_float", description: "`try_float(a, b)`: Try convert `a` to a float, if it fails, return `b`" },

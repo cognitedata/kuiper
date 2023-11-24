@@ -95,6 +95,49 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ChunkFunction {
     }
 }
 
+function_def!(TailFunction, "tail", 1, Some(2));
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for TailFunction {
+    fn resolve(
+        &'a self,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, TransformError> {
+        let source = self.args[0].resolve(state)?;
+
+        let arr = match source {
+            ResolveResult::Borrowed(Value::Array(a)) => a.clone(),
+            ResolveResult::Owned(Value::Array(a)) => a,
+            x => {
+                return Err(TransformError::new_incorrect_type(
+                    "Incorrect input to chunk",
+                    "array",
+                    TransformError::value_desc(x.as_ref()),
+                    &self.span,
+                ))
+            }
+        };
+
+        let number = match self.args.get(1) {
+            None => 1,
+            Some(exp) => {
+                let res = exp.resolve(state)?;
+                get_number_from_value("length", &res, &self.span)?.try_as_u64(&self.span)?
+            }
+        };
+
+        match number {
+            1 => Ok(ResolveResult::Owned(arr[arr.len() - 1].to_owned())),
+            range => {
+                let start = arr.len() - range as usize;
+                let end = arr.len();
+                Ok(ResolveResult::Owned(Value::Array(
+                    arr[start..end].to_owned(),
+                )))
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::compile_expression;
