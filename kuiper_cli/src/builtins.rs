@@ -2,10 +2,11 @@
 //
 // To change the content of this file, edit kuiper_documentation/functions.yaml instead.
 
-pub const BUILT_INS: [&str; 32] = [
+pub const BUILT_INS: [&str; 36] = [
     "atan2(",
     "case(",
     "ceil(",
+    "chars(",
     "chunk(",
     "concat(",
     "distinct_by(",
@@ -27,9 +28,12 @@ pub const BUILT_INS: [&str; 32] = [
     "reduce(",
     "round(",
     "select(",
+    "slice(",
+    "split(",
     "string(",
     "substring(",
     "to_unix_timestamp(",
+    "trim_whitespace(",
     "try_bool(",
     "try_float(",
     "try_int(",
