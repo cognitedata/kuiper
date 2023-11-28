@@ -174,8 +174,8 @@ functions:
       - log(16, 2) -> 4.0
 
   - name: map
-    signature: "`map(x, it => ...)`"
-    description: Applies the lambda function to every item in the list `x`.
+    signature: "`map(x, (it(, index)) => ...)`"
+    description: Applies the lambda function to every item in the list `x`. The lambda takes an optional second input which is the index of the item in the list.
     examples:
       - "[1, 2, 3, 4].map(number => number * 2) -> [2, 4, 6, 8]"
       - |
@@ -185,6 +185,10 @@ functions:
             "externalId": concat("prefix:", item.tag),
             "timestamp": now()
         })
+      - |
+        ["a", "b", "c"].map((item, index) => index)
+        ->
+        [1, 2, 3]
 
   - name: now
     signature: "`now()`"
