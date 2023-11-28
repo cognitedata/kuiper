@@ -42,6 +42,17 @@ Returns `x` rounded up to the nearest integer.
 ceil(16.2) -> 17
 ```
 
+## chars
+
+`chars(x)`
+
+Creates an array of characters from a string.
+
+**Code example**
+```
+"test".chars() -> ["t", "e", "s", "t"]
+```
+
 ## chunk
 
 `chunk(x, s)`
@@ -411,6 +422,34 @@ Returs a list or object where the lambda returns true. If the second argument is
 }
 ```
 
+## slice
+
+`slice(x, start(, end))`
+
+Creates a sub-array from an array `x` from `start` to `end`. If `end is not specified, go from `start` the end of the array. If `start` or `end` are negative, count from the end of the array.
+
+**Code examples**
+```
+[1, 2, 3, 4].slice(1, 3) -> [2, 3]
+```
+```
+[1, 2, 3, 4].slice(0, -3) -> [1]
+```
+
+## split
+
+`split(a, b)`
+
+Splits string `a` on any occurences of `b`. If `b` is an empty string, this will split on each character, including before the first and after the last.
+
+**Code examples**
+```
+"hello world".split(" ") -> ["hello", "world"]
+```
+```
+"hello".split("") -> ["", "h", "e", "l", "l", "o", ""]
+```
+
 ## string
 
 `string(x)`
@@ -468,6 +507,17 @@ to_unix_timestamp("2023-05-01 12:43:23", "%Y-%m-%d %H:%M:%S") -> 1682945003000
 {
     "timestamp": to_unix_timestamp(input.time, "%Y-%m-%d %H:%M:%S")
 }
+```
+
+## trim_whitespace
+
+`trim_whitespace(x)`
+
+Removes any whitespace from the start and end of `x`
+
+**Code example**
+```
+"  hello   ".trim_whitespace() -> "hello"
 ```
 
 ## try_bool

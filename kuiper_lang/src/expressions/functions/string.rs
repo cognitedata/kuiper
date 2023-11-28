@@ -133,11 +133,65 @@ fn get_byte_index(str: &str, idx: i64) -> Option<usize> {
     }
 }
 
+function_def!(SplitFunction, "split", 2);
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for SplitFunction {
+    fn resolve(
+        &'a self,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        let inp_value = self.args[0].resolve(state)?;
+        let inp_string = get_string_from_cow_value("split", inp_value, &self.span)?;
+
+        let pat_value = self.args[1].resolve(state)?;
+        let pat_string = get_string_from_cow_value("split", pat_value, &self.span)?;
+
+        Ok(ResolveResult::Owned(Value::Array(
+            inp_string
+                .split(pat_string.as_ref())
+                .map(|p| Value::String(p.to_string()))
+                .collect(),
+        )))
+    }
+}
+
+function_def!(TrimWhitespace, "trim_whitespace", 1);
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for TrimWhitespace {
+    fn resolve(
+        &'a self,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        let inp_value = self.args[0].resolve(state)?;
+        let inp_string = get_string_from_cow_value("split", inp_value, &self.span)?;
+
+        Ok(ResolveResult::Owned(inp_string.trim().to_string().into()))
+    }
+}
+
+function_def!(CharsFunction, "chars", 1);
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for CharsFunction {
+    fn resolve(
+        &'a self,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        let inp_value = self.args[0].resolve(state)?;
+        let inp_string = get_string_from_cow_value("split", inp_value, &self.span)?;
+
+        let res = inp_string
+            .chars()
+            .map(|c| Value::String(c.to_string()))
+            .collect();
+        Ok(ResolveResult::Owned(res))
+    }
+}
+
 // Once the function is defined it should be added to the main function enum in expressions/base.rs, and to the get_function_expression function.
 // We can just add a test in this file:
 #[cfg(test)]
 mod tests {
-    use serde_json::json;
+    use serde_json::{json, Value};
 
     use crate::compile_expression;
 
@@ -222,5 +276,93 @@ mod tests {
         assert_eq!("stri", res.get("s11").unwrap().as_str().unwrap());
         assert_eq!("strin", res.get("s12").unwrap().as_str().unwrap());
         assert_eq!("string", res.get("s13").unwrap().as_str().unwrap());
+    }
+
+    #[test]
+    pub fn test_split_function() {
+        let expr = compile_expression(
+            r#"{
+            "s1": "test some words".split(" "),
+            "s2": "test".split(""),
+            "s3": "testwowtestwowtest".split("wow"),
+        }"#,
+            &[],
+        )
+        .unwrap();
+
+        let res = expr.run(&[]).unwrap();
+
+        assert_eq!(
+            &Value::Array(vec![
+                "test".to_string().into(),
+                "some".to_string().into(),
+                "words".to_string().into()
+            ]),
+            res.get("s1").unwrap()
+        );
+        assert_eq!(
+            &Value::Array(vec![
+                "".to_string().into(),
+                "t".to_string().into(),
+                "e".to_string().into(),
+                "s".to_string().into(),
+                "t".to_string().into(),
+                "".to_string().into(),
+            ]),
+            res.get("s2").unwrap()
+        );
+        assert_eq!(
+            &Value::Array(vec![
+                "test".to_string().into(),
+                "test".to_string().into(),
+                "test".to_string().into()
+            ]),
+            res.get("s3").unwrap()
+        );
+    }
+
+    #[test]
+    pub fn test_trim_function() {
+        let expr = compile_expression(
+            r#"{
+            "s1": "test".trim_whitespace(),
+            "s2": "   test   ".trim_whitespace(),
+            "s3": "
+
+            test
+
+            ".trim_whitespace()
+        }"#,
+            &[],
+        )
+        .unwrap();
+
+        let res = expr.run(&[]).unwrap();
+
+        assert_eq!("test", res.get("s1").unwrap().as_str().unwrap());
+        assert_eq!("test", res.get("s2").unwrap().as_str().unwrap());
+        assert_eq!("test", res.get("s3").unwrap().as_str().unwrap());
+    }
+
+    #[test]
+    pub fn test_chars_function() {
+        let expr = compile_expression(
+            r#"
+        "test æøå".chars()
+        "#,
+            &[],
+        )
+        .unwrap();
+
+        let res = expr.run(&[]).unwrap();
+
+        let arr: Vec<_> = res
+            .as_array()
+            .unwrap()
+            .into_iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+
+        assert_eq!(vec!["t", "e", "s", "t", " ", "æ", "ø", "å"], arr);
     }
 }

@@ -234,6 +234,21 @@ pub enum FunctionType {
     Select(SelectFunction),
     DistinctBy(DistinctByFunction),
     Substring(SubstringFunction),
+    Split(SplitFunction),
+    TrimWhitespace(TrimWhitespace),
+    Slice(SliceFunction),
+    Chars(CharsFunction),
+}
+
+struct FunctionBuilder {
+    args: Vec<ExpressionType>,
+    pos: Span,
+}
+
+impl FunctionBuilder {
+    fn mk<T: FunctionExpression>(self) -> Result<T, BuildError> {
+        T::new(self.args, self.pos)
+    }
 }
 
 /// Create a function expression from its name, or return a parser exception if it has the wrong number of arguments,
@@ -243,42 +258,46 @@ pub fn get_function_expression(
     name: &str,
     args: Vec<ExpressionType>,
 ) -> Result<ExpressionType, BuildError> {
+    let b = FunctionBuilder { pos, args };
+
     let expr = match name {
-        "pow" => FunctionType::Pow(PowFunction::new(args, pos)?),
-        "log" => FunctionType::Log(LogFunction::new(args, pos)?),
-        "atan2" => FunctionType::Atan2(Atan2Function::new(args, pos)?),
-        "floor" => FunctionType::Floor(FloorFunction::new(args, pos)?),
-        "ceil" => FunctionType::Ceil(CeilFunction::new(args, pos)?),
-        "round" => FunctionType::Round(RoundFunction::new(args, pos)?),
-        "concat" => FunctionType::Concat(ConcatFunction::new(args, pos)?),
-        "string" => FunctionType::String(StringFunction::new(args, pos)?),
-        "int" => FunctionType::Int(IntFunction::new(args, pos)?),
-        "float" => FunctionType::Float(FloatFunction::new(args, pos)?),
+        "pow" => FunctionType::Pow(b.mk()?),
+        "log" => FunctionType::Log(b.mk()?),
+        "atan2" => FunctionType::Atan2(b.mk()?),
+        "floor" => FunctionType::Floor(b.mk()?),
+        "ceil" => FunctionType::Ceil(b.mk()?),
+        "round" => FunctionType::Round(b.mk()?),
+        "concat" => FunctionType::Concat(b.mk()?),
+        "string" => FunctionType::String(b.mk()?),
+        "int" => FunctionType::Int(b.mk()?),
+        "float" => FunctionType::Float(b.mk()?),
+        "try_float" => FunctionType::TryFloat(b.mk()?),
+        "try_int" => FunctionType::TryInt(b.mk()?),
+        "try_bool" => FunctionType::TryBool(b.mk()?),
+        "if" => FunctionType::If(b.mk()?),
+        "to_unix_timestamp" => FunctionType::ToUnixTime(b.mk()?),
+        "format_timestamp" => FunctionType::FormatTimestamp(b.mk()?),
+        "case" => FunctionType::Case(b.mk()?),
+        "pairs" => FunctionType::Pairs(b.mk()?),
+        "map" => FunctionType::Map(b.mk()?),
+        "flatmap" => FunctionType::FlatMap(b.mk()?),
+        "reduce" => FunctionType::Reduce(b.mk()?),
+        "filter" => FunctionType::Filter(b.mk()?),
+        "zip" => FunctionType::Zip(b.mk()?),
+        "length" => FunctionType::Length(b.mk()?),
+        "chunk" => FunctionType::Chunk(b.mk()?),
+        "now" => FunctionType::Now(b.mk()?),
+        "join" => FunctionType::Join(b.mk()?),
+        "except" => FunctionType::Except(b.mk()?),
+        "select" => FunctionType::Select(b.mk()?),
+        "distinct_by" => FunctionType::DistinctBy(b.mk()?),
+        "substring" => FunctionType::Substring(b.mk()?),
+        "split" => FunctionType::Split(b.mk()?),
+        "trim_whitespace" => FunctionType::TrimWhitespace(b.mk()?),
+        "slice" => FunctionType::Slice(b.mk()?),
+        "chars" => FunctionType::Chars(b.mk()?),
         "tail" => FunctionType::Tail(TailFunction::new(args, pos)?),
-        "try_float" => FunctionType::TryFloat(TryFloatFunction::new(args, pos)?),
-        "try_int" => FunctionType::TryInt(TryIntFunction::new(args, pos)?),
-        "try_bool" => FunctionType::TryBool(TryBoolFunction::new(args, pos)?),
-        "if" => FunctionType::If(IfFunction::new(args, pos)?),
-        "to_unix_timestamp" => FunctionType::ToUnixTime(ToUnixTimeFunction::new(args, pos)?),
-        "format_timestamp" => {
-            FunctionType::FormatTimestamp(FormatTimestampFunction::new(args, pos)?)
-        }
-        "case" => FunctionType::Case(CaseFunction::new(args, pos)?),
-        "pairs" => FunctionType::Pairs(PairsFunction::new(args, pos)?),
-        "map" => FunctionType::Map(MapFunction::new(args, pos)?),
-        "flatmap" => FunctionType::FlatMap(FlatMapFunction::new(args, pos)?),
-        "reduce" => FunctionType::Reduce(ReduceFunction::new(args, pos)?),
-        "filter" => FunctionType::Filter(FilterFunction::new(args, pos)?),
-        "zip" => FunctionType::Zip(ZipFunction::new(args, pos)?),
-        "length" => FunctionType::Length(LengthFunction::new(args, pos)?),
-        "chunk" => FunctionType::Chunk(ChunkFunction::new(args, pos)?),
-        "now" => FunctionType::Now(NowFunction::new(args, pos)?),
-        "join" => FunctionType::Join(JoinFunction::new(args, pos)?),
-        "except" => FunctionType::Except(ExceptFunction::new(args, pos)?),
-        "select" => FunctionType::Select(SelectFunction::new(args, pos)?),
-        "distinct_by" => FunctionType::DistinctBy(DistinctByFunction::new(args, pos)?),
-        "substring" => FunctionType::Substring(SubstringFunction::new(args, pos)?),
-        _ => return Err(BuildError::unrecognized_function(pos, name)),
+        _ => return Err(BuildError::unrecognized_function(b.pos, name)),
     };
     Ok(ExpressionType::Function(expr))
 }
