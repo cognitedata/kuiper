@@ -288,4 +288,28 @@ mod tests {
         assert_eq!(&Value::Array(vec![]), res.get("s7").unwrap());
         assert_eq!(&Value::Array(vec![]), res.get("s8").unwrap());
     }
+
+    #[test]
+    pub fn test_tail() {
+        let expr = compile_expression(
+            r#"{
+            "v1": [1, 2, 3, 4, 5, 6].tail(),
+            "v2": [1, 2, 3, 4].tail(2),
+            "v3": [1, 2, 3, 4, 5, 6, 7].tail(1)
+        }"#,
+            &[],
+        )
+        .unwrap();
+
+        let res = expr.run([]).unwrap();
+
+        let obj = res.as_object().unwrap();
+        assert_eq!(3, obj.len());
+        assert_eq!(6, obj.get("v1").unwrap().as_u64().unwrap());
+        assert_eq!(
+            &Value::Array(vec![3.into(), 4.into()]),
+            obj.get("v2").unwrap()
+        );
+        assert_eq!(7, obj.get("v3").unwrap().as_u64().unwrap());
+    }
 }
