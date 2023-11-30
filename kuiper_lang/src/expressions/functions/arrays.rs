@@ -109,7 +109,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TailFunction {
             ResolveResult::Owned(Value::Array(a)) => a,
             x => {
                 return Err(TransformError::new_incorrect_type(
-                    "Incorrect input to chunk",
+                    "Incorrect input to tail",
                     "array",
                     TransformError::value_desc(x.as_ref()),
                     &self.span,
@@ -121,7 +121,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TailFunction {
             None => 1,
             Some(exp) => {
                 let res = exp.resolve(state)?;
-                get_number_from_value("length", &res, &self.span)?.try_as_u64(&self.span)?
+                get_number_from_value("tail", &res, &self.span)?.try_as_u64(&self.span)?
             }
         };
 
