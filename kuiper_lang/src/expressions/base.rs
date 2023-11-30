@@ -212,6 +212,7 @@ pub enum FunctionType {
     String(StringFunction),
     Int(IntFunction),
     Float(FloatFunction),
+    Tail(TailFunction),
     TryFloat(TryFloatFunction),
     TryInt(TryIntFunction),
     TryBool(TryBoolFunction),
@@ -295,6 +296,7 @@ pub fn get_function_expression(
         "trim_whitespace" => FunctionType::TrimWhitespace(b.mk()?),
         "slice" => FunctionType::Slice(b.mk()?),
         "chars" => FunctionType::Chars(b.mk()?),
+        "tail" => FunctionType::Tail(b.mk()?),
         _ => return Err(BuildError::unrecognized_function(b.pos, name)),
     };
     Ok(ExpressionType::Function(expr))

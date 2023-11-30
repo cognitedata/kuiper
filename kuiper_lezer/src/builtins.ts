@@ -37,6 +37,7 @@ export const builtIns: KuiperInput[] = [
     { label: "split", description: "`split(a, b)`: Splits string `a` on any occurences of `b`. If `b` is an empty string, this will split on each character, including before the first and after the last." },
     { label: "string", description: "`string(x)`: Converts `x` into a string." },
     { label: "substring", description: "`substring(x, start(, end))`: Creates a substring of an input string `x` from `start` to `end`. If `end` is not specified, go from `start` to end of string. If `start` or `end` are negative, count from the end of the string." },
+    { label: "tail", description: "`tail(x(, n))`: Takes the last element of the list `x`. If `n` is given, takes the last `n` elements, and returns a list if `n` > 1." },
     { label: "to_unix_timestamp", description: "`to_unix_timestamp(x, f)`: Converts the string `x` into a millisecond unix timestamp using the format string `f`." },
     { label: "trim_whitespace", description: "`trim_whitespace(x)`: Removes any whitespace from the start and end of `x`" },
     { label: "try_bool", description: "`try_bool(a, b)`: Try convert `a` to a boolean, if it fails, return `b`" },

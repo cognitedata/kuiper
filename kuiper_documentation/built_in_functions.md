@@ -482,6 +482,20 @@ Creates a substring of an input string `x` from `start` to `end`. If `end` is no
 "hello world".substring(0, -3) -> "hello wo"
 ```
 
+## tail
+
+`tail(x(, n))`
+
+Takes the last element of the list `x`. If `n` is given, takes the last `n` elements, and returns a list if `n` > 1.
+
+**Code examples**
+```
+[1, 2, 3, 4, 5].tail() -> 5
+```
+```
+[1, 2, 3, 4, 5].tail(2) -> [4, 5]
+```
+
 ## to_unix_timestamp
 
 `to_unix_timestamp(x, f)`

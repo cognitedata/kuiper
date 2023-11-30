@@ -342,6 +342,14 @@ functions:
         ->
         "hello wo"'
 
+
+  - name: tail
+    signature: "`tail(x(, n))`"
+    description: "Takes the last element of the list `x`. If `n` is given, takes the last `n` elements, and returns a list if `n` > 1."
+    examples:
+      - "[1, 2, 3, 4, 5].tail() -> 5"
+      - "[1, 2, 3, 4, 5].tail(2) -> [4, 5]"
+
   - name: split
     signature: "`split(a, b)`"
     description: "Splits string `a` on any occurences of `b`. If `b` is an empty string, this will split on each character, including before the first and after the last."
