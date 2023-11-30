@@ -104,14 +104,13 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TailFunction {
     ) -> Result<ResolveResult<'c>, TransformError> {
         let source = self.args[0].resolve(state)?;
 
-        let arr = match source {
-            ResolveResult::Borrowed(Value::Array(a)) => a.clone(),
-            ResolveResult::Owned(Value::Array(a)) => a,
+        let arr = match source.as_ref() {
+            Value::Array(a) => a,
             x => {
                 return Err(TransformError::new_incorrect_type(
                     "Incorrect input to tail",
                     "array",
-                    TransformError::value_desc(x.as_ref()),
+                    TransformError::value_desc(x),
                     &self.span,
                 ))
             }
