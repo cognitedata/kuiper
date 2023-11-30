@@ -18,8 +18,12 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for MapFunction {
         match source.as_ref() {
             Value::Array(x) => {
                 let mut res = Vec::with_capacity(x.len());
-                for val in x {
-                    res.push(self.args[1].call(state, &[val])?.into_owned());
+                for (idx, val) in x.iter().enumerate() {
+                    res.push(
+                        self.args[1]
+                            .call(state, &[val, &Value::Number(idx.into())])?
+                            .into_owned(),
+                    );
                 }
                 Ok(ResolveResult::Owned(Value::Array(res)))
             }
@@ -43,10 +47,10 @@ impl LambdaAcceptFunction for MapFunction {
             return Err(BuildError::unexpected_lambda(&lambda.span));
         }
         let nargs = lambda.input_names.len();
-        if nargs != 1 {
+        if !(1..=2).contains(&nargs) {
             return Err(BuildError::n_function_args(
                 lambda.span.clone(),
-                "map takes a function with one argument",
+                "map takes a function with one or two arguments",
             ));
         }
         Ok(())
@@ -69,5 +73,19 @@ mod tests {
         assert_eq!(val_arr.get(1).unwrap().as_f64().unwrap(), 4.0);
         assert_eq!(val_arr.get(2).unwrap().as_f64().unwrap(), 9.0);
         assert_eq!(val_arr.get(3).unwrap().as_f64().unwrap(), 16.0);
+    }
+
+    #[test]
+    pub fn test_map_with_index() {
+        let expr =
+            compile_expression(r#"map(["a", "b", "c"], (it, index) => index)"#, &[]).unwrap();
+
+        let res = expr.run([]).unwrap();
+
+        let val_arr = res.as_array().unwrap();
+        assert_eq!(3, val_arr.len());
+        assert_eq!(0, val_arr.get(0).unwrap().as_u64().unwrap());
+        assert_eq!(1, val_arr.get(1).unwrap().as_u64().unwrap());
+        assert_eq!(2, val_arr.get(2).unwrap().as_u64().unwrap());
     }
 }

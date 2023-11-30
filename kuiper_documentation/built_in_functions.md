@@ -284,9 +284,9 @@ log(16, 2) -> 4.0
 
 ## map
 
-`map(x, it => ...)`
+`map(x, (it(, index)) => ...)`
 
-Applies the lambda function to every item in the list `x`.
+Applies the lambda function to every item in the list `x`. The lambda takes an optional second input which is the index of the item in the list.
 
 **Code examples**
 ```
@@ -299,6 +299,11 @@ input.data.map(item => {
     "externalId": concat("prefix:", item.tag),
     "timestamp": now()
 })
+```
+```
+["a", "b", "c"].map((item, index) => index)
+->
+[1, 2, 3]
 ```
 
 ## now

@@ -26,7 +26,7 @@ export const builtIns: KuiperInput[] = [
     { label: "join", description: "`join(a, b)`: Returns the union of the two objects `a` and `b`. If a key is present in both objects, `b` takes precedent." },
     { label: "length", description: "`length(x)`: Returns the length on the list, string or object `x`." },
     { label: "log", description: "`log(x, y)`: Returns the base `y` logarithm of `x`." },
-    { label: "map", description: "`map(x, it => ...)`: Applies the lambda function to every item in the list `x`." },
+    { label: "map", description: "`map(x, (it(, index)) => ...)`: Applies the lambda function to every item in the list `x`. The lambda takes an optional second input which is the index of the item in the list." },
     { label: "now", description: "`now()`: Returns the current time as a millisecond Unix timestamp, ie number of milliseconds since midnight 1/1/1970 UTC." },
     { label: "pairs", description: "`pairs(x)`: Convert the object `x` into a list of key/value pairs." },
     { label: "pow", description: "`pow(x, y)`: Returns `x` to the power of `y`" },
