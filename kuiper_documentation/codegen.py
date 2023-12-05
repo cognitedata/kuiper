@@ -11,10 +11,10 @@ def generate_docs(functions: list[dict[str, Any]], file: TextIO):
         """---
 pagination_next: null
 pagination_prev: null
-title: Built-in functions
+title: Functions
 ---
 
-# All built-in functions
+# Functions
 """
     )
     for function in functions:
