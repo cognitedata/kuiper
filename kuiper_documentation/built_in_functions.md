@@ -1,10 +1,10 @@
 ---
 pagination_next: null
 pagination_prev: null
-title: Built-in functions
+title: Functions
 ---
 
-# All built-in functions
+# Functions
 
 ## atan2
 
@@ -82,9 +82,9 @@ concat("Hello, ", "world!") -> "Hello, world!"
 
 ## distinct_by
 
-`distinct_by(x, s)`
+`distinct_by(x, (a(, b)) => ...)`
 
-Returns a list or object where the elements are distinct by the returned value of the given lambda function. The lambda function either takes list values, or object (value, key) pairs
+Returns a list or object where the elements are distinct by the returned value of the given lambda function. The lambda function either takes list values, or object (value, key) pairs.
 
 **Code example**
 ```
@@ -95,7 +95,9 @@ Returns a list or object where the elements are distinct by the returned value o
 
 `except(x, (v(, k)) => ...)` or `except(x, l)`
 
-Returns a list or object where the elements are distinct by the returned value of the given lambda function. The lambda function either takes list values, or object (value, key) pairs
+Returns a list or object where keys or entries maching the predicate have been removed.
+If the second argument is a lambda, it will be given the entry and if it returns `true`, the entry is removed.
+If the second argument is a list, any entry also found in this list will be removed.
 
 **Code examples**
 ```
@@ -131,7 +133,7 @@ Returns a list or object where the elements are distinct by the returned value o
 
 `filter(x, it => ...)`
 
-Removes any item from the list `x` where the lambda function returns a falsy value.
+Removes any item from the list `x` where the lambda function returns `false` or `null`.
 
 **Code examples**
 ```
@@ -197,7 +199,7 @@ floor(16.2) -> 16
 
 ## format_timestamp
 
-`format_timestamp(x)`
+`format_timestamp(x, f)`
 
 Converts the Unix timestamp `x` into a string representation based on the format `f`.
 
@@ -310,7 +312,7 @@ input.data.map(item => {
 
 `now()`
 
-Returns the current time as a millisecond Unix timestamp, ie number of milliseconds since midnight 1/1/1970 UTC.
+Returns the current time as a millisecond Unix timestamp, that is, the number of milliseconds since midnight 1/1/1970 UTC.
 
 **Code example**
 ```
@@ -500,7 +502,7 @@ Takes the last element of the list `x`. If `n` is given, takes the last `n` elem
 
 `to_unix_timestamp(x, f)`
 
-Converts the string `x` into a millisecond unix timestamp using the format string `f`.
+Converts the string `x` into a millisecond Unix timestamp using the format string `f`.
 
 The format is given using the table found [here](https://docs.rs/chrono/latest/chrono/format/strftime/index.html).
 
@@ -529,7 +531,7 @@ Removes any whitespace from the start and end of `x`
 
 `try_bool(a, b)`
 
-Try convert `a` to a boolean, if it fails, return `b`
+Try convert `a` to a boolean, if it fails, return `b`.
 
 **Code examples**
 ```
@@ -543,7 +545,7 @@ try_bool("foo", null) -> null
 
 `try_float(a, b)`
 
-Try convert `a` to a float, if it fails, return `b`
+Try convert `a` to a float, if it fails, return `b`.
 
 **Code examples**
 ```
@@ -557,7 +559,7 @@ try_float("4,5", null) -> 4.5
 
 `try_int(a, b)`
 
-Try convert `a` to a int, if it fails, return `b`
+Try convert `a` to a int, if it fails, return `b`.
 
 **Code examples**
 ```
@@ -575,5 +577,5 @@ Takes a number of arrays, call the given lambda function on each entry, and retu
 
 **Code example**
 ```
-zip([1, 2, 3], ['a', 'b', 'c'], (a, b) => concat(a, b)) -> ["1a", "2b", "3c"]
+zip([1, 2, 3], ["a", "b", "c"], (a, b) => concat(a, b)) -> ["1a", "2b", "3c"]
 ```

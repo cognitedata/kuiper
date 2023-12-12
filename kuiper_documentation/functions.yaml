@@ -36,14 +36,17 @@ functions:
         }
 
   - name: distinct_by
-    signature: "`distinct_by(x, s)`"
-    description: Returns a list or object where the elements are distinct by the returned value of the given lambda function. The lambda function either takes list values, or object (value, key) pairs
+    signature: "`distinct_by(x, (a(, b)) => ...)`"
+    description: Returns a list or object where the elements are distinct by the returned value of the given lambda function. The lambda function either takes list values, or object (value, key) pairs.
     examples:
       - "[1, 2, 3, 4, 5].distinct_by(x => x % 2) -> [1, 2]"
 
   - name: except
     signature: "`except(x, (v(, k)) => ...)` or `except(x, l)`"
-    description: Returns a list or object where the elements are distinct by the returned value of the given lambda function. The lambda function either takes list values, or object (value, key) pairs
+    description: |
+      Returns a list or object where keys or entries maching the predicate have been removed.
+      If the second argument is a lambda, it will be given the entry and if it returns `true`, the entry is removed.
+      If the second argument is a list, any entry also found in this list will be removed.
     examples:
       - |
         {
@@ -74,7 +77,7 @@ functions:
 
   - name: filter
     signature: "`filter(x, it => ...)`"
-    description: Removes any item from the list `x` where the lambda function returns a falsy value.
+    description: Removes any item from the list `x` where the lambda function returns `false` or `null`.
     examples:
       - "[1, 2, 3, 4].filter(item => item > 2) -> [3, 4]"
       - |
@@ -122,7 +125,7 @@ functions:
       - floor(16.2) -> 16
 
   - name: format_timestamp
-    signature: "`format_timestamp(x)`"
+    signature: "`format_timestamp(x, f)`"
     description: |
       Converts the Unix timestamp `x` into a string representation based on the format `f`.
 
@@ -192,7 +195,7 @@ functions:
 
   - name: now
     signature: "`now()`"
-    description: Returns the current time as a millisecond Unix timestamp, ie number of milliseconds since midnight 1/1/1970 UTC.
+    description: Returns the current time as a millisecond Unix timestamp, that is, the number of milliseconds since midnight 1/1/1970 UTC.
     examples:
       - |
         {
@@ -292,7 +295,7 @@ functions:
   - name: to_unix_timestamp
     signature: "`to_unix_timestamp(x, f)`"
     description: |
-      Converts the string `x` into a millisecond unix timestamp using the format string `f`.
+      Converts the string `x` into a millisecond Unix timestamp using the format string `f`.
 
       The format is given using the table found [here](https://docs.rs/chrono/latest/chrono/format/strftime/index.html).
     examples:
@@ -304,21 +307,21 @@ functions:
 
   - name: try_bool
     signature: "`try_bool(a, b)`"
-    description: Try convert `a` to a boolean, if it fails, return `b`
+    description: Try convert `a` to a boolean, if it fails, return `b`.
     examples:
       - try_bool("true", null) -> true
       - try_bool("foo", null) -> null
 
   - name: try_float
     signature: "`try_float(a, b)`"
-    description: Try convert `a` to a float, if it fails, return `b`
+    description: Try convert `a` to a float, if it fails, return `b`.
     examples:
       - try_float("6.2", 1.2) -> 6.2
       - try_float("4,5", null) -> 4.5
 
   - name: try_int
     signature: "`try_int(a, b)`"
-    description: Try convert `a` to a int, if it fails, return `b`
+    description: Try convert `a` to a int, if it fails, return `b`.
     examples:
       - try_int("6", 1) -> 6
       - try_int("4", null) -> 4
@@ -327,9 +330,9 @@ functions:
     signature: "`zip(x, y, ..., (i1, i2, ...) => ...)`"
     description: Takes a number of arrays, call the given lambda function on each entry, and return a single array from the result of each call. The returned array will be as long as the longest argument, null will be given for the shorter input arrays when they run out.
     examples:
-      - zip([1, 2, 3], ['a', 'b', 'c'], (a, b) => concat(a, b))
+      - 'zip([1, 2, 3], ["a", "b", "c"], (a, b) => concat(a, b))
         ->
-        ["1a", "2b", "3c"]
+        ["1a", "2b", "3c"]'
 
   - name: substring
     signature: "`substring(x, start(, end))`"
