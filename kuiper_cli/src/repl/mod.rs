@@ -1,4 +1,4 @@
-use crate::builtins::BUILT_INS;
+use crate::builtins::{FunctionDef, BUILT_INS, HELP};
 use colored::Colorize;
 use kuiper_lang::compile_expression;
 use rustyline::completion::Completer;
@@ -87,6 +87,7 @@ pub fn repl() {
         match line {
             Ok(expression) => {
                 let _ = readlines.add_history_entry(expression.as_str());
+
                 if expression.trim_end().eq("clear") {
                     println!("Clearing stored inputs");
                     index = 0;
