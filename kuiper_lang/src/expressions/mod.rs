@@ -12,9 +12,8 @@ mod transform_error;
 pub use array::{ArrayElement, ArrayExpression};
 pub use base::{
     get_function_expression, Constant, Expression, ExpressionExecutionState, ExpressionMeta,
-    ExpressionType, FunctionType, ResolveResult,
+    ExpressionType, ResolveResult,
 };
-pub use functions::FunctionExpression;
 pub use is_operator::{IsExpression, TypeLiteral};
 pub use lambda::LambdaExpression;
 pub use object::{ObjectElement, ObjectExpression};
