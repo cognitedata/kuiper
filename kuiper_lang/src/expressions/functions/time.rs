@@ -17,7 +17,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ToUnixTimeFunction {
         &'a self,
         state: &crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
-        let dat = self.args.get(0).unwrap().resolve(state)?;
+        let dat = self.args.first().unwrap().resolve(state)?;
         let val = get_string_from_cow_value(Self::INFO.name, dat, &self.span)?;
         let val_ref = val.as_ref();
         let fmt = self.args.get(1).unwrap().resolve(state)?;
