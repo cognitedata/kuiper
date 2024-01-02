@@ -11,4 +11,4 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 serde_json = "1.0.109"
 kuiper_lang = { path = "../kuiper_lang" }
-thiserror = "1.0.50"
+thiserror = "1.0.56"
