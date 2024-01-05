@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde_json = "1.0.110"
+serde_json = "1.0.111"
 kuiper_lang = { path = "../kuiper_lang" }
 clap = { version = "4.4.13", features = ["derive"] }
 rustyline = { version = "13.0.0", features = ["derive"] }
