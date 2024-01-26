@@ -51,19 +51,24 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for StringFunction {
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
         let dat = self.args[0].resolve(state)?;
-        let val = dat.as_ref();
-        let res = match val {
-            Value::Null => "".to_string(),
-            Value::Bool(x) => {
+        // let val = dat.as_ref();
+        let res = match dat {
+            ResolveResult::Owned(Value::Null) | ResolveResult::Borrowed(Value::Null) => {
+                "".to_string()
+            }
+            ResolveResult::Owned(Value::Bool(ref x))
+            | ResolveResult::Borrowed(Value::Bool(ref x)) => {
                 if *x {
                     "true".to_string()
                 } else {
                     "false".to_string()
                 }
             }
-            Value::Number(x) => x.to_string(),
-            Value::String(s) => s.to_string(),
-            Value::Array(_) | Value::Object(_) => val.to_string(),
+            ResolveResult::Owned(Value::Number(ref x))
+            | ResolveResult::Borrowed(Value::Number(ref x)) => x.to_string(),
+            ResolveResult::Owned(Value::String(s)) => s,
+            ResolveResult::Borrowed(Value::String(s)) => s.to_owned(),
+            x => x.as_ref().to_string(),
         };
         Ok(ResolveResult::Owned(Value::String(res)))
     }

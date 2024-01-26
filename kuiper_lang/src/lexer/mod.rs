@@ -45,10 +45,16 @@ pub struct Lexer<'input> {
 impl<'input> Lexer<'input> {
     pub fn new(input: &'input str) -> Self {
         let mut stream = Token::lexer(input).spanned();
-        let last = stream.next().map(|(token, span)| match token {
-            Ok(t) => Ok((span.start, t, span.end)),
-            Err(_) => Err(LexerError::InvalidToken(span)),
-        });
+
+        let last = loop {
+            match stream.next() {
+                Some((Ok(Token::Comment), _)) => (),
+                Some((Ok(t), span)) => break Some(Ok((span.start, t, span.end))),
+                Some((Err(_), span)) => break Some(Err(LexerError::InvalidToken(span))),
+                None => break None,
+            }
+        };
+
         Self {
             token_stream: stream,
             last,
