@@ -364,7 +364,7 @@ mod tests {
         let arr: Vec<_> = res
             .as_array()
             .unwrap()
-            .into_iter()
+            .iter()
             .map(|v| v.as_str().unwrap())
             .collect();
 

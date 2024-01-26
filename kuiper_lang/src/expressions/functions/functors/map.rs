@@ -69,7 +69,7 @@ mod tests {
 
         let val_arr = res.as_array().unwrap();
         assert_eq!(4, val_arr.len());
-        assert_eq!(val_arr.get(0).unwrap().as_f64().unwrap(), 1.0);
+        assert_eq!(val_arr.first().unwrap().as_f64().unwrap(), 1.0);
         assert_eq!(val_arr.get(1).unwrap().as_f64().unwrap(), 4.0);
         assert_eq!(val_arr.get(2).unwrap().as_f64().unwrap(), 9.0);
         assert_eq!(val_arr.get(3).unwrap().as_f64().unwrap(), 16.0);
@@ -84,7 +84,7 @@ mod tests {
 
         let val_arr = res.as_array().unwrap();
         assert_eq!(3, val_arr.len());
-        assert_eq!(0, val_arr.get(0).unwrap().as_u64().unwrap());
+        assert_eq!(0, val_arr.first().unwrap().as_u64().unwrap());
         assert_eq!(1, val_arr.get(1).unwrap().as_u64().unwrap());
         assert_eq!(2, val_arr.get(2).unwrap().as_u64().unwrap());
     }
