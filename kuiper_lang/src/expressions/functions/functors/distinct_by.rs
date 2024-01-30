@@ -101,7 +101,7 @@ mod tests {
 
         let val_arr = res.as_array().unwrap();
         assert_eq!(val_arr.len(), 2);
-        assert_eq!(val_arr.get(0).unwrap(), "sheep");
+        assert_eq!(val_arr.first().unwrap(), "sheep");
         assert_eq!(val_arr.get(1).unwrap(), "apple");
     }
 

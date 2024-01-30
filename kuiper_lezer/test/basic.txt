@@ -117,3 +117,22 @@ Result(Expression(Term(String)))
 ==>
 
 Result(Expression(Term(String)), BlockComment, BlockComment)
+
+# Line comment
+
+'test // not a comment' // rest is a comment even when it contains math 1 + 1
++ // comment here is fine
+// and here
+1
+// and here
+
+==>
+
+Result(Expression(Operator(
+    Expression(Term(String)),
+    LineComment,
+    ArithOp("+"),
+    LineComment,
+    LineComment,
+    Expression(Term(Number)),
+)), LineComment)

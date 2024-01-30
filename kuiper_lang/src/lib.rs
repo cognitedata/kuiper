@@ -570,4 +570,27 @@ mod tests {
             assert_eq!(idx as u64 + 1, it.as_u64().unwrap());
         }
     }
+
+    #[test]
+    pub fn test_comments() {
+        let expr = compile_expression(
+            r#"
+        1 + /* hello there, this is a comment */ - 5
+        + 3
+        // hello block comment here, no math going on 1 + 1
+        + 2
+        "#,
+            &[],
+        )
+        .unwrap();
+        let r = expr.run(&[]).unwrap().into_owned();
+        assert_eq!(1, r.as_i64().unwrap());
+    }
+
+    #[test]
+    pub fn test_comments_2() {
+        let expr = compile_expression(r#"/* some comment */ {}"#, &[]).unwrap();
+        let r = expr.run(&[]).unwrap().into_owned();
+        assert_eq!(0, r.as_object().unwrap().len());
+    }
 }

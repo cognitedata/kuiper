@@ -1,6 +1,6 @@
 @top Result { Expression }
 
-@skip { whitespace | BlockComment }
+@skip { whitespace | BlockComment | LineComment }
 
 Expression { Operator | Term }
 
@@ -69,6 +69,7 @@ LogicOp<expr> { expr }
 CompareOp<expr> { expr }
 
 BlockComment { blockComment }
+LineComment { lineComment }
 
 @external tokens doubleQuoteStringContent from "./tokens.js" { doubleQuoteStringContent }
 @external tokens singleQuoteStringContent from "./tokens.js" { singleQuoteStringContent }
@@ -86,6 +87,7 @@ NumberTy { @specialize<PlainVar, "number"> }
 
 
 @external tokens blockComment from "./tokens.js" { blockComment }
+@external tokens lineComment from "./tokens.js" { lineComment }
 
 @skip {} {
   String {

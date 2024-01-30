@@ -87,7 +87,7 @@ mod tests {
         let res = expr.run([]).unwrap();
         let val_arr = res.as_array().unwrap();
         assert_eq!(4, val_arr.len());
-        let obj = val_arr.get(0).unwrap().as_object().unwrap();
+        let obj = val_arr.first().unwrap().as_object().unwrap();
         assert_eq!(1, obj.get("v1").unwrap().as_u64().unwrap());
         assert_eq!(4, obj.get("v2").unwrap().as_u64().unwrap());
         let obj = val_arr.get(1).unwrap().as_object().unwrap();

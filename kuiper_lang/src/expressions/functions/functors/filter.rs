@@ -72,7 +72,7 @@ mod tests {
 
         let val_arr = res.as_array().unwrap();
         assert_eq!(3, val_arr.len());
-        assert_eq!(val_arr.get(0).unwrap().as_u64().unwrap(), 4);
+        assert_eq!(val_arr.first().unwrap().as_u64().unwrap(), 4);
         assert_eq!(val_arr.get(1).unwrap().as_u64().unwrap(), 5);
         assert_eq!(val_arr.get(2).unwrap().as_u64().unwrap(), 6);
     }
