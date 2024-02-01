@@ -180,7 +180,7 @@ functions:
     signature: "`map(x, (it(, index)) => ...)`"
     description: |
       Applies the lambda function to every item in the list `x`. The lambda takes an optional second input which is the index of the item in the list.
-    
+
       If applied to an object, the first input is the value, and the second is the key. The result is the new value.
     examples:
       - "[1, 2, 3, 4].map(number => number * 2) -> [2, 4, 6, 8]"
