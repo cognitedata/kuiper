@@ -290,6 +290,8 @@ log(16, 2) -> 4.0
 
 Applies the lambda function to every item in the list `x`. The lambda takes an optional second input which is the index of the item in the list.
 
+If applied to an object, the first input is the value, and the second is the key. The result is the new value.
+
 **Code examples**
 ```
 [1, 2, 3, 4].map(number => number * 2) -> [2, 4, 6, 8]
@@ -306,6 +308,11 @@ input.data.map(item => {
 ["a", "b", "c"].map((item, index) => index)
 ->
 [1, 2, 3]
+```
+```
+{"a": 1, "b": 2, "c": 3}.map((value, key) => concat(value, key))
+->
+{"a": "1a", "b": "2b", "c": "3c"}
 ```
 
 ## now
@@ -496,6 +503,26 @@ Takes the last element of the list `x`. If `n` is given, takes the last `n` elem
 ```
 ```
 [1, 2, 3, 4, 5].tail(2) -> [4, 5]
+```
+
+## to_object
+
+`to_object(x, val => ...(, val => ...))`
+
+Converts the array `x` into an object by producing the key and value from two lambdas.
+
+The first lambda produces the key, and the second (optional) produces the value. If the second is
+left out, the input is used as a value directly.
+
+**Code examples**
+```
+[1, 2, 3].to_object(v => string(v + 1)) -> { "2": 1, "3": 2, "4": 3 }
+```
+```
+[1, 2, 3].to_object(v => string(v + 1), v => v - 1) -> { "2": 0, "3": 1, "4": 2 }
+```
+```
+{"a": 1, "b": 2, "c": 3}.pairs().to_object(pair => pair.key, pair => pair.value) -> {"a": 1, "b": 2, "c": 3}
 ```
 
 ## to_unix_timestamp
