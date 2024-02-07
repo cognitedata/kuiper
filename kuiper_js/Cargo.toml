@@ -15,7 +15,7 @@ default = []
 panic_hook = ["console_error_panic_hook"]
 
 [dependencies]
-wasm-bindgen = "0.2.90"
+wasm-bindgen = "0.2.91"
 kuiper_lang = { path = "../kuiper_lang", features = ["completions"] }
 serde_json = { version = "1.0.113" }
 
@@ -27,7 +27,7 @@ console_error_panic_hook = { version = "0.1.7", optional = true }
 gloo-utils = { version = "0.2.0", features = ["serde"] }
 
 [dev-dependencies]
-wasm-bindgen-test = "0.3.40"
+wasm-bindgen-test = "0.3.41"
 
 [package.metadata.wasm-pack.profile.profiling]
 wasm-opt = ['-Oz']
