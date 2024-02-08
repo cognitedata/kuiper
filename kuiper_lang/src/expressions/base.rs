@@ -4,6 +4,8 @@ use std::{borrow::Cow, fmt::Display};
 
 use crate::{compiler::BuildError, NULL_CONST};
 
+use self::objects::ToObjectFunction;
+
 use super::{
     functions::{
         distinct_by::DistinctByFunction, except::ExceptFunction, filter::FilterFunction,
@@ -238,6 +240,7 @@ pub enum FunctionType {
     TrimWhitespace(TrimWhitespace),
     Slice(SliceFunction),
     Chars(CharsFunction),
+    ToObject(ToObjectFunction),
 }
 
 struct FunctionBuilder {
@@ -297,6 +300,7 @@ pub fn get_function_expression(
         "slice" => FunctionType::Slice(b.mk()?),
         "chars" => FunctionType::Chars(b.mk()?),
         "tail" => FunctionType::Tail(b.mk()?),
+        "to_object" => FunctionType::ToObject(b.mk()?),
         _ => return Err(BuildError::unrecognized_function(b.pos, name)),
     };
     Ok(ExpressionType::Function(expr))
