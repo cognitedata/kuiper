@@ -1,4 +1,4 @@
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use crate::{
     compiler::BuildError,
@@ -26,6 +26,16 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for MapFunction {
                     );
                 }
                 Ok(ResolveResult::Owned(Value::Array(res)))
+            }
+            Value::Object(x) => {
+                let mut res = Map::with_capacity(x.len());
+                for (k, v) in x {
+                    let new_val = self.args[1]
+                        .call(state, &[v, &Value::String(k.to_owned())])?
+                        .into_owned();
+                    res.insert(k.to_owned(), new_val);
+                }
+                Ok(ResolveResult::Owned(Value::Object(res)))
             }
             x => Err(TransformError::new_incorrect_type(
                 "Incorrect input to map",
@@ -87,5 +97,41 @@ mod tests {
         assert_eq!(0, val_arr.first().unwrap().as_u64().unwrap());
         assert_eq!(1, val_arr.get(1).unwrap().as_u64().unwrap());
         assert_eq!(2, val_arr.get(2).unwrap().as_u64().unwrap());
+    }
+
+    #[test]
+    pub fn test_map_object() {
+        let expr = compile_expression(
+            r#"
+        { "v1": 1, "v2": 2, "v3": 3 }.map(val => val * 2)
+        "#,
+            &[],
+        )
+        .unwrap();
+
+        let res = expr.run([]).unwrap();
+
+        let val_obj = res.as_object().unwrap();
+        assert_eq!(2, val_obj["v1"].as_i64().unwrap());
+        assert_eq!(4, val_obj["v2"].as_i64().unwrap());
+        assert_eq!(6, val_obj["v3"].as_i64().unwrap());
+    }
+
+    #[test]
+    pub fn test_map_object_with_key() {
+        let expr = compile_expression(
+            r#"
+        { "v1": 1, "v2": 2, "v3": 3 }.map((val, key) => concat(val, key))
+        "#,
+            &[],
+        )
+        .unwrap();
+
+        let res = expr.run([]).unwrap();
+
+        let val_obj = res.as_object().unwrap();
+        assert_eq!("1v1", val_obj["v1"].as_str().unwrap());
+        assert_eq!("2v2", val_obj["v2"].as_str().unwrap());
+        assert_eq!("3v3", val_obj["v3"].as_str().unwrap());
     }
 }
