@@ -156,19 +156,19 @@ Result(Expression(Operator(
         Expression(Operator(
             Expression(Term(Number)),
             CompareOp("is"),
-            NumberTy
+            Type(NumberTy)
         ))
         LogicOp("&&"),
         Expression(Operator(
             Expression(Term(String)),
             CompareOp("is"),
-            StringTy
+            Type(StringTy)
         ))
     )),
     LogicOp("&&"),
     Expression(Operator(
         Expression(Term(Null)),
         CompareOp("is"),
-        Null
+        Type(Null)
     ))
 )))
