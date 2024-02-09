@@ -35,10 +35,10 @@ Result(Expression(Term(FunctionCall(
             ArrElem(Expression(Term(Number)))
         ))))),
         FunctionArg(Lambda(
-            Var(PlainVar),
+            Variable(Var(PlainVar)),
             Arrow,
             Expression(Operator(
-                Expression(Term(Var(PlainVar))),
+                Expression(Term(Variable(Var(PlainVar)))),
                 ArithOp,
                 Expression(Term(Number))
             ))
@@ -61,14 +61,14 @@ Result(Expression(Term(FunctionCall(
     CommaSep(
         FunctionArg(Lambda(
             CommaSep(
-                Var(PlainVar),
-                Var(PlainVar)
+                Variable(Var(PlainVar)),
+                Variable(Var(PlainVar))
             ),
             Arrow,
             Expression(Operator(
-                Expression(Term(Var(PlainVar))),
+                Expression(Term(Variable(Var(PlainVar)))),
                 ArithOp,
-                Expression(Term(Var(PlainVar)))
+                Expression(Term(Variable(Var(PlainVar))))
             ))
         ))
     )

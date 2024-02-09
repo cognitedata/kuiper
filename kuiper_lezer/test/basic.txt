@@ -60,7 +60,7 @@ hi_imavariable
 
 ==>
 
-Result(Expression(Term(Var(PlainVar))))
+Result(Expression(Term(Variable(Var(PlainVar)))))
 
 # Variable like kw
 
@@ -68,7 +68,7 @@ true_hi_im_avariable
 
 ==>
 
-Result(Expression(Term(Var(PlainVar))))
+Result(Expression(Term(Variable(Var(PlainVar)))))
 
 # Variable like operator
 
@@ -76,7 +76,7 @@ is_hi_im_avariable
 
 ==>
 
-Result(Expression(Term(Var(PlainVar))))
+Result(Expression(Term(Variable(Var(PlainVar)))))
 
 # String
 
@@ -92,7 +92,7 @@ Result(Expression(Term(String)))
 
 ==>
 
-Result(Expression(Term(Var)))
+Result(Expression(Term(Variable(Var))))
 
 # Fancy string
 
