@@ -1,30 +1,35 @@
-import { LRLanguage, LanguageSupport, bracketMatching, delimitedIndent, foldInside, foldNodeProp, indentNodeProp } from "@codemirror/language";
-import {parser} from "./kuiper.grammar"
-import {styleTags, tags} from "@lezer/highlight"
-import {Completion, completeFromList, ifNotIn} from "@codemirror/autocomplete";
+import { Completion, completeFromList, ifNotIn } from "@codemirror/autocomplete";
+import { LRLanguage, LanguageSupport, delimitedIndent, foldInside, foldNodeProp, indentNodeProp } from "@codemirror/language";
+import { styleTags, tags } from "@lezer/highlight";
+import { KuiperInput, builtIns } from "./builtins";
 import { dontComplete, varCompletionSource } from "./complete";
-import {builtIns, KuiperInput} from "./builtins";
+import { parser } from "./kuiper.grammar";
 
-export {KuiperInput};
+export { KuiperInput };
 
 export const kuiperLanguage = LRLanguage.define({
+    name: "kuiper",
     parser: parser.configure({
         props: [styleTags({
             'Number': tags.number,
-            'Var PlainVar': tags.variableName,
+            'Variable/...': tags.variableName,
+            'FunctionName/...': tags.function(tags.variableName),
             'String': tags.string,
             'Null': tags.null,
-            '{ }': tags.brace,
-            '[ ]': tags.bracket,
-            '( )': tags.paren,
-            ':': tags.punctuation,
-            ".": tags.derefOperator,
-            ",": tags.separator,
+            '\"{\" \"}\"': tags.brace,
+            '\"[\" \"]\"': tags.bracket,
+            '\"(\" \")\"': tags.paren,
+            '\":\"': tags.punctuation,
+            "\".\"": tags.derefOperator,
+            "\",\"": tags.separator,
+            "Boolean/...": tags.bool,
             "BlockComment": tags.blockComment,
-            "CompareOp": tags.compareOperator,
-            "ArithOp": tags.arithmeticOperator,
-            "LogicOp": tags.logicOperator,
-            "Arrow": tags.function(tags.punctuation)
+            "LineComment": tags.lineComment,
+            "CompareOp/...": tags.compareOperator,
+            "ArithOp/...": tags.arithmeticOperator,
+            "LogicOp/...": tags.logicOperator,
+            "Arrow": tags.function(tags.punctuation),
+            "Type/...": tags.typeName,
         }), indentNodeProp.add({
             Object: delimitedIndent({ closing: "}" }),
             Array: delimitedIndent({ closing: "]" }),
