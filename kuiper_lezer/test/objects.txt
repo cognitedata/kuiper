@@ -49,5 +49,5 @@ Result(Expression(Term(Object(CommaSep(
     ObjElem(Expression(Term(Object(CommaSep(
         ObjElem(Expression(Term(String)), Expression(Term(String)))
     ))))),
-    ObjElem(Expression(Term(Var(PlainVar))))
+    ObjElem(Expression(Term(Variable(Var(PlainVar)))))
 )))))

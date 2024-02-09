@@ -9,12 +9,12 @@ Result(Expression(Term(
         Term(Selector(
             Term(Selector(
                 Term(Selector(
-                    Term(Var(PlainVar)),
-                    Var(PlainVar)
+                    Term(Variable(Var(PlainVar))),
+                    Variable(Var(PlainVar))
                 )),
                 Expression(Term(String))
             )),
-            Var(PlainVar)
+            Variable(Var(PlainVar))
         )),
         Expression(Term(Number))
     )
