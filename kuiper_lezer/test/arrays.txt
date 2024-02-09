@@ -11,5 +11,5 @@ Result(Expression(Term(Array(CommaSep(
         ArrElem(Expression(Term(Number))),
         ArrElem(Expression(Term(Number)))
     ))))),
-    ArrElem(Expression(Term(Var(PlainVar))))
+    ArrElem(Expression(Term(Variable(Var(PlainVar)))))
 )))))

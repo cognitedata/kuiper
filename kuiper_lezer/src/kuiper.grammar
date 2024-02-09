@@ -6,9 +6,13 @@ Expression { Operator | Term }
 
 CommaSep<Content> { "" | Content ("," Content)* ","? }
 
+Variable {
+    Var
+}
+
 Lambda {
-    ("(" CommaSep<Var> ~lambda ")" "=>" Expression) |
-    (Var "=>" Expression)
+    ("(" CommaSep<Variable> ~lambda ")" "=>" Expression) |
+    (Variable "=>" Expression)
 }
 
 FunctionArg {
@@ -37,14 +41,14 @@ FunctionCall {
 Object { "{" CommaSep<ObjElem> "}" }
 Array { "[" CommaSep<ArrElem> "]" }
 Selector {
-    Term "." Var |
+    Term "." Variable |
     Term "[" Expression "]"
 }
 
 Term {
     Number | Boolean | String | Null |
     FunctionCall |
-    Var |
+    Variable |
     Array |
     Object |
     Selector |
@@ -58,7 +62,7 @@ Operator {
     Expression !t7 (ArithOp<"*"> | ArithOp<"/"> | ArithOp<"%">) Expression |
     Expression !t6 (ArithOp<"+"> | ArithOp<"-">) Expression |
     Expression !t5 (CompareOp<">"> | CompareOp<"<"> | CompareOp<">="> | CompareOp<"<=">) Expression |
-    Expression !t5 CompareOp<"is"> (Null | IntTy | BoolTy | FloatTy | StringTy | ArrayTy | ObjectTy | NumberTy) |
+    Expression !t5 CompareOp<"is"> Type |
     Expression !t4 (CompareOp<"=="> | CompareOp<"!=">) Expression |
     Expression !t3 (LogicOp<"&&">) Expression |
     Expression !t2 (LogicOp<"||">) Expression
@@ -76,6 +80,10 @@ LineComment { lineComment }
 @external tokens identifierContent from "./tokens.js" { identifierContent }
 
 Boolean { @specialize<PlainVar, "true"> | @specialize<PlainVar, "false"> }
+
+Type {
+    Null | IntTy | BoolTy | FloatTy | StringTy | ArrayTy | ObjectTy | NumberTy
+}
 Null { @specialize<PlainVar, "null"> }
 IntTy { @specialize<PlainVar, "int"> }
 BoolTy { @specialize<PlainVar, "bool"> }
