@@ -1,68 +1,14 @@
-use crate::builtins::{FunctionDef, BUILT_INS, HELP};
+mod cmd_helper;
+mod io;
+mod magic;
+
 use colored::Colorize;
 use kuiper_lang::compile_expression;
-use rustyline::completion::Completer;
+
 use rustyline::error::ReadlineError;
-use rustyline::highlight::Highlighter;
-use rustyline::{CompletionType, Config, Context, Editor, Helper};
-use rustyline::{Hinter, Validator};
+use rustyline::{CompletionType, Config, Editor};
 
-#[derive(Hinter, Validator, Helper)]
-struct KuiperHelper {}
-
-impl KuiperHelper {
-    pub fn new() -> Self {
-        KuiperHelper {}
-    }
-}
-
-fn is_separator(c: Option<char>) -> bool {
-    match c {
-        None | Some(',') | Some(' ') | Some(':') | Some('\n') | Some(')') | Some('(')
-        | Some('"') => true,
-        Some(_) => false,
-    }
-}
-
-impl Completer for KuiperHelper {
-    type Candidate = String;
-
-    fn complete(
-        &self,
-        line: &str,
-        pos: usize,
-        _ctx: &Context<'_>,
-    ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
-        let (mut low, mut high) = (pos.saturating_sub(1), pos);
-
-        while !is_separator(line.chars().nth(low)) && low > 0 {
-            low -= 1;
-        }
-        if low != 0 {
-            low += 1;
-        }
-        while !is_separator(line.chars().nth(high)) {
-            high += 1;
-        }
-
-        let word: String = line.chars().skip(low).take(high - low).collect();
-        let candidates = BUILT_INS
-            .into_iter()
-            .filter(|s| s.starts_with(&word))
-            .map(String::from)
-            .collect();
-
-        Ok((low, candidates))
-    }
-}
-
-impl Highlighter for KuiperHelper {}
-
-macro_rules! printerr {
-    ( $description:expr, $error:expr ) => {
-        println!("{} {} {}", "Error:".red(), $description, $error);
-    };
-}
+use crate::repl::magic::apply_magic_function;
 
 pub fn repl() {
     let mut data = Vec::new();
@@ -74,28 +20,29 @@ pub fn repl() {
         .build();
 
     let mut readlines = Editor::with_config(editor_config).unwrap();
-    readlines.set_helper(Some(KuiperHelper::new()));
+    readlines.set_helper(Some(cmd_helper::KuiperHelper::new()));
 
     let mut history_path = dirs::home_dir().unwrap();
     history_path.push(".kuiper_history");
 
     let _ = readlines.load_history(&history_path);
 
+    println!("Kuiper REPL version {}", env!("CARGO_PKG_VERSION"));
+    println!("Type /help for a list of available commands.");
+
     loop {
+        println!();
         let line = readlines.readline("kuiper> ");
 
         match line {
             Ok(expression) => {
                 let _ = readlines.add_history_entry(expression.as_str());
 
-                if expression.trim_end().eq("clear") {
-                    println!("Clearing stored inputs");
-                    index = 0;
-                    inputs.clear();
-                    data.clear();
-                    continue;
-                } else if expression.trim_end().eq("exit") {
-                    break;
+                if expression.starts_with('/') {
+                    match apply_magic_function(expression, &mut data, &mut inputs, &mut index) {
+                        magic::ReplResult::Continue => continue,
+                        magic::ReplResult::Stop => break,
+                    }
                 }
 
                 let chunk_id = format!("var{index}");
@@ -106,7 +53,7 @@ pub fn repl() {
                 let expr = match res {
                     Ok(x) => x,
                     Err(e) => {
-                        printerr!("", e);
+                        io::printerr!("", e);
                         continue;
                     }
                 };
@@ -119,22 +66,21 @@ pub fn repl() {
                         data.push(x.into_owned());
                     }
                     Err(e) => {
-                        printerr!("Transform failed:", e);
+                        io::printerr!("Transform failed:", e);
                         continue;
                     }
                 }
                 index += 1;
-                println!();
             }
 
             Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => break,
 
             Err(error) => {
-                printerr!("Unexpected error:", error);
+                io::printerr!("Unexpected error:", error);
                 break;
             }
         }
-
-        let _ = readlines.save_history(&history_path);
     }
+
+    let _ = readlines.save_history(&history_path);
 }
