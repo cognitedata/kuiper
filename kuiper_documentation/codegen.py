@@ -43,11 +43,47 @@ def generate_warning_header(file: TextIO, comment_tag="//"):
 def generate_repl_list(functions: list[dict[str, Any]], file: TextIO):
     generate_warning_header(file)
 
-    file.write(f"pub const BUILT_INS: [&str; {len(functions)+1}] = [\n")
+    file.write(
+        """use lazy_static::lazy_static;
+use std::collections::HashMap;
+
+"""
+    )
+
+    file.write(f"pub const BUILT_INS: [&str; {len(functions)}] = [\n")
     for function in functions:
         file.write(f"    \"{function['name'].strip()}(\",\n")
-    file.write('    "input",\n')
     file.write("];\n")
+
+    file.write(
+        """
+pub struct FunctionDef {
+    pub signature: &'static str,
+    pub description: &'static str,
+}
+
+lazy_static! {
+    pub static ref HELP: HashMap<&'static str, FunctionDef> = HashMap::from([
+"""
+    )
+
+    for function in functions:
+        file.write(
+            f"""
+        (
+            "{function['name']}",
+            FunctionDef {{
+                signature: "{function['signature'].strip('`')}",
+                description: "{function['description'].strip()}",
+            }}
+        ),"""
+        )
+
+    file.write(
+        """
+    ]);
+}\n"""
+    )
 
 
 def generate_js_list(functions: list[dict[str, Any]], file: TextIO):
