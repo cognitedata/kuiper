@@ -31,6 +31,7 @@ export const builtIns: KuiperInput[] = [
     { label: "pairs", description: "`pairs(x)`: Convert the object `x` into a list of key/value pairs." },
     { label: "pow", description: "`pow(x, y)`: Returns `x` to the power of `y`" },
     { label: "reduce", description: "`reduce(x, (acc, val) => ..., init)`: Returns the value obtained by reducing the list `x`. The lambda function is called once for each element in the list `val`, and the returned value is passed as `acc` in the next iteration. The `init` will be given as the initial `acc` for the first call to the lambda function." },
+    { label: "replace", description: "`replace(a, b, c)`: Replaces a string with another string" },
     { label: "round", description: "`round(x)`: Returns `x` rounded to the nearest integer." },
     { label: "select", description: "`select(x, (v(, k)) => ...)` or `select(x, [1, 2, 3])`: Returs a list or object where the lambda returns true. If the second argument is a list, the list values or object keys found in that list are used to select from the source." },
     { label: "slice", description: "`slice(x, start(, end))`: Creates a sub-array from an array `x` from `start` to `end`. If `end is not specified, go from `start` the end of the array. If `start` or `end` are negative, count from the end of the array." },
