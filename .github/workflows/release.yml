@@ -25,6 +25,7 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11"]
     runs-on: ubuntu-latest
+    environment: CD
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
@@ -56,6 +57,7 @@ jobs:
         python-version: ["3.10", "3.11"]
         arch: ["x86_64-apple-darwin", "aarch64-apple-darwin"]
     runs-on: macos-latest
+    environment: CD
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
@@ -86,6 +88,7 @@ jobs:
 
   publish_codemirror_module:
     runs-on: ubuntu-latest
+    environment: CD
     steps:
       - uses: actions/checkout@v4
       - name: Set Node.js 18.x
@@ -107,7 +110,7 @@ jobs:
         run: cp .npmrc ./kuiper_js/pkg/.npmrc
       - name: Publish wasm package
         working-directory: ./kuiper_js/pkg
-        run: npm publish
+        run: npm publish || true
 
       # Codemirror module
       - name: Run install
@@ -118,4 +121,4 @@ jobs:
         run: yarn prepare
       - name: Publish package
         working-directory: ./kuiper_lezer
-        run: npm publish
+        run: npm publish || true
