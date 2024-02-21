@@ -87,7 +87,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ReplaceFunction {
 
         let from_expr = self.args[1].resolve(state)?;
         let from = get_string_from_cow_value("replace", from_expr, &self.span)?;
-        
+
         let to_expr = self.args[2].resolve(state)?;
         let to = get_string_from_cow_value("replace", to_expr, &self.span)?;
         let replaced = res.replace(from.as_ref(), to.as_ref());

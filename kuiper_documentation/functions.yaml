@@ -411,3 +411,12 @@ functions:
     description: Creates an array of characters from a string.
     examples:
       - '"test".chars() -> ["t", "e", "s", "t"]'
+
+  - name: replace
+    signature: "`replace(a, b, c)`"
+    description: "Replaces a string with another string"
+    examples:
+      - '"tomato".replace("tomato","potato")
+        -> "potato"'
+      - 'replace("potato","o","a")
+        -> "patata"'
