@@ -5,7 +5,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-pub const BUILT_INS: [&str; 37] = [
+pub const BUILT_INS: [&str; 38] = [
     "atan2(",
     "case(",
     "ceil(",
@@ -29,6 +29,7 @@ pub const BUILT_INS: [&str; 37] = [
     "pairs(",
     "pow(",
     "reduce(",
+    "replace(",
     "round(",
     "select(",
     "slice(",
@@ -224,6 +225,13 @@ If applied to an object, the first input is the value, and the second is the key
             FunctionDef {
                 signature: "reduce(x, (acc, val) => ..., init)",
                 description: "Returns the value obtained by reducing the list `x`. The lambda function is called once for each element in the list `val`, and the returned value is passed as `acc` in the next iteration. The `init` will be given as the initial `acc` for the first call to the lambda function.",
+            }
+        ),
+        (
+            "replace",
+            FunctionDef {
+                signature: "replace(a, b, c)",
+                description: "Replaces a string with another string",
             }
         ),
         (
