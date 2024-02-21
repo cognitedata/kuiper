@@ -391,6 +391,20 @@ Returns the value obtained by reducing the list `x`. The lambda function is call
 [1, 2, 3, 4, 5].reduce((acc, val) => acc * val, 1) -> 120
 ```
 
+## replace
+
+`replace(a, b, c)`
+
+Replaces a string with another string
+
+**Code examples**
+```
+"tomato".replace("tomato","potato") -> "potato"
+```
+```
+replace("potato","o","a") -> "patata"
+```
+
 ## round
 
 `round(x)`

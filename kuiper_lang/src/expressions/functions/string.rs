@@ -74,6 +74,27 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for StringFunction {
     }
 }
 
+// other functions follow... This function converts the input to a string.
+function_def!(ReplaceFunction, "replace", 3);
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for ReplaceFunction {
+    fn resolve(
+        &'a self,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        let dat = self.args[0].resolve(state)?;
+        let res = get_string_from_cow_value("replace", dat, &self.span)?;
+
+        let from_expr = self.args[1].resolve(state)?;
+        let from = get_string_from_cow_value("replace", from_expr, &self.span)?;
+
+        let to_expr = self.args[2].resolve(state)?;
+        let to = get_string_from_cow_value("replace", to_expr, &self.span)?;
+        let replaced = res.replace(from.as_ref(), to.as_ref());
+        Ok(ResolveResult::Owned(Value::String(replaced)))
+    }
+}
+
 function_def!(SubstringFunction, "substring", 2, Some(3));
 
 impl<'a: 'c, 'c> Expression<'a, 'c> for SubstringFunction {
@@ -347,6 +368,25 @@ mod tests {
         assert_eq!("test", res.get("s1").unwrap().as_str().unwrap());
         assert_eq!("test", res.get("s2").unwrap().as_str().unwrap());
         assert_eq!("test", res.get("s3").unwrap().as_str().unwrap());
+    }
+
+    #[test]
+    pub fn test_replace_function() {
+        let expr = compile_expression(
+            r#"{
+            "s1": "test_potato".replace("potato","tomato"),
+            "s2": " ".replace(" ","tomato"),
+            "s3": replace("potato","o","a")
+        }"#,
+            &[],
+        )
+        .unwrap();
+
+        let res = expr.run(&[]).unwrap();
+
+        assert_eq!("test_tomato", res.get("s1").unwrap().as_str().unwrap());
+        assert_eq!("tomato", res.get("s2").unwrap().as_str().unwrap());
+        assert_eq!("patata", res.get("s3").unwrap().as_str().unwrap());
     }
 
     #[test]
