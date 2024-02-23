@@ -26,6 +26,7 @@ export const kuiperLanguage = LRLanguage.define({
             "BlockComment": tags.blockComment,
             "LineComment": tags.lineComment,
             "CompareOp/...": tags.compareOperator,
+            "NotModifier": tags.compareOperator,
             "ArithOp/...": tags.arithmeticOperator,
             "LogicOp/...": tags.logicOperator,
             "Arrow": tags.function(tags.punctuation),
