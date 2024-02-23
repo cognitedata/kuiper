@@ -101,6 +101,7 @@ pub struct OpExpression {
 pub struct IsExpression {
     pub lhs: Box<Expression>,
     pub rhs: TypeLiteral,
+    pub not: bool,
 }
 
 #[derive(Debug)]

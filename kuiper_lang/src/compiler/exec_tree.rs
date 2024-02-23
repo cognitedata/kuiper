@@ -242,6 +242,7 @@ impl BuilderInner {
             Expression::Is(i) => Ok(ExpressionType::Is(IsExpression::new(
                 self.build_expression(*i.lhs)?,
                 i.rhs,
+                i.not,
             )?)),
         }
     }
