@@ -36,7 +36,7 @@ impl<'a> ResolveResult<'a> {
         desc: &str,
         span: &Span,
     ) -> Result<JsonNumber, TransformError> {
-        get_number_from_value(desc, &self, span)
+        get_number_from_value(desc, self, span)
     }
 
     pub fn try_into_string(self, desc: &str, span: &Span) -> Result<Cow<'a, str>, TransformError> {
@@ -75,7 +75,7 @@ impl<'a> Deref for ResolveResult<'a> {
 
     fn deref(&self) -> &Self::Target {
         match self {
-            Self::Owned(v) => &v,
+            Self::Owned(v) => v,
             Self::Borrowed(v) => v,
         }
     }
@@ -84,7 +84,7 @@ impl<'a> Deref for ResolveResult<'a> {
 impl<'a> AsRef<Value> for ResolveResult<'a> {
     fn as_ref(&self) -> &Value {
         match self {
-            Self::Owned(v) => &v,
+            Self::Owned(v) => v,
             Self::Borrowed(v) => v,
         }
     }
@@ -92,7 +92,7 @@ impl<'a> AsRef<Value> for ResolveResult<'a> {
 
 impl<'a> Borrow<Value> for ResolveResult<'a> {
     fn borrow(&self) -> &Value {
-        &**self
+        self
     }
 }
 
