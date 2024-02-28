@@ -1,9 +1,7 @@
 use serde_json::{Map, Value};
 
 use crate::{
-    expressions::{
-        base::get_string_from_cow_value, functions::LambdaAcceptFunction, Expression, ResolveResult,
-    },
+    expressions::{functions::LambdaAcceptFunction, Expression, ResolveResult},
     BuildError, TransformError,
 };
 
@@ -28,7 +26,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ToObjectFunction {
         let mut res = Map::with_capacity(arr.len());
         for elem in arr {
             let key = self.args[1].call(state, &[elem])?;
-            let key = get_string_from_cow_value("to_object", key, &self.span)?.into_owned();
+            let key = key.try_into_string("to_object", &self.span)?.into_owned();
 
             let value = if let Some(value_lambda) = self.args.get(2) {
                 value_lambda.call(state, &[elem])?.into_owned()

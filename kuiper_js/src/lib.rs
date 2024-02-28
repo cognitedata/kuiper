@@ -86,7 +86,7 @@ impl KuiperExpression {
         let json_item: Value = data.into_serde()?;
         let json = vec![&json_item];
         let res = self.expression.run(json)?;
-        Ok(JsValue::from_serde(&res)?)
+        Ok(JsValue::from_serde(&*res)?)
     }
 
     pub fn run_multiple_inputs(&self, data: Vec<JsValue>) -> Result<JsValue, KuiperError> {
@@ -96,7 +96,7 @@ impl KuiperExpression {
             .collect::<Result<_, _>>()?;
         let json: Vec<&Value> = json_items.iter().collect();
         let res = self.expression.run(json)?;
-        Ok(JsValue::from_serde(&res)?)
+        Ok(JsValue::from_serde(&*res)?)
     }
 
     pub fn run_get_completions(

@@ -1,9 +1,6 @@
 use serde_json::Value;
 
-use crate::expressions::{
-    base::{get_number_from_value, get_string_from_cow_value},
-    Expression, ResolveResult,
-};
+use crate::expressions::{Expression, ResolveResult};
 
 // Example function definition
 
@@ -32,7 +29,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ConcatFunction {
             // Resolve each argument by passing the state, then return any errors if they occur.
             let resolved = expr.resolve(state)?;
             // Convert the value to string
-            let dat = get_string_from_cow_value("concat", resolved, &self.span)?;
+            let dat = resolved.try_into_string("concat", &self.span)?;
             // Push the resulting string to the result vector.
             res.push_str(&dat);
         }
@@ -82,14 +79,15 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ReplaceFunction {
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
-        let dat = self.args[0].resolve(state)?;
-        let res = get_string_from_cow_value("replace", dat, &self.span)?;
-
-        let from_expr = self.args[1].resolve(state)?;
-        let from = get_string_from_cow_value("replace", from_expr, &self.span)?;
-
-        let to_expr = self.args[2].resolve(state)?;
-        let to = get_string_from_cow_value("replace", to_expr, &self.span)?;
+        let res = self.args[0]
+            .resolve(state)?
+            .try_into_string("replace", &self.span)?;
+        let from = self.args[1]
+            .resolve(state)?
+            .try_into_string("replace", &self.span)?;
+        let to = self.args[2]
+            .resolve(state)?
+            .try_into_string("replace", &self.span)?;
         let replaced = res.replace(from.as_ref(), to.as_ref());
         Ok(ResolveResult::Owned(Value::String(replaced)))
     }
@@ -102,19 +100,20 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SubstringFunction {
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
-        let inp_value = self.args[0].resolve(state)?;
-        let inp_string = get_string_from_cow_value("substring", inp_value, &self.span)?;
+        let inp_string = self.args[0]
+            .resolve(state)?
+            .try_into_string("substring", &self.span)?;
         let input = inp_string.as_ref();
 
-        let start_value = self.args[1].resolve(state)?;
-        let start =
-            get_number_from_value("substring", &start_value, &self.span)?.try_as_i64(&self.span)?;
+        let start = self.args[1]
+            .resolve(state)?
+            .try_as_number("substring", &self.span)?
+            .try_as_i64(&self.span)?;
 
         let end_value: Option<Result<i64, crate::TransformError>> = self.args.get(2).map(|c| {
-            let val = c.resolve(state)?;
-            let end =
-                get_number_from_value("substring", &val, &self.span)?.try_as_i64(&self.span)?;
-            Ok(end)
+            c.resolve(state)?
+                .try_as_number("substring", &self.span)?
+                .try_as_i64(&self.span)
         });
         let end = end_value.transpose()?;
         if end.is_some_and(|v| v == start) {
@@ -166,11 +165,13 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SplitFunction {
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
-        let inp_value = self.args[0].resolve(state)?;
-        let inp_string = get_string_from_cow_value("split", inp_value, &self.span)?;
+        let inp_string = self.args[0]
+            .resolve(state)?
+            .try_into_string("split", &self.span)?;
 
-        let pat_value = self.args[1].resolve(state)?;
-        let pat_string = get_string_from_cow_value("split", pat_value, &self.span)?;
+        let pat_string = self.args[1]
+            .resolve(state)?
+            .try_into_string("split", &self.span)?;
 
         Ok(ResolveResult::Owned(Value::Array(
             inp_string
@@ -188,8 +189,9 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TrimWhitespace {
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
-        let inp_value = self.args[0].resolve(state)?;
-        let inp_string = get_string_from_cow_value("split", inp_value, &self.span)?;
+        let inp_string = self.args[0]
+            .resolve(state)?
+            .try_into_string("trim_whitespace", &self.span)?;
 
         Ok(ResolveResult::Owned(inp_string.trim().to_string().into()))
     }
@@ -202,8 +204,9 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for CharsFunction {
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
-        let inp_value = self.args[0].resolve(state)?;
-        let inp_string = get_string_from_cow_value("split", inp_value, &self.span)?;
+        let inp_string = self.args[0]
+            .resolve(state)?
+            .try_into_string("chars", &self.span)?;
 
         let res = inp_string
             .chars()

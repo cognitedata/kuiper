@@ -1,6 +1,6 @@
 use logos::Span;
 use serde_json::Value;
-use std::{borrow::Cow, fmt::Display};
+use std::fmt::Display;
 
 use crate::{compiler::BuildError, NULL_CONST};
 
@@ -14,10 +14,9 @@ use super::{
     },
     is_operator::IsExpression,
     lambda::LambdaExpression,
-    numbers::JsonNumber,
     operator::UnaryOpExpression,
     transform_error::TransformError,
-    ArrayExpression, ObjectExpression, OpExpression, SelectorExpression,
+    ArrayExpression, ObjectExpression, OpExpression, ResolveResult, SelectorExpression,
 };
 
 use kuiper_lang_macros::PassThrough;
@@ -384,11 +383,6 @@ impl ExpressionType {
     }
 }
 
-/// The result of an expression resolution. The signature is a little weird.
-/// An expression may either return a reference to the source, or an actual value.
-/// By returning references as often as possible we reduce the number of clones.
-pub type ResolveResult<'a> = Cow<'a, Value>;
-
 #[derive(Debug, Clone)]
 /// A constant expression. This always resolves to a reference to its value.
 pub struct Constant {
@@ -420,122 +414,5 @@ impl ExpressionMeta for Constant {
 impl Constant {
     pub fn new(val: Value) -> Self {
         Self { val }
-    }
-}
-
-/// Convenient method to convert a Value into a JsonNumber, our internal representation of numbers in JSON. Used in some math functions.
-/// `desc` is a description of the expression executing this, typically the name of a function or operator.
-/// `val` is the value to be converted.
-/// `span` is the span of the expression executing this, all expressions should store their own span.
-/// `id` is the ID of the upper level transform running this, passed along with the state.
-///
-/// We use these to construct errors if the transform fails.
-pub(crate) fn get_number_from_value(
-    desc: &str,
-    val: &Value,
-    span: &Span,
-) -> Result<JsonNumber, TransformError> {
-    let v = match val {
-        Value::Number(n) => n,
-        _ => {
-            return Err(TransformError::new_incorrect_type(
-                desc,
-                "number",
-                TransformError::value_desc(val),
-                span,
-            ))
-        }
-    };
-    Ok(v.into())
-}
-
-/// Convert a JSON value into a string. May return a direct reference to the JSON string itself if it is already a string.
-/// `desc` is a description of the expression executing this, typically the name of a function or operator.
-/// `val` is the value to be converted.
-/// `span` is the span of the expression executing this, all expressions should store their own span.
-/// `id` is the ID of the upper level transform running this, passed along with the state.
-///
-/// We use these to construct errors if the transform fails.
-pub(crate) fn get_string_from_value<'a>(
-    desc: &str,
-    val: &'a Value,
-    span: &Span,
-) -> Result<Cow<'a, str>, TransformError> {
-    match val {
-        Value::Null => Ok(Cow::Borrowed("")),
-        Value::Bool(n) => Ok(Cow::Borrowed(match n {
-            true => "true",
-            false => "false",
-        })),
-        Value::Number(n) => Ok(Cow::Owned(n.to_string())),
-        Value::String(s) => Ok(Cow::Borrowed(s)),
-        _ => {
-            return Err(TransformError::new_incorrect_type(
-                desc,
-                "string or number",
-                TransformError::value_desc(val),
-                span,
-            ))
-        }
-    }
-}
-
-pub(crate) fn get_string_from_value_owned<'a>(
-    desc: &str,
-    val: Value,
-    span: &Span,
-) -> Result<Cow<'a, str>, TransformError> {
-    match val {
-        Value::Null => Ok(Cow::Borrowed("")),
-        Value::Bool(n) => Ok(Cow::Borrowed(match n {
-            true => "true",
-            false => "false",
-        })),
-        Value::Number(n) => Ok(Cow::Owned(n.to_string())),
-        Value::String(s) => Ok(Cow::Owned(s)),
-        _ => {
-            return Err(TransformError::new_incorrect_type(
-                desc,
-                "string or number",
-                TransformError::value_desc(&val),
-                span,
-            ))
-        }
-    }
-}
-
-pub(crate) fn map_cow_clone_string<'a, 'b, 'c, T>(
-    value: ResolveResult<'_>,
-    state: &'a mut ExpressionExecutionState<'b, 'c>,
-    string: impl FnOnce(String, &'a mut ExpressionExecutionState<'b, 'c>) -> T,
-    other: impl FnOnce(&Value, &'a mut ExpressionExecutionState<'b, 'c>) -> T,
-) -> T {
-    match value {
-        Cow::Owned(Value::String(s)) => string(s, state),
-        Cow::Borrowed(Value::String(s)) => string(s.to_string(), state),
-        c => other(c.as_ref(), state),
-    }
-}
-
-// This isn't using map_cow_clone_string because it is so critical,
-// and it seems that the complexity of this prevents some optimizations which eliminates
-// allocations in object functions and elsewhere.
-pub(crate) fn get_string_from_cow_value<'a>(
-    desc: &str,
-    val: ResolveResult<'a>,
-    span: &Span,
-) -> Result<Cow<'a, str>, TransformError> {
-    match val {
-        Cow::Borrowed(v) => get_string_from_value(desc, v, span),
-        Cow::Owned(v) => get_string_from_value_owned(desc, v, span),
-    }
-}
-
-/// Convert the JSON value into a boolean. Cannot fail, `null` and `false` are falsy, all others are true.
-pub(crate) fn get_boolean_from_value(val: &Value) -> bool {
-    match val {
-        Value::Null => false,
-        Value::Bool(b) => *b,
-        _ => true,
     }
 }
