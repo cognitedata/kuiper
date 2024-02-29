@@ -28,7 +28,7 @@ impl<'a> ResolveResult<'a> {
     }
 
     pub fn as_bool(&self) -> bool {
-        !matches!(self.deref(), Value::Null | Value::Bool(true))
+        !matches!(self.deref(), Value::Null | Value::Bool(false))
     }
 
     pub(crate) fn try_as_number(
