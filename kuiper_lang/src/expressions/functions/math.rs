@@ -1,11 +1,9 @@
 use serde_json::{Number, Value};
 
 use crate::{
-    expressions::{base::get_number_from_value, Expression, ResolveResult},
+    expressions::{numbers::JsonNumber, Expression, ResolveResult},
     TransformError,
 };
-
-use super::FunctionExpression;
 
 /// Macro that creates a math function of the type `my_float.func(arg)`, which becomes `func(my_float, arg)`
 /// in the expression language.
@@ -17,23 +15,21 @@ macro_rules! arg2_math_func {
             fn resolve(
                 &'a self,
                 state: &mut $crate::expressions::base::ExpressionExecutionState<'c, '_>,
-            ) -> Result<$crate::expressions::base::ResolveResult<'c>, $crate::expressions::transform_error::TransformError> {
-                let lhs = $crate::expressions::base::get_number_from_value(
+            ) -> Result<$crate::expressions::ResolveResult<'c>, $crate::expressions::transform_error::TransformError> {
+                let lhs = self.args[0].resolve(state)?.try_as_number(
                     &<Self as $crate::expressions::functions::FunctionExpression>::INFO.name,
-                    self.args[0].resolve(state)?.as_ref(),
                     &self.span,
                 )?
                 .as_f64();
-                let rhs = $crate::expressions::base::get_number_from_value(
+                let rhs = self.args[1].resolve(state)?.try_as_number(
                     &<Self as $crate::expressions::functions::FunctionExpression>::INFO.name,
-                    self.args[1].resolve(state)?.as_ref(),
                     &self.span,
                 )?
                 .as_f64();
 
                 let res = lhs.$rname(rhs);
 
-                Ok($crate::expressions::base::ResolveResult::Owned(
+                Ok($crate::expressions::ResolveResult::Owned(
                     serde_json::Value::Number(serde_json::Number::from_f64(res).ok_or_else(
                         || {
                             $crate::expressions::transform_error::TransformError::new_conversion_failed(
@@ -62,19 +58,18 @@ macro_rules! arg1_math_func {
                 &'a self,
                 state: &mut $crate::expressions::base::ExpressionExecutionState<'c, '_>,
             ) -> Result<
-                $crate::expressions::base::ResolveResult<'c>,
+                $crate::expressions::ResolveResult<'c>,
                 $crate::expressions::transform_error::TransformError,
             > {
-                let arg = $crate::expressions::base::get_number_from_value(
+                let arg = self.args[0].resolve(state)?.try_as_number(
                     <Self as $crate::expressions::functions::FunctionExpression>::INFO.name,
-                    self.args[0].resolve(state)?.as_ref(),
                     &self.span,
                 )?
                 .as_f64();
 
                 let res = arg.$rname();
 
-                Ok($crate::expressions::base::ResolveResult::Owned(
+                Ok($crate::expressions::ResolveResult::Owned(
                     serde_json::Value::Number(serde_json::Number::from_f64(res).ok_or_else(|| {
                         $crate::expressions::transform_error::TransformError::new_conversion_failed(
                             format!(
@@ -123,20 +118,18 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IntFunction {
                     Value::Number(Number::from(0))
                 }
             }
-            Value::Number(_) => {
-                get_number_from_value(<Self as FunctionExpression>::INFO.name, val, &self.span)?
-                    .try_cast_integer(&self.span)?
-                    .try_into_json()
-                    .ok_or_else(|| {
-                        TransformError::new_conversion_failed(
-                            format!(
-                                "Failed to convert result of int() to number at {}",
-                                self.span.start
-                            ),
-                            &self.span,
-                        )
-                    })?
-            }
+            Value::Number(n) => JsonNumber::from(n)
+                .try_cast_integer(&self.span)?
+                .try_into_json()
+                .ok_or_else(|| {
+                    TransformError::new_conversion_failed(
+                        format!(
+                            "Failed to convert result of int() to number at {}",
+                            self.span.start
+                        ),
+                        &self.span,
+                    )
+                })?,
             Value::String(s) => {
                 if s.starts_with('-') {
                     let res: i64 = s.parse().map_err(|e| {
@@ -193,10 +186,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FloatFunction {
                     0.0
                 }
             }
-            Value::Number(_) => {
-                get_number_from_value(<Self as FunctionExpression>::INFO.name, val, &self.span)?
-                    .as_f64()
-            }
+            Value::Number(n) => JsonNumber::from(n).as_f64(),
             Value::String(s) => s.parse().map_err(|e| {
                 TransformError::new_conversion_failed(
                     format!("Failed to convert string {s} to float: {e}"),

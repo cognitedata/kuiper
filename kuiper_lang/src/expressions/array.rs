@@ -6,9 +6,8 @@ use serde_json::Value;
 use crate::compiler::BuildError;
 
 use super::{
-    base::{ExpressionMeta, ResolveResult},
-    transform_error::TransformError,
-    Expression, ExpressionExecutionState, ExpressionType,
+    base::ExpressionMeta, transform_error::TransformError, Expression, ExpressionExecutionState,
+    ExpressionType, ResolveResult,
 };
 
 #[derive(Debug, Clone)]
