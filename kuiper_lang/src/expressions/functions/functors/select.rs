@@ -1,9 +1,7 @@
 use serde_json::{Map, Value};
 
 use crate::{
-    expressions::{
-        base::get_boolean_from_value, functions::LambdaAcceptFunction, Expression, ResolveResult,
-    },
+    expressions::{functions::LambdaAcceptFunction, Expression, ResolveResult},
     BuildError, TransformError,
 };
 
@@ -21,10 +19,9 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SelectFunction {
                 match &*self.args[1] {
                     crate::ExpressionType::Lambda(expr) => {
                         for (k, v) in x {
-                            let should_add = get_boolean_from_value(
-                                expr.call(state, &[&v, &Value::String(k.to_owned())])?
-                                    .as_ref(),
-                            );
+                            let should_add = expr
+                                .call(state, &[&v, &Value::String(k.to_owned())])?
+                                .as_bool();
                             if should_add {
                                 output.insert(k, v);
                             }

@@ -1,12 +1,13 @@
-use std::{borrow::Cow, fmt::Display};
+use std::fmt::Display;
 
 use serde_json::{Map, Value};
 
 use crate::compiler::BuildError;
 
 use super::{
-    base::{Expression, ExpressionExecutionState, ExpressionMeta, ExpressionType, ResolveResult},
+    base::{Expression, ExpressionExecutionState, ExpressionMeta, ExpressionType},
     transform_error::TransformError,
+    ResolveResult,
 };
 
 use logos::Span;
@@ -82,8 +83,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SelectorExpression {
             SourceElement::Expression(e) => {
                 let src = e.resolve(state)?;
                 match src {
-                    Cow::Borrowed(v) => self.resolve_by_reference(v, state),
-                    Cow::Owned(v) => self.resolve_by_value(v, state),
+                    ResolveResult::Borrowed(v) => self.resolve_by_reference(v, state),
+                    ResolveResult::Owned(v) => self.resolve_by_value(v, state),
                 }
             }
         }

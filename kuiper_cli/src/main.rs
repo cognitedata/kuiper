@@ -82,7 +82,7 @@ fn inner_run(args: Args) -> Result<Vec<String>, KuiperCliError> {
     let mut res = Vec::new();
     for input in data {
         let result = expression.run([&input])?;
-        res.push(serde_json::to_string(&result)?);
+        res.push(serde_json::to_string(&*result)?);
     }
 
     Ok(res)
