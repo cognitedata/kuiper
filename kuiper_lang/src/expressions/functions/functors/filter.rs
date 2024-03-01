@@ -2,9 +2,7 @@ use serde_json::Value;
 
 use crate::{
     compiler::BuildError,
-    expressions::{
-        base::get_boolean_from_value, functions::LambdaAcceptFunction, Expression, ResolveResult,
-    },
+    expressions::{functions::LambdaAcceptFunction, Expression, ResolveResult},
     TransformError,
 };
 
@@ -21,8 +19,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FilterFunction {
             Value::Array(x) => {
                 let mut res = Vec::with_capacity(x.len());
                 for item in x {
-                    let should_add =
-                        get_boolean_from_value(self.args[1].call(state, &[&item])?.as_ref());
+                    let should_add = self.args[1].call(state, &[&item])?.as_bool();
 
                     if should_add {
                         res.push(item);

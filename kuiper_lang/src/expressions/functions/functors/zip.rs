@@ -20,8 +20,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ZipFunction {
         for source in self.args.iter().take(self.args.len() - 1) {
             let r = source.resolve(state)?;
             let r = match r {
-                std::borrow::Cow::Borrowed(r) => r.as_array().map(Cow::Borrowed),
-                std::borrow::Cow::Owned(r) => match r {
+                ResolveResult::Borrowed(r) => r.as_array().map(Cow::Borrowed),
+                ResolveResult::Owned(r) => match r {
                     Value::Array(a) => Some(Cow::Owned(a)),
                     _ => None,
                 },

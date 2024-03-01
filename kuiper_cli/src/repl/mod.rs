@@ -61,7 +61,7 @@ pub fn repl() {
                 let res = expr.run(data.iter());
                 match res {
                     Ok(x) => {
-                        println!("{chunk_id} = {x}");
+                        println!("{chunk_id} = {}", &*x);
                         inputs.push(chunk_id);
                         data.push(x.into_owned());
                     }

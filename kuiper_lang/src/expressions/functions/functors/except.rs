@@ -1,9 +1,7 @@
 use serde_json::Value;
 
 use crate::{
-    expressions::{
-        base::get_boolean_from_value, functions::LambdaAcceptFunction, Expression, ResolveResult,
-    },
+    expressions::{functions::LambdaAcceptFunction, Expression, ResolveResult},
     BuildError, TransformError,
 };
 
@@ -22,10 +20,9 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ExceptFunction {
                 match &*self.args[1] {
                     crate::ExpressionType::Lambda(expr) => {
                         for (k, v) in x {
-                            let should_remove = get_boolean_from_value(
-                                expr.call(state, &[&v, &Value::String(k.to_owned())])?
-                                    .as_ref(),
-                            );
+                            let should_remove = expr
+                                .call(state, &[&v, &Value::String(k.to_owned())])?
+                                .as_bool();
                             if should_remove {
                                 output.remove(&k);
                             }

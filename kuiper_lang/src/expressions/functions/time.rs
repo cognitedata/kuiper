@@ -1,9 +1,5 @@
 use crate::{
-    expressions::{
-        base::{get_number_from_value, get_string_from_cow_value},
-        functions::FunctionExpression,
-        Expression, ResolveResult,
-    },
+    expressions::{functions::FunctionExpression, Expression, ResolveResult},
     TransformError,
 };
 
@@ -18,10 +14,10 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ToUnixTimeFunction {
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let dat = self.args.first().unwrap().resolve(state)?;
-        let val = get_string_from_cow_value(Self::INFO.name, dat, &self.span)?;
+        let val = dat.try_into_string(Self::INFO.name, &self.span)?;
         let val_ref = val.as_ref();
         let fmt = self.args.get(1).unwrap().resolve(state)?;
-        let fmt_val = get_string_from_cow_value(Self::INFO.name, fmt, &self.span)?;
+        let fmt_val = fmt.try_into_string(Self::INFO.name, &self.span)?;
         let fmt_ref = fmt_val.as_ref();
         // If the format string contains timezone, create a timestamp with timezone directly
         if fmt_ref.contains("%z") {
@@ -44,12 +40,13 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ToUnixTimeFunction {
             })?;
             // Then, if there is a third "offset" argument, use that to construct an offset datetime.
             if self.args.len() == 3 {
-                let off_val = get_number_from_value(
-                    Self::INFO.name,
-                    self.args.get(2).unwrap().resolve(state)?.as_ref(),
-                    &self.span,
-                )?
-                .try_as_i64(&self.span)?;
+                let off_val = self
+                    .args
+                    .get(2)
+                    .unwrap()
+                    .resolve(state)?
+                    .try_as_number(Self::INFO.name, &self.span)?
+                    .try_as_i64(&self.span)?;
                 if off_val < i32::MIN as i64 || off_val > i32::MAX as i64 {
                     return Err(TransformError::new_invalid_operation(
                         format!("Offset {off_val} out of bounds for to_unix_timestamp"),
@@ -104,10 +101,10 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FormatTimestampFunction {
         let timestamp = self.args[0].resolve(state)?;
         let format = self.args[1].resolve(state)?;
 
-        let timestamp_num =
-            get_number_from_value("format_timestamp", timestamp.as_ref(), &self.span)?
-                .try_as_i64(&self.span)?;
-        let format_str = get_string_from_cow_value("format_timestamp", format, &self.span)?;
+        let timestamp_num = timestamp
+            .try_as_number("format_timestamp", &self.span)?
+            .try_as_i64(&self.span)?;
+        let format_str = format.try_into_string("format_timestamp", &self.span)?;
 
         let datetime = Utc.timestamp_millis_opt(timestamp_num).single().ok_or(
             TransformError::new_conversion_failed(
