@@ -2,7 +2,7 @@ use itertools::Itertools;
 use serde_json::{Number, Value};
 
 use crate::{
-    expressions::{base::get_number_from_value, Expression, ResolveResult},
+    expressions::{Expression, ResolveResult},
     TransformError,
 };
 
@@ -55,40 +55,24 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ChunkFunction {
             }
         };
 
-        let chunk_raw = self.args[1].resolve(state)?;
-        let chunk_size = get_number_from_value("chunk", &chunk_raw, &self.span)?;
-        let chunk_u = match chunk_size {
-            crate::expressions::numbers::JsonNumber::NegInteger(_) => {
-                return Err(TransformError::new_incorrect_type(
-                    "Incorrect type for chunk size",
-                    "positive integer",
-                    "negative integer",
-                    &self.span,
-                ))
-            }
-            crate::expressions::numbers::JsonNumber::PosInteger(x) => x as usize,
-            crate::expressions::numbers::JsonNumber::Float(_) => {
-                return Err(TransformError::new_incorrect_type(
-                    "Incorrect type for chunk size",
-                    "positive integer",
-                    "floating point",
-                    &self.span,
-                ))
-            }
-        };
-        if arr.len() <= chunk_u {
-            return Ok(ResolveResult::Owned(Value::Array(vec![Value::Array(arr)])));
-        }
+        let chunk_size = self.args[1]
+            .resolve(state)?
+            .try_as_number("chunk", &self.span)?
+            .try_as_u64(&self.span)? as usize;
 
-        if chunk_u == 0 {
+        if chunk_size == 0 {
             return Err(TransformError::new_invalid_operation(
                 "Chunk size must be greater than 0".to_string(),
                 &self.span,
             ));
         }
 
+        if arr.len() <= chunk_size {
+            return Ok(ResolveResult::Owned(Value::Array(vec![Value::Array(arr)])));
+        }
+
         let mut res = vec![];
-        for chunk in arr.into_iter().chunks(chunk_u).into_iter() {
+        for chunk in arr.into_iter().chunks(chunk_size).into_iter() {
             res.push(Value::Array(chunk.collect()));
         }
         Ok(ResolveResult::Owned(Value::Array(res)))
@@ -118,10 +102,10 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TailFunction {
 
         let number = match self.args.get(1) {
             None => 1,
-            Some(exp) => {
-                let res = exp.resolve(state)?;
-                get_number_from_value("tail", &res, &self.span)?.try_as_u64(&self.span)?
-            }
+            Some(exp) => exp
+                .resolve(state)?
+                .try_as_number("tail", &self.span)?
+                .try_as_u64(&self.span)?,
         };
 
         match number {
@@ -154,14 +138,15 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SliceFunction {
             )
         })?;
 
-        let start_value = self.args[1].resolve(state)?;
-        let start =
-            get_number_from_value("slice", &start_value, &self.span)?.try_as_i64(&self.span)?;
+        let start = self.args[1]
+            .resolve(state)?
+            .try_as_number("slice", &self.span)?
+            .try_as_i64(&self.span)?;
 
         let end_value: Option<Result<i64, crate::TransformError>> = self.args.get(2).map(|c| {
-            let val = c.resolve(state)?;
-            let end = get_number_from_value("slice", &val, &self.span)?.try_as_i64(&self.span)?;
-            Ok(end)
+            c.resolve(state)?
+                .try_as_number("slice", &self.span)?
+                .try_as_i64(&self.span)
         });
         let end = end_value.transpose()?;
         if end.is_some_and(|v| v == start) {
