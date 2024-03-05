@@ -120,6 +120,10 @@ pub enum Token {
     #[token("number", |_| TypeLiteral::Number)]
     TypeLiteral(TypeLiteral),
 
+    /// Special token used with the "is" operator
+    #[token("not")]
+    Not,
+
     /// A bare string, which is either part of a selector, or a function call.
     #[regex(r#"\p{XID_Start}\p{XID_Continue}*"#, |s| s.slice().to_string(), priority = 1)]
     #[regex(r#"[_a-zA-Z][_0-9a-zA-Z]*"#, |s| s.slice().to_string(), priority = 2)]
@@ -182,6 +186,7 @@ impl Display for Token {
             Token::CombinedArrow => write!(f, ") =>"),
             Token::Comment => Ok(()),
             Token::DotDot => write!(f, ".."),
+            Token::Not => write!(f, "not"),
         }
     }
 }

@@ -62,6 +62,7 @@ Operator {
     Expression !t7 (ArithOp<"*"> | ArithOp<"/"> | ArithOp<"%">) Expression |
     Expression !t6 (ArithOp<"+"> | ArithOp<"-">) Expression |
     Expression !t5 (CompareOp<">"> | CompareOp<"<"> | CompareOp<">="> | CompareOp<"<=">) Expression |
+    Expression !t5 CompareOp<"is"> NotModifier Type |
     Expression !t5 CompareOp<"is"> Type |
     Expression !t4 (CompareOp<"=="> | CompareOp<"!=">) Expression |
     Expression !t3 (LogicOp<"&&">) Expression |
@@ -71,6 +72,10 @@ Operator {
 ArithOp<expr> { expr }
 LogicOp<expr> { expr }
 CompareOp<expr> { expr }
+
+NotModifier {
+    @specialize<PlainVar, "not">
+}
 
 BlockComment { blockComment }
 LineComment { lineComment }
@@ -113,6 +118,6 @@ NumberTy { @specialize<PlainVar, "number"> }
     whitespace { @whitespace+ }
     PlainVar { $[a-zA-Z_]$[a-zA-Z0-9_]* }
     "(" ")" "{" "}" "[" "]" "!" "*" "/" "%" "+" "-" ">" "<" "<=" ">=" "is" "==" "!=" "&&" "||"
-    "," "." ":" "..."
+    "," "." ":" "..." "not"
     "=>"[@name=Arrow]
 }

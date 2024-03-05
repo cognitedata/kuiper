@@ -719,7 +719,7 @@ dependencies = [
 
 [[package]]
 name = "kuiper-cli"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "clap",
  "colored",
@@ -741,7 +741,7 @@ dependencies = [
 
 [[package]]
 name = "kuiper_js"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "console_error_panic_hook",
  "gloo-utils",
@@ -753,7 +753,7 @@ dependencies = [
 
 [[package]]
 name = "kuiper_lang"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "chrono",
  "criterion",

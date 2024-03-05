@@ -172,3 +172,11 @@ Result(Expression(Operator(
         Type(Null)
     ))
 )))
+
+# "is not" operator
+
+1 is not number
+
+==>
+
+Result(Expression(Operator(Expression(Term(Number)), CompareOp("is"), NotModifier, Type(NumberTy))))

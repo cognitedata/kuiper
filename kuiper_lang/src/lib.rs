@@ -593,4 +593,36 @@ mod tests {
         let r = expr.run(&[]).unwrap().into_owned();
         assert_eq!(0, r.as_object().unwrap().len());
     }
+
+    #[test]
+    pub fn test_is_2() {
+        let expr = compile_expression(
+            r#"{
+                1: 1 is number,
+                2: 2 is not string,
+                3: null is null,
+                4: null is not null,
+                5: "test" is string,
+                6: 123.123 is int,
+                7: true is float,
+                8: false is bool,
+                9: 123 is not null
+            }
+            "#,
+            &[],
+        )
+        .unwrap();
+        let r = expr.run(&[]).unwrap().into_owned();
+        let o = r.as_object().unwrap();
+
+        assert!(o.get("1").unwrap().as_bool().unwrap());
+        assert!(o.get("2").unwrap().as_bool().unwrap());
+        assert!(o.get("3").unwrap().as_bool().unwrap());
+        assert!(!o.get("4").unwrap().as_bool().unwrap());
+        assert!(o.get("5").unwrap().as_bool().unwrap());
+        assert!(!o.get("6").unwrap().as_bool().unwrap());
+        assert!(!o.get("7").unwrap().as_bool().unwrap());
+        assert!(o.get("8").unwrap().as_bool().unwrap());
+        assert!(o.get("9").unwrap().as_bool().unwrap());
+    }
 }

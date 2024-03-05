@@ -128,15 +128,26 @@ Op4: Operator = {
     "!=" => Operator::NotEquals
 }
 
+TypeLiteral: crate::expressions::TypeLiteral = {
+    <t:"type"> => t,
+    "null" => crate::expressions::TypeLiteral::Null
+}
+
 Op5Expr: ast::Expression = {
     <lhs:Op5Expr> <op:Spanned<Op5>> <rhs:Op6Expr> => ast::Expression::BinaryOperation(ast::OpExpression {
         lhs: Box::new(lhs),
         operator: op.0,
         rhs: Box::new(rhs)
     }, op.1),
-    <lhs:Op5Expr> "is" <rhs:"type"> => ast::Expression::Is(ast::IsExpression {
+    <lhs:Op5Expr> "is" <rhs:TypeLiteral> => ast::Expression::Is(ast::IsExpression {
         lhs: Box::new(lhs),
         rhs,
+        not: false
+    }),
+    <lhs:Op5Expr> "is" "not" <rhs:TypeLiteral> => ast::Expression::Is(ast::IsExpression {
+        lhs: Box::new(lhs),
+        rhs,
+        not: true
     }),
 
     Op6Expr
@@ -214,6 +225,7 @@ extern {
         ":" => Token::Colon,
         ")=>" => Token::CombinedArrow,
         "=>" => Token::Arrow,
-        "..." => Token::DotDot
+        "..." => Token::DotDot,
+        "not" => Token::Not,
     }
 }

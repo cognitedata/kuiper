@@ -37,11 +37,16 @@ impl Display for TypeLiteral {
 pub struct IsExpression {
     lhs: Box<ExpressionType>,
     rhs: TypeLiteral,
+    not: bool,
 }
 
 impl Display for IsExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} is {}", self.lhs, self.rhs)
+        if self.not {
+            write!(f, "{} is not {}", self.lhs, self.rhs)
+        } else {
+            write!(f, "{} is {}", self.lhs, self.rhs)
+        }
     }
 }
 
@@ -62,16 +67,21 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IsExpression {
             TypeLiteral::Object => lhs.is_object(),
             TypeLiteral::Number => lhs.is_number(),
         };
-        Ok(ResolveResult::Owned(Value::Bool(res)))
+        if self.not {
+            Ok(ResolveResult::Owned(Value::Bool(!res)))
+        } else {
+            Ok(ResolveResult::Owned(Value::Bool(res)))
+        }
     }
 }
 
 impl IsExpression {
-    pub fn new(lhs: ExpressionType, rhs: TypeLiteral) -> Result<Self, BuildError> {
+    pub fn new(lhs: ExpressionType, rhs: TypeLiteral, not: bool) -> Result<Self, BuildError> {
         lhs.fail_if_lambda()?;
         Ok(Self {
             lhs: Box::new(lhs),
             rhs,
+            not,
         })
     }
 }
