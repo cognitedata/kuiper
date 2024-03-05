@@ -1,4 +1,3 @@
-use crate::expressions::base::map_cow_clone_string;
 use crate::expressions::numbers::JsonNumber;
 use crate::expressions::{Expression, ExpressionExecutionState, ResolveResult};
 use crate::TransformError;
@@ -41,8 +40,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryFloatFunction {
         &'a self,
         state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
-        map_cow_clone_string(
-            self.args[0].resolve(state)?,
+        self.args[0].resolve(state)?.map_clone_string(
             state,
             |s, state| match replace_for_parse(s).map(|r| r.parse::<f64>()) {
                 Some(Ok(value)) => Ok(ResolveResult::Owned(value.into())),
@@ -63,8 +61,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryIntFunction {
         &'a self,
         state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
-        map_cow_clone_string(
-            self.args[0].resolve(state)?,
+        self.args[0].resolve(state)?.map_clone_string(
             state,
             |s, state| match replace_for_parse(s).map(|r| r.parse::<i64>()) {
                 Some(Ok(value)) => Ok(ResolveResult::Owned(value.into())),

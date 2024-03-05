@@ -5,10 +5,7 @@ use serde_json::{Map, Value};
 
 use crate::{compiler::BuildError, TransformError};
 
-use super::{
-    base::{get_string_from_cow_value, ExpressionMeta},
-    Expression, ExpressionType, ResolveResult,
-};
+use super::{base::ExpressionMeta, Expression, ExpressionType, ResolveResult};
 
 #[derive(Debug, Clone)]
 pub enum ObjectElement {
@@ -52,7 +49,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ObjectExpression {
             match k {
                 ObjectElement::Pair(key, value) => {
                     let key_res = key.resolve(state)?;
-                    let key_val = get_string_from_cow_value("object", key_res, &self.span)?;
+                    let key_val = key_res.try_into_string("object", &self.span)?;
                     output.insert(key_val.into_owned(), value.resolve(state)?.into_owned());
                 }
                 ObjectElement::Concat(x) => {

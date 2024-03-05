@@ -6,11 +6,9 @@ use serde_json::Value;
 use crate::compiler::BuildError;
 
 use super::{
-    base::{
-        get_boolean_from_value, get_number_from_value, get_string_from_cow_value, Expression,
-        ExpressionExecutionState, ExpressionMeta, ExpressionType, ResolveResult,
-    },
+    base::{Expression, ExpressionExecutionState, ExpressionMeta, ExpressionType},
     transform_error::TransformError,
+    ResolveResult,
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -94,7 +92,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
         state.inc_op()?;
         let lhs = self.elements[0].resolve(state)?;
         if matches!(self.operator, Operator::And | Operator::Or) {
-            self.resolve_boolean_operator(&lhs, state)
+            self.resolve_boolean_operator(lhs, state)
         } else if lhs.is_string()
             && !matches!(
                 self.operator,
@@ -103,7 +101,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
         {
             self.resolve_string_operator(lhs, state)
         } else if lhs.is_number() {
-            self.resolve_numeric_operator(&lhs, state)
+            self.resolve_numeric_operator(lhs, state)
         } else {
             self.resolve_generic_operator(&lhs, state)
         }
@@ -162,11 +160,11 @@ impl OpExpression {
 
     fn resolve_boolean_operator<'a: 'b, 'b>(
         &'a self,
-        lhs: &Value,
+        lhs: ResolveResult<'a>,
         state: &mut ExpressionExecutionState<'b, '_>,
     ) -> Result<ResolveResult<'b>, TransformError> {
-        let lhs = get_boolean_from_value(lhs);
-        let rhs = get_boolean_from_value(self.elements[1].resolve(state)?.as_ref());
+        let lhs = lhs.as_bool();
+        let rhs = self.elements[1].resolve(state)?.as_bool();
 
         let res = match &self.operator {
             Operator::And => lhs && rhs,
@@ -187,9 +185,9 @@ impl OpExpression {
         lhs: ResolveResult<'b>,
         state: &mut ExpressionExecutionState<'b, '_>,
     ) -> Result<ResolveResult<'a>, TransformError> {
-        let lhs = get_string_from_cow_value(&self.descriptor, lhs, &self.span)?;
+        let lhs = lhs.try_into_string(&self.descriptor, &self.span)?;
         let rhs = self.elements[1].resolve(state)?;
-        let rhs = get_string_from_cow_value(&self.descriptor, rhs, &self.span)?;
+        let rhs = rhs.try_into_string(&self.descriptor, &self.span)?;
 
         let res = match &self.operator {
             Operator::Equals => lhs == rhs,
@@ -210,15 +208,13 @@ impl OpExpression {
 
     fn resolve_numeric_operator<'a: 'b, 'b>(
         &'a self,
-        lhs: &Value,
+        lhs: ResolveResult<'a>,
         state: &mut ExpressionExecutionState<'b, '_>,
     ) -> Result<ResolveResult<'b>, TransformError> {
-        let lhs = get_number_from_value(&self.descriptor, lhs, &self.span)?;
-        let rhs = get_number_from_value(
-            &self.descriptor,
-            self.elements[1].resolve(state)?.as_ref(),
-            &self.span,
-        )?;
+        let lhs = lhs.try_as_number(&self.descriptor, &self.span)?;
+        let rhs = self.elements[1]
+            .resolve(state)?
+            .try_as_number(&self.descriptor, &self.span)?;
 
         let res = match &self.operator {
             Operator::Plus => lhs.try_add(rhs, &self.span)?,
@@ -284,12 +280,9 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for UnaryOpExpression {
     ) -> Result<ResolveResult<'c>, TransformError> {
         let rhs = self.element.resolve(state)?;
         match self.operator {
-            UnaryOperator::Negate => {
-                let val = get_boolean_from_value(rhs.as_ref());
-                Ok(ResolveResult::Owned(Value::Bool(!val)))
-            }
+            UnaryOperator::Negate => Ok(ResolveResult::Owned(Value::Bool(!rhs.as_bool()))),
             UnaryOperator::Minus => {
-                let val = get_number_from_value(&self.descriptor, rhs.as_ref(), &self.span)?;
+                let val = rhs.try_as_number(&self.descriptor, &self.span)?;
                 Ok(ResolveResult::Owned(
                     // This being option shouldn't be possible. We should never be able to get a NaN here.
                     val.neg().try_into_json().unwrap_or_default(),

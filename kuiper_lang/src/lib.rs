@@ -445,7 +445,7 @@ mod tests {
         let expr = compile_expression("1 == 1 && 2 == 2 || (2 + 2) != 4", &[]).unwrap();
 
         let res = expr.run([]).unwrap();
-        assert!(res.as_bool().unwrap());
+        assert!(res.as_bool());
     }
     #[test]
     pub fn test_variable_ordering() {
