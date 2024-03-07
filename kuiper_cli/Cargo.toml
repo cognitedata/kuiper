@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 serde_json = "1.0.114"
 kuiper_lang = { path = "../kuiper_lang" }
-clap = { version = "4.5.1", features = ["derive"] }
+clap = { version = "4.5.2", features = ["derive"] }
 rustyline = { version = "14.0.0", features = ["derive"] }
 colored = "2.1.0"
 dirs = "5.0.1"
