@@ -211,7 +211,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SumFunction {
                     TransformError::new_incorrect_type(
                         "sum",
                         "number in array",
-                        TransformError::value_desc(&it),
+                        TransformError::value_desc(it),
                         &self.span,
                     )
                 })?

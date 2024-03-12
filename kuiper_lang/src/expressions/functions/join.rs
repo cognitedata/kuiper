@@ -130,8 +130,8 @@ mod tests {
         let val = res.as_array().unwrap();
         assert_eq!(val.len(), 8);
 
-        for i in 0..val.len() {
-            assert_eq!(val[i].as_u64().unwrap(), (i + 1) as u64);
+        for (i, item) in val.iter().enumerate() {
+            assert_eq!(item.as_u64().unwrap(), (i + 1) as u64);
         }
     }
 }
