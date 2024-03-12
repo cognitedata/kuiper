@@ -54,9 +54,9 @@ impl TransformError {
         })
     }
 
-    pub(crate) fn new_conversion_failed(desc: String, span: &Span) -> Self {
+    pub(crate) fn new_conversion_failed(desc: impl Into<String>, span: &Span) -> Self {
         Self::ConversionFailed(TransformErrorData {
-            desc,
+            desc: desc.into(),
             span: span.clone(),
         })
     }

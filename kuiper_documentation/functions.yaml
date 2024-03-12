@@ -303,6 +303,15 @@ functions:
     examples:
       - string(true) -> "true"
 
+  - name: sum
+    signature: "`sum(x)`"
+    description: |
+      Sums the numbers in the array `x`.
+    examples:
+      - '[1, 2, 3, 4].sum()
+        ->
+        10'
+
   - name: to_object
     signature: "`to_object(x, val => ...(, val => ...))`"
     description: |
