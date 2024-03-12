@@ -151,8 +151,8 @@ functions:
       - int("6") -> 6
 
   - name: join
-    signature: "`join(a, b)`"
-    description: Returns the union of the two objects `a` and `b`. If a key is present in both objects, `b` takes precedent.
+    signature: "`join(a, b, ...)`"
+    description: Returns the union of the given objects or arrays. If a key is present in multiple objects, they are overwritten by later objects. Arrays are simply merged.
     examples:
       - |
         join({"key1": "value1"}, {"key2": "value2"})
@@ -161,6 +161,10 @@ functions:
             "key1": "value1",
             "key2": "value2"
         }
+      - |
+        join([1, 2, 3], [4, 5], [6, 7, 8])
+        ->
+        [1, 2, 3, 4, 5, 6, 7, 8]
 
   - name: length
     signature: "`length(x)`"
@@ -298,6 +302,15 @@ functions:
       `null`s will be converted into empty strings.
     examples:
       - string(true) -> "true"
+
+  - name: sum
+    signature: "`sum(x)`"
+    description: |
+      Sums the numbers in the array `x`.
+    examples:
+      - '[1, 2, 3, 4].sum()
+        ->
+        10'
 
   - name: to_object
     signature: "`to_object(x, val => ...(, val => ...))`"

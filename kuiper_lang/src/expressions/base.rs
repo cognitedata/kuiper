@@ -241,6 +241,7 @@ pub enum FunctionType {
     Slice(SliceFunction),
     Chars(CharsFunction),
     ToObject(ToObjectFunction),
+    Sum(SumFunction),
 }
 
 struct FunctionBuilder {
@@ -302,6 +303,7 @@ pub fn get_function_expression(
         "chars" => FunctionType::Chars(b.mk()?),
         "tail" => FunctionType::Tail(b.mk()?),
         "to_object" => FunctionType::ToObject(b.mk()?),
+        "sum" => FunctionType::Sum(b.mk()?),
         _ => return Err(BuildError::unrecognized_function(b.pos, name)),
     };
     Ok(ExpressionType::Function(expr))

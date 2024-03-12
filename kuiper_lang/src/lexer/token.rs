@@ -72,7 +72,7 @@ pub enum Token {
 
     /// A floating point number. Strictly not an integer.
     #[regex(r#"(\d*\.)?\d+"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseFloat((e, lex.span()))), priority = 1)]
-    #[regex(r#"(\d*\.)?\d+[eE][+-]?(\d)"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseFloat((e, lex.span()))))]
+    #[regex(r#"(\d*\.)?\d+[eE][+-]?(\d+)"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseFloat((e, lex.span()))))]
     Float(f64),
 
     /// A positive integer.
