@@ -17,7 +17,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for JoinFunction {
         match source.into_owned() {
             Value::Object(x) => {
                 let mut res = x;
-                for arg in self.args.iter() {
+                for arg in self.args.iter().skip(1) {
                     let res_inner = arg.resolve(state)?;
                     let mut res_inner = res_inner.into_owned();
                     let value = match res_inner {
@@ -33,9 +33,27 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for JoinFunction {
                 }
                 Ok(ResolveResult::Owned(Value::Object(res)))
             }
+            Value::Array(x) => {
+                let mut res = x;
+                for arg in self.args.iter().skip(1) {
+                    let res_inner = arg.resolve(state)?;
+                    let mut res_inner = res_inner.into_owned();
+                    let value = match res_inner {
+                        Value::Array(ref mut inner) => Ok(inner),
+                        y => Err(TransformError::new_incorrect_type(
+                            "Incorrect type provided for join",
+                            "array",
+                            TransformError::value_desc(&y),
+                            &self.span,
+                        )),
+                    }?;
+                    res.append(value);
+                }
+                Ok(ResolveResult::Owned(Value::Array(res)))
+            }
             x_val => Err(TransformError::new_incorrect_type(
                 "Incorrect input to join",
-                "object",
+                "object or array",
                 TransformError::value_desc(&x_val),
                 &self.span,
             )),
@@ -100,6 +118,20 @@ mod tests {
                 }
                 _ => panic!("Should be an optimizer error"),
             },
+        }
+    }
+
+    #[test]
+    fn test_join_arrays() {
+        let expr = compile_expression(r#"join([1, 2, 3], [4, 5], [6, 7, 8])"#, &[]).unwrap();
+
+        let res = expr.run([]).unwrap();
+
+        let val = res.as_array().unwrap();
+        assert_eq!(val.len(), 8);
+
+        for i in 0..val.len() {
+            assert_eq!(val[i].as_u64().unwrap(), (i + 1) as u64);
         }
     }
 }
