@@ -1,56 +1,101 @@
 #! /usr/bin/env python3
 
-from io import TextIOWrapper
-import sys
-import toml
 import json
+import re
+import sys
+from abc import ABC, abstractmethod
+from io import TextIOWrapper
 from pathlib import Path
 
-
-def get_cargo_version(file: TextIOWrapper) -> str:
-    return toml.load(file)["package"]["version"]
+import toml
 
 
-def get_pyproject_version(file: TextIOWrapper) -> str:
-    return toml.load(file)["project"]["version"]
+def replace_in_file(file_name: str, src: str, target: str) -> None:
+    with open(file_name, "r") as file:
+        contents = file.read()
+
+    contents = re.sub(src, target, contents)
+
+    with open(file_name, "w") as file:
+        file.write(contents)
 
 
-def get_js_package_version(file: TextIOWrapper) -> str:
-    return json.load(file)["version"]
+class FileType(ABC):
+    @abstractmethod
+    def get_version(self, file: TextIOWrapper) -> str:
+        pass
+
+    @abstractmethod
+    def set_version(self, file_name: str, version: str) -> None:
+        pass
 
 
-FILES = {
-    Path(__file__).resolve().parent / "kuiper_cli" / "Cargo.toml": get_cargo_version,
-    Path(__file__).resolve().parent / "kuiper_lang" / "Cargo.toml": get_cargo_version,
-    Path(__file__).resolve().parent / "kuiper_python" / "Cargo.toml": get_cargo_version,
-    Path(__file__).resolve().parent
-    / "kuiper_python"
-    / "pyproject.toml": get_pyproject_version,
-    Path(__file__).resolve().parent
-    / "kuiper_lezer"
-    / "package.json": get_js_package_version,
-    Path(__file__).resolve().parent / "kuiper_js" / "Cargo.toml": get_cargo_version,
-    Path(__file__).resolve().parent
-    / "kuiper_lang_macros"
-    / "Cargo.toml": get_cargo_version,
+class Cargo(FileType):
+    def get_version(self, file: TextIOWrapper) -> str:
+        return toml.load(file)["package"]["version"]
+
+    def set_version(self, file_name: str, version: str) -> None:
+        replace_in_file(
+            file_name,
+            r"version = \"[0-9\.]+\"\nedition = \"2021\"",
+            f'version = "{version}"\nedition = "2021"',
+        )
+
+
+class PyProject(FileType):
+    def get_version(self, file: TextIOWrapper) -> str:
+        return toml.load(file)["project"]["version"]
+
+    def set_version(self, file_name: str, version: str) -> None:
+        replace_in_file(
+            file_name,
+            r"version = \"[0-9\.]+\"\ndescription =",
+            f'version = "{version}"\ndescription =',
+        )
+
+
+class JsPackage(FileType):
+    def get_version(self, file: TextIOWrapper) -> str:
+        return json.load(file)["version"]
+
+    def set_version(self, file_name: str, version: str) -> None:
+        replace_in_file(
+            file_name, r"\"version\": \"[0-9\.]+\",", f'"version": "{version}",'
+        )
+
+
+FILES: dict[Path, FileType] = {
+    Path(__file__).resolve().parent / "kuiper_cli" / "Cargo.toml": Cargo(),
+    Path(__file__).resolve().parent / "kuiper_lang" / "Cargo.toml": Cargo(),
+    Path(__file__).resolve().parent / "kuiper_python" / "Cargo.toml": Cargo(),
+    Path(__file__).resolve().parent / "kuiper_python" / "pyproject.toml": PyProject(),
+    Path(__file__).resolve().parent / "kuiper_lezer" / "package.json": JsPackage(),
+    Path(__file__).resolve().parent / "kuiper_js" / "Cargo.toml": Cargo(),
+    Path(__file__).resolve().parent / "kuiper_lang_macros" / "Cargo.toml": Cargo(),
 }
 
 
 def main() -> None:
     versions = set()
 
-    for file in FILES:
-        with open(file, "r") as f:
-            version = FILES[file](f)
-            print(f"{file}: {version}")
-            versions.add(version)
+    if len(sys.argv) > 1:
+        print(f"Setting version to {sys.argv[1]}")
+        version = sys.argv[1]
 
-    print()
-    if len(versions) == 1:
-        print(f"All versions are {versions.pop()}")
+        for file in FILES:
+            FILES[file].set_version(file, version)
     else:
-        print(f"Multiple version numbers found: {versions}", file=sys.stderr)
-        sys.exit(1)
+        for file in FILES:
+            with open(file, "r") as f:
+                version = FILES[file].get_version(f)
+                print(f"{file}: {version}")
+                versions.add(version)
+        print()
+        if len(versions) == 1:
+            print(f"All versions are {versions.pop()}")
+        else:
+            print(f"Multiple version numbers found: {versions}", file=sys.stderr)
+            sys.exit(1)
 
 
 if __name__ == "__main__":

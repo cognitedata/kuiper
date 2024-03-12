@@ -242,11 +242,11 @@ int("6") -> 6
 
 ## join
 
-`join(a, b)`
+`join(a, b, ...)`
 
-Returns the union of the two objects `a` and `b`. If a key is present in both objects, `b` takes precedent.
+Returns the union of the given objects or arrays. If a key is present in multiple objects, they are overwritten by later objects. Arrays are simply merged.
 
-**Code example**
+**Code examples**
 ```
 join({"key1": "value1"}, {"key2": "value2"})
 ->
@@ -254,6 +254,11 @@ join({"key1": "value1"}, {"key2": "value2"})
     "key1": "value1",
     "key2": "value2"
 }
+```
+```
+join([1, 2, 3], [4, 5], [6, 7, 8])
+->
+[1, 2, 3, 4, 5, 6, 7, 8]
 ```
 
 ## length
@@ -503,6 +508,17 @@ Creates a substring of an input string `x` from `start` to `end`. If `end` is no
 ```
 ```
 "hello world".substring(0, -3) -> "hello wo"
+```
+
+## sum
+
+`sum(x)`
+
+Sums the numbers in the array `x`.
+
+**Code example**
+```
+[1, 2, 3, 4].sum() -> 10
 ```
 
 ## tail

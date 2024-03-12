@@ -71,7 +71,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ToUnixTimeFunction {
                 }
             } else {
                 Ok(ResolveResult::Owned(Value::Number(Number::from(
-                    time.timestamp_millis(),
+                    time.and_utc().timestamp_millis(),
                 ))))
             }
         }

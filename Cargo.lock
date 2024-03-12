@@ -725,7 +725,7 @@ dependencies = [
 
 [[package]]
 name = "kuiper-cli"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "clap",
  "colored",
@@ -747,7 +747,7 @@ dependencies = [
 
 [[package]]
 name = "kuiper_js"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "console_error_panic_hook",
  "gloo-utils",
@@ -759,7 +759,7 @@ dependencies = [
 
 [[package]]
 name = "kuiper_lang"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "chrono",
  "criterion",
@@ -779,7 +779,7 @@ dependencies = [
 
 [[package]]
 name = "kuiper_lang_macros"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -788,7 +788,7 @@ dependencies = [
 
 [[package]]
 name = "kuiper_python"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "kuiper_lang",
  "pyo3",

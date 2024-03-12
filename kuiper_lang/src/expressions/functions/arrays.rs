@@ -2,7 +2,7 @@ use itertools::Itertools;
 use serde_json::{Number, Value};
 
 use crate::{
-    expressions::{Expression, ResolveResult},
+    expressions::{numbers::JsonNumber, Expression, ResolveResult},
     TransformError,
 };
 
@@ -184,6 +184,53 @@ fn get_array_index(arr: &[Value], idx: i64) -> usize {
     }
 }
 
+function_def!(SumFunction, "sum", 1);
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for SumFunction {
+    fn resolve(
+        &'a self,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        let arr = self.args[0].resolve(state)?;
+
+        let inp_array = arr.as_array().ok_or_else(|| {
+            TransformError::new_incorrect_type(
+                "sum",
+                "array",
+                TransformError::value_desc(&arr),
+                &self.span,
+            )
+        })?;
+
+        let mut sum = JsonNumber::PosInteger(0);
+
+        for it in inp_array {
+            let number: JsonNumber = it
+                .as_number()
+                .ok_or_else(|| {
+                    TransformError::new_incorrect_type(
+                        "sum",
+                        "number in array",
+                        TransformError::value_desc(it),
+                        &self.span,
+                    )
+                })?
+                .into();
+
+            sum = sum.try_add(number, &self.span)?;
+        }
+
+        Ok(ResolveResult::Owned(sum.try_into_json().ok_or_else(
+            || {
+                TransformError::new_conversion_failed(
+                    "Failed to create json number from result of sum",
+                    &self.span,
+                )
+            },
+        )?))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::Value;
@@ -295,5 +342,14 @@ mod tests {
             obj.get("v2").unwrap()
         );
         assert_eq!(7, obj.get("v3").unwrap().as_u64().unwrap());
+    }
+
+    #[test]
+    pub fn test_sum() {
+        let expr = compile_expression("[1, 1, 1, 2, 2, 2].sum()", &[]).unwrap();
+
+        let res = expr.run([]).unwrap();
+
+        assert_eq!(9, res.as_u64().unwrap());
     }
 }
