@@ -5,7 +5,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-pub const BUILT_INS: [&str; 38] = [
+pub const BUILT_INS: [&str; 39] = [
     "atan2(",
     "case(",
     "ceil(",
@@ -36,6 +36,7 @@ pub const BUILT_INS: [&str; 38] = [
     "split(",
     "string(",
     "substring(",
+    "sum(",
     "tail(",
     "to_object(",
     "to_unix_timestamp(",
@@ -172,8 +173,8 @@ Consider using [try_int](#try_int) instead if you need error handling.",
         (
             "join",
             FunctionDef {
-                signature: "join(a, b)",
-                description: "Returns the union of the two objects `a` and `b`. If a key is present in both objects, `b` takes precedent.",
+                signature: "join(a, b, ...)",
+                description: "Returns the union of the given objects or arrays. If a key is present in multiple objects, they are overwritten by later objects. Arrays are simply merged.",
             }
         ),
         (
@@ -276,6 +277,13 @@ If applied to an object, the first input is the value, and the second is the key
             FunctionDef {
                 signature: "substring(x, start(, end))",
                 description: "Creates a substring of an input string `x` from `start` to `end`. If `end` is not specified, go from `start` to end of string. If `start` or `end` are negative, count from the end of the string.",
+            }
+        ),
+        (
+            "sum",
+            FunctionDef {
+                signature: "sum(x)",
+                description: "Sums the numbers in the array `x`.",
             }
         ),
         (
