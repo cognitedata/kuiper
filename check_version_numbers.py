@@ -38,7 +38,7 @@ class Cargo(FileType):
         replace_in_file(
             file_name,
             r"version = \"[0-9\.]+\"\nedition = \"2021\"",
-            rf"version = \"{version}\"\nedition = \"2021\"",
+            f'version = "{version}"\nedition = "2021"',
         )
 
 
@@ -50,7 +50,7 @@ class PyProject(FileType):
         replace_in_file(
             file_name,
             r"version = \"[0-9\.]+\"\ndescription =",
-            rf"version = \"{version}\"\ndescription =",
+            f'version = "{version}"\ndescription =',
         )
 
 
@@ -60,7 +60,7 @@ class JsPackage(FileType):
 
     def set_version(self, file_name: str, version: str) -> None:
         replace_in_file(
-            file_name, r"\"version\": \"[0-9\.]+\",", rf"\"version\": \"{version}\","
+            file_name, r"\"version\": \"[0-9\.]+\",", f'"version": "{version}",'
         )
 
 
