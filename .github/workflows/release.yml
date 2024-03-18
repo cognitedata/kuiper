@@ -28,7 +28,7 @@ jobs:
           args: --release -i python${{ matrix.python-version }}
           manylinux: auto
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: ./target/wheels
@@ -55,7 +55,7 @@ jobs:
           args: --release -i python${{ matrix.python-version }} --target ${{ matrix.arch }}
           manylinux: auto
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: ./target/wheels
@@ -80,7 +80,7 @@ jobs:
           working-directory: ./kuiper_python
           args: --release -i python${{ matrix.python-version }}
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: ./target/wheels
@@ -90,7 +90,7 @@ jobs:
     environment: CD
     needs: ["build_python_bindings_darwin", "build_ubuntu_python_bindings"]
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: wheels
           path: ./wheels
