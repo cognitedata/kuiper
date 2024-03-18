@@ -93,7 +93,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: wheels
-          path: wheels
+          path: ./wheels
       - name: Install twine
         run: pip install twine
       - name: Publish artifact
@@ -101,7 +101,7 @@ jobs:
           TWINE_USERNAME: ${{ secrets.ARTIFACTORY_PUBLISH_TOKEN_USER }}
           TWINE_PASSWORD: ${{ secrets.ARTIFACTORY_PUBLISH_TOKEN }}
           TWINE_REPOSITORY_URL: https://cognite.jfrog.io/cognite/api/pypi/snakepit
-        run: twine upload ./target/wheels/* || true
+        run: twine upload ./wheels/* || true
 
   publish_codemirror_module:
     runs-on: ubuntu-latest
