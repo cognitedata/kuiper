@@ -5,22 +5,7 @@ on:
     branches: [main]
 
 jobs:
-  build_and_test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: rustfmt, clippy
-      - name: Run clippy
-        run: cargo clippy -- -D warnings
-      - name: Run cargo format
-        run: cargo fmt --check
-      - name: Test
-        run: cargo test
-
-  publish_python_bindings:
+  build_ubuntu_python_bindings:
     strategy:
       matrix:
         python-version: ["3.10", "3.11"]
@@ -42,14 +27,11 @@ jobs:
           working-directory: ./kuiper_python
           args: --release -i python${{ matrix.python-version }}
           manylinux: auto
-      - name: Install twine
-        run: pip install twine
-      - name: Publish artifact
-        env:
-          TWINE_USERNAME: ${{ secrets.ARTIFACTORY_PUBLISH_TOKEN_USER }}
-          TWINE_PASSWORD: ${{ secrets.ARTIFACTORY_PUBLISH_TOKEN }}
-          TWINE_REPOSITORY_URL: https://cognite.jfrog.io/cognite/api/pypi/snakepit
-        run: twine upload ./target/wheels/* || true
+      - name: Upload wheels
+        uses: actions/upload-artifact@v3
+        with:
+          name: wheels
+          path: ./target/wheels
 
   build_python_bindings_darwin:
     strategy:
@@ -63,20 +45,55 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dev deps
-        run: pip install pre-commit toml
-      - name: Check style
-        run: pre-commit run --all
       - uses: PyO3/maturin-action@v1
         with:
           command: build
           working-directory: ./kuiper_python
           args: --release -i python${{ matrix.python-version }} --target ${{ matrix.arch }}
           manylinux: auto
+      - name: Upload wheels
+        uses: actions/upload-artifact@v3
+        with:
+          name: wheels
+          path: ./target/wheels
+
+  build_python_bindings_windows:
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          working-directory: ./kuiper_python
+          args: --release -i python${{ matrix.python-version }}
+      - name: Upload wheels
+        uses: actions/upload-artifact@v3
+        with:
+          name: wheels
+          path: ./target/wheels
+
+  publish_python_bindings:
+    runs-on: ubuntu-latest
+    environment: CD
+    needs: ["build_python_bindings_darwin", "build_ubuntu_python_bindings"]
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: wheels
+          path: wheels
       - name: Install twine
         run: pip install twine
       - name: Publish artifact
