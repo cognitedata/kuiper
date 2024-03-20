@@ -1,6 +1,6 @@
 [package]
 name = "kuiper_python"
-version = "0.9.1"
+version = "9.0.2"
 edition = "2021"
 
 [lib]
