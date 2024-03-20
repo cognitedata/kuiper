@@ -88,7 +88,7 @@ jobs:
   publish_python_bindings:
     runs-on: ubuntu-latest
     environment: CD
-    needs: ["build_python_bindings_darwin", "build_ubuntu_python_bindings"]
+    needs: ["build_python_bindings_darwin", "build_ubuntu_python_bindings", "build_python_bindings_windows"]
     steps:
       - uses: actions/download-artifact@v4
         with:
