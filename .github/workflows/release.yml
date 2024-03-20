@@ -28,9 +28,9 @@ jobs:
           args: --release -i python${{ matrix.python-version }}
           manylinux: auto
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-linux-${{ matrix.python-version }}
           path: ./target/wheels
 
   build_python_bindings_darwin:
@@ -55,9 +55,9 @@ jobs:
           args: --release -i python${{ matrix.python-version }} --target ${{ matrix.arch }}
           manylinux: auto
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-mac-${{ matrix.arch }}-${{ matrix.python-version }}
           path: ./target/wheels
 
   build_python_bindings_windows:
@@ -80,9 +80,9 @@ jobs:
           working-directory: ./kuiper_python
           args: --release -i python${{ matrix.python-version }}
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-win-${{ matrix.python-version }}
           path: ./target/wheels
 
   publish_python_bindings:
@@ -90,9 +90,10 @@ jobs:
     environment: CD
     needs: ["build_python_bindings_darwin", "build_ubuntu_python_bindings", "build_python_bindings_windows"]
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
-          name: wheels
+          pattern: wheels-*
+          merge-multiple: true
           path: ./wheels
       - name: Install twine
         run: pip install twine
