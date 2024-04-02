@@ -9,7 +9,7 @@ edition = "2021"
 completions = []
 
 [dependencies]
-chrono = "0.4.35"
+chrono = "0.4.37"
 itertools = "0.12.1"
 lazy_static = "1.4.0"
 logos = "0.14"
