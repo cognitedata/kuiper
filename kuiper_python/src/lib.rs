@@ -5,14 +5,14 @@ mod expressions;
 use crate::compiler::compile_expression_py;
 use crate::expressions::KuiperExpression;
 use pyo3::prelude::PyModule;
-use pyo3::{pymodule, wrap_pyfunction, PyResult, Python};
+use pyo3::{pymodule, wrap_pyfunction_bound, Bound, PyResult, Python};
 
 #[pymodule]
-fn kuiper(py: Python<'_>, module: &PyModule) -> PyResult<()> {
-    module.add_function(wrap_pyfunction!(compile_expression_py, py)?)?;
+fn kuiper(py: Python<'_>, module: &Bound<'_, PyModule>) -> PyResult<()> {
+    module.add_function(wrap_pyfunction_bound!(compile_expression_py, py)?)?;
     module.add_class::<KuiperExpression>()?;
 
-    PyModule::from_code(
+    PyModule::from_code_bound(
         py,
         r#"
 class KuiperError(Exception):
