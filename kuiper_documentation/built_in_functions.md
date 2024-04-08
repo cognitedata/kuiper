@@ -6,6 +6,34 @@ title: Functions
 
 # Functions
 
+## all
+
+`all(x)`
+
+Returns true if all items in the array `x` is true.
+
+**Code examples**
+```
+[true, false, false, true].all() -> false
+```
+```
+[true, true, true, true].all() -> true
+```
+
+## any
+
+`any(x)`
+
+Returns true if any items in the array `x` is true.
+
+**Code examples**
+```
+[true, false, false, true].any() -> true
+```
+```
+[false, false, false, false].any() -> false
+```
+
 ## atan2
 
 `atan2(x, y)`
@@ -78,6 +106,17 @@ concat("Hello, ", "world!") -> "Hello, world!"
 {
     "externalId": concat("some-prefix:", input.tag)
 }
+```
+
+## contains
+
+`conatins(x, a)`
+
+Returns true if the array `x` contains item `a`.
+
+**Code example**
+```
+[1, 2, 3, 4].contains(4) -> true
 ```
 
 ## distinct_by

@@ -231,6 +231,34 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SumFunction {
     }
 }
 
+function_def!(ContainsFunction, "contains", 2);
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for ContainsFunction {
+    fn resolve(
+        &'a self,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, TransformError> {
+        let raw_list = self.args[0].resolve(state)?;
+        let list = raw_list.as_array().ok_or_else(|| {
+            TransformError::new_incorrect_type(
+                "contains",
+                "array",
+                TransformError::value_desc(&raw_list),
+                &self.span,
+            )
+        })?;
+        let look_for = self.args[1].resolve(state)?;
+
+        for i in list {
+            if i == look_for.as_ref() {
+                return Ok(ResolveResult::Owned(Value::Bool(true)));
+            }
+        }
+
+        Ok(ResolveResult::Owned(Value::Bool(false)))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::Value;
@@ -351,5 +379,30 @@ mod tests {
         let res = expr.run([]).unwrap();
 
         assert_eq!(9, res.as_u64().unwrap());
+    }
+
+    #[test]
+    pub fn test_contains() {
+        let expr = compile_expression(
+            r#"{
+                "t1": [1, 2, 3, 4].contains(4),
+                "t2": [1, 2, 3, 4].contains(6),
+                "t3": ["hey", "now"].contains("hey"),
+                "t4": ["hey", "now"].contains("hey1"),
+                "t5": [{"hello": "there"}, "now"].contains("hello"),
+                "t6": [{"hello": "there"}, "now"].contains({"hello": "there"}),
+            }"#,
+            &[],
+        )
+        .unwrap();
+
+        let res = expr.run([]).unwrap();
+
+        assert_eq!(res.get("t1").unwrap().as_bool().unwrap(), true);
+        assert_eq!(res.get("t2").unwrap().as_bool().unwrap(), false);
+        assert_eq!(res.get("t3").unwrap().as_bool().unwrap(), true);
+        assert_eq!(res.get("t4").unwrap().as_bool().unwrap(), false);
+        assert_eq!(res.get("t5").unwrap().as_bool().unwrap(), false);
+        assert_eq!(res.get("t6").unwrap().as_bool().unwrap(), true);
     }
 }

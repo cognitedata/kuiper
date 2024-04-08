@@ -242,6 +242,9 @@ pub enum FunctionType {
     Chars(CharsFunction),
     ToObject(ToObjectFunction),
     Sum(SumFunction),
+    Any(AnyFunction),
+    All(AllFunction),
+    Contains(ContainsFunction),
 }
 
 struct FunctionBuilder {
@@ -304,6 +307,9 @@ pub fn get_function_expression(
         "tail" => FunctionType::Tail(b.mk()?),
         "to_object" => FunctionType::ToObject(b.mk()?),
         "sum" => FunctionType::Sum(b.mk()?),
+        "any" => FunctionType::Any(b.mk()?),
+        "all" => FunctionType::All(b.mk()?),
+        "contains" => FunctionType::Contains(b.mk()?),
         _ => return Err(BuildError::unrecognized_function(b.pos, name)),
     };
     Ok(ExpressionType::Function(expr))
