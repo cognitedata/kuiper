@@ -433,3 +433,23 @@ functions:
         -> "potato"'
       - 'replace("potato","o","a")
         -> "patata"'
+
+  - name: any
+    signature: "`any(x)`"
+    description: Returns true if any items in the array `x` is true.
+    examples:
+     - "[true, false, false, true].any() -> true"
+     - "[false, false, false, false].any() -> false"
+
+  - name: all
+    signature: "`all(x)`"
+    description: Returns true if all items in the array `x` is true.
+    examples:
+     - "[true, false, false, true].all() -> false"
+     - "[true, true, true, true].all() -> true"
+
+  - name: contains
+    signature: "`conatins(x, a)`"
+    description: Returns true if the array `x` contains item `a`.
+    examples:
+     - "[1, 2, 3, 4].contains(4) -> true"

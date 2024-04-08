@@ -54,6 +54,80 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for CaseFunction {
     }
 }
 
+function_def!(AnyFunction, "any", 1);
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for AnyFunction {
+    fn resolve(
+        &'a self,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, TransformError> {
+        match &self.args[0].resolve(state)?.as_ref() {
+            Value::Array(list) => {
+                for i in list {
+                    if i.as_bool().is_some_and(|x| x) {
+                        return Ok(ResolveResult::Owned(Value::Bool(true)));
+                    }
+                }
+
+                Ok(ResolveResult::Owned(Value::Bool(false)))
+            }
+
+            Value::Object(object) => {
+                for i in object.values() {
+                    if i.as_bool().is_some_and(|x| x) {
+                        return Ok(ResolveResult::Owned(Value::Bool(true)));
+                    }
+                }
+                Ok(ResolveResult::Owned(Value::Bool(false)))
+            }
+
+            x => Err(TransformError::new_incorrect_type(
+                "Incorrect input to any",
+                "array or object",
+                TransformError::value_desc(x),
+                &self.span,
+            )),
+        }
+    }
+}
+
+function_def!(AllFunction, "all", 1);
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for AllFunction {
+    fn resolve(
+        &'a self,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, TransformError> {
+        match &self.args[0].resolve(state)?.as_ref() {
+            Value::Array(list) => {
+                for i in list {
+                    if i.as_bool().is_some_and(|x| !x) {
+                        return Ok(ResolveResult::Owned(Value::Bool(false)));
+                    }
+                }
+
+                Ok(ResolveResult::Owned(Value::Bool(true)))
+            }
+
+            Value::Object(object) => {
+                for i in object.values() {
+                    if i.as_bool().is_some_and(|x| !x) {
+                        return Ok(ResolveResult::Owned(Value::Bool(false)));
+                    }
+                }
+                Ok(ResolveResult::Owned(Value::Bool(true)))
+            }
+
+            x => Err(TransformError::new_incorrect_type(
+                "Incorrect input to all",
+                "array or object",
+                TransformError::value_desc(x),
+                &self.span,
+            )),
+        }
+    }
+}
+
 impl CaseFunction {
     fn resolve_generic<'a: 'b, 'b>(
         &'a self,
@@ -147,5 +221,53 @@ mod tests {
         assert_eq!(3, res.get("t1").unwrap().as_u64().unwrap());
         assert!(res.get("t2").unwrap().is_null());
         assert_eq!(4, res.get("t3").unwrap().as_u64().unwrap());
+    }
+
+    #[test]
+    pub fn test_any() {
+        let expr = compile_expression(
+            r#"{
+                "t1": any([false, false, true]),
+                "t2": any([false, false, false]),
+                "t3": any([true, true, true]),
+                "t4": any({"k1": true, "k2": false}),
+                "t5": any({"k1": false, "k2": false}),
+                "t6": any({"k1": true, "k2": true}),
+            }"#,
+            &[],
+        )
+        .unwrap();
+
+        let res = expr.run([]).unwrap();
+        assert_eq!(res.get("t1").unwrap().as_bool().unwrap(), true);
+        assert_eq!(res.get("t2").unwrap().as_bool().unwrap(), false);
+        assert_eq!(res.get("t3").unwrap().as_bool().unwrap(), true);
+        assert_eq!(res.get("t4").unwrap().as_bool().unwrap(), true);
+        assert_eq!(res.get("t5").unwrap().as_bool().unwrap(), false);
+        assert_eq!(res.get("t6").unwrap().as_bool().unwrap(), true);
+    }
+
+    #[test]
+    pub fn test_all() {
+        let expr = compile_expression(
+            r#"{
+                "t1": all([false, false, true]),
+                "t2": all([false, false, false]),
+                "t3": all([true, true, true]),
+                "t4": all({"k1": true, "k2": false}),
+                "t5": all({"k1": false, "k2": false}),
+                "t6": all({"k1": true, "k2": true}),
+            }"#,
+            &[],
+        )
+        .unwrap();
+
+        let res = expr.run([]).unwrap();
+        assert_eq!(res.get("t1").unwrap().as_bool().unwrap(), false);
+        assert_eq!(res.get("t2").unwrap().as_bool().unwrap(), false);
+        assert_eq!(res.get("t3").unwrap().as_bool().unwrap(), true);
+        assert_eq!(res.get("t4").unwrap().as_bool().unwrap(), false);
+        assert_eq!(res.get("t5").unwrap().as_bool().unwrap(), false);
+        assert_eq!(res.get("t6").unwrap().as_bool().unwrap(), true);
     }
 }

@@ -8,12 +8,15 @@ export type KuiperInput = {
 };
 
 export const builtIns: KuiperInput[] = [
+    { label: "all", description: "`all(x)`: Returns true if all items in the array `x` is true." },
+    { label: "any", description: "`any(x)`: Returns true if any items in the array `x` is true." },
     { label: "atan2", description: "`atan2(x, y)`: Returns the inverse tangent of `x`/`y` in radians between -pi and pi." },
     { label: "case", description: "`case(x, c1, r1, c2, r2, ..., (default))`: Compare `x` to each of `c1`, `c2`, etc. and return the matching `r1`, `r2` of the first match. If no entry matches, a final optional expression can be returned as default." },
     { label: "ceil", description: "`ceil(x)`: Returns `x` rounded up to the nearest integer." },
     { label: "chars", description: "`chars(x)`: Creates an array of characters from a string." },
     { label: "chunk", description: "`chunk(x, s)`: Converts the list `x` into several lists of length at most `s`" },
     { label: "concat", description: "`concat(x, y, ...)`: Concatenate any number of strings." },
+    { label: "contains", description: "`conatins(x, a)`: Returns true if the array `x` contains item `a`." },
     { label: "distinct_by", description: "`distinct_by(x, (a(, b)) => ...)`: Returns a list or object where the elements are distinct by the returned value of the given lambda function. The lambda function either takes list values, or object (value, key) pairs." },
     { label: "except", description: "`except(x, (v(, k)) => ...)` or `except(x, l)`: Returns a list or object where keys or entries maching the predicate have been removed." },
     { label: "filter", description: "`filter(x, it => ...)`: Removes any item from the list `x` where the lambda function returns `false` or `null`." },

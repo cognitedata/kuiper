@@ -5,13 +5,16 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-pub const BUILT_INS: [&str; 39] = [
+pub const BUILT_INS: [&str; 42] = [
+    "all(",
+    "any(",
     "atan2(",
     "case(",
     "ceil(",
     "chars(",
     "chunk(",
     "concat(",
+    "contains(",
     "distinct_by(",
     "except(",
     "filter(",
@@ -56,6 +59,20 @@ lazy_static! {
     pub static ref HELP: HashMap<&'static str, FunctionDef> = HashMap::from([
 
         (
+            "all",
+            FunctionDef {
+                signature: "all(x)",
+                description: "Returns true if all items in the array `x` is true.",
+            }
+        ),
+        (
+            "any",
+            FunctionDef {
+                signature: "any(x)",
+                description: "Returns true if any items in the array `x` is true.",
+            }
+        ),
+        (
             "atan2",
             FunctionDef {
                 signature: "atan2(x, y)",
@@ -95,6 +112,13 @@ lazy_static! {
             FunctionDef {
                 signature: "concat(x, y, ...)",
                 description: "Concatenate any number of strings.",
+            }
+        ),
+        (
+            "contains",
+            FunctionDef {
+                signature: "conatins(x, a)",
+                description: "Returns true if the array `x` contains item `a`.",
             }
         ),
         (
