@@ -84,7 +84,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for AnyFunction {
             x => Err(TransformError::new_incorrect_type(
                 "Incorrect input to any",
                 "array or object",
-                TransformError::value_desc(&x),
+                TransformError::value_desc(x),
                 &self.span,
             )),
         }
@@ -121,7 +121,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for AllFunction {
             x => Err(TransformError::new_incorrect_type(
                 "Incorrect input to all",
                 "array or object",
-                TransformError::value_desc(&x),
+                TransformError::value_desc(x),
                 &self.span,
             )),
         }
