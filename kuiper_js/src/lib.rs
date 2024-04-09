@@ -129,21 +129,11 @@ extern "C" {
 #[wasm_bindgen]
 pub fn compile_expression(
     data: String,
-    inputs: Vec<JsValue>,
+    inputs: Vec<String>,
 ) -> Result<KuiperExpression, KuiperError> {
-    let input_strings = inputs
-        .into_iter()
-        .map(|j| {
-            j.as_string().ok_or_else(|| KuiperError {
-                message: "Inputs must be string".to_string(),
-                start: None,
-                end: None,
-            })
-        })
-        .collect::<Result<Vec<_>, _>>()?;
     let expr = compile_expression_kuiper(
         &data,
-        &input_strings.iter().map(String::as_str).collect::<Vec<_>>(),
+        &inputs.iter().map(String::as_str).collect::<Vec<_>>(),
     )?;
     Ok(KuiperExpression { expression: expr })
 }
