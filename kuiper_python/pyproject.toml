@@ -1,6 +1,6 @@
 [project]
 name = "cognite-kuiper"
-version = "0.9.2"
+version = "0.9.3"
 description = "A JSON to JSON transform and templating language from Cognite"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -53,6 +53,10 @@ line-length = 120
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 target-version = "py311"
+
+[tool.maturin]
+python-source = "python"
+python-packages = ["kuiper"]
 
 [build-system]
 requires = ["maturin>=1.0,<2.0"]
