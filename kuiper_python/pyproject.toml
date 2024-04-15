@@ -22,7 +22,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
-  "pytest >=8,<9",
+  "pytest",
 ]
 
 [package.metadata.maturin]
@@ -32,10 +32,15 @@ python-source = "python"
 homepage = "https://cognite.com"
 repository = "https://github.com/cognitedata/kuiper"
 
-[tool.ruff.per-file-ignores]
-"python/kuiper/__init__.py" = ["F403"]
-
 [tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint.per-file-ignores]
+"python/kuiper/__init__.py" = ["F403"]
+"tests/*" = ["S101", "I001"]
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "T20", "S"]
 ignore = ["S104"]
 fixable = ["A", "B", "C", "D", "E", "F", "I"]
@@ -47,12 +52,9 @@ exclude = [
     ".ruff_cache",
 ]
 
-line-length = 120
-
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
-target-version = "py311"
 
 [tool.maturin]
 python-source = "python"

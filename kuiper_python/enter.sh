@@ -6,4 +6,5 @@ if [ ! -d ./.env ]; then
 fi
 
 source .env/bin/activate
+pip install -U pytest
 maturin develop
