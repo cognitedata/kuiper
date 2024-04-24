@@ -35,21 +35,22 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dev deps
-        run: pip install pre-commit toml pyyaml
+        run: pip install pre-commit toml pyyaml pytest
       - name: Check style
         run: pre-commit run --all
       - name: Check that docs are up to date
         run: |
           python kuiper_documentation/codegen.py
           git diff --quiet
-      - name: Setup QEMU
-        uses: docker/setup-qemu-action@v3
       - uses: PyO3/maturin-action@v1
         with:
           command: build
           working-directory: ./kuiper_python
-          args: --release -i python${{ matrix.python-version }}
-          manylinux: auto
+      - name: Run tests
+        run: |
+          pip install target/wheels/cognite_kuiper-*.whl
+          pytest
+
 
   build_js_modules:
     runs-on: ubuntu-latest
