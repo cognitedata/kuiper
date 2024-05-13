@@ -453,3 +453,10 @@ functions:
     description: Returns true if the array `x` contains item `a`.
     examples:
      - "[1, 2, 3, 4].contains(4) -> true"
+
+  - name: string_join
+    signature: "`string_join(x(, a))`"
+    description: Returns a string with all the elements of `x`, separated by `a`. If `a` is omitted, the strings will be joined without any separator.
+    examples:
+     - '["hello", "there"].string_join(" ") -> "hello there"'
+     - '[1, 2, 3].string_join() -> "123"'

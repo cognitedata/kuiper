@@ -245,6 +245,7 @@ pub enum FunctionType {
     Any(AnyFunction),
     All(AllFunction),
     Contains(ContainsFunction),
+    StringJoin(StringJoinFunction),
 }
 
 struct FunctionBuilder {
@@ -310,6 +311,7 @@ pub fn get_function_expression(
         "any" => FunctionType::Any(b.mk()?),
         "all" => FunctionType::All(b.mk()?),
         "contains" => FunctionType::Contains(b.mk()?),
+        "string_join" => FunctionType::StringJoin(b.mk()?),
         _ => return Err(BuildError::unrecognized_function(b.pos, name)),
     };
     Ok(ExpressionType::Function(expr))

@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use serde_json::Value;
 
 use crate::expressions::{Expression, ResolveResult};
@@ -216,6 +217,46 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for CharsFunction {
     }
 }
 
+function_def!(StringJoinFunction, "string_join", 1, Some(2));
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for StringJoinFunction {
+    fn resolve(
+        &'a self,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        let list = self.args[0].resolve(state)?;
+
+        let sep = self
+            .args
+            .get(1)
+            .map(|s| s.resolve(state))
+            .transpose()?
+            .map(|v| match v.as_ref() {
+                Value::String(s) => s.to_owned(),
+                _ => v.to_string(),
+            })
+            .unwrap_or("".to_string());
+
+        match list.as_ref() {
+            Value::Array(arr) => Ok(ResolveResult::Owned(Value::String(
+                arr.iter()
+                    .map(|s| match s {
+                        Value::String(val) => val.to_owned(),
+                        _ => s.to_string(),
+                    })
+                    .join(&sep),
+            ))),
+
+            wrong => Err(crate::TransformError::new_incorrect_type(
+                "Incorrect input to string_join",
+                "array",
+                crate::TransformError::value_desc(wrong),
+                &self.span,
+            )),
+        }
+    }
+}
+
 // Once the function is defined it should be added to the main function enum in expressions/base.rs, and to the get_function_expression function.
 // We can just add a test in this file:
 #[cfg(test)]
@@ -412,5 +453,24 @@ mod tests {
             .collect();
 
         assert_eq!(vec!["t", "e", "s", "t", " ", "æ", "ø", "å"], arr);
+    }
+
+    #[test]
+    pub fn test_join() {
+        let expr = compile_expression(
+            r#"
+        {
+            "test1": ["hello", "there"].string_join(" "),
+            "test2": [1, 2, 3].string_join()
+        }
+        "#,
+            &[],
+        )
+        .unwrap();
+
+        let res = expr.run(&[]).unwrap();
+
+        assert_eq!(res.get("test1").unwrap().as_str().unwrap(), "hello there");
+        assert_eq!(res.get("test2").unwrap().as_str().unwrap(), "123");
     }
 }

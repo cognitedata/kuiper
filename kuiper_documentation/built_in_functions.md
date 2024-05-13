@@ -535,6 +535,20 @@ Converts `x` into a string.
 string(true) -> "true"
 ```
 
+## string_join
+
+`string_join(x(, a))`
+
+Returns a string with all the elements of `x`, separated by `a`. If `a` is omitted, the strings will be joined without any separator.
+
+**Code examples**
+```
+["hello", "there"].string_join(" ") -> "hello there"
+```
+```
+[1, 2, 3].string_join() -> "123"
+```
+
 ## substring
 
 `substring(x, start(, end))`
