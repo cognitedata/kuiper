@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use itertools::Itertools;
 use serde_json::Value;
 
@@ -226,16 +228,12 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for StringJoinFunction {
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
         let list = self.args[0].resolve(state)?;
 
-        let sep = self
-            .args
-            .get(1)
-            .map(|s| s.resolve(state))
-            .transpose()?
-            .map(|v| match v.as_ref() {
-                Value::String(s) => s.to_owned(),
-                _ => v.to_string(),
-            })
-            .unwrap_or("".to_string());
+        let sep = match self.args.get(1) {
+            Some(s) => s
+                .resolve(state)?
+                .try_into_string("string_join", &self.span)?,
+            None => Cow::Borrowed(""),
+        };
 
         match list.as_ref() {
             Value::Array(arr) => Ok(ResolveResult::Owned(Value::String(
@@ -244,7 +242,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for StringJoinFunction {
                         Value::String(val) => val.to_owned(),
                         _ => s.to_string(),
                     })
-                    .join(&sep),
+                    .join(sep.as_ref()),
             ))),
 
             wrong => Err(crate::TransformError::new_incorrect_type(
