@@ -5,7 +5,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-pub const BUILT_INS: [&str; 42] = [
+pub const BUILT_INS: [&str; 43] = [
     "all(",
     "any(",
     "atan2(",
@@ -38,6 +38,7 @@ pub const BUILT_INS: [&str; 42] = [
     "slice(",
     "split(",
     "string(",
+    "string_join(",
     "substring(",
     "sum(",
     "tail(",
@@ -294,6 +295,13 @@ If applied to an object, the first input is the value, and the second is the key
                 description: "Converts `x` into a string.
 
 `null`s will be converted into empty strings.",
+            }
+        ),
+        (
+            "string_join",
+            FunctionDef {
+                signature: "string_join(x(, a))",
+                description: "Returns a string with all the elements of `x`, separated by `a`. If `a` is omitted, the strings will be joined without any separator.",
             }
         ),
         (

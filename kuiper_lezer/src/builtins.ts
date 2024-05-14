@@ -40,6 +40,7 @@ export const builtIns: KuiperInput[] = [
     { label: "slice", description: "`slice(x, start(, end))`: Creates a sub-array from an array `x` from `start` to `end`. If `end is not specified, go from `start` the end of the array. If `start` or `end` are negative, count from the end of the array." },
     { label: "split", description: "`split(a, b)`: Splits string `a` on any occurences of `b`. If `b` is an empty string, this will split on each character, including before the first and after the last." },
     { label: "string", description: "`string(x)`: Converts `x` into a string." },
+    { label: "string_join", description: "`string_join(x(, a))`: Returns a string with all the elements of `x`, separated by `a`. If `a` is omitted, the strings will be joined without any separator." },
     { label: "substring", description: "`substring(x, start(, end))`: Creates a substring of an input string `x` from `start` to `end`. If `end` is not specified, go from `start` to end of string. If `start` or `end` are negative, count from the end of the string." },
     { label: "sum", description: "`sum(x)`: Sums the numbers in the array `x`." },
     { label: "tail", description: "`tail(x(, n))`: Takes the last element of the list `x`. If `n` is given, takes the last `n` elements, and returns a list if `n` > 1." },
