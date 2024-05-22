@@ -1,6 +1,6 @@
 {
   "name": "@cognite/codemirror-lang-kuiper",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "Codemirror module for the json transformation language Kuiper",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
