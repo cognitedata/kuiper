@@ -8,7 +8,7 @@ jobs:
   build_ubuntu_python_bindings:
     strategy:
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
     runs-on: ubuntu-latest
     environment: CD
     steps:
@@ -36,7 +36,7 @@ jobs:
   build_python_bindings_darwin:
     strategy:
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
         arch: ["x86_64-apple-darwin", "aarch64-apple-darwin"]
     runs-on: macos-latest
     environment: CD
@@ -63,7 +63,7 @@ jobs:
   build_python_bindings_windows:
     strategy:
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
