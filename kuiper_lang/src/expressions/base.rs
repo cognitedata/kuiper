@@ -247,6 +247,8 @@ pub enum FunctionType {
     All(AllFunction),
     Contains(ContainsFunction),
     StringJoin(StringJoinFunction),
+    Min(MinFunction),
+    Max(MaxFunction),
 }
 
 struct FunctionBuilder {
@@ -313,6 +315,8 @@ pub fn get_function_expression(
         "all" => FunctionType::All(b.mk()?),
         "contains" => FunctionType::Contains(b.mk()?),
         "string_join" => FunctionType::StringJoin(b.mk()?),
+        "min" => FunctionType::Min(b.mk()?),
+        "max" => FunctionType::Max(b.mk()?),
         _ => return Err(BuildError::unrecognized_function(b.pos, name)),
     };
     Ok(ExpressionType::Function(expr))

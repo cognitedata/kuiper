@@ -5,7 +5,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-pub const BUILT_INS: [&str; 43] = [
+pub const BUILT_INS: [&str; 45] = [
     "all(",
     "any(",
     "atan2(",
@@ -28,6 +28,8 @@ pub const BUILT_INS: [&str; 43] = [
     "length(",
     "log(",
     "map(",
+    "max(",
+    "min(",
     "now(",
     "pairs(",
     "pow(",
@@ -223,6 +225,20 @@ Consider using [try_int](#try_int) instead if you need error handling.",
                 description: "Applies the lambda function to every item in the list `x`. The lambda takes an optional second input which is the index of the item in the list.
 
 If applied to an object, the first input is the value, and the second is the key. The result is the new value.",
+            }
+        ),
+        (
+            "max",
+            FunctionDef {
+                signature: "max(a, b)",
+                description: "Returns the larger of the two numbers `a` and `b`.",
+            }
+        ),
+        (
+            "min",
+            FunctionDef {
+                signature: "min(a, b)",
+                description: "Returns the smaller of the two numbers `a` and `b`.",
             }
         ),
         (
