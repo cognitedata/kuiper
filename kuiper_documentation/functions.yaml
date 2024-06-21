@@ -460,13 +460,13 @@ functions:
     examples:
      - '["hello", "there"].string_join(" ") -> "hello there"'
      - '[1, 2, 3].string_join() -> "123"'
-  
+
   - name: min
     signature: "`min(a, b)`"
     description: Returns the smaller of the two numbers `a` and `b`.
     examples:
      - 'min(1, 2) -> 1'
-  
+
   - name: max
     signature: "`max(a, b)`"
     description: Returns the larger of the two numbers `a` and `b`.
