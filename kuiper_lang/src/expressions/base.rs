@@ -16,7 +16,8 @@ use super::{
     lambda::LambdaExpression,
     operator::UnaryOpExpression,
     transform_error::TransformError,
-    ArrayExpression, ObjectExpression, OpExpression, ResolveResult, SelectorExpression,
+    ArrayExpression, IfExpression, ObjectExpression, OpExpression, ResolveResult,
+    SelectorExpression,
 };
 
 use kuiper_lang_macros::PassThrough;
@@ -335,6 +336,7 @@ pub enum ExpressionType {
     Object(ObjectExpression),
     Lambda(LambdaExpression),
     Is(IsExpression),
+    If(IfExpression),
 }
 
 impl ExpressionType {

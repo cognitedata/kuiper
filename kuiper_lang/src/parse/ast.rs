@@ -139,6 +139,10 @@ pub enum Expression {
         loc: Span,
     },
     Variable(String, Span),
+    If {
+        args: Vec<Expression>,
+        loc: Span,
+    },
 }
 
 impl Display for Expression {
@@ -199,6 +203,24 @@ impl Display for Expression {
             }
             Expression::Variable(v, _) => write!(f, "{v}"),
             Expression::Is(i) => write!(f, "({} is {})", i.lhs, i.rhs),
+            Expression::If { args, loc: _ } => {
+                write!(f, "if ")?;
+                write!(f, "{} {{ {} }}", args[0], args[1])?;
+
+                let mut iter = args.iter().skip(2);
+                loop {
+                    let a1 = iter.next();
+                    let a2 = iter.next();
+
+                    match (a1, a2) {
+                        (Some(a1), Some(a2)) => write!(f, "else if {} {{ {} }}", a1, a2)?,
+                        (Some(a1), None) => write!(f, "else {{ {} }}", a1)?,
+                        _ => break,
+                    }
+                }
+
+                Ok(())
+            }
         }
     }
 }

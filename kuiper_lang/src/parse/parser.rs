@@ -78,7 +78,11 @@ mod tests {
             ParseError::UnrecognizedToken { token, expected } => {
                 assert_eq!((7, Token::Operator(Operator::Plus), 8), token);
                 assert_eq!(
-                    vec![r#""type""#.to_string(), r#""var""#.to_string()],
+                    vec![
+                        r#""if""#.to_string(),
+                        r#""type""#.to_string(),
+                        r#""var""#.to_string()
+                    ],
                     expected
                 );
             }
@@ -93,7 +97,11 @@ mod tests {
             ParseError::UnrecognizedToken { token, expected } => {
                 assert_eq!((7, Token::Period, 8), token);
                 assert_eq!(
-                    vec![r#""type""#.to_string(), r#""var""#.to_string()],
+                    vec![
+                        r#""if""#.to_string(),
+                        r#""type""#.to_string(),
+                        r#""var""#.to_string()
+                    ],
                     expected
                 );
             }
@@ -108,7 +116,11 @@ mod tests {
             ParseError::UnrecognizedToken { token, expected } => {
                 assert_eq!((7, Token::OpenBracket, 8), token);
                 assert_eq!(
-                    vec![r#""type""#.to_string(), r#""var""#.to_string()],
+                    vec![
+                        r#""if""#.to_string(),
+                        r#""type""#.to_string(),
+                        r#""var""#.to_string()
+                    ],
                     expected
                 );
             }

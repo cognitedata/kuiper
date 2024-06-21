@@ -124,6 +124,12 @@ pub enum Token {
     #[token("not")]
     Not,
 
+    #[token("if")]
+    If,
+
+    #[token("else")]
+    Else,
+
     /// A bare string, which is either part of a selector, or a function call.
     #[regex(r#"\p{XID_Start}\p{XID_Continue}*"#, |s| s.slice().to_string(), priority = 1)]
     #[regex(r#"[$@_a-zA-Z][_0-9a-zA-Z]*"#, |s| s.slice().to_string(), priority = 2)]
@@ -187,6 +193,8 @@ impl Display for Token {
             Token::Comment => Ok(()),
             Token::DotDot => write!(f, ".."),
             Token::Not => write!(f, "not"),
+            Token::If => write!(f, "if"),
+            Token::Else => write!(f, "else"),
         }
     }
 }

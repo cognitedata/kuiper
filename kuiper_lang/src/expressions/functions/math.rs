@@ -91,6 +91,8 @@ arg2_math_func!(Atan2Function, "atan2", atan2);
 arg1_math_func!(FloorFunction, "floor", floor);
 arg1_math_func!(CeilFunction, "ceil", ceil);
 arg1_math_func!(RoundFunction, "round", round);
+arg2_math_func!(MinFunction, "min", min);
+arg2_math_func!(MaxFunction, "max", max);
 
 function_def!(IntFunction, "int", 1);
 
