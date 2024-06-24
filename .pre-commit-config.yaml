@@ -4,7 +4,7 @@ repos:
     -   id: ruff
         args: [--fix, --exit-non-zero-on-fix]
     -   id: ruff-format
-    rev: v0.4.9
+    rev: v0.4.10
 -   repo: local
     hooks:
     -   id: cargo-fmt
