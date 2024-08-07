@@ -4,5 +4,5 @@
     "local>cognitedata/renovate-config"
   ],
   "ignorePaths": ["**/playground"],
-  "labels": ["auto-merge", "auto-update", "dependencies"]
+  "labels": ["dependencies"]
 }

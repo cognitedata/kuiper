@@ -5,6 +5,7 @@ mod expressions;
 use crate::compiler::compile_expression_py;
 use crate::expressions::KuiperExpression;
 use pyo3::prelude::PyModule;
+use pyo3::types::PyModuleMethods;
 use pyo3::{pymodule, wrap_pyfunction_bound, Bound, PyResult, Python};
 
 #[pymodule]

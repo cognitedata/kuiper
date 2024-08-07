@@ -30,3 +30,6 @@ kuiper_python/kuiper/kuiper
 # .NET files
 **/bin
 **/obj
+
+# Mac files
+**/*.DS_Store

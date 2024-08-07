@@ -360,7 +360,7 @@ impl ExpressionType {
     ///
     /// * `data` - An iterator over the inputs to the expression. The count must match the count provided when the expression was compiled
     /// * `max_operation_count` - The maximum number of operations performed by the program. This is a rough estimate of the complexity of
-    /// the program. If set to -1, no limit is enforced.
+    ///   the program. If set to -1, no limit is enforced.
     pub fn run_limited<'a: 'c, 'c>(
         &'a self,
         data: impl IntoIterator<Item = &'c Value>,
