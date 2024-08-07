@@ -1,6 +1,7 @@
 mod array;
 mod base;
 mod functions;
+mod if_expr;
 mod is_operator;
 mod lambda;
 mod numbers;
@@ -15,6 +16,7 @@ pub use base::{
     get_function_expression, Constant, Expression, ExpressionExecutionState, ExpressionMeta,
     ExpressionType,
 };
+pub use if_expr::IfExpression;
 pub use is_operator::{IsExpression, TypeLiteral};
 pub use lambda::LambdaExpression;
 pub use object::{ObjectElement, ObjectExpression};

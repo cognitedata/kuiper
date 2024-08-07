@@ -73,7 +73,6 @@ const isLineCommentEnd = (input, offset) => {
 
 export const lineComment = new ExternalTokenizer((input, stack) => {
     if (isLineCommentStart(input, 0)) {
-        console.log("This is a line comment!");
         let offset = 2;
         while (true) {
             let c = input.peek(offset);

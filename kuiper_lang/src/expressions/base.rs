@@ -16,7 +16,8 @@ use super::{
     lambda::LambdaExpression,
     operator::UnaryOpExpression,
     transform_error::TransformError,
-    ArrayExpression, ObjectExpression, OpExpression, ResolveResult, SelectorExpression,
+    ArrayExpression, IfExpression, ObjectExpression, OpExpression, ResolveResult,
+    SelectorExpression,
 };
 
 use kuiper_lang_macros::PassThrough;
@@ -246,6 +247,8 @@ pub enum FunctionType {
     All(AllFunction),
     Contains(ContainsFunction),
     StringJoin(StringJoinFunction),
+    Min(MinFunction),
+    Max(MaxFunction),
 }
 
 struct FunctionBuilder {
@@ -312,6 +315,8 @@ pub fn get_function_expression(
         "all" => FunctionType::All(b.mk()?),
         "contains" => FunctionType::Contains(b.mk()?),
         "string_join" => FunctionType::StringJoin(b.mk()?),
+        "min" => FunctionType::Min(b.mk()?),
+        "max" => FunctionType::Max(b.mk()?),
         _ => return Err(BuildError::unrecognized_function(b.pos, name)),
     };
     Ok(ExpressionType::Function(expr))
@@ -335,6 +340,7 @@ pub enum ExpressionType {
     Object(ObjectExpression),
     Lambda(LambdaExpression),
     Is(IsExpression),
+    If(IfExpression),
 }
 
 impl ExpressionType {

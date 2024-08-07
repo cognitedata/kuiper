@@ -31,6 +31,8 @@ export const kuiperLanguage = LRLanguage.define({
             "LogicOp/...": tags.logicOperator,
             "Arrow": tags.function(tags.punctuation),
             "Type/...": tags.typeName,
+            "If": tags.keyword,
+            "Else": tags.keyword,
         }), indentNodeProp.add({
             Object: delimitedIndent({ closing: "}" }),
             Array: delimitedIndent({ closing: "]" }),

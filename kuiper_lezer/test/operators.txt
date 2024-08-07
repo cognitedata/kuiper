@@ -155,20 +155,20 @@ Result(Expression(Operator(
     Expression(Operator(
         Expression(Operator(
             Expression(Term(Number)),
-            CompareOp("is"),
+            CompareOp(Is),
             Type(NumberTy)
         ))
         LogicOp("&&"),
         Expression(Operator(
             Expression(Term(String)),
-            CompareOp("is"),
+            CompareOp(Is),
             Type(StringTy)
         ))
     )),
     LogicOp("&&"),
     Expression(Operator(
         Expression(Term(Null)),
-        CompareOp("is"),
+        CompareOp(Is),
         Type(Null)
     ))
 )))
@@ -179,4 +179,42 @@ Result(Expression(Operator(
 
 ==>
 
-Result(Expression(Operator(Expression(Term(Number)), CompareOp("is"), NotModifier, Type(NumberTy))))
+Result(Expression(Operator(Expression(Term(Number)), CompareOp(Is), NotModifier, Type(NumberTy))))
+
+# If expression
+
+if 1 > 2 {
+    1
+} else if 2 == 2 {
+    2
+} else {
+    3
+}
+
+==>
+
+Result(Expression(Term(
+    IfExpr(
+        IfExprInner(
+            IfExprInner(
+                If,
+                Expression(Operator(
+                    Expression(Term(Number)),
+                    CompareOp(">"),
+                    Expression(Term(Number))
+                )),
+                Expression(Term(Number))
+            ),
+            Else,
+            If,
+            Expression(Operator(
+                Expression(Term(Number)),
+                CompareOp("=="),
+                Expression(Term(Number))
+            )),
+            Expression(Term(Number))
+        ),
+        Else,
+        Expression(Term(Number))
+    ))
+))

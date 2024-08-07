@@ -45,6 +45,21 @@ Selector {
     Term "[" Expression "]"
 }
 
+IfFunc {
+    Term "." If "(" CommaSep<FunctionArg> ")" |
+    If "(" FunctionArg "," CommaSep<FunctionArg> ")"
+}
+
+IfExprInner {
+    If Expression "{" Expression "}" |
+    IfExprInner Else If Expression "{" Expression "}"
+}
+
+IfExpr {
+    IfExprInner |
+    IfExprInner Else "{" Expression "}"
+}
+
 Term {
     Number | Boolean | String | Null |
     FunctionCall |
@@ -52,7 +67,9 @@ Term {
     Array |
     Object |
     Selector |
-    "(" Expression ~lambda ")"
+    "(" Expression ~lambda ")" |
+    IfFunc |
+    IfExpr
 }
 
 @precedence { t8 @right, t7 @left, t6 @left, t5 @left, t4 @left, t3 @left, t2 @left }
@@ -62,8 +79,8 @@ Operator {
     Expression !t7 (ArithOp<"*"> | ArithOp<"/"> | ArithOp<"%">) Expression |
     Expression !t6 (ArithOp<"+"> | ArithOp<"-">) Expression |
     Expression !t5 (CompareOp<">"> | CompareOp<"<"> | CompareOp<">="> | CompareOp<"<=">) Expression |
-    Expression !t5 CompareOp<"is"> NotModifier Type |
-    Expression !t5 CompareOp<"is"> Type |
+    Expression !t5 CompareOp<Is> NotModifier Type |
+    Expression !t5 CompareOp<Is> Type |
     Expression !t4 (CompareOp<"=="> | CompareOp<"!=">) Expression |
     Expression !t3 (LogicOp<"&&">) Expression |
     Expression !t2 (LogicOp<"||">) Expression
@@ -97,6 +114,10 @@ StringTy { @specialize<PlainVar, "string"> }
 ArrayTy { @specialize<PlainVar, "array"> }
 ObjectTy { @specialize<PlainVar, "object"> }
 NumberTy { @specialize<PlainVar, "number"> }
+
+If { @specialize<PlainVar, "if"> }
+Else { @specialize<PlainVar, "else"> }
+Is { @specialize<PlainVar, "is"> }
 
 
 @external tokens blockComment from "./tokens.js" { blockComment }

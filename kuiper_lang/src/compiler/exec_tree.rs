@@ -5,9 +5,9 @@ use thiserror::Error;
 
 use crate::{
     expressions::{
-        get_function_expression, ArrayElement, ArrayExpression, ExpressionType, IsExpression,
-        LambdaExpression, ObjectElement, ObjectExpression, OpExpression, SelectorElement,
-        SelectorExpression, SourceElement, UnaryOpExpression,
+        get_function_expression, ArrayElement, ArrayExpression, ExpressionType, IfExpression,
+        IsExpression, LambdaExpression, ObjectElement, ObjectExpression, OpExpression,
+        SelectorElement, SelectorExpression, SourceElement, UnaryOpExpression,
     },
     parse::{Expression, FunctionParameter, Selector},
 };
@@ -244,6 +244,12 @@ impl BuilderInner {
                 i.rhs,
                 i.not,
             )?)),
+            Expression::If { args, loc } => Ok(ExpressionType::If(IfExpression::new(
+                args.into_iter()
+                    .map(|e| self.build_expression(e))
+                    .collect::<Result<Vec<_>, _>>()?,
+                loc,
+            ))),
         }
     }
 }
