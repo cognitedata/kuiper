@@ -19,10 +19,12 @@ namespace Cognite.Kuiper
 
     internal struct KuiperError
     {
+#pragma warning disable CS0649 // These fields are assigned in external code.
         public unsafe byte* error;
         public bool is_error;
         public ulong start;
         public ulong end;
+#pragma warning restore CS0649
     }
 
     internal struct CompileResult
