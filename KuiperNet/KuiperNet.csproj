@@ -1,13 +1,26 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>netstandard2.0</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>9.0</LangVersion>
+    <Version>0.10.0</Version>
   </PropertyGroup>
 
-  <ItemGroup>
+  <PropertyGroup>
+    <BuildLocalOnly>true</BuildLocalOnly>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(BuildLocalOnly)' == 'true'">
     <Content Include="..\target\release\*kuiper_interop*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition="'$(BuildLocalOnly)' != 'true'">
+    <Content Include="..\target\release\libkuiper_interop.so" Pack="true" PackagePath="runtimes/linux-x64/native/">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\target\release\kuiper_interop.dll" Pack="true" PackagePath="runtimes/win-x64/native/">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
