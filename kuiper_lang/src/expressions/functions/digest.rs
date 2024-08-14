@@ -10,10 +10,10 @@ function_def!(DigestFunction, "digest", 1, None);
 
 fn hash_value_rec(value: &Value, hasher: &mut Sha256) {
     match value {
-        Value::Null => hasher.update(&[0u8]),
-        Value::Bool(b) => hasher.update(if *b { &[1u8] } else { &[2u8] }),
+        Value::Null => hasher.update([0u8]),
+        Value::Bool(b) => hasher.update(if *b { [1u8] } else { [2u8] }),
         Value::Number(n) => {
-            hasher.update(&[4u8]);
+            hasher.update([4u8]);
             hasher.update(match JsonNumber::from(n) {
                 JsonNumber::NegInteger(v) => v.to_be_bytes(),
                 JsonNumber::PosInteger(v) => v.to_be_bytes(),
@@ -21,18 +21,18 @@ fn hash_value_rec(value: &Value, hasher: &mut Sha256) {
             })
         }
         Value::String(s) => {
-            hasher.update(&[8u8]);
+            hasher.update([8u8]);
             hasher.update(s)
         }
         Value::Array(a) => {
-            hasher.update(&[16u8]);
+            hasher.update([16u8]);
             hasher.update(a.len().to_be_bytes());
             for v in a {
                 hash_value_rec(v, hasher);
             }
         }
         Value::Object(o) => {
-            hasher.update(&[32u8]);
+            hasher.update([32u8]);
             hasher.update(o.len().to_be_bytes());
             for (k, v) in o {
                 hasher.update(k);
@@ -53,7 +53,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for DigestFunction {
         }
 
         let val = hasher.finalize();
-        let base64_out = base64::engine::general_purpose::STANDARD.encode(&val);
+        let base64_out = base64::engine::general_purpose::STANDARD.encode(val);
         Ok(ResolveResult::Owned(Value::String(base64_out)))
     }
 }
