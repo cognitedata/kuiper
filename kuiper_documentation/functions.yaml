@@ -472,3 +472,9 @@ functions:
     description: Returns the larger of the two numbers `a` and `b`.
     examples:
      - 'max(1, 2) -> 2'
+
+  - name: digest
+    signature: "`digest(a, b, ...)`"
+    description: Compute the SHA256 hash of the list of values.
+    examples:
+      - 'digest("foo", "bar", 123, [1, 2, 3]) -> lDN5G9Qz3fKZM6joQq+1OdF8P1rs2WYrgawlFXflqss='
