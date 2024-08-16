@@ -2,6 +2,7 @@
 mod macros;
 mod arrays;
 mod conversions;
+mod digest;
 mod functors;
 mod join;
 mod logic;
@@ -13,6 +14,7 @@ mod transforms;
 use crate::compiler::BuildError;
 pub use arrays::*;
 pub use conversions::*;
+pub use digest::*;
 pub use functors::*;
 pub use join::*;
 pub use logic::*;

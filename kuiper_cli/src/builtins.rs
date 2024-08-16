@@ -5,7 +5,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-pub const BUILT_INS: [&str; 45] = [
+pub const BUILT_INS: [&str; 46] = [
     "all(",
     "any(",
     "atan2(",
@@ -15,6 +15,7 @@ pub const BUILT_INS: [&str; 45] = [
     "chunk(",
     "concat(",
     "contains(",
+    "digest(",
     "distinct_by(",
     "except(",
     "filter(",
@@ -122,6 +123,13 @@ lazy_static! {
             FunctionDef {
                 signature: "conatins(x, a)",
                 description: "Returns true if the array `x` contains item `a`.",
+            }
+        ),
+        (
+            "digest",
+            FunctionDef {
+                signature: "digest(a, b, ...)",
+                description: "Compute the SHA256 hash of the list of values.",
             }
         ),
         (
