@@ -9,8 +9,16 @@ use thiserror::Error;
 
 #[repr(C)]
 pub struct CompileResult {
-    pub error: *mut c_char,
+    pub error: KuiperError,
     pub result: *mut ExpressionType,
+}
+
+#[repr(C)]
+pub struct KuiperError {
+    pub error: *mut c_char,
+    pub is_error: bool,
+    pub start: u64,
+    pub end: u64,
 }
 
 #[derive(Error, Debug)]
@@ -52,8 +60,8 @@ unsafe fn compile_expression_internal(
 #[no_mangle]
 pub unsafe extern "C" fn destroy_compile_result(data: *mut CompileResult) {
     let data = unsafe { Box::from_raw(data) };
-    if !data.error.is_null() {
-        unsafe { std::mem::drop(CString::from_raw(data.error)) };
+    if !data.error.error.is_null() {
+        unsafe { std::mem::drop(CString::from_raw(data.error.error)) };
     }
     if !data.result.is_null() {
         unsafe { drop(Box::from_raw(data.result)) };
@@ -83,10 +91,35 @@ pub unsafe extern "C" fn get_expression_from_compile_result(
     data: *mut CompileResult,
 ) -> *mut ExpressionType {
     let data = unsafe { Box::from_raw(data) };
-    if !data.error.is_null() {
-        unsafe { drop(Box::from_raw(data.error)) };
+    if !data.error.error.is_null() {
+        unsafe { drop(CString::from_raw(data.error.error)) };
     }
     data.result
+}
+
+impl From<InteropError> for KuiperError {
+    fn from(value: InteropError) -> Self {
+        match value {
+            InteropError::Compile(c) => KuiperError {
+                is_error: true,
+                error: CString::new(c.to_string()).unwrap().into_raw(),
+                start: c.span().map(|s| s.start as u64).unwrap_or_default(),
+                end: c.span().map(|s| s.end as u64).unwrap_or_default(),
+            },
+            InteropError::Execute(c) => KuiperError {
+                is_error: true,
+                error: CString::new(c.to_string()).unwrap().into_raw(),
+                start: c.span().map(|s| s.start as u64).unwrap_or_default(),
+                end: c.span().map(|s| s.end as u64).unwrap_or_default(),
+            },
+            c => KuiperError {
+                is_error: true,
+                error: CString::new(c.to_string()).unwrap().into_raw(),
+                start: 0,
+                end: 0,
+            },
+        }
+    }
 }
 
 /// Compile a kuiper expression from a string and a list of inputs.
@@ -105,11 +138,16 @@ pub unsafe extern "C" fn compile_expression(
 ) -> *mut CompileResult {
     let res = match compile_expression_internal(data, inputs, len) {
         Ok(expr) => CompileResult {
-            error: std::ptr::null_mut(),
+            error: KuiperError {
+                error: std::ptr::null_mut(),
+                is_error: false,
+                start: 0,
+                end: 0,
+            },
             result: Box::into_raw(Box::new(expr)),
         },
         Err(e) => CompileResult {
-            error: CString::new(e.to_string()).unwrap().into_raw(),
+            error: e.into(),
             result: std::ptr::null_mut(),
         },
     };
@@ -117,7 +155,7 @@ pub unsafe extern "C" fn compile_expression(
 }
 
 pub struct TransformResult {
-    pub error: *mut c_char,
+    pub error: KuiperError,
     pub result: *mut c_char,
 }
 
@@ -155,8 +193,8 @@ unsafe fn run_expression_internal(
 #[no_mangle]
 pub unsafe extern "C" fn destroy_transform_result(data: *mut TransformResult) {
     let data = unsafe { Box::from_raw(data) };
-    if !data.error.is_null() {
-        unsafe { drop(CString::from_raw(data.error)) };
+    if !data.error.error.is_null() {
+        unsafe { drop(CString::from_raw(data.error.error)) };
     }
     if !data.result.is_null() {
         unsafe { drop(CString::from_raw(data.result)) };
@@ -206,11 +244,16 @@ pub unsafe extern "C" fn run_expression(
 ) -> *mut TransformResult {
     let res = match run_expression_internal(data, len, expression) {
         Ok(expr) => TransformResult {
-            error: std::ptr::null_mut(),
+            error: KuiperError {
+                error: std::ptr::null_mut(),
+                is_error: false,
+                start: 0,
+                end: 0,
+            },
             result: CString::new(expr).unwrap().into_raw(),
         },
         Err(e) => TransformResult {
-            error: CString::new(e.to_string()).unwrap().into_raw(),
+            error: e.into(),
             result: std::ptr::null_mut(),
         },
     };

@@ -5,6 +5,8 @@ VisualStudioVersion = 17.5.002.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KuiperNet", "KuiperNet\KuiperNet.csproj", "{82CB96D8-E0F5-42AA-86E1-C248B85C4860}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KuiperNet.Test", "KuiperNet.Test\KuiperNet.Test.csproj", "{E9424F04-716E-43F4-9CEE-14E83FFE4C37}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{82CB96D8-E0F5-42AA-86E1-C248B85C4860}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{82CB96D8-E0F5-42AA-86E1-C248B85C4860}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{82CB96D8-E0F5-42AA-86E1-C248B85C4860}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E9424F04-716E-43F4-9CEE-14E83FFE4C37}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E9424F04-716E-43F4-9CEE-14E83FFE4C37}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E9424F04-716E-43F4-9CEE-14E83FFE4C37}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E9424F04-716E-43F4-9CEE-14E83FFE4C37}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

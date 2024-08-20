@@ -7,19 +7,40 @@ namespace Cognite.Kuiper
 {
     public class KuiperException : Exception
     {
-        public KuiperException(string message) : base(message) { }
+        public ulong Start { get; }
+        public ulong End { get; }
+
+        public KuiperException(string message, ulong start, ulong end) : base(message)
+        {
+            Start = start;
+            End = end;
+        }
+    }
+
+    internal struct KuiperError
+    {
+#pragma warning disable CS0649 // These fields are assigned in external code.
+        public unsafe byte* error;
+        public bool is_error;
+        public ulong start;
+        public ulong end;
+#pragma warning restore CS0649
     }
 
     internal struct CompileResult
     {
-        public unsafe byte* error;
+#pragma warning disable CS0649 // These fields are assigned in external code.
+        public KuiperError error;
         public IntPtr result;
+#pragma warning restore CS0649
     }
 
     internal struct TransformResult
     {
-        public unsafe byte* error;
+#pragma warning disable CS0649 // These fields are assigned in external code.
+        public KuiperError error;
         public unsafe byte* result;
+#pragma warning restore CS0649
     }
     internal static class KuiperInterop
     {
@@ -74,31 +95,64 @@ namespace Cognite.Kuiper
                 var expressionPtr = (byte*)pinnedExpression.AddrOfPinnedObject();
 
                 KuiperException exc = null;
-                fixed (byte** inputsToRust = &inputPtrs[0])
+                if (inputPtrs.Length > 0)
                 {
-                    var result = KuiperInterop.compile_expression(expressionPtr, inputsToRust, (nuint)rawInputs.Length);
-                    if (((IntPtr)(*result).error) != IntPtr.Zero)
+                    fixed (byte** inputsToRust = &inputPtrs[0])
                     {
-                        string error = Marshal.PtrToStringUTF8((nint)(*result).error);
-                        exc = new KuiperException(error);
-                        KuiperInterop.destroy_compile_result(result);
+                        exc = InitExpression(expressionPtr, inputsToRust, (nuint)rawInputs.Length);
                     }
-                    else
-                    {
-                        _expression = KuiperInterop.get_expression_from_compile_result(result);
-                    }
-
                     for (int i = 0; i < pinnedInputs.Length; i++)
                     {
                         pinnedInputs[i].Free();
                     }
                     pinnedExpression.Free();
                 }
+                else
+                {
+                    exc = InitExpression(expressionPtr, null, 0);
+                }
+
                 if (exc != null) throw exc;
             }
         }
 
-        public string Run(string[] inputs)
+        private unsafe KuiperException ExceptionFromError(KuiperError error)
+        {
+            if (!error.is_error)
+            {
+                return null;
+            }
+
+            string msg = "";
+            if (((IntPtr)error.error) != IntPtr.Zero)
+            {
+                msg = PointerToStringUTF8(error.error);
+            }
+            return new KuiperException(msg, error.start, error.end);
+        }
+
+        private unsafe KuiperException InitExpression(byte* expressionPtr, byte** inputsToRust, nuint inputsLength)
+        {
+            KuiperException exc = null;
+            var result = KuiperInterop.compile_expression(expressionPtr, inputsToRust, inputsLength);
+            exc = ExceptionFromError((*result).error);
+            if (exc == null)
+            {
+                _expression = KuiperInterop.get_expression_from_compile_result(result);
+            }
+
+            return exc;
+        }
+
+        private unsafe string PointerToStringUTF8(byte* input)
+        {
+            int length = 0;
+            for (byte* i = input; i[length] != 0; length++) ;
+
+            return Encoding.UTF8.GetString(input, length);
+        }
+
+        public string Run(params string[] inputs)
         {
             unsafe
             {
@@ -115,28 +169,39 @@ namespace Cognite.Kuiper
 
                 KuiperException exc = null;
                 string transformedData = null;
-                fixed (byte** inputsToRust = &inputPtrs[0])
+                if (inputPtrs.Length > 0)
                 {
-                    var result = KuiperInterop.run_expression(inputsToRust, (nuint)rawInputs.Length, _expression);
-                    if (((IntPtr)(*result).error) != IntPtr.Zero)
+                    fixed (byte** inputsToRust = &inputPtrs[0])
                     {
-                        string error = Marshal.PtrToStringUTF8((nint)(*result).error);
-                        exc = new KuiperException(error);
-                        KuiperInterop.destroy_transform_result(result);
-                    }
-                    else
-                    {
-                        transformedData = Marshal.PtrToStringUTF8((nint)(*result).result);
-                        KuiperInterop.destroy_transform_result(result);
-                    }
-                    for (int i = 0; i < pinnedInputs.Length; i++)
-                    {
-                        pinnedInputs[i].Free();
+                        exc = RunInternal(inputsToRust, (nuint)rawInputs.Length, out transformedData);
+                        for (int i = 0; i < pinnedInputs.Length; i++)
+                        {
+                            pinnedInputs[i].Free();
+                        }
                     }
                 }
+                else
+                {
+                    exc = RunInternal(null, 0, out transformedData);
+                }
+
                 if (exc != null) throw exc;
                 return transformedData;
             }
+        }
+
+        private unsafe KuiperException RunInternal(byte** inputsToRust, nuint inputsLength, out string transformedData)
+        {
+            KuiperException exc = null;
+            transformedData = null;
+            var result = KuiperInterop.run_expression(inputsToRust, inputsLength, _expression);
+            exc = ExceptionFromError((*result).error);
+            if (exc == null)
+            {
+                transformedData = PointerToStringUTF8((*result).result);
+                KuiperInterop.destroy_transform_result(result);
+            }
+            return exc;
         }
 
         public override string ToString()
@@ -144,7 +209,7 @@ namespace Cognite.Kuiper
             unsafe
             {
                 var result = KuiperInterop.expression_to_string(_expression);
-                var resString = Marshal.PtrToStringUTF8((nint)result);
+                string resString = PointerToStringUTF8(result);
                 KuiperInterop.destroy_string(result);
                 return resString;
             }

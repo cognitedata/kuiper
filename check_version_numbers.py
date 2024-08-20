@@ -64,6 +64,21 @@ class JsPackage(FileType):
         )
 
 
+version_regex = re.compile(r"<Version>([0-9\.]+)</Version>")
+
+
+class Csproj(FileType):
+    def get_version(self, file: TextIOWrapper) -> str:
+        dat = file.read()
+        ver = version_regex.search(dat).group(1)
+        return ver
+
+    def set_version(self, file_name: str, version: str) -> None:
+        replace_in_file(
+            file_name, r"<Version>([0-9\.]+)</Version>", f"<Version>{version}</Version>"
+        )
+
+
 FILES: dict[Path, FileType] = {
     Path(__file__).resolve().parent / "kuiper_cli" / "Cargo.toml": Cargo(),
     Path(__file__).resolve().parent / "kuiper_lang" / "Cargo.toml": Cargo(),
@@ -72,6 +87,8 @@ FILES: dict[Path, FileType] = {
     Path(__file__).resolve().parent / "kuiper_lezer" / "package.json": JsPackage(),
     Path(__file__).resolve().parent / "kuiper_js" / "Cargo.toml": Cargo(),
     Path(__file__).resolve().parent / "kuiper_lang_macros" / "Cargo.toml": Cargo(),
+    Path(__file__).resolve().parent / "KuiperNet" / "KuiperNet.csproj": Csproj(),
+    Path(__file__).resolve().parent / "kuiper_interop" / "Cargo.toml": Cargo(),
 }
 
 
