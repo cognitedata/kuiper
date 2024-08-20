@@ -3,6 +3,7 @@ import { LRLanguage, LanguageSupport, delimitedIndent, foldInside, foldNodeProp,
 import { styleTags, tags } from "@lezer/highlight";
 import { KuiperInput, builtIns } from "./builtins";
 import { dontComplete, varCompletionSource } from "./complete";
+import { getHoverTooltip } from "./hover";
 import { parser } from "./kuiper.grammar";
 
 export { KuiperInput };
@@ -49,6 +50,7 @@ export const kuiperLanguage = LRLanguage.define({
 })
 
 export function kuiper(inputs: KuiperInput[] = []) {
+    const hover = getHoverTooltip(builtIns);
     const builtInCompletions: Completion[] = builtIns.map(func => ({
         label: func.label,
         detail: func.description,
@@ -70,6 +72,6 @@ export function kuiper(inputs: KuiperInput[] = []) {
 
     return new LanguageSupport(
         kuiperLanguage,
-        [buildInCompletion, varCompletion]
+        [buildInCompletion, varCompletion, hover]
     )
 }

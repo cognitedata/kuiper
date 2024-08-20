@@ -119,6 +119,17 @@ Returns true if the array `x` contains item `a`.
 [1, 2, 3, 4].contains(4) -> true
 ```
 
+## digest
+
+`digest(a, b, ...)`
+
+Compute the SHA256 hash of the list of values.
+
+**Code example**
+```
+digest("foo", "bar", 123, [1, 2, 3]) -> lDN5G9Qz3fKZM6joQq+1OdF8P1rs2WYrgawlFXflqss=
+```
+
 ## distinct_by
 
 `distinct_by(x, (a(, b)) => ...)`

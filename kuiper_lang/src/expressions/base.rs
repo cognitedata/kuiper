@@ -249,6 +249,7 @@ pub enum FunctionType {
     StringJoin(StringJoinFunction),
     Min(MinFunction),
     Max(MaxFunction),
+    Digest(DigestFunction),
 }
 
 struct FunctionBuilder {
@@ -317,6 +318,7 @@ pub fn get_function_expression(
         "string_join" => FunctionType::StringJoin(b.mk()?),
         "min" => FunctionType::Min(b.mk()?),
         "max" => FunctionType::Max(b.mk()?),
+        "digest" => FunctionType::Digest(b.mk()?),
         _ => return Err(BuildError::unrecognized_function(b.pos, name)),
     };
     Ok(ExpressionType::Function(expr))

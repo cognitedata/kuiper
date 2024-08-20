@@ -1,19 +1,9 @@
 import { Completion, CompletionContext, CompletionResult, CompletionSource } from "@codemirror/autocomplete";
 import { syntaxTree } from "@codemirror/language";
-import { SyntaxNode, SyntaxNodeRef } from "@lezer/common";
-
-const scopeNodes = new Set([
-    "Lambda"
-]);
-
-const gatherCompletions: {
-    [node: string]: (node: SyntaxNodeRef, def: (node: SyntaxNodeRef, type: string) => void) => void | boolean
-} = {
-
-}
+import { SyntaxNode } from "@lezer/common";
 
 export const dontComplete = [
-    "String", "BlockComment", "."
+    "String", "BlockComment", ".", "LineComment"
 ]
 
 const Identifier = /^[\w$\xa1-\uffff][\w$\d\xa1-\uffff]*$/
@@ -38,7 +28,7 @@ export function varCompletionSource(sources: Completion[]): CompletionSource {
         let options: Completion[] = [];
         for (let pos: SyntaxNode | null = inner; pos; pos = pos.parent) {
             if (pos.name == "Lambda") {
-                for (let child of pos.getChildren("Var", null, null)) {
+                for (let child of pos.getChildren("Variable", null, null)) {
                     let text = context.state.sliceDoc(child.from, child.to);
                     if (text.startsWith("`")) text = text.slice(1, -1);
                     options.push({ label: text, type: "variable" });
