@@ -17,10 +17,13 @@
     </Content>
   </ItemGroup>
   <ItemGroup Condition="'$(BuildLocalOnly)' != 'true'">
-    <Content Include="..\binaries\libkuiper_interop.so" Pack="true" PackagePath="runtimes/linux-x64/native/">
+    <Content Include="..\binaries\linux_x64\libkuiper_interop.so" Pack="true" PackagePath="runtimes/linux-x64/native/">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\binaries\kuiper_interop.dll" Pack="true" PackagePath="runtimes/win-x64/native/">
+    <Content Include="..\binaries\windows_x64\kuiper_interop.dll" Pack="true" PackagePath="runtimes/win-x64/native/">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\binaries\osx_arm64\libkuiper_interop.dylib" Pack="true" PackagePath="runtimes/osx-arm64/native/">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
