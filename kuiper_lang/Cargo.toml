@@ -18,7 +18,7 @@ serde = { version = "1.0.193", features = ["derive"] }
 serde_json = "1.0.116"
 regex = "1.10.4"
 kuiper_lang_macros = { path = "../kuiper_lang_macros" }
-lalrpop-util = "0.20.2"
+lalrpop-util = "0.21.0"
 thiserror = "1.0.59"
 sha2 = "0.10.8"
 base64 = "0.22.1"
@@ -28,7 +28,7 @@ pprof = { version = "0.13", features = ["flamegraph"] }
 criterion = "0.5"
 
 [build-dependencies]
-lalrpop = "0.20.2"
+lalrpop = "0.21.0"
 
 [[bench]]
 name = "bench_execute"

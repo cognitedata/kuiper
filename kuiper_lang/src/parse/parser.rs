@@ -80,8 +80,8 @@ mod tests {
                 assert_eq!(
                     vec![
                         r#""if""#.to_string(),
-                        r#""type""#.to_string(),
-                        r#""var""#.to_string()
+                        r#""var""#.to_string(),
+                        r#""type""#.to_string()
                     ],
                     expected
                 );
@@ -99,8 +99,8 @@ mod tests {
                 assert_eq!(
                     vec![
                         r#""if""#.to_string(),
-                        r#""type""#.to_string(),
-                        r#""var""#.to_string()
+                        r#""var""#.to_string(),
+                        r#""type""#.to_string()
                     ],
                     expected
                 );
@@ -118,8 +118,8 @@ mod tests {
                 assert_eq!(
                     vec![
                         r#""if""#.to_string(),
-                        r#""type""#.to_string(),
-                        r#""var""#.to_string()
+                        r#""var""#.to_string(),
+                        r#""type""#.to_string()
                     ],
                     expected
                 );
