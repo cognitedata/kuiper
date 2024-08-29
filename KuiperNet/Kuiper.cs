@@ -5,9 +5,22 @@ using System.Text;
 
 namespace Cognite.Kuiper
 {
+    /// <summary>
+    /// Exception thrown by the Kuiper mapping language.
+    /// </summary>
     public class KuiperException : Exception
     {
+        /// <summary>
+        /// Index of the first _byte_ affected by the error.
+        ///
+        /// Start and end may both be 0 if there is no known range.
+        /// </summary>
         public ulong Start { get; }
+        /// <summary>
+        /// Index of the last _byte_ affected by the error plus one.
+        ///
+        /// Start and end may both be 0 if there is no known range.
+        /// </summary>
         public ulong End { get; }
 
         public KuiperException(string message, ulong start, ulong end) : base(message)
