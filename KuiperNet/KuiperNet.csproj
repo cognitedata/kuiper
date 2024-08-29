@@ -7,12 +7,15 @@
     <Version>0.10.0</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-    <PackageLicenseUrl>https://www.apache.org/licenses/LICENSE-2.0</PackageLicenseUrl>
   </PropertyGroup>
 
   <PropertyGroup>
     <BuildLocalOnly>true</BuildLocalOnly>
   </PropertyGroup>
+
+  <ItemGroup>
+      <None Include="README.md" Pack="true" PackagePath="\"/>
+  </ItemGroup>
 
   <ItemGroup Condition="'$(BuildLocalOnly)' == 'true'">
     <Content Include="..\target\release\*kuiper_interop*">
