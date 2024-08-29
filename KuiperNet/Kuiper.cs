@@ -77,7 +77,7 @@ namespace Cognite.Kuiper
 
         /// <summary>
         /// Compile a kuiper expression.
-        /// 
+        ///
         /// This will throw a `KuiperException` if compilation failed.
         /// </summary>
         /// <param name="expression">Expression code</param>
