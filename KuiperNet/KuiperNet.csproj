@@ -5,11 +5,17 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>9.0</LangVersion>
     <Version>0.10.0</Version>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
   </PropertyGroup>
 
   <PropertyGroup>
     <BuildLocalOnly>true</BuildLocalOnly>
   </PropertyGroup>
+
+  <ItemGroup>
+      <None Include="README.md" Pack="true" PackagePath="\"/>
+  </ItemGroup>
 
   <ItemGroup Condition="'$(BuildLocalOnly)' == 'true'">
     <Content Include="..\target\release\*kuiper_interop*">
@@ -17,10 +23,13 @@
     </Content>
   </ItemGroup>
   <ItemGroup Condition="'$(BuildLocalOnly)' != 'true'">
-    <Content Include="..\target\release\libkuiper_interop.so" Pack="true" PackagePath="runtimes/linux-x64/native/">
+    <Content Include="..\binaries\linux_x64\libkuiper_interop.so" Pack="true" PackagePath="runtimes/linux-x64/native/">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\target\release\kuiper_interop.dll" Pack="true" PackagePath="runtimes/win-x64/native/">
+    <Content Include="..\binaries\windows_x64\kuiper_interop.dll" Pack="true" PackagePath="runtimes/win-x64/native/">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\binaries\osx_arm64\libkuiper_interop.dylib" Pack="true" PackagePath="runtimes/osx-arm64/native/">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

@@ -3,7 +3,7 @@ name = "kuiper_js"
 version = "0.10.0"
 edition = "2021"
 authors = ["Einar Omang <einar.omang@cognite.com>"]
-license = "MIT"
+license = "Apache-2.0"
 description = "WASM module to run programs in the json transform language Kuiper inside the browser"
 repository = "https://github.com/cognitedata/kuiper"
 

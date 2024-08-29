@@ -140,3 +140,60 @@ jobs:
       - name: Publish package
         working-directory: ./kuiper_lezer
         run: npm publish || true
+
+  build_interop_package:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: macos-latest
+            arch: aarch64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Build interop lib
+        run: cargo build --release --package kuiper_interop
+      - run: mkdir artifacts
+      - run: mv target/release/*kuiper_interop* artifacts/
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: interop-${{ matrix.os }}
+          path: artifacts/
+          retention-days: 1
+
+  publish_dotnet_package:
+    runs-on: ubuntu-latest
+    needs: build_interop_package
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+            dotnet-version: 8.0.x
+      - name: Download Linux Artifacts
+        uses: actions/download-artifact@v4
+        with:
+            name: interop-ubuntu-latest
+            path: binaries/linux_x64/
+
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v4
+        with:
+            name: interop-windows-latest
+            path: binaries/windows_x64/
+
+      - name: Download OSX arm64 Artifacts
+        uses: actions/download-artifact@v4
+        with:
+            name: interop-macos-latest
+            path: binaries/osx_arm64/
+      - run: ls binaries/
+      - name: Build .NET module
+        run: dotnet pack KuiperNet/ /p:BuildLocalOnly='false' --output nuget-packages
+      - name: Publish .NET module
+        run: dotnet nuget push .\nuget-packages\*.nupkg -s https://api.nuget.org/v3/index.json -k ${{ secrets.NUGET_API_KEY }} --skip-duplicate
+        continue-on-error: false

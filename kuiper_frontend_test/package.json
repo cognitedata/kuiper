@@ -4,7 +4,7 @@
   "description": "Kuiper frontend test",
   "main": "dist/index.js",
   "author": "Einar Omang",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "build": "tsc",

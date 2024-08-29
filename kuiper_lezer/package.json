@@ -15,7 +15,7 @@
     "./dist/*"
   ],
   "author": "Einar Omang",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "test": "mocha test/test.js",
