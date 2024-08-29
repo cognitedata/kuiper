@@ -195,5 +195,5 @@ jobs:
       - name: Build .NET module
         run: dotnet pack KuiperNet/ /p:BuildLocalOnly='false' --output nuget-packages
       - name: Publish .NET module
-        run: dotnet nuget push .\nuget-packages\*.nupkg -s https://api.nuget.org/v3/index.json -k ${{ secrets.NUGET_API_KEY }} --skip-duplicate
+        run: dotnet nuget push ./nuget-packages/*.nupkg -s https://api.nuget.org/v3/index.json -k ${{ secrets.NUGET_API_KEY }} --skip-duplicate
         continue-on-error: false
