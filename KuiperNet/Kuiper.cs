@@ -75,6 +75,13 @@ namespace Cognite.Kuiper
     {
         private IntPtr _expression;
 
+        /// <summary>
+        /// Compile a kuiper expression.
+        /// 
+        /// This will throw a `KuiperException` if compilation failed.
+        /// </summary>
+        /// <param name="expression">Expression code</param>
+        /// <param name="inputs">A list of available input arguments</param>
         public KuiperExpression(string expression, string[] inputs)
         {
             unsafe
@@ -152,6 +159,12 @@ namespace Cognite.Kuiper
             return Encoding.UTF8.GetString(input, length);
         }
 
+        /// <summary>
+        /// Run a Kuiper expression.
+        /// </summary>
+        /// <param name="inputs">JSON strings passed as arguments, the number must be equal
+        /// to the `inputs` array passed to the constructor.</param>
+        /// <returns>JSON string result.</returns>
         public string Run(params string[] inputs)
         {
             unsafe
@@ -204,6 +217,7 @@ namespace Cognite.Kuiper
             return exc;
         }
 
+        /// <inheritdoc />
         public override string ToString()
         {
             unsafe
@@ -233,6 +247,7 @@ namespace Cognite.Kuiper
             }
         }
 
+        /// <inheritdoc />
         public void Dispose()
         {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
