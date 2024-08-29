@@ -144,7 +144,10 @@ jobs:
   build_interop_package:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, "aarch64-apple-darwin"]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: macos-latest
+            arch: aarch64-apple-darwin
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -183,10 +186,10 @@ jobs:
             name: interop-windows-latest
             path: binaries/windows_x64/
 
-      - name: Download OSX Artifacts
+      - name: Download OSX arm64 Artifacts
         uses: actions/download-artifact@v4
         with:
-            name: interop-aarch64-apple-darwin
+            name: interop-macos-latest
             path: binaries/osx_arm64/
       - run: ls binaries/
       - name: Build .NET module
