@@ -36,4 +36,3 @@ kuiper_python/kuiper/kuiper
 
 # Go files
 go-kuiper/go-kuiper
-*.dylib

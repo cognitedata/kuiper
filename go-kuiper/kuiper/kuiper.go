@@ -1,7 +1,10 @@
 package kuiper
 
 /*
-#cgo LDFLAGS: -L${SRCDIR}/lib -lkuiper_interop
+#cgo linux,amd64 LDFLAGS: -L${SRCDIR}/../lib/linux-amd64 -lkuiper_interop
+#cgo darwin,amd64 LDFLAGS: -L${SRCDIR}/../lib/darwin-amd64 -lkuiper_interop
+#cgo darwin,arm64 LDFLAGS: -L${SRCDIR}/../lib/darwin-arm64 -lkuiper_interop
+#cgo windows,amd64 LDFLAGS: -L${SRCDIR}/../lib/windows-amd64 -lkuiper_interop
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
