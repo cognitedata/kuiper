@@ -166,8 +166,9 @@ jobs:
           retention-days: 1
 
   publish_dotnet_package:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     needs: build_interop_package
+    environment: CD
     steps:
       - uses: actions/checkout@v4
       - name: Setup .NET
@@ -194,6 +195,17 @@ jobs:
       - run: ls binaries/
       - name: Build .NET module
         run: dotnet pack KuiperNet/ /p:BuildLocalOnly='false' --output nuget-packages
+      - name: Sign nuget packages
+        env:
+          CERTIFICATE_HOST: ${{ secrets.CODE_SIGNING_CERT_HOST }}
+          CERTIFICATE_HOST_API_KEY: ${{ secrets.CODE_SIGNING_CERT_HOST_API_KEY }}
+          CERTIFICATE_SHA1_HASH: ${{ secrets.CODE_SIGNING_CERT_SHA1_HASH }}
+          CLIENT_CERTIFICATE: ${{ secrets.CODE_SIGNING_CLIENT_CERT }}
+          CLIENT_CERTIFICATE_PASSWORD: ${{ secrets.CODE_SIGNING_CLIENT_CERT_PASSWORD }}
+          KEYPAIR_ALIAS: ${{ secrets.CODE_SIGNING_KEYPAIR_ALIAS }}
+        uses: cognitedata/code-sign-action/@v3
+        with:
+          path-to-binary: 'nuget-packages/'
       - name: Publish .NET module
-        run: dotnet nuget push ./nuget-packages/*.nupkg -s https://api.nuget.org/v3/index.json -k ${{ secrets.NUGET_API_KEY }} --skip-duplicate
+        run: dotnet nuget push .\nuget-packages\*.nupkg -s https://api.nuget.org/v3/index.json -k ${{ secrets.NUGET_API_KEY }} --skip-duplicate
         continue-on-error: false
