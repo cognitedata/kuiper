@@ -33,3 +33,7 @@ kuiper_python/kuiper/kuiper
 
 # Mac files
 **/*.DS_Store
+
+# Go files
+go-kuiper/go-kuiper
+*.dylib
