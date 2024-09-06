@@ -15,6 +15,7 @@ export const builtIns: KuiperInput[] = [
     { label: "ceil", description: "`ceil(x)`: Returns `x` rounded up to the nearest integer." },
     { label: "chars", description: "`chars(x)`: Creates an array of characters from a string." },
     { label: "chunk", description: "`chunk(x, s)`: Converts the list `x` into several lists of length at most `s`" },
+    { label: "coalesce", description: "`coalesce(a, b, ...)`: Return the first non-null value in the list of values." },
     { label: "concat", description: "`concat(x, y, ...)`: Concatenate any number of strings." },
     { label: "contains", description: "`conatins(x, a)`: Returns true if the array `x` contains item `a`." },
     { label: "digest", description: "`digest(a, b, ...)`: Compute the SHA256 hash of the list of values." },

@@ -92,6 +92,17 @@ Converts the list `x` into several lists of length at most `s`
 chunk([1, 2, 3, 4, 5, 6, 7], 3) -> [[1, 2, 3], [4, 5, 6], [7]]
 ```
 
+## coalesce
+
+`coalesce(a, b, ...)`
+
+Return the first non-null value in the list of values.
+
+**Code example**
+```
+digest(null, "a", "b") -> "a"
+```
+
 ## concat
 
 `concat(x, y, ...)`
