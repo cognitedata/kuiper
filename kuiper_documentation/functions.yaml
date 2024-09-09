@@ -483,4 +483,4 @@ functions:
     signature: "`coalesce(a, b, ...)`"
     description: Return the first non-null value in the list of values.
     examples:
-      - 'digest(null, "a", "b") -> "a"'
+      - 'coalesce(null, "a", "b") -> "a"'

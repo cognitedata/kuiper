@@ -100,7 +100,7 @@ Return the first non-null value in the list of values.
 
 **Code example**
 ```
-digest(null, "a", "b") -> "a"
+coalesce(null, "a", "b") -> "a"
 ```
 
 ## concat
