@@ -31,5 +31,8 @@ kuiper_python/kuiper/kuiper
 **/bin
 **/obj
 
+# Java files
+kuiper_java/src/main/resources
+
 # Mac files
 **/*.DS_Store
