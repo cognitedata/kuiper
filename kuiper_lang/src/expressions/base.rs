@@ -250,6 +250,7 @@ pub enum FunctionType {
     Min(MinFunction),
     Max(MaxFunction),
     Digest(DigestFunction),
+    Coalesce(CoalesceFunction),
 }
 
 struct FunctionBuilder {
@@ -319,6 +320,7 @@ pub fn get_function_expression(
         "min" => FunctionType::Min(b.mk()?),
         "max" => FunctionType::Max(b.mk()?),
         "digest" => FunctionType::Digest(b.mk()?),
+        "coalesce" => FunctionType::Coalesce(b.mk()?),
         _ => return Err(BuildError::unrecognized_function(b.pos, name)),
     };
     Ok(ExpressionType::Function(expr))

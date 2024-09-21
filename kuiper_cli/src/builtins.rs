@@ -5,7 +5,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-pub const BUILT_INS: [&str; 46] = [
+pub const BUILT_INS: [&str; 47] = [
     "all(",
     "any(",
     "atan2(",
@@ -13,6 +13,7 @@ pub const BUILT_INS: [&str; 46] = [
     "ceil(",
     "chars(",
     "chunk(",
+    "coalesce(",
     "concat(",
     "contains(",
     "digest(",
@@ -109,6 +110,13 @@ lazy_static! {
             FunctionDef {
                 signature: "chunk(x, s)",
                 description: "Converts the list `x` into several lists of length at most `s`",
+            }
+        ),
+        (
+            "coalesce",
+            FunctionDef {
+                signature: "coalesce(a, b, ...)",
+                description: "Return the first non-null value in the list of values.",
             }
         ),
         (

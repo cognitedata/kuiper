@@ -1,6 +1,7 @@
 #[macro_use]
 mod macros;
 mod arrays;
+mod coalesce;
 mod conversions;
 mod digest;
 mod functors;
@@ -13,6 +14,7 @@ mod transforms;
 
 use crate::compiler::BuildError;
 pub use arrays::*;
+pub use coalesce::*;
 pub use conversions::*;
 pub use digest::*;
 pub use functors::*;
