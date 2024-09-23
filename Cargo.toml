@@ -6,5 +6,6 @@ members = [
     "kuiper_python",
     "kuiper_interop",
     "kuiper_js",
+    "kuiper_java/rust"
 ]
 resolver = "2"
