@@ -49,9 +49,9 @@ func main() {
 	fmt.Println(jsonData)
 
 	// Create a new Kuiper expression for flattening
-	flattenExpr := "data.listContinent.items.map(item => item.name)"
+	flattenExpr := "input.data.listContinent.items.map(item => item.name)"
 	fmt.Printf("\nCreating Kuiper expression: %s\n", flattenExpr)
-	expr, err = kuiper.NewKuiperExpression("json."+flattenExpr, []string{"json"})
+	expr, err = kuiper.NewKuiperExpression(flattenExpr, []string{"input"})
 	if err != nil {
 		log.Fatalf("Failed to create flattening expression: %v", err)
 	}
