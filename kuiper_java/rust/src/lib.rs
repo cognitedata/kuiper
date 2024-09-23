@@ -73,13 +73,18 @@ pub extern "system" fn Java_com_cognite_kuiper_Kuiper_compile_1expression<'local
         Err(e) => {
             // let span = e.span().unwrap_or_else(|| Range { start: 0, end: 0 });
             let _ = env.throw_new("com/cognite/kuiper/KuiperException", e.to_string());
-            return 0;
+            0
         }
     }
 }
 
 #[no_mangle]
 #[allow(non_snake_case, reason = "JNI names")]
+/// Run a kuiper expression, called from JNI.
+///
+/// # Safety
+///
+/// Do not call this method, it must be linked from JNI.
 pub unsafe extern "system" fn Java_com_cognite_kuiper_Kuiper_run_1expression<'local>(
     mut env: JNIEnv<'local>,
     _class: JClass<'local>,
@@ -172,6 +177,12 @@ pub unsafe extern "system" fn Java_com_cognite_kuiper_Kuiper_run_1expression<'lo
 
 #[no_mangle]
 #[allow(non_snake_case, reason = "JNI names")]
+/// Destroy a kuiper expression.
+///
+/// # Safety
+///
+/// Do not call this method, called from JNI. `expression` must be a
+/// valid pointer allocated by `...compile_1expression`
 pub unsafe extern "system" fn Java_com_cognite_kuiper_Kuiper_free_1expresion<'local>(
     mut env: JNIEnv<'local>,
     _class: JClass<'local>,
