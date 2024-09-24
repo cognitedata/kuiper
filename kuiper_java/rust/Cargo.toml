@@ -1,0 +1,18 @@
+[package]
+name = "kuiper_java"
+version = "0.11.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Java interop module for the Kuiper JSON mapping language"
+homepage = "htttps://github.com/cognitedata/kuiper"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+serde_json = "1.0.116"
+kuiper_lang = { path = "../../kuiper_lang" }
+thiserror = "1.0.59"
+jni = "0.21.1"

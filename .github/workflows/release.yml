@@ -99,10 +99,9 @@ jobs:
         run: pip install twine
       - name: Publish artifact
         env:
-          TWINE_USERNAME: ${{ secrets.ARTIFACTORY_PUBLISH_TOKEN_USER }}
-          TWINE_PASSWORD: ${{ secrets.ARTIFACTORY_PUBLISH_TOKEN }}
-          TWINE_REPOSITORY_URL: https://cognite.jfrog.io/cognite/api/pypi/snakepit
-        run: twine upload ./wheels/* || true
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload --verbose dist/* || echo 'Version exists'
 
   publish_codemirror_module:
     runs-on: ubuntu-latest
