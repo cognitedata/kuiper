@@ -91,7 +91,10 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
     ) -> Result<ResolveResult<'c>, TransformError> {
         state.inc_op()?;
         let lhs = self.elements[0].resolve(state)?;
-        if matches!(self.operator, Operator::And | Operator::Or) {
+
+        if matches!(self.operator, Operator::Equals | Operator::NotEquals) {
+            self.resolve_equality(lhs, state)
+        } else if matches!(self.operator, Operator::And | Operator::Or) {
             self.resolve_boolean_operator(lhs, state)
         } else if lhs.is_string()
             && !matches!(
@@ -103,7 +106,17 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
         } else if lhs.is_number() {
             self.resolve_numeric_operator(lhs, state)
         } else {
-            self.resolve_generic_operator(&lhs, state)
+            let rhs = self.elements[1].resolve(state)?;
+            let rhs_ref = rhs.as_ref();
+            Err(TransformError::new_invalid_operation(
+                format!(
+                    "Operator {} not applicable to {} and {}",
+                    &self.operator,
+                    TransformError::value_desc(&lhs),
+                    TransformError::value_desc(rhs_ref)
+                ),
+                &self.span,
+            ))
         }
     }
 }
@@ -131,31 +144,26 @@ impl OpExpression {
         })
     }
 
-    fn resolve_generic_operator<'a: 'b, 'b>(
+    fn resolve_equality<'a: 'b, 'b>(
         &'a self,
-        lhs: &Value,
+        lhs: ResolveResult<'a>,
         state: &mut ExpressionExecutionState<'b, '_>,
     ) -> Result<ResolveResult<'a>, TransformError> {
         let rhs = self.elements[1].resolve(state)?;
-        let rhs_ref = rhs.as_ref();
 
-        let res = match &self.operator {
-            Operator::Equals => lhs.eq(rhs_ref),
-            Operator::NotEquals => !lhs.eq(rhs_ref),
-            _ => {
-                return Err(TransformError::new_invalid_operation(
-                    format!(
-                        "Operator {} not applicable to {} and {}",
-                        &self.operator,
-                        TransformError::value_desc(lhs),
-                        TransformError::value_desc(rhs_ref)
-                    ),
-                    &self.span,
-                ))
-            }
+        let is_equal = if lhs.is_number() && rhs.is_number() {
+            let lhs = lhs.try_as_number(&self.descriptor, &self.span)?;
+            let rhs = rhs.try_as_number(&self.descriptor, &self.span)?;
+            lhs.eq(rhs, &self.span)
+        } else {
+            lhs.eq(&*rhs)
         };
 
-        Ok(ResolveResult::Owned(Value::Bool(res)))
+        match &self.operator {
+            Operator::Equals => Ok(ResolveResult::Owned(Value::Bool(is_equal))),
+            Operator::NotEquals => Ok(ResolveResult::Owned(Value::Bool(!is_equal))),
+            _ => unreachable!(),
+        }
     }
 
     fn resolve_boolean_operator<'a: 'b, 'b>(
@@ -230,12 +238,6 @@ impl OpExpression {
                     rhs,
                     &self.span,
                 ))))
-            }
-            Operator::Equals => {
-                return Ok(ResolveResult::Owned(Value::Bool(lhs.eq(rhs, &self.span))))
-            }
-            Operator::NotEquals => {
-                return Ok(ResolveResult::Owned(Value::Bool(!lhs.eq(rhs, &self.span))))
             }
             Operator::Modulo => lhs.try_mod(rhs, &self.span)?,
             _ => {
