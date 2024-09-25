@@ -1,6 +1,6 @@
 [package]
 name = "kuiper_interop"
-version = "0.11.0"
+version = "0.11.1"
 edition = "2021"
 license = "Apache-2.0"
 description = "C interop module for the Kuiper JSON mapping language"
