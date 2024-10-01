@@ -290,6 +290,25 @@ mod tests {
     }
 
     #[test]
+    pub fn test_equality_cross_type() {
+        let expr = compile_expression(
+            r#"
+            {
+                "v1": "foo" == 123,
+                "v2": 123 == "foo",
+                "v3": 123.0 == 123
+            }
+        "#,
+            &[],
+        )
+        .unwrap();
+        let res = expr.run([]).unwrap();
+        assert!(!res.get("v1").unwrap().as_bool().unwrap());
+        assert!(!res.get("v2").unwrap().as_bool().unwrap());
+        assert!(res.get("v3").unwrap().as_bool().unwrap());
+    }
+
+    #[test]
     pub fn test_boolean_operators() {
         let expr = compile_expression(
             r#"{
