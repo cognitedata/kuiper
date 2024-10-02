@@ -96,7 +96,7 @@ jobs:
           merge-multiple: true
           path: ./wheels
       - name: Install twine
-        run: pip install twine
+        run: pip install twine typing-extensions
       - name: Publish artifact
         env:
           TWINE_USERNAME: __token__
