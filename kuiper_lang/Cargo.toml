@@ -31,7 +31,7 @@ pprof = { version = "0.13", features = ["flamegraph"] }
 criterion = "0.5"
 
 [build-dependencies]
-lalrpop = "0.21.0"
+lalrpop = "0.22.0"
 
 [[bench]]
 name = "bench_execute"
