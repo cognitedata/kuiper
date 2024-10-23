@@ -97,6 +97,21 @@
             },
             "args": [],
             "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Extension",
+            "type": "extensionHost",
+            "request": "launch",
+            "runtimeExecutable": "${execPath}",
+            "preLaunchTask": "Build Server and Extension",
+            "outFiles": [
+                "${workspaceFolder}/kuiper-vscode/out/**/*.js"
+            ],
+            "args": [
+                "--disable-extensions",
+                "--log cognite-kuiper.cognite-kuiper:debug",
+                "--extensionDevelopmentPath=${workspaceFolder}/kuiper-vscode"
+            ]
         }
     ]
 }

@@ -91,7 +91,7 @@ lazy_static! {
             "atan2",
             FunctionDef {
                 signature: "atan2(x, y)",
-                description: "Returns the inverse tangent of `x`/`y` in radians between -pi and pi.",
+                description: "Returns the four quadrant inverse tangent of `x`/`y` in radians between -pi and pi.",
             }
         ),
         (

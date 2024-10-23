@@ -1,7 +1,7 @@
 #! /bin/env python
 import sys
 from pathlib import Path
-from typing import TextIO, Any
+from typing import Any, TextIO
 
 import yaml
 
@@ -107,6 +107,64 @@ def generate_js_list(functions: list[dict[str, Any]], file: TextIO):
     file.write("];\n")
 
 
+def generate_rust_docs(functions: list[dict[str, Any]], file: TextIO):
+    generate_warning_header(file)
+
+    file.write(
+        """pub struct MethodDoc {
+    signature: &'static str,
+    documentation: &'static str,
+    examples: &'static [&'static str],
+}
+
+impl MethodDoc {
+    fn new(
+        signature: &'static str,
+        documentation: &'static str,
+        examples: &'static [&'static str],
+    ) -> Self {
+        Self {
+            signature,
+            documentation,
+            examples,
+        }
+    }
+
+    pub fn signature(&self) -> &str {
+        self.signature
+    }
+
+    pub fn documentation(&self) -> &str {
+        self.documentation
+    }
+
+    pub fn examples(&self) -> &[&str] {
+        self.examples
+    }
+}
+
+pub fn get_method_docs(func: &str) -> Option<MethodDoc> {
+    match func {"""
+    )
+
+    for function in functions:
+        file.write(f"""
+        \"{function["name"].strip()}\" => Some(MethodDoc::new(
+            \"{function["signature"].strip()}\",
+            \"{function["description"].strip()}\",
+            &[
+""")
+        for example in function["examples"]:
+            repl_example = example.replace('"', '\\"').strip()
+            file.write(f'            "{repl_example}",\n')
+
+        file.write("        ])),")
+
+    file.write("        _ => None,")
+    file.write("    }")
+    file.write("}")
+
+
 def find_function_defs(file: TextIO) -> set[str]:
     names = set()
 
@@ -175,6 +233,11 @@ def main():
         generate_repl_list(functions, f)
     with open(project_base / "kuiper_lezer" / "src" / "builtins.ts", "w") as f:
         generate_js_list(functions, f)
+    with open(
+        project_base / "kuiper_lang" / "src" / "expressions" / "functions" / "docs.rs",
+        "w",
+    ) as f:
+        generate_rust_docs(functions, f)
 
     return return_val
 

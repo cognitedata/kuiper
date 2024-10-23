@@ -1,0 +1,50 @@
+{
+  "name": "cognite-kuiper",
+  "displayName": "cognite-kuiper",
+  "description": "Support for the Kuiper mapping language",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -b",
+    "build": "npm run compile"
+  },
+  "activationEvents": [
+    "workspaceContains:*.kp",
+    "workspaceContains:*/*.kp"
+  ],
+  "main": "./out/extension",
+  "contributes": {
+    "languages": [
+      {
+        "id": "kuiper",
+        "aliases": [
+          "Kuiper",
+          "kuiper"
+        ],
+        "extensions": [
+          ".kp"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "kuiper",
+        "scopeName": "source.kuiper",
+        "path": "./syntaxes/kuiper.tmLanguage.json"
+      }
+    ]
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.75.1"
+  }
+}

@@ -1,7 +1,7 @@
 functions:
   - name: atan2
     signature: "`atan2(x, y)`"
-    description: Returns the inverse tangent of `x`/`y` in radians between -pi and pi.
+    description: Returns the four quadrant inverse tangent of `x`/`y` in radians between -pi and pi.
     examples:
       - atan2(3, 2) -> 0.982793723247329
 

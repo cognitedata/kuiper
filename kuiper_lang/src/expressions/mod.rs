@@ -17,6 +17,7 @@ pub use base::{
     get_function_expression, Constant, Expression, ExpressionExecutionState, ExpressionMeta,
     ExpressionType,
 };
+pub use functions::{get_method_docs, MethodDoc};
 pub use if_expr::IfExpression;
 pub use is_operator::{IsExpression, TypeLiteral};
 pub use lambda::LambdaExpression;

@@ -4,6 +4,7 @@ mod arrays;
 mod coalesce;
 mod conversions;
 mod digest;
+mod docs;
 mod functors;
 mod join;
 mod logic;
@@ -26,6 +27,8 @@ pub use regex::*;
 pub use string::*;
 pub use time::*;
 pub use transforms::*;
+
+pub use docs::{get_method_docs, MethodDoc};
 
 use super::{base::ExpressionType, LambdaExpression};
 

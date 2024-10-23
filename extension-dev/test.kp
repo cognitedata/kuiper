@@ -1,0 +1,12 @@
+// cognite_kuiper:inputs=input,context,foo,bar
+{
+    "test": 123,
+    "hi": "foo",
+    if "foo" == "bar" {
+        3
+    } else {
+        4 + round(123)
+    }: "test",
+    "test": 1,
+    "foo": input.foo.round()
+}

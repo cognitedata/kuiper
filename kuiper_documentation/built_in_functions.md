@@ -38,7 +38,7 @@ Returns `true` if any items in the array `x` is true.
 
 `atan2(x, y)`
 
-Returns the inverse tangent of `x`/`y` in radians between -pi and pi.
+Returns the four quadrant inverse tangent of `x`/`y` in radians between -pi and pi.
 
 **Code example**
 ```

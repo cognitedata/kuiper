@@ -7,7 +7,8 @@ members = [
     "kuiper_interop",
     "kuiper_js",
     "kuiper_java/rust",
-    "fuzz"
+    "fuzz",
+    "kuiper_lsp"
 ]
 resolver = "2"
 

@@ -1,4 +1,9 @@
 {
     "private": true,
-    "workspaces": ["kuiper_frontend_test", "kuiper_lezer"]
+    "workspaces": [
+        "kuiper_frontend_test",
+        "kuiper_lezer",
+        "kuiper-vscode",
+        "kuiper-vscode/client"
+    ]
 }

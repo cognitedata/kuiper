@@ -10,7 +10,7 @@ export type KuiperInput = {
 export const builtIns: KuiperInput[] = [
     { label: "all", description: "`all(x)`: Returns `true` if all items in the array `x` is true." },
     { label: "any", description: "`any(x)`: Returns `true` if any items in the array `x` is true." },
-    { label: "atan2", description: "`atan2(x, y)`: Returns the inverse tangent of `x`/`y` in radians between -pi and pi." },
+    { label: "atan2", description: "`atan2(x, y)`: Returns the four quadrant inverse tangent of `x`/`y` in radians between -pi and pi." },
     { label: "case", description: "`case(x, c1, r1, c2, r2, ..., (default))`: Compare `x` to each of `c1`, `c2`, etc. and return the matching `r1`, `r2` of the first match. If no entry matches, a final optional expression can be returned as default." },
     { label: "ceil", description: "`ceil(x)`: Returns `x` rounded up to the nearest integer." },
     { label: "chars", description: "`chars(x)`: Creates an array of characters from a string." },
