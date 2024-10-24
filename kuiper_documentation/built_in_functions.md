@@ -479,6 +479,101 @@ Returns the value obtained by reducing the list `x`. The lambda function is call
 [1, 2, 3, 4, 5].reduce((acc, val) => acc * val, 1) -> 120
 ```
 
+## regex_all_captures
+
+`regex_all_captures(haystack, regex)`
+
+Return an array of objects containing all capture groups from each match of the regex in the haystack. Unnamed capture groups are named after their index, so the match itself is always included as capture group `0`. If no match is found, this returns an empty array.
+See [regex_is_match](#regex_is_match) for details on regex support.
+
+**Code example**
+```
+regex_all_captures("f123 f45 ff", "f(?<v>[0-9]+)") -> [{ "0": "f123", "v": "123" }, { "0": "f45", "v": "45" }]
+```
+
+## regex_all_matches
+
+`regex_all_matches(haystack, regex)`
+
+Return an array of all the substrings that match the regex. If no match is found, this returns an empty array. Prefer [regex_first_match](#regex_first_match) if all you need is the first match.
+See [regex_is_match](#regex_is_match) for details on regex support.
+
+**Code examples**
+```
+regex_all_matches("tests", "t[a-z]") -> ["te", "ts"]
+```
+```
+regex_all_matches("foo bar baz", "\\w{3}") -> ["foo", "bar", "baz"]
+```
+```
+regex_all_matches("test", "not test") -> []
+```
+
+## regex_first_captures
+
+`regex_first_captures(haystack, regex)`
+
+Return an object containing all capture groups from the first match of the regex in the haystack. Unnamed capture groups are named after their index, so the match itself is always included as capture group `0`. If no match is found, this returns null.
+See [regex_is_match](#regex_is_match) for details on regex support.
+
+**Code example**
+```
+regex_first_captures("test foo bar", "test (?<v1>\\w{3}) (\\w{3})") -> { "0": "test foo bar", "v1": "foo", "2": "bar" }
+```
+
+## regex_first_match
+
+`regex_first_match(haystack, regex)`
+
+Return the first substring in the haystack that matches the regex. If no match is found, this returns `null`. Prefer [regex_is_match](#regex_is_match) if all you need is to check for the existence of a match.
+See [regex_is_match](#regex_is_match) for details on regex support.
+
+**Code examples**
+```
+regex_first_match("test", "te") -> "te"
+```
+```
+regex_first_match("te[st]{2}") -> "test"
+```
+
+## regex_is_match
+
+`regex_is_match(haystack, regex)`
+
+Return `true` if the haystack matches the regex. Prefer this over the other regex methods if you only need to check for the presence of a match.
+Note that we support a limited form of regex without certain complex features like backreferences and look-around. See [here](https://docs.rs/regex/1.11.0/regex/index.html#syntax) for a detailed overview of all the available regex syntax. We recommend using [regex101](https://regex101.com/) with the mode set to `rust` for debugging regex.
+
+**Code examples**
+```
+regex_is_match("test", "te") -> true
+```
+```
+regex_is_match("test", "^not test$") -> false
+```
+
+## regex_replace
+
+`regex_replace(haystack, regex, replace)`
+
+Replace the first occurence of the regex in the haystack. The replace object supports referencing capture groups using either the index (`$1`) or the name (`$group`). Use `$$` if you need a literal `$` symbol. `${group}` is equivalent to `$group` but lets you specify the group name exactly.
+See [regex_is_match](#regex_is_match) for details on regex support.
+
+**Code example**
+```
+regex_replace("test", "te(?<v>[st]{2})", "fa$v") -> "fast"
+```
+
+## regex_replace_all
+
+`regex_replace_all(haystack, regex, replace)`
+
+Replace each occurence of the regex in the haystack. See [regex_replace](#regex_replace) for details.
+
+**Code example**
+```
+regex_replace_all("tests", "t(?<v>[se])", "${v}t") -> etsst
+```
+
 ## replace
 
 `replace(a, b, c)`

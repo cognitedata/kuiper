@@ -117,9 +117,9 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexFirstMatchFunction {
     }
 }
 
-regex_function!(RegexMatchesFunction, "regex_matches", 1);
+regex_function!(RegexAllMatchesFunction, "regex_all_matches", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for RegexMatchesFunction {
+impl<'a: 'c, 'c> Expression<'a, 'c> for RegexAllMatchesFunction {
     fn resolve(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
@@ -133,9 +133,9 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexMatchesFunction {
     }
 }
 
-regex_function!(RegexCapturesFunction, "regex_captures", 1);
+regex_function!(RegexFirstCapturesFunction, "regex_first_captures", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for RegexCapturesFunction {
+impl<'a: 'c, 'c> Expression<'a, 'c> for RegexFirstCapturesFunction {
     fn resolve(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
@@ -161,6 +161,41 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexCapturesFunction {
             })
             .collect();
         Ok(ResolveResult::Owned(Value::Object(v)))
+    }
+}
+
+regex_function!(RegexAllCapturesFunction, "regex_all_captures", 1);
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for RegexAllCapturesFunction {
+    fn resolve(
+        &'a self,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        let arg = self.args[0].resolve(state)?;
+        let arg = arg.try_as_string(Self::INFO.name, &self.span)?;
+
+        let res = self
+            .re
+            .captures_iter(arg.as_ref())
+            .map(|m| {
+                let v: Map<String, Value> = m
+                    .iter()
+                    .zip(self.re.capture_names())
+                    .enumerate()
+                    .filter_map(|(idx, (capture, name))| {
+                        let c = capture?;
+                        let name = name
+                            .map(|n| n.to_owned())
+                            .unwrap_or_else(|| idx.to_string());
+
+                        Some((name, Value::String(c.as_str().to_owned())))
+                    })
+                    .collect();
+                Value::Object(v)
+            })
+            .collect();
+
+        Ok(ResolveResult::Owned(Value::Array(res)))
     }
 }
 
@@ -254,14 +289,14 @@ mod tests {
     }
 
     #[test]
-    pub fn test_regex_matches() {
+    pub fn test_regex_all_matches() {
         let expr = compile_expression(
             r#"
             {
-                "v1": regex_matches("tets", "t."),
-                "v2": regex_matches("æøå", "[æøå]"),
-                "v3": regex_matches("test", "^test$"),
-                "v4": regex_matches("test", "^not test$")
+                "v1": regex_all_matches("tets", "t."),
+                "v2": regex_all_matches("æøå", "[æøå]"),
+                "v3": regex_all_matches("test", "^test$"),
+                "v4": regex_all_matches("test", "^not test$")
             }
             "#,
             &[],
@@ -283,15 +318,15 @@ mod tests {
     }
 
     #[test]
-    pub fn test_regex_captures() {
+    pub fn test_regex_first_captures() {
         let expr = compile_expression(
             r#"
             {
-                "v1": regex_captures("test", "te([st]{2})"),
-                "v2": regex_captures("æøå", "[æøå]{3}"),
-                "v3": regex_captures("test string", "^test (?<val>.*)"),
-                "v4": regex_captures("test 123 456 789", "^test (?<v1>[0-9]{3}) (?<v2>[0-9]{3}) (?<v3>[0-9]{3})$"),
-                "v5": regex_captures("test", "^not (?<v>test)$")
+                "v1": regex_first_captures("test", "te([st]{2})"),
+                "v2": regex_first_captures("æøå", "[æøå]{3}"),
+                "v3": regex_first_captures("test string", "^test (?<val>.*)"),
+                "v4": regex_first_captures("test 123 456 789", "^test (?<v1>[0-9]{3}) (?<v2>[0-9]{3}) (?<v3>[0-9]{3})$"),
+                "v5": regex_first_captures("test", "^not (?<v>test)$")
             }
             "#,
             &[],
@@ -330,6 +365,66 @@ mod tests {
             })
         );
         assert_eq!(v["v5"], Value::Null);
+    }
+
+    #[test]
+    pub fn test_regex_all_captures() {
+        let expr = compile_expression(
+            r#"
+            {
+                "v1": regex_all_captures("test tets", "te([st]{2})"),
+                "v2": regex_all_captures("f12345 f569124 f43", "f(?<v>[0-9]+)"),
+                "v3": regex_all_captures("k12_34 k5_2334", "k(?<v1>[0-9]+)_(?<v2>[0-9]+)"),
+                "v4": regex_all_captures("test test", "nope")
+            }
+            "#,
+            &[],
+        )
+        .unwrap();
+        let res = expr.run([]).unwrap();
+        let v = res.as_object().unwrap();
+        assert_eq!(
+            v["v1"],
+            json!(
+                [{
+                    "0": "test",
+                    "1": "st"
+                }, {
+                    "0": "tets",
+                    "1": "ts"
+                }]
+            )
+        );
+        assert_eq!(
+            v["v2"],
+            json!(
+                [{
+                    "0": "f12345",
+                    "v": "12345"
+                }, {
+                    "0": "f569124",
+                    "v": "569124"
+                }, {
+                    "0": "f43",
+                    "v": "43"
+                }]
+            )
+        );
+        assert_eq!(
+            v["v3"],
+            json!(
+                [{
+                    "0": "k12_34",
+                    "v1": "12",
+                    "v2": "34"
+                }, {
+                    "0": "k5_2334",
+                    "v1": "5",
+                    "v2": "2334"
+                }]
+            )
+        );
+        assert_eq!(v["v4"], json!([]))
     }
 
     #[test]
