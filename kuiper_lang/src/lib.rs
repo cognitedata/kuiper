@@ -57,6 +57,7 @@ impl CompileError {
                 BuildError::UnrecognizedFunction(x) => Some(x.position.clone()),
                 BuildError::UnknownVariable(x) => Some(x.position.clone()),
                 BuildError::VariableConflict(x) => Some(x.position.clone()),
+                BuildError::Other(x) => Some(x.position.clone()),
             },
             CompileError::Parser(x) => match x {
                 lalrpop_util::ParseError::InvalidToken { location } => Some(Span {

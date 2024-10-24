@@ -251,6 +251,12 @@ pub enum FunctionType {
     Max(MaxFunction),
     Digest(DigestFunction),
     Coalesce(CoalesceFunction),
+    RegexIsMatch(RegexIsMatchFunction),
+    RegexFirstMatch(RegexFirstMatchFunction),
+    RegexMatches(RegexMatchesFunction),
+    RegexCaptures(RegexCapturesFunction),
+    RegexReplace(RegexReplaceFunction),
+    RegexReplaceAll(RegexReplaceAllFunction),
 }
 
 struct FunctionBuilder {
@@ -321,6 +327,12 @@ pub fn get_function_expression(
         "max" => FunctionType::Max(b.mk()?),
         "digest" => FunctionType::Digest(b.mk()?),
         "coalesce" => FunctionType::Coalesce(b.mk()?),
+        "regex_is_match" => FunctionType::RegexIsMatch(b.mk()?),
+        "regex_first_match" => FunctionType::RegexFirstMatch(b.mk()?),
+        "regex_matches" => FunctionType::RegexMatches(b.mk()?),
+        "regex_captures" => FunctionType::RegexCaptures(b.mk()?),
+        "regex_replace" => FunctionType::RegexReplace(b.mk()?),
+        "regex_replace_all" => FunctionType::RegexReplaceAll(b.mk()?),
         _ => return Err(BuildError::unrecognized_function(b.pos, name)),
     };
     Ok(ExpressionType::Function(expr))
@@ -434,5 +446,9 @@ impl ExpressionMeta for Constant {
 impl Constant {
     pub fn new(val: Value) -> Self {
         Self { val }
+    }
+
+    pub(crate) fn value(&self) -> &Value {
+        &self.val
     }
 }
