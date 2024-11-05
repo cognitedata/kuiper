@@ -42,6 +42,8 @@ pub enum BuildError {
     UnknownVariable(CompileErrorData),
     #[error("Variable already defined: {0}")]
     VariableConflict(CompileErrorData),
+    #[error("{0}")]
+    Other(CompileErrorData),
 }
 
 impl BuildError {
@@ -73,6 +75,12 @@ impl BuildError {
         Self::VariableConflict(CompileErrorData {
             position,
             detail: var.to_string(),
+        })
+    }
+    pub(crate) fn other(position: Span, err: &str) -> Self {
+        Self::Other(CompileErrorData {
+            position,
+            detail: err.to_string(),
         })
     }
 }

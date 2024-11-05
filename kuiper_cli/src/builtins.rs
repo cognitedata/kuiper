@@ -5,7 +5,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-pub const BUILT_INS: [&str; 47] = [
+pub const BUILT_INS: [&str; 54] = [
     "all(",
     "any(",
     "atan2(",
@@ -36,6 +36,13 @@ pub const BUILT_INS: [&str; 47] = [
     "pairs(",
     "pow(",
     "reduce(",
+    "regex_all_captures(",
+    "regex_all_matches(",
+    "regex_first_captures(",
+    "regex_first_match(",
+    "regex_is_match(",
+    "regex_replace(",
+    "regex_replace_all(",
     "replace(",
     "round(",
     "select(",
@@ -283,6 +290,61 @@ If applied to an object, the first input is the value, and the second is the key
             FunctionDef {
                 signature: "reduce(x, (acc, val) => ..., init)",
                 description: "Returns the value obtained by reducing the list `x`. The lambda function is called once for each element in the list `val`, and the returned value is passed as `acc` in the next iteration. The `init` will be given as the initial `acc` for the first call to the lambda function.",
+            }
+        ),
+        (
+            "regex_all_captures",
+            FunctionDef {
+                signature: "regex_all_captures(haystack, regex)",
+                description: "Return an array of objects containing all capture groups from each match of the regex in the haystack. Unnamed capture groups are named after their index, so the match itself is always included as capture group `0`. If no match is found, this returns an empty array.
+See [regex_is_match](#regex_is_match) for details on regex support.",
+            }
+        ),
+        (
+            "regex_all_matches",
+            FunctionDef {
+                signature: "regex_all_matches(haystack, regex)",
+                description: "Return an array of all the substrings that match the regex. If no match is found, this returns an empty array. Prefer [regex_first_match](#regex_first_match) if all you need is the first match.
+See [regex_is_match](#regex_is_match) for details on regex support.",
+            }
+        ),
+        (
+            "regex_first_captures",
+            FunctionDef {
+                signature: "regex_first_captures(haystack, regex)",
+                description: "Return an object containing all capture groups from the first match of the regex in the haystack. Unnamed capture groups are named after their index, so the match itself is always included as capture group `0`. If no match is found, this returns null.
+See [regex_is_match](#regex_is_match) for details on regex support.",
+            }
+        ),
+        (
+            "regex_first_match",
+            FunctionDef {
+                signature: "regex_first_match(haystack, regex)",
+                description: "Return the first substring in the haystack that matches the regex. If no match is found, this returns `null`. Prefer [regex_is_match](#regex_is_match) if all you need is to check for the existence of a match.
+See [regex_is_match](#regex_is_match) for details on regex support.",
+            }
+        ),
+        (
+            "regex_is_match",
+            FunctionDef {
+                signature: "regex_is_match(haystack, regex)",
+                description: "Return `true` if the haystack matches the regex. Prefer this over the other regex methods if you only need to check for the presence of a match.
+Note that we support a limited form of regex without certain complex features like backreferences and look-around. See [here](https://docs.rs/regex/1.11.0/regex/index.html#syntax) for a detailed overview of all the available regex syntax. We recommend using [regex101](https://regex101.com/) with the mode set to `rust` for debugging regex.",
+            }
+        ),
+        (
+            "regex_replace",
+            FunctionDef {
+                signature: "regex_replace(haystack, regex, replace)",
+                description: "Replace the first occurence of the regex in the haystack. The replace object supports referencing capture groups using either the index (`$1`) or the name (`$group`). Use `$$` if you need a literal `$` symbol. `${group}` is equivalent to `$group` but lets you specify the group name exactly.
+See [regex_is_match](#regex_is_match) for details on regex support.",
+            }
+        ),
+        (
+            "regex_replace_all",
+            FunctionDef {
+                signature: "regex_replace_all(haystack, regex, replace)",
+                description: "Replace each occurence of the regex in the haystack. See [regex_replace](#regex_replace) for details.",
             }
         ),
         (
