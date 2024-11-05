@@ -35,10 +35,7 @@ struct Args {
 
 impl Args {
     pub fn launch_repl(&self) -> bool {
-        matches!(
-            (&self.expression, &self.expression_file, &self.input),
-            (None, None, None)
-        )
+        self.expression.is_none() && self.expression_file.is_none() && self.input.is_none()
     }
 }
 
