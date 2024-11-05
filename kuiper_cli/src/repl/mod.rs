@@ -2,6 +2,8 @@ mod cmd_helper;
 mod io;
 mod magic;
 
+use std::time::Instant;
+
 use colored::Colorize;
 use kuiper_lang::compile_expression;
 
@@ -10,7 +12,7 @@ use rustyline::{CompletionType, Config, Editor};
 
 use crate::repl::magic::apply_magic_function;
 
-pub fn repl() {
+pub fn repl(verbose_log: bool) {
     let mut data = Vec::new();
     let mut index = 0usize;
     let mut inputs = Vec::<String>::new();
@@ -46,10 +48,18 @@ pub fn repl() {
                 }
 
                 let chunk_id = format!("var{index}");
+                let compile_start = Instant::now();
                 let res = compile_expression(
                     &expression,
                     &inputs.iter().map(String::as_str).collect::<Vec<_>>(),
                 );
+                if verbose_log {
+                    println!(
+                        "Compiled in {} ms",
+                        compile_start.elapsed().as_micros() as f64 / 1000.0
+                    );
+                }
+
                 let expr = match res {
                     Ok(x) => x,
                     Err(e) => {
@@ -58,7 +68,15 @@ pub fn repl() {
                     }
                 };
 
+                let run_start = Instant::now();
                 let res = expr.run(data.iter());
+                if verbose_log {
+                    println!(
+                        "Run in {} ms",
+                        run_start.elapsed().as_micros() as f64 / 1000.0
+                    );
+                }
+
                 match res {
                     Ok(x) => {
                         println!("{chunk_id} = {}", &*x);
