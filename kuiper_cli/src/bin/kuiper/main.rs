@@ -1,10 +1,6 @@
-mod builtins;
-mod errors;
-mod repl;
-
-use crate::errors::KuiperCliError;
-use crate::repl::repl;
 use clap::{Parser, ValueEnum};
+use kuiper_cli::errors::KuiperCliError;
+use kuiper_cli::repl::repl;
 use kuiper_lang::compile_expression;
 use serde_json::Value;
 use std::fs::read_to_string;
@@ -32,13 +28,18 @@ struct Args {
     /// Input data, uses STDIN if omitted
     input: Option<PathBuf>,
 
-    /// Launch into repl mode
-    #[arg(long)]
-    repl: bool,
-
     /// Message separator
     #[arg(short, long, value_enum, default_value = "eof")]
     separator: MessageEnd,
+}
+
+impl Args {
+    pub fn launch_repl(&self) -> bool {
+        match (&self.expression, &self.expression_file, &self.input) {
+            (None, None, None) => true,
+            _ => false,
+        }
+    }
 }
 
 fn load_input_data(args: &Args) -> Result<Vec<Value>, KuiperCliError> {
@@ -88,10 +89,10 @@ fn inner_run(args: Args) -> Result<Vec<String>, KuiperCliError> {
     Ok(res)
 }
 
-fn main() {
+pub fn main() {
     let args = Args::parse();
 
-    if args.repl {
+    if args.launch_repl() {
         repl();
         return;
     }

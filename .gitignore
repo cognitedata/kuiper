@@ -26,10 +26,10 @@ kuiper_python/kuiper/kuiper
 **/dist
 **/yarn.lock
 
-
 # .NET files
 **/bin
 **/obj
+!kuiper_cli/src/bin
 
 # Java files
 kuiper_java/src/main/resources
