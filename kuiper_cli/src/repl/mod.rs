@@ -30,10 +30,10 @@ pub fn repl(verbose_log: bool) {
     let _ = readlines.load_history(&history_path);
 
     println!("Kuiper REPL version {}", env!("CARGO_PKG_VERSION"));
-    println!("Type /help for a list of available commands.");
+    println!("Type /help for a list of available commands. Press ctrl-D to exit.");
+    println!();
 
     loop {
-        println!();
         let line = readlines.readline("kuiper> ");
 
         match line {
@@ -64,6 +64,7 @@ pub fn repl(verbose_log: bool) {
                     Ok(x) => x,
                     Err(e) => {
                         io::printerr!("", e);
+                        println!();
                         continue;
                     }
                 };
@@ -85,16 +86,20 @@ pub fn repl(verbose_log: bool) {
                     }
                     Err(e) => {
                         io::printerr!("Transform failed:", e);
+                        println!();
                         continue;
                     }
                 }
                 index += 1;
+                println!();
             }
 
-            Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => break,
+            Err(ReadlineError::Interrupted) => continue,
+            Err(ReadlineError::Eof) => break,
 
             Err(error) => {
                 io::printerr!("Unexpected error:", error);
+                println!();
                 break;
             }
         }
