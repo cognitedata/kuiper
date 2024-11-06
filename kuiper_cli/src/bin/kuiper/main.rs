@@ -31,6 +31,10 @@ struct Args {
     /// Message separator
     #[arg(short, long, value_enum, default_value = "eof")]
     separator: MessageEnd,
+
+    /// Verbose logging
+    #[arg(short = 'v', long)]
+    verbose: bool,
 }
 
 impl Args {
@@ -90,7 +94,7 @@ pub fn main() {
     let args = Args::parse();
 
     if args.launch_repl() {
-        repl();
+        repl(args.verbose);
         return;
     }
 
