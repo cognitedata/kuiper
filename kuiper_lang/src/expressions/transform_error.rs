@@ -30,7 +30,7 @@ pub enum TransformError {
     ConversionFailed(TransformErrorData),
     #[error("{0}")]
     InvalidOperation(TransformErrorData),
-    #[error("Operation limit exceeded")]
+    #[error("Too many operations: the transform expression was terminated because it exceeded the operation limit")]
     OperationLimitExceeded,
 }
 
