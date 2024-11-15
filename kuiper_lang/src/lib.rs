@@ -93,7 +93,10 @@ impl CompileError {
     }
 }
 
-pub use compiler::{compile_expression, BuildError, DebugInfo, ExpressionDebugInfo};
+pub use compiler::{
+    compile_expression, compile_expression_with_config, BuildError, CompilerConfig, DebugInfo,
+    ExpressionDebugInfo,
+};
 pub use expressions::{ExpressionType, TransformError, TransformErrorData};
 pub use lexer::ParseError;
 use logos::Span;

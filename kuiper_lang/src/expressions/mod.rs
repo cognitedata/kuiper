@@ -4,6 +4,7 @@ mod functions;
 mod if_expr;
 mod is_operator;
 mod lambda;
+mod macro_call;
 mod numbers;
 mod object;
 mod operator;
@@ -19,6 +20,7 @@ pub use base::{
 pub use if_expr::IfExpression;
 pub use is_operator::{IsExpression, TypeLiteral};
 pub use lambda::LambdaExpression;
+pub use macro_call::MacroCallExpression;
 pub use object::{ObjectElement, ObjectExpression};
 pub use operator::{OpExpression, Operator, UnaryOpExpression, UnaryOperator};
 pub use result::*;

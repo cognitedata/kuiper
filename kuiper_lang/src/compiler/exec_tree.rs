@@ -6,11 +6,13 @@ use thiserror::Error;
 use crate::{
     expressions::{
         get_function_expression, ArrayElement, ArrayExpression, ExpressionType, IfExpression,
-        IsExpression, LambdaExpression, ObjectElement, ObjectExpression, OpExpression,
-        SelectorElement, SelectorExpression, SourceElement, UnaryOpExpression,
+        IsExpression, LambdaExpression, MacroCallExpression, ObjectElement, ObjectExpression,
+        OpExpression, SelectorElement, SelectorExpression, SourceElement, UnaryOpExpression,
     },
-    parse::{Expression, FunctionParameter, Selector},
+    parse::{Expression, FunctionParameter, Lambda, Macro, Program, Selector},
 };
+
+use super::CompilerConfig;
 
 #[derive(Debug, Error)]
 pub struct CompileErrorData {
@@ -90,22 +92,67 @@ pub(crate) struct ExecTreeBuilder {
     expression: Expression,
 }
 
+struct MacroCounter {
+    num_expansions: i32,
+    max_expansions: i32,
+}
+
+impl MacroCounter {
+    pub fn new(max_expansions: i32) -> Self {
+        Self {
+            max_expansions,
+            num_expansions: 0,
+        }
+    }
+
+    pub fn expand_macro(&mut self, loc: Span) -> Result<(), BuildError> {
+        if self.max_expansions >= 0 && self.max_expansions <= self.num_expansions {
+            return Err(BuildError::other(
+                loc,
+                &format!(
+                    "Too many macro expansions, maximum is {}",
+                    self.max_expansions
+                ),
+            ));
+        }
+        self.num_expansions += 1;
+        Ok(())
+    }
+}
+
 struct BuilderInner {
     known_inputs: HashMap<String, usize>,
+    macros: HashMap<String, Macro>,
+    macro_counter: MacroCounter,
+    macro_stack: Vec<String>,
 }
 
 impl ExecTreeBuilder {
-    pub fn new(expr: Expression, known_inputs: &[&str]) -> Self {
+    pub fn new(
+        program: Program,
+        known_inputs: &[&str],
+        compiler_config: &CompilerConfig,
+    ) -> Result<Self, BuildError> {
         let mut inputs = HashMap::new();
         for inp in known_inputs {
             inputs.insert((*inp).to_owned(), inputs.len());
         }
-        Self {
+        let mut macros = HashMap::new();
+        for mc in program.macros {
+            let span = mc.body.loc.clone();
+            if macros.insert(mc.name.clone(), mc).is_some() {
+                return Err(BuildError::other(span, "Duplicate macro definition"));
+            }
+        }
+        Ok(Self {
             inner: BuilderInner {
                 known_inputs: inputs,
+                macros,
+                macro_counter: MacroCounter::new(compiler_config.max_macro_expansions),
+                macro_stack: Vec::new(),
             },
-            expression: expr,
-        }
+            expression: program.expression,
+        })
     }
 
     pub fn build(mut self) -> Result<ExpressionType, BuildError> {
@@ -140,32 +187,70 @@ impl BuilderInner {
         }
     }
 
+    fn build_lambda(&mut self, expr: Lambda) -> Result<ExpressionType, BuildError> {
+        let Lambda { args, inner, loc } = expr;
+        // Temporarily add lambda arguments as variables.
+        let mut temp_variables = vec![];
+        for inp in args.iter() {
+            temp_variables.push(inp.clone());
+            if self
+                .known_inputs
+                .insert(inp.clone(), self.known_inputs.len())
+                .is_some()
+            {
+                return Err(BuildError::variable_conflict(loc, inp));
+            }
+        }
+        let r = LambdaExpression::new(args, self.build_expression(inner)?, loc)?;
+        for var in temp_variables {
+            self.known_inputs.remove(&var);
+        }
+        Ok(ExpressionType::Lambda(r))
+    }
+
     fn build_function_param(
         &mut self,
         expr: FunctionParameter,
     ) -> Result<ExpressionType, BuildError> {
         match expr {
-            FunctionParameter::Expression(x) => Ok(self.build_expression(x)?),
-            FunctionParameter::Lambda { args, inner, loc } => {
-                // Temporarily add lambda arguments as variables.
-                let mut temp_variables = vec![];
-                for inp in args.iter() {
-                    temp_variables.push(inp.clone());
-                    if self
-                        .known_inputs
-                        .insert(inp.clone(), self.known_inputs.len())
-                        .is_some()
-                    {
-                        return Err(BuildError::variable_conflict(loc, inp));
-                    }
-                }
-                let r = LambdaExpression::new(args, self.build_expression(inner)?, loc)?;
-                for var in temp_variables {
-                    self.known_inputs.remove(&var);
-                }
-                Ok(ExpressionType::Lambda(r))
-            }
+            FunctionParameter::Expression(x) => self.build_expression(x),
+            FunctionParameter::Lambda(l) => self.build_lambda(l),
         }
+    }
+
+    fn build_macro_call(
+        &mut self,
+        mac: Macro,
+        args: Vec<FunctionParameter>,
+        span: Span,
+    ) -> Result<ExpressionType, BuildError> {
+        self.macro_counter.expand_macro(span.clone())?;
+        if mac.body.args.len() != args.len() {
+            return Err(BuildError::n_function_args(
+                span,
+                &format!("Expected {} arguments to macro", mac.body.args.len()),
+            ));
+        }
+        if self.macro_stack.contains(&mac.name) {
+            return Err(BuildError::other(
+                span,
+                "Recursive macro calls are not allowed",
+            ));
+        }
+        let mut built_args = Vec::new();
+        for arg in args {
+            let expr = match arg {
+                FunctionParameter::Expression(e) => e,
+                FunctionParameter::Lambda(e) => return Err(BuildError::unexpected_lambda(&e.loc)),
+            };
+            built_args.push(self.build_expression(expr)?);
+        }
+        self.macro_stack.push(mac.name.clone());
+        let inner = self.build_lambda(mac.body)?;
+        self.macro_stack.pop();
+        Ok(ExpressionType::MacroCallExpression(
+            MacroCallExpression::new(inner, built_args, span)?,
+        ))
     }
 
     fn resolve_input(&self, source: &str, span: Span) -> Result<SourceElement, BuildError> {
@@ -235,13 +320,19 @@ impl BuilderInner {
             Expression::Constant(c, _span) => Ok(ExpressionType::Constant(
                 crate::expressions::Constant::new(c.into()),
             )),
-            Expression::Function { name, args, loc } => Ok(get_function_expression(
-                loc,
-                &name,
-                args.into_iter()
-                    .map(|e| self.build_function_param(e))
-                    .collect::<Result<Vec<_>, _>>()?,
-            )?),
+            Expression::Function { name, args, loc } => {
+                if let Some(m) = self.macros.get(&name).cloned() {
+                    self.build_macro_call(m, args, loc)
+                } else {
+                    get_function_expression(
+                        loc,
+                        &name,
+                        args.into_iter()
+                            .map(|e| self.build_function_param(e))
+                            .collect::<Result<Vec<_>, _>>()?,
+                    )
+                }
+            }
             Expression::Variable(v, span) => Ok(ExpressionType::Selector(SelectorExpression::new(
                 self.resolve_input(&v, span.clone())?,
                 vec![],

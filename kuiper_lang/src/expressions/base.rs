@@ -14,6 +14,7 @@ use super::{
     },
     is_operator::IsExpression,
     lambda::LambdaExpression,
+    macro_call::MacroCallExpression,
     operator::UnaryOpExpression,
     transform_error::TransformError,
     ArrayExpression, IfExpression, ObjectExpression, OpExpression, ResolveResult,
@@ -359,6 +360,7 @@ pub enum ExpressionType {
     Lambda(LambdaExpression),
     Is(IsExpression),
     If(IfExpression),
+    MacroCallExpression(MacroCallExpression),
 }
 
 impl ExpressionType {

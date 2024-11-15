@@ -4,7 +4,7 @@ pow(2, 2)
 
 ==>
 
-Result(Expression(Term(FunctionCall(FunctionName(Var(PlainVar)), CommaSep(
+Program(Expression(Term(FunctionCall(FunctionName(Var(PlainVar)), CommaSep(
     FunctionArg(Expression(Term(Number))),
     FunctionArg(Expression(Term(Number)))
 )))))
@@ -15,7 +15,7 @@ Result(Expression(Term(FunctionCall(FunctionName(Var(PlainVar)), CommaSep(
 
 ==>
 
-Result(Expression(Term(FunctionCall(
+Program(Expression(Term(FunctionCall(
     Term(Number),
     FunctionName(Var(PlainVar)),
     CommaSep(FunctionArg(Expression(Term(Number))))
@@ -27,7 +27,7 @@ map([1, 2], a => a + 1)
 
 ==>
 
-Result(Expression(Term(FunctionCall(
+Program(Expression(Term(FunctionCall(
     FunctionName(Var(PlainVar)),
     CommaSep(
         FunctionArg(Expression(Term(Array(CommaSep(
@@ -52,7 +52,7 @@ Result(Expression(Term(FunctionCall(
 
 ==>
 
-Result(Expression(Term(FunctionCall(
+Program(Expression(Term(FunctionCall(
     Term(Array(CommaSep(
         ArrElem(Expression(Term(Number))),
         ArrElem(Expression(Term(Number)))

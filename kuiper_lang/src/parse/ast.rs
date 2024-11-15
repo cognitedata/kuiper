@@ -5,7 +5,7 @@ use serde_json::{Number, Value};
 
 use crate::expressions::{Operator, TypeLiteral, UnaryOperator};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Selector {
     Expression(Box<Expression>),
     String(String, Span),
@@ -20,7 +20,7 @@ impl Display for Selector {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Constant {
     String(String),
     Integer(u64),
@@ -55,68 +55,84 @@ impl From<Constant> for Value {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub struct Lambda {
+    pub args: Vec<String>,
+    pub inner: Expression,
+    pub loc: Span,
+}
+
+impl Display for Lambda {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Lambda { args, inner, .. } = &self;
+        write!(f, "(")?;
+        let mut needs_comma = false;
+        for arg in args {
+            if needs_comma {
+                write!(f, ", ")?;
+            }
+            needs_comma = true;
+            write!(f, "{arg}")?;
+        }
+        write!(f, ") => ")?;
+        write!(f, "{inner}")
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum FunctionParameter {
     Expression(Expression),
-    Lambda {
-        args: Vec<String>,
-        inner: Expression,
-        loc: Span,
-    },
+    Lambda(Lambda),
 }
 
 impl Display for FunctionParameter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             FunctionParameter::Expression(x) => write!(f, "{x}"),
-            FunctionParameter::Lambda {
-                args,
-                inner,
-                loc: _,
-            } => {
-                write!(f, "(")?;
-                let mut needs_comma = false;
-                for arg in args {
-                    if needs_comma {
-                        write!(f, ", ")?;
-                    }
-                    needs_comma = true;
-                    write!(f, "{arg}")?;
-                }
-                write!(f, ") => ")?;
-                write!(f, "{inner}")
-            }
+            FunctionParameter::Lambda(x) => write!(f, "{x}"),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct OpExpression {
     pub lhs: Box<Expression>,
     pub operator: Operator,
     pub rhs: Box<Expression>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IsExpression {
     pub lhs: Box<Expression>,
     pub rhs: TypeLiteral,
     pub not: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ArrayElementAst {
     Expression(Expression),
     Concat(Expression),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ObjectElementAst {
     Pair(Expression, Expression),
     Concat(Expression),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub struct Macro {
+    pub name: String,
+    pub body: Lambda,
+}
+
+#[derive(Debug, Clone)]
+pub struct Program {
+    pub macros: Vec<Macro>,
+    pub expression: Expression,
+}
+
+#[derive(Debug, Clone)]
 pub enum Expression {
     BinaryOperation(OpExpression, Span),
     Is(IsExpression),
@@ -143,6 +159,15 @@ pub enum Expression {
         args: Vec<Expression>,
         loc: Span,
     },
+}
+
+impl Display for Program {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for m in &self.macros {
+            write!(f, "{} := {};", m.name, m.body)?;
+        }
+        write!(f, "{}", self.expression)
+    }
 }
 
 impl Display for Expression {

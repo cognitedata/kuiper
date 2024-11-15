@@ -157,6 +157,15 @@ pub enum Token {
     #[token("=>")]
     Arrow,
 
+    #[token(";")]
+    SemiColon,
+
+    #[token(":=")]
+    DefineEqual,
+
+    #[token("#")]
+    DefineSym,
+
     CombinedArrow,
 
     #[token("/*", |lex| {
@@ -195,6 +204,9 @@ impl Display for Token {
             Token::Not => write!(f, "not"),
             Token::If => write!(f, "if"),
             Token::Else => write!(f, "else"),
+            Token::SemiColon => write!(f, ";"),
+            Token::DefineEqual => write!(f, ":="),
+            Token::DefineSym => write!(f, "def"),
         }
     }
 }

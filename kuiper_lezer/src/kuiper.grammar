@@ -1,6 +1,13 @@
-@top Result { Expression }
+@top Program {
+    Macros?
+    Expression
+}
 
 @skip { whitespace | BlockComment | LineComment }
+
+Macro { "#" FunctionName ":=" Lambda ";" }
+
+Macros { (Macro)+ }
 
 Expression { Operator | Term }
 
@@ -139,6 +146,6 @@ Is { @specialize<PlainVar, "is"> }
     whitespace { @whitespace+ }
     PlainVar { $[a-zA-Z_]$[a-zA-Z0-9_]* }
     "(" ")" "{" "}" "[" "]" "!" "*" "/" "%" "+" "-" ">" "<" "<=" ">=" "is" "==" "!=" "&&" "||"
-    "," "." ":" "..." "not"
+    "," "." ":" "..." "not" "#" ";" ":="
     "=>"[@name=Arrow]
 }

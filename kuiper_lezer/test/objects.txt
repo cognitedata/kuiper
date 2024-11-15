@@ -7,7 +7,7 @@
 
 ==>
 
-Result(Expression(Term(Object(CommaSep(
+Program(Expression(Term(Object(CommaSep(
     ObjElem(
         Expression(Term(String)),
         Expression(Term(Number))
@@ -30,7 +30,7 @@ Result(Expression(Term(Object(CommaSep(
 
 ==>
 
-Result(Expression(Term(Object(CommaSep))))
+Program(Expression(Term(Object(CommaSep))))
 
 # Object concat
 
@@ -44,7 +44,7 @@ Result(Expression(Term(Object(CommaSep))))
 
 ==>
 
-Result(Expression(Term(Object(CommaSep(
+Program(Expression(Term(Object(CommaSep(
     ObjElem(Expression(Term(String)), Expression(Term(String))),
     ObjElem(Expression(Term(Object(CommaSep(
         ObjElem(Expression(Term(String)), Expression(Term(String)))

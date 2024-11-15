@@ -21,6 +21,7 @@ fn resolve_constants(
     root: &mut ExpressionType,
     num_inputs: usize,
     opcount: &mut i64,
+    max_opcount: i64,
 ) -> Result<Option<ExpressionType>, TransformError> {
     // If there are no children, no further optimization may be done
     if root.iter_children_mut().next().is_none() {
@@ -28,7 +29,7 @@ fn resolve_constants(
     }
 
     let data = vec![None; num_inputs];
-    let mut state = ExpressionExecutionState::new(&data, opcount, 100_000);
+    let mut state = ExpressionExecutionState::new(&data, opcount, max_opcount);
 
     let res = match root.resolve(&mut state).map(|r| r.into_owned()) {
         // If resolution succeeds, we can replace this operator with a constant
@@ -41,7 +42,7 @@ fn resolve_constants(
                 // If the source is missing we should try to optimize each child.
                 for child in root.iter_children_mut() {
                     let res: Option<ExpressionType> =
-                        resolve_constants(child, num_inputs, opcount)?;
+                        resolve_constants(child, num_inputs, opcount, max_opcount)?;
                     if let Some(res) = res {
                         *child = res;
                     }
@@ -58,10 +59,11 @@ fn resolve_constants(
 pub fn optimize(
     mut root: ExpressionType,
     num_inputs: usize,
+    max_opcount: i64,
 ) -> Result<ExpressionType, TransformError> {
     let mut opcount = 0;
 
-    let res = resolve_constants(&mut root, num_inputs, &mut opcount)?;
+    let res = resolve_constants(&mut root, num_inputs, &mut opcount, max_opcount)?;
     match res {
         Some(x) => Ok(x),
         None => Ok(root),
@@ -74,17 +76,17 @@ mod tests {
 
     use crate::{
         compiler::exec_tree::ExecTreeBuilder, expressions::ExpressionType, lexer::Lexer,
-        parse::ExprParser, CompileError, TransformError,
+        parse::ProgramParser, CompileError, TransformError,
     };
 
     use super::optimize;
 
     fn parse(inp: &str, inputs: &[&str]) -> Result<ExpressionType, CompileError> {
         let lex = Lexer::new(inp);
-        let parser = ExprParser::new();
+        let parser = ProgramParser::new();
         let res = parser.parse(lex)?;
-        let res = ExecTreeBuilder::new(res, inputs).build()?;
-        let res = optimize(res, inputs.len())?;
+        let res = ExecTreeBuilder::new(res, inputs, &Default::default())?.build()?;
+        let res = optimize(res, inputs.len(), 100_000)?;
         Ok(res)
     }
 

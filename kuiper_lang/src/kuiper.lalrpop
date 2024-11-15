@@ -8,6 +8,24 @@ use logos::Span;
 
 grammar;
 
+pub Program: ast::Program = {
+    <m:Macros?> <e:Expr> => ast::Program {
+        macros: m.unwrap_or_default(),
+        expression: e
+    }
+}
+
+Macro: ast::Macro = {
+    "def" <v:"var"> ":=" <l:Lambda> => ast::Macro {
+        name: v,
+        body: l,
+    }
+}
+
+Macros: Vec<ast::Macro> = {
+    <v:(<Macro> ";")+> => v,
+}
+
 Const: ast::Constant = {
     <val:"uint"> => {
         ast::Constant::Integer(val)
@@ -40,21 +58,25 @@ Spanned<T>: (T, Span) = {
     <start:@L> <e:T> <end:@R> => (e, Span { start, end })
 }
 
-FunctionArg: ast::FunctionParameter = {
-    <start:@L> "(" <args: Comma<"var">> ")=>" <e: Expr> <end:@R> => ast::FunctionParameter::Lambda {
+Lambda: ast::Lambda = {
+    <start:@L> "(" <args: Comma<"var">> ")=>" <e: Expr> <end:@R> => ast::Lambda {
         args,
         inner: e,
         loc: Span { start, end }
     },
-    <start:@L> <v:"var"> "=>" <e:Expr> <end:@R> => ast::FunctionParameter::Lambda {
+    <start:@L> <v:"var"> "=>" <e:Expr> <end:@R> => ast::Lambda {
         args: vec![v],
         inner: e,
         loc: Span { start, end }
-    },
+    }
+}
+
+FunctionArg: ast::FunctionParameter = {
+    <l: Lambda> => ast::FunctionParameter::Lambda(l),
     <e: Expr> => ast::FunctionParameter::Expression(e)
 }
 
-pub Expr: ast::Expression = Op2Expr;
+Expr: ast::Expression = Op2Expr;
 
 ObjElem: ast::ObjectElementAst = {
     <lh:Expr> ":" <rh:Expr> => ast::ObjectElementAst::Pair(lh, rh),
@@ -273,9 +295,12 @@ extern {
         "{" => Token::OpenBrace,
         "}" => Token::CloseBrace,
         ":" => Token::Colon,
+        ";" => Token::SemiColon,
+        ":=" => Token::DefineEqual,
         ")=>" => Token::CombinedArrow,
         "=>" => Token::Arrow,
         "..." => Token::DotDot,
         "not" => Token::Not,
+        "def" => Token::DefineSym,
     }
 }

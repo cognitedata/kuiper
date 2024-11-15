@@ -4,7 +4,7 @@
 
 ==>
 
-Result(Expression(Operator(
+Program(Expression(Operator(
     Expression(Term(Number)),
     ArithOp("+"),
     Expression(Term(Number))
@@ -16,7 +16,7 @@ Result(Expression(Operator(
 
 ==>
 
-Result(Expression(Operator(
+Program(Expression(Operator(
     Expression(Operator(
         Expression(Term(Number)),
         ArithOp("*"),
@@ -32,7 +32,7 @@ Result(Expression(Operator(
 
 ==>
 
-Result(Expression(Operator(
+Program(Expression(Operator(
     Expression(Term(Number)),
     ArithOp("+"),
     Expression(Operator(
@@ -48,7 +48,7 @@ Result(Expression(Operator(
 
 ==>
 
-Result(Expression(Operator(
+Program(Expression(Operator(
     Expression(Operator(
         Expression(Operator(
             Expression(Term(Number)),
@@ -88,7 +88,7 @@ Result(Expression(Operator(
 
 ==>
 
-Result(Expression(Operator(
+Program(Expression(Operator(
     Expression(Term(Number)),
     ArithOp("+"),
     Expression(Operator(
@@ -116,7 +116,7 @@ Result(Expression(Operator(
 
 ==>
 
-Result(Expression(Operator(
+Program(Expression(Operator(
     Expression(Term(Number)),
     ArithOp("+"),
     Expression(Operator(
@@ -137,7 +137,7 @@ Result(Expression(Operator(
 
 ==>
 
-Result(Expression(Operator(
+Program(Expression(Operator(
     Expression(Term(Number)),
     BlockComment,
     ArithOp("+"),
@@ -151,7 +151,7 @@ Result(Expression(Operator(
 
 ==>
 
-Result(Expression(Operator(
+Program(Expression(Operator(
     Expression(Operator(
         Expression(Operator(
             Expression(Term(Number)),
@@ -179,7 +179,7 @@ Result(Expression(Operator(
 
 ==>
 
-Result(Expression(Operator(Expression(Term(Number)), CompareOp(Is), NotModifier, Type(NumberTy))))
+Program(Expression(Operator(Expression(Term(Number)), CompareOp(Is), NotModifier, Type(NumberTy))))
 
 # If expression
 
@@ -193,7 +193,7 @@ if 1 > 2 {
 
 ==>
 
-Result(Expression(Term(
+Program(Expression(Term(
     IfExpr(
         IfExprInner(
             IfExprInner(
