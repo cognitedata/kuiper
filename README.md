@@ -13,6 +13,7 @@ an array, and even pairs of arrays, but it is not possible to implement recursio
 - **Built in functions**, like `map`, `float`, `concat`, etc. Either `pow(base, exp) or base.pow(exp)`
 - **Functors**, `map` is a functor, meaning it accepts a lambda: `map(arr, field => ...)` or `arr.map(field => ...)`
 - **Selector expressions**, `[1, 2, 3][1] == 2`, `input.field.value["dynamic"]`, etc.
+- **Macros**, `#my_macro := (a, b) => a + b; my_macro(1, 2)`
 
 ## Usage
 
