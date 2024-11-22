@@ -15,7 +15,7 @@ name = "kuiper"
 serde_json = "1.0.116"
 kuiper_lang = { path = "../kuiper_lang" }
 clap = { version = "4.5.4", features = ["derive"] }
-rustyline = { version = "14.0.0", features = ["derive"] }
+rustyline = { version = "15.0.0", features = ["derive"] }
 colored = "2.1.0"
 dirs = "5.0.1"
 lazy_static = "1.4.0"
