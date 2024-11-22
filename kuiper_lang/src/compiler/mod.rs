@@ -91,7 +91,7 @@ pub fn compile_expression_with_config(
     let inp = Lexer::new(data);
     let parser = ProgramParser::new();
     let res = parser.parse(inp)?;
-    let res = ExecTreeBuilder::new(res, known_inputs, &config)?.build()?;
+    let res = ExecTreeBuilder::new(res, known_inputs, config)?.build()?;
     let optimized = optimize(res, known_inputs.len(), config.optimizer_operation_limit)?;
     Ok(optimized)
 }
@@ -160,7 +160,7 @@ impl ExpressionDebugInfo {
             clean: ast.to_string(),
         };
 
-        let exec_tree = ExecTreeBuilder::new(ast, known_inputs, &config)?.build()?;
+        let exec_tree = ExecTreeBuilder::new(ast, known_inputs, config)?.build()?;
         let exec_tree_info = DebugInfo {
             debug: format!("{:?}", exec_tree),
             clean: exec_tree.to_string(),

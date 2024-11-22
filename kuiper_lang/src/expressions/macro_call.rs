@@ -109,7 +109,7 @@ mod tests {
             r#"
         #my_macro := (a, b) => my_other_macro(a, b);
         #my_other_macro := (c, d) =>  my_macro(c, d);
-        
+
         my_macro(1, 1)
         "#,
             &[],
