@@ -10,7 +10,7 @@ title: Functions
 
 `all(x)`
 
-Returns true if all items in the array `x` is true.
+Returns `true` if all items in the array `x` is true.
 
 **Code examples**
 ```
@@ -24,7 +24,7 @@ Returns true if all items in the array `x` is true.
 
 `any(x)`
 
-Returns true if any items in the array `x` is true.
+Returns `true` if any items in the array `x` is true.
 
 **Code examples**
 ```
@@ -121,9 +121,9 @@ concat("Hello, ", "world!") -> "Hello, world!"
 
 ## contains
 
-`conatins(x, a)`
+`contains(x, a)`
 
-Returns true if the array `x` contains item `a`.
+Returns `true` if the array `x` contains item `a`.
 
 **Code example**
 ```
@@ -305,7 +305,7 @@ int("6") -> 6
 
 `join(a, b, ...)`
 
-Returns the union of the given objects or arrays. If a key is present in multiple objects, they are overwritten by later objects. Arrays are simply merged.
+Returns the union of the given objects or arrays. If a key is present in multiple objects, each instance of the key is overwritten by later objects. Arrays are simply merged.
 
 **Code examples**
 ```

@@ -74,14 +74,14 @@ lazy_static! {
             "all",
             FunctionDef {
                 signature: "all(x)",
-                description: "Returns true if all items in the array `x` is true.",
+                description: "Returns `true` if all items in the array `x` is true.",
             }
         ),
         (
             "any",
             FunctionDef {
                 signature: "any(x)",
-                description: "Returns true if any items in the array `x` is true.",
+                description: "Returns `true` if any items in the array `x` is true.",
             }
         ),
         (
@@ -136,8 +136,8 @@ lazy_static! {
         (
             "contains",
             FunctionDef {
-                signature: "conatins(x, a)",
-                description: "Returns true if the array `x` contains item `a`.",
+                signature: "contains(x, a)",
+                description: "Returns `true` if the array `x` contains item `a`.",
             }
         ),
         (
@@ -224,7 +224,7 @@ Consider using [try_int](#try_int) instead if you need error handling.",
             "join",
             FunctionDef {
                 signature: "join(a, b, ...)",
-                description: "Returns the union of the given objects or arrays. If a key is present in multiple objects, they are overwritten by later objects. Arrays are simply merged.",
+                description: "Returns the union of the given objects or arrays. If a key is present in multiple objects, each instance of the key is overwritten by later objects. Arrays are simply merged.",
             }
         ),
         (
