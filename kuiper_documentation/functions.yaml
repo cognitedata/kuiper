@@ -152,7 +152,7 @@ functions:
 
   - name: join
     signature: "`join(a, b, ...)`"
-    description: Returns the union of the given objects or arrays. If a key is present in multiple objects, they are overwritten by later objects. Arrays are simply merged.
+    description: Returns the union of the given objects or arrays. If a key is present in multiple objects, each instance of the key is overwritten by later objects. Arrays are simply merged.
     examples:
       - |
         join({"key1": "value1"}, {"key2": "value2"})
@@ -436,21 +436,21 @@ functions:
 
   - name: any
     signature: "`any(x)`"
-    description: Returns true if any items in the array `x` is true.
+    description: Returns `true` if any items in the array `x` is true.
     examples:
      - "[true, false, false, true].any() -> true"
      - "[false, false, false, false].any() -> false"
 
   - name: all
     signature: "`all(x)`"
-    description: Returns true if all items in the array `x` is true.
+    description: Returns `true` if all items in the array `x` is true.
     examples:
      - "[true, false, false, true].all() -> false"
      - "[true, true, true, true].all() -> true"
 
   - name: contains
-    signature: "`conatins(x, a)`"
-    description: Returns true if the array `x` contains item `a`.
+    signature: "`contains(x, a)`"
+    description: Returns `true` if the array `x` contains item `a`.
     examples:
      - "[1, 2, 3, 4].contains(4) -> true"
 
