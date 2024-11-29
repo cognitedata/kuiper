@@ -6,16 +6,16 @@ use crate::compiler::compile_expression_py;
 use crate::expressions::KuiperExpression;
 use pyo3::prelude::PyModule;
 use pyo3::types::PyModuleMethods;
-use pyo3::{pymodule, wrap_pyfunction_bound, Bound, PyResult, Python};
+use pyo3::{pymodule, wrap_pyfunction, Bound, PyResult, Python};
 
 #[pymodule]
 fn kuiper(py: Python<'_>, module: &Bound<'_, PyModule>) -> PyResult<()> {
-    module.add_function(wrap_pyfunction_bound!(compile_expression_py, py)?)?;
+    module.add_function(wrap_pyfunction!(compile_expression_py, py)?)?;
     module.add_class::<KuiperExpression>()?;
 
-    PyModule::from_code_bound(
+    PyModule::from_code(
         py,
-        r#"
+        cr#"
 class KuiperError(Exception):
     def __init__(self, message, start, end):
         super().__init__(message)
@@ -28,8 +28,8 @@ class KuiperCompileError(KuiperError):
 class KuiperRuntimeError(KuiperError):
     pass
 "#,
-        "kuiper_errors.py",
-        "kuiper",
+        c"kuiper_errors.py",
+        c"kuiper",
     )?;
 
     Ok(())

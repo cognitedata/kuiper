@@ -27,7 +27,7 @@ sha2 = "0.10.8"
 base64 = "0.22.1"
 
 [dev-dependencies]
-pprof = { version = "0.13", features = ["flamegraph"] }
+pprof = { version = "0.14", features = ["flamegraph"] }
 criterion = "0.5"
 
 [build-dependencies]
