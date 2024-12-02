@@ -119,7 +119,7 @@ pub struct InternalExpressionExecutionState<'data, 'exec> {
     completions: Option<&'exec mut Completions>,
 }
 
-impl<'data, 'exec> InternalExpressionExecutionState<'data, 'exec> {
+impl<'data> InternalExpressionExecutionState<'data, '_> {
     pub fn get_temp_state<'slf>(&'slf mut self) -> ExpressionExecutionState<'data, 'slf> {
         ExpressionExecutionState {
             data: &self.data,

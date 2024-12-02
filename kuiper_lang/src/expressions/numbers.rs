@@ -118,7 +118,6 @@ impl JsonNumber {
     }
 
     /// Try to convert the number into JSON, this will only fail if it is NaN or Infinity.
-
     pub fn try_into_json(self) -> Option<Value> {
         match self {
             Self::NegInteger(x) => Some(Value::Number(x.into())),
@@ -128,7 +127,6 @@ impl JsonNumber {
     }
 
     /// Try to cast into an integer, either positive or negative. This will remove any fractional part if it is a floating point number.
-
     pub fn try_cast_integer(self, span: &Span) -> Result<JsonNumber, TransformError> {
         match self {
             JsonNumber::NegInteger(_) | JsonNumber::PosInteger(_) => Ok(self),
