@@ -70,7 +70,7 @@ impl<'a> ResolveResult<'a> {
     }
 }
 
-impl<'a> Deref for ResolveResult<'a> {
+impl Deref for ResolveResult<'_> {
     type Target = Value;
 
     fn deref(&self) -> &Self::Target {
@@ -81,7 +81,7 @@ impl<'a> Deref for ResolveResult<'a> {
     }
 }
 
-impl<'a> AsRef<Value> for ResolveResult<'a> {
+impl AsRef<Value> for ResolveResult<'_> {
     fn as_ref(&self) -> &Value {
         match self {
             Self::Owned(v) => v,
@@ -90,7 +90,7 @@ impl<'a> AsRef<Value> for ResolveResult<'a> {
     }
 }
 
-impl<'a> Borrow<Value> for ResolveResult<'a> {
+impl Borrow<Value> for ResolveResult<'_> {
     fn borrow(&self) -> &Value {
         self
     }
@@ -116,14 +116,12 @@ fn get_string_from_value<'a>(
         })),
         Value::Number(n) => Ok(Cow::Owned(n.to_string())),
         Value::String(s) => Ok(Cow::Borrowed(s)),
-        _ => {
-            return Err(TransformError::new_incorrect_type(
-                desc,
-                "string or number",
-                TransformError::value_desc(val),
-                span,
-            ))
-        }
+        _ => Err(TransformError::new_incorrect_type(
+            desc,
+            "string or number",
+            TransformError::value_desc(val),
+            span,
+        )),
     }
 }
 
@@ -140,14 +138,12 @@ fn get_string_from_value_owned<'a>(
         })),
         Value::Number(n) => Ok(Cow::Owned(n.to_string())),
         Value::String(s) => Ok(Cow::Owned(s)),
-        _ => {
-            return Err(TransformError::new_incorrect_type(
-                desc,
-                "string or number",
-                TransformError::value_desc(&val),
-                span,
-            ))
-        }
+        _ => Err(TransformError::new_incorrect_type(
+            desc,
+            "string or number",
+            TransformError::value_desc(&val),
+            span,
+        )),
     }
 }
 

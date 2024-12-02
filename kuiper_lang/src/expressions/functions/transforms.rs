@@ -31,7 +31,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for PairsFunction {
             map.insert("value".to_string(), val);
             res.push(Value::Object(map));
         }
-        return Ok(ResolveResult::Owned(Value::Array(res)));
+        Ok(ResolveResult::Owned(Value::Array(res)))
     }
 }
 
