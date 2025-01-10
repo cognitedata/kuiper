@@ -450,9 +450,10 @@ functions:
 
   - name: contains
     signature: "`contains(x, a)`"
-    description: Returns `true` if the array `x` contains item `a`.
+    description: Returns `true` if the array or string `x` contains item `a`.
     examples:
      - "[1, 2, 3, 4].contains(4) -> true"
+     - '"hello world".contains("llo wo") -> true'
 
   - name: string_join
     signature: "`string_join(x(, a))`"
@@ -576,3 +577,17 @@ functions:
       details.
     examples:
       - 'regex_replace_all("tests", "t(?<v>[se])", "${v}t") -> etsst'
+
+  - name: starts_with
+    signature: "`starts_with(item, substring)`"
+    description:
+      Returns `true` if `item` starts with `substring`.
+    examples:
+      - '"hello world".starts_with("hello") -> true'
+
+  - name: ends_with
+    signature: "`ends_with(item, substring)`"
+    description:
+      Returns `true` if `item` ends with `substring`.
+    examples:
+      - '"hello world".ends_with("world") -> true'

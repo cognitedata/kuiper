@@ -5,7 +5,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-pub const BUILT_INS: [&str; 54] = [
+pub const BUILT_INS: [&str; 56] = [
     "all(",
     "any(",
     "atan2(",
@@ -18,6 +18,7 @@ pub const BUILT_INS: [&str; 54] = [
     "contains(",
     "digest(",
     "distinct_by(",
+    "ends_with(",
     "except(",
     "filter(",
     "flatmap(",
@@ -48,6 +49,7 @@ pub const BUILT_INS: [&str; 54] = [
     "select(",
     "slice(",
     "split(",
+    "starts_with(",
     "string(",
     "string_join(",
     "substring(",
@@ -137,7 +139,7 @@ lazy_static! {
             "contains",
             FunctionDef {
                 signature: "contains(x, a)",
-                description: "Returns `true` if the array `x` contains item `a`.",
+                description: "Returns `true` if the array or string `x` contains item `a`.",
             }
         ),
         (
@@ -152,6 +154,13 @@ lazy_static! {
             FunctionDef {
                 signature: "distinct_by(x, (a(, b)) => ...)",
                 description: "Returns a list or object where the elements are distinct by the returned value of the given lambda function. The lambda function either takes list values, or object (value, key) pairs.",
+            }
+        ),
+        (
+            "ends_with",
+            FunctionDef {
+                signature: "ends_with(item, substring)",
+                description: "Returns `true` if `item` ends with `substring`.",
             }
         ),
         (
@@ -380,6 +389,13 @@ See [regex_is_match](#regex_is_match) for details on regex support.",
             FunctionDef {
                 signature: "split(a, b)",
                 description: "Splits string `a` on any occurences of `b`. If `b` is an empty string, this will split on each character, including before the first and after the last.",
+            }
+        ),
+        (
+            "starts_with",
+            FunctionDef {
+                signature: "starts_with(item, substring)",
+                description: "Returns `true` if `item` starts with `substring`.",
             }
         ),
         (

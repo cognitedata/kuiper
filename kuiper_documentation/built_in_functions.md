@@ -123,11 +123,14 @@ concat("Hello, ", "world!") -> "Hello, world!"
 
 `contains(x, a)`
 
-Returns `true` if the array `x` contains item `a`.
+Returns `true` if the array or string `x` contains item `a`.
 
-**Code example**
+**Code examples**
 ```
 [1, 2, 3, 4].contains(4) -> true
+```
+```
+"hello world".contains("llo wo") -> true
 ```
 
 ## digest
@@ -150,6 +153,17 @@ Returns a list or object where the elements are distinct by the returned value o
 **Code example**
 ```
 [1, 2, 3, 4, 5].distinct_by(x => x % 2) -> [1, 2]
+```
+
+## ends_with
+
+`ends_with(item, substring)`
+
+Returns `true` if `item` ends with `substring`.
+
+**Code example**
+```
+"hello world".ends_with("world") -> true
 ```
 
 ## except
@@ -659,6 +673,17 @@ Splits string `a` on any occurences of `b`. If `b` is an empty string, this will
 ```
 ```
 "hello".split("") -> ["", "h", "e", "l", "l", "o", ""]
+```
+
+## starts_with
+
+`starts_with(item, substring)`
+
+Returns `true` if `item` starts with `substring`.
+
+**Code example**
+```
+"hello world".starts_with("hello") -> true
 ```
 
 ## string

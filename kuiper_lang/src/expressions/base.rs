@@ -258,6 +258,8 @@ pub enum FunctionType {
     RegexAllCaptures(RegexAllCapturesFunction),
     RegexReplace(RegexReplaceFunction),
     RegexReplaceAll(RegexReplaceAllFunction),
+    StartsWith(StartsWithFunction),
+    EndsWith(EndsWithFunction),
 }
 
 struct FunctionBuilder {
@@ -335,6 +337,8 @@ pub fn get_function_expression(
         "regex_all_captures" => FunctionType::RegexAllCaptures(b.mk()?),
         "regex_replace" => FunctionType::RegexReplace(b.mk()?),
         "regex_replace_all" => FunctionType::RegexReplaceAll(b.mk()?),
+        "starts_with" => FunctionType::StartsWith(b.mk()?),
+        "ends_with" => FunctionType::EndsWith(b.mk()?),
         _ => return Err(BuildError::unrecognized_function(b.pos, name)),
     };
     Ok(ExpressionType::Function(expr))
