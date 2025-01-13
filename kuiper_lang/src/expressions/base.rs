@@ -1,3 +1,4 @@
+use if_value::IfValueFunction;
 use logos::Span;
 use serde_json::Value;
 use std::fmt::Display;
@@ -260,6 +261,7 @@ pub enum FunctionType {
     RegexReplaceAll(RegexReplaceAllFunction),
     StartsWith(StartsWithFunction),
     EndsWith(EndsWithFunction),
+    IfValue(IfValueFunction),
 }
 
 struct FunctionBuilder {
@@ -339,6 +341,7 @@ pub fn get_function_expression(
         "regex_replace_all" => FunctionType::RegexReplaceAll(b.mk()?),
         "starts_with" => FunctionType::StartsWith(b.mk()?),
         "ends_with" => FunctionType::EndsWith(b.mk()?),
+        "if_value" => FunctionType::IfValue(b.mk()?),
         _ => return Err(BuildError::unrecognized_function(b.pos, name)),
     };
     Ok(ExpressionType::Function(expr))

@@ -28,6 +28,7 @@ export const builtIns: KuiperInput[] = [
     { label: "floor", description: "`floor(x)`: Returns `x` rounded down to the nearest integer." },
     { label: "format_timestamp", description: "`format_timestamp(x, f)`: Converts the Unix timestamp `x` into a string representation based on the format `f`." },
     { label: "if", description: "`if(x, y, (z))`: Returns `y` if `x` evaluates to `true`, otherwise return `z`, or `null` if `z` is omitted." },
+    { label: "if_value", description: "`if_value(item, item => ...)`: Maps a value using a lambda if the value is not null. This is useful if you need to combine parts of some complex object or result of a longer calculation." },
     { label: "int", description: "`int(x)`: Converts `x` into an integer if possible. If the conversion fails, the whole mapping will fail." },
     { label: "join", description: "`join(a, b, ...)`: Returns the union of the given objects or arrays. If a key is present in multiple objects, each instance of the key is overwritten by later objects. Arrays are simply merged." },
     { label: "length", description: "`length(x)`: Returns the length on the list, string or object `x`." },

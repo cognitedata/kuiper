@@ -5,7 +5,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-pub const BUILT_INS: [&str; 56] = [
+pub const BUILT_INS: [&str; 57] = [
     "all(",
     "any(",
     "atan2(",
@@ -26,6 +26,7 @@ pub const BUILT_INS: [&str; 56] = [
     "floor(",
     "format_timestamp(",
     "if(",
+    "if_value(",
     "int(",
     "join(",
     "length(",
@@ -218,6 +219,13 @@ The format is given using the table found [here](https://docs.rs/chrono/latest/c
             FunctionDef {
                 signature: "if(x, y, (z))",
                 description: "Returns `y` if `x` evaluates to `true`, otherwise return `z`, or `null` if `z` is omitted.",
+            }
+        ),
+        (
+            "if_value",
+            FunctionDef {
+                signature: "if_value(item, item => ...)",
+                description: "Maps a value using a lambda if the value is not null. This is useful if you need to combine parts of some complex object or result of a longer calculation.",
             }
         ),
         (

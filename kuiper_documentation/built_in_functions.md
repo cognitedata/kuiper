@@ -302,6 +302,23 @@ if(condition, "yes", "no")
 if(true, "on", "off") -> "on"
 ```
 
+## if_value
+
+`if_value(item, item => ...)`
+
+Maps a value using a lambda if the value is not null. This is useful if you need to combine parts of some complex object or result of a longer calculation.
+
+**Code examples**
+```
+"hello".if_value(a => concat(a, " world")) -> "hello world"
+```
+```
+null.if_value(a => a + 1) -> null
+```
+```
+[1, 2, 3].if_value(a => a[0] + a[1] + a[2]) -> 6
+```
+
 ## int
 
 `int(x)`
