@@ -264,7 +264,9 @@ Consider using [try_int](#try_int) instead if you need error handling.",
                 signature: "map(x, (it(, index)) => ...)",
                 description: "Applies the lambda function to every item in the list `x`. The lambda takes an optional second input which is the index of the item in the list.
 
-If applied to an object, the first input is the value, and the second is the key. The result is the new value.",
+If applied to an object, the first input is the value, and the second is the key. The result is the new value.
+
+If the value is `null`, the lambda is ignored and `map` returns `null`.",
             }
         ),
         (

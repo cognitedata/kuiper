@@ -389,6 +389,8 @@ Applies the lambda function to every item in the list `x`. The lambda takes an o
 
 If applied to an object, the first input is the value, and the second is the key. The result is the new value.
 
+If the value is `null`, the lambda is ignored and `map` returns `null`.
+
 **Code examples**
 ```
 [1, 2, 3, 4].map(number => number * 2) -> [2, 4, 6, 8]
