@@ -5,6 +5,7 @@ mod magic;
 use std::time::Instant;
 
 use colored::Colorize;
+use io::{print_compile_error, print_transform_error};
 use kuiper_lang::compile_expression;
 
 use rustyline::error::ReadlineError;
@@ -63,7 +64,7 @@ pub fn repl(verbose_log: bool) {
                 let expr = match res {
                     Ok(x) => x,
                     Err(e) => {
-                        io::printerr!("", e);
+                        print_compile_error(&expression, &e);
                         println!();
                         continue;
                     }
@@ -85,7 +86,7 @@ pub fn repl(verbose_log: bool) {
                         data.push(x.into_owned());
                     }
                     Err(e) => {
-                        io::printerr!("Transform failed:", e);
+                        print_transform_error(&expression, &e);
                         println!();
                         continue;
                     }
