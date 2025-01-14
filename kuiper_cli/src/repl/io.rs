@@ -13,7 +13,7 @@ pub(crate) use printerr;
 const WIDTH_THRESHOLD: usize = 70;
 
 fn pretty_print_error_message(
-    expression: &String,
+    expression: &str,
     error_span: core::ops::Range<usize>,
     message: String,
 ) {
@@ -94,7 +94,7 @@ fn pretty_print_error_message(
     }
 }
 
-pub(crate) fn print_compile_error(expression: &String, error: &CompileError) {
+pub(crate) fn print_compile_error(expression: &str, error: &CompileError) {
     eprintln!("{} Compilation failed!\n", "Error:".red());
 
     if let Some(error_span) = error.span() {
@@ -104,7 +104,7 @@ pub(crate) fn print_compile_error(expression: &String, error: &CompileError) {
     };
 }
 
-pub(crate) fn print_transform_error(expression: &String, error: &TransformError) {
+pub(crate) fn print_transform_error(expression: &str, error: &TransformError) {
     eprintln!("{} Transform failed!\n", "Error:".red());
 
     if let Some(error_span) = error.span() {
