@@ -123,11 +123,14 @@ concat("Hello, ", "world!") -> "Hello, world!"
 
 `contains(x, a)`
 
-Returns `true` if the array `x` contains item `a`.
+Returns `true` if the array or string `x` contains item `a`.
 
-**Code example**
+**Code examples**
 ```
 [1, 2, 3, 4].contains(4) -> true
+```
+```
+"hello world".contains("llo wo") -> true
 ```
 
 ## digest
@@ -150,6 +153,17 @@ Returns a list or object where the elements are distinct by the returned value o
 **Code example**
 ```
 [1, 2, 3, 4, 5].distinct_by(x => x % 2) -> [1, 2]
+```
+
+## ends_with
+
+`ends_with(item, substring)`
+
+Returns `true` if `item` ends with `substring`.
+
+**Code example**
+```
+"hello world".ends_with("world") -> true
 ```
 
 ## except
@@ -288,6 +302,23 @@ if(condition, "yes", "no")
 if(true, "on", "off") -> "on"
 ```
 
+## if_value
+
+`if_value(item, item => ...)`
+
+Maps a value using a lambda if the value is not null. This is useful if you need to combine parts of some complex object or result of a longer calculation.
+
+**Code examples**
+```
+"hello".if_value(a => concat(a, " world")) -> "hello world"
+```
+```
+null.if_value(a => a + 1) -> null
+```
+```
+[1, 2, 3].if_value(a => a[0] + a[1] + a[2]) -> 6
+```
+
 ## int
 
 `int(x)`
@@ -357,6 +388,8 @@ log(16, 2) -> 4.0
 Applies the lambda function to every item in the list `x`. The lambda takes an optional second input which is the index of the item in the list.
 
 If applied to an object, the first input is the value, and the second is the key. The result is the new value.
+
+If the value is `null`, the lambda is ignored and `map` returns `null`.
 
 **Code examples**
 ```
@@ -659,6 +692,17 @@ Splits string `a` on any occurences of `b`. If `b` is an empty string, this will
 ```
 ```
 "hello".split("") -> ["", "h", "e", "l", "l", "o", ""]
+```
+
+## starts_with
+
+`starts_with(item, substring)`
+
+Returns `true` if `item` starts with `substring`.
+
+**Code example**
+```
+"hello world".starts_with("hello") -> true
 ```
 
 ## string

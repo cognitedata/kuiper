@@ -186,6 +186,8 @@ functions:
       Applies the lambda function to every item in the list `x`. The lambda takes an optional second input which is the index of the item in the list.
 
       If applied to an object, the first input is the value, and the second is the key. The result is the new value.
+
+      If the value is `null`, the lambda is ignored and `map` returns `null`.
     examples:
       - "[1, 2, 3, 4].map(number => number * 2) -> [2, 4, 6, 8]"
       - |
@@ -450,9 +452,10 @@ functions:
 
   - name: contains
     signature: "`contains(x, a)`"
-    description: Returns `true` if the array `x` contains item `a`.
+    description: Returns `true` if the array or string `x` contains item `a`.
     examples:
      - "[1, 2, 3, 4].contains(4) -> true"
+     - '"hello world".contains("llo wo") -> true'
 
   - name: string_join
     signature: "`string_join(x(, a))`"
@@ -576,3 +579,27 @@ functions:
       details.
     examples:
       - 'regex_replace_all("tests", "t(?<v>[se])", "${v}t") -> etsst'
+
+  - name: starts_with
+    signature: "`starts_with(item, substring)`"
+    description:
+      Returns `true` if `item` starts with `substring`.
+    examples:
+      - '"hello world".starts_with("hello") -> true'
+
+  - name: ends_with
+    signature: "`ends_with(item, substring)`"
+    description:
+      Returns `true` if `item` ends with `substring`.
+    examples:
+      - '"hello world".ends_with("world") -> true'
+
+  - name: if_value
+    signature: "`if_value(item, item => ...)`"
+    description:
+      Maps a value using a lambda if the value is not null. This is useful if you need to combine
+      parts of some complex object or result of a longer calculation.
+    examples:
+      - '"hello".if_value(a => concat(a, " world")) -> "hello world"'
+      - 'null.if_value(a => a + 1) -> null'
+      - '[1, 2, 3].if_value(a => a[0] + a[1] + a[2]) -> 6'
