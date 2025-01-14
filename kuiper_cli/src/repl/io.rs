@@ -100,7 +100,7 @@ pub(crate) fn print_compile_error(expression: &String, error: &CompileError) {
     if let Some(error_span) = error.span() {
         pretty_print_error_message(expression, error_span, error.message());
     } else {
-        return;
+        eprintln!("{}", error.message().red());
     };
 }
 
@@ -110,6 +110,6 @@ pub(crate) fn print_transform_error(expression: &String, error: &TransformError)
     if let Some(error_span) = error.span() {
         pretty_print_error_message(expression, error_span, error.message());
     } else {
-        return;
+        eprintln!("{}", error.message().red());
     };
 }
