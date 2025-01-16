@@ -5,7 +5,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-pub const BUILT_INS: [&str; 54] = [
+pub const BUILT_INS: [&str; 57] = [
     "all(",
     "any(",
     "atan2(",
@@ -18,6 +18,7 @@ pub const BUILT_INS: [&str; 54] = [
     "contains(",
     "digest(",
     "distinct_by(",
+    "ends_with(",
     "except(",
     "filter(",
     "flatmap(",
@@ -25,6 +26,7 @@ pub const BUILT_INS: [&str; 54] = [
     "floor(",
     "format_timestamp(",
     "if(",
+    "if_value(",
     "int(",
     "join(",
     "length(",
@@ -48,6 +50,7 @@ pub const BUILT_INS: [&str; 54] = [
     "select(",
     "slice(",
     "split(",
+    "starts_with(",
     "string(",
     "string_join(",
     "substring(",
@@ -74,14 +77,14 @@ lazy_static! {
             "all",
             FunctionDef {
                 signature: "all(x)",
-                description: "Returns true if all items in the array `x` is true.",
+                description: "Returns `true` if all items in the array `x` is true.",
             }
         ),
         (
             "any",
             FunctionDef {
                 signature: "any(x)",
-                description: "Returns true if any items in the array `x` is true.",
+                description: "Returns `true` if any items in the array `x` is true.",
             }
         ),
         (
@@ -136,8 +139,8 @@ lazy_static! {
         (
             "contains",
             FunctionDef {
-                signature: "conatins(x, a)",
-                description: "Returns true if the array `x` contains item `a`.",
+                signature: "contains(x, a)",
+                description: "Returns `true` if the array or string `x` contains item `a`.",
             }
         ),
         (
@@ -152,6 +155,13 @@ lazy_static! {
             FunctionDef {
                 signature: "distinct_by(x, (a(, b)) => ...)",
                 description: "Returns a list or object where the elements are distinct by the returned value of the given lambda function. The lambda function either takes list values, or object (value, key) pairs.",
+            }
+        ),
+        (
+            "ends_with",
+            FunctionDef {
+                signature: "ends_with(item, substring)",
+                description: "Returns `true` if `item` ends with `substring`.",
             }
         ),
         (
@@ -212,6 +222,13 @@ The format is given using the table found [here](https://docs.rs/chrono/latest/c
             }
         ),
         (
+            "if_value",
+            FunctionDef {
+                signature: "if_value(item, item => ...)",
+                description: "Maps a value using a lambda if the value is not null. This is useful if you need to combine parts of some complex object or result of a longer calculation.",
+            }
+        ),
+        (
             "int",
             FunctionDef {
                 signature: "int(x)",
@@ -224,7 +241,7 @@ Consider using [try_int](#try_int) instead if you need error handling.",
             "join",
             FunctionDef {
                 signature: "join(a, b, ...)",
-                description: "Returns the union of the given objects or arrays. If a key is present in multiple objects, they are overwritten by later objects. Arrays are simply merged.",
+                description: "Returns the union of the given objects or arrays. If a key is present in multiple objects, each instance of the key is overwritten by later objects. Arrays are simply merged.",
             }
         ),
         (
@@ -247,7 +264,9 @@ Consider using [try_int](#try_int) instead if you need error handling.",
                 signature: "map(x, (it(, index)) => ...)",
                 description: "Applies the lambda function to every item in the list `x`. The lambda takes an optional second input which is the index of the item in the list.
 
-If applied to an object, the first input is the value, and the second is the key. The result is the new value.",
+If applied to an object, the first input is the value, and the second is the key. The result is the new value.
+
+If the value is `null`, the lambda is ignored and `map` returns `null`.",
             }
         ),
         (
@@ -380,6 +399,13 @@ See [regex_is_match](#regex_is_match) for details on regex support.",
             FunctionDef {
                 signature: "split(a, b)",
                 description: "Splits string `a` on any occurences of `b`. If `b` is an empty string, this will split on each character, including before the first and after the last.",
+            }
+        ),
+        (
+            "starts_with",
+            FunctionDef {
+                signature: "starts_with(item, substring)",
+                description: "Returns `true` if `item` starts with `substring`.",
             }
         ),
         (

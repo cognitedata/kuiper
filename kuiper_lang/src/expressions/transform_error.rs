@@ -30,7 +30,7 @@ pub enum TransformError {
     ConversionFailed(TransformErrorData),
     #[error("{0}")]
     InvalidOperation(TransformErrorData),
-    #[error("Operation limit exceeded")]
+    #[error("Too many operations: the transform expression was terminated because it exceeded the operation limit")]
     OperationLimitExceeded,
 }
 
@@ -86,6 +86,26 @@ impl TransformError {
             TransformError::ConversionFailed(x) => Some(x.span.clone()),
             TransformError::InvalidOperation(x) => Some(x.span.clone()),
             TransformError::OperationLimitExceeded => None,
+        }
+    }
+
+    pub fn message(&self) -> String {
+        match self {
+            TransformError::SourceMissingError(transform_error_data) => {
+                format!("Source {} does not exist", transform_error_data.desc)
+            }
+            TransformError::IncorrectTypeInField(transform_error_data) => {
+                transform_error_data.desc.clone()
+            }
+            TransformError::ConversionFailed(transform_error_data) => {
+                transform_error_data.desc.clone()
+            }
+            TransformError::InvalidOperation(transform_error_data) => {
+                transform_error_data.desc.clone()
+            }
+            TransformError::OperationLimitExceeded => {
+                "Too many operations: the transform expression was terminated because it exceeded the operation limit".to_string()
+            }
         }
     }
 }

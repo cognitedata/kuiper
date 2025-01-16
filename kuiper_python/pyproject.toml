@@ -1,6 +1,6 @@
 [project]
 name = "cognite-kuiper"
-version = "0.12.0"
+version = "0.13.0"
 description = "A JSON to JSON transform and templating language from Cognite"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -42,9 +42,9 @@ target-version = "py311"
 "tests/*" = ["S101", "I001"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "T20", "S"]
+select = ["E", "F", "I", "T20", "S", "UP"]
 ignore = ["S104"]
-fixable = ["A", "B", "C", "D", "E", "F", "I"]
+fixable = ["A", "B", "C", "D", "E", "F", "I", "UP"]
 unfixable = []
 
 exclude = [

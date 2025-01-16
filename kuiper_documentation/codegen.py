@@ -52,7 +52,7 @@ use std::collections::HashMap;
 
     file.write(f"pub const BUILT_INS: [&str; {len(functions)}] = [\n")
     for function in functions:
-        file.write(f"    \"{function['name'].strip()}(\",\n")
+        file.write(f'    "{function["name"].strip()}(",\n')
     file.write("];\n")
 
     file.write(
@@ -71,10 +71,10 @@ lazy_static! {
         file.write(
             f"""
         (
-            "{function['name']}",
+            "{function["name"]}",
             FunctionDef {{
-                signature: "{function['signature'].strip('`')}",
-                description: "{function['description'].strip()}",
+                signature: "{function["signature"].strip("`")}",
+                description: "{function["description"].strip()}",
             }}
         ),"""
         )

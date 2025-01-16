@@ -1,6 +1,6 @@
 [package]
 name = "kuiper_lang"
-version = "0.12.0"
+version = "0.13.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "The Kuiper JSON mapping language"
@@ -15,7 +15,7 @@ completions = []
 chrono = "0.4.38"
 itertools = "0.13.0"
 lazy_static = "1.4.0"
-logos = "0.14"
+logos = "0.15"
 once_cell = "1.19.0"
 serde = { version = "1.0.193", features = ["derive"] }
 serde_json = "1.0.116"
@@ -27,7 +27,7 @@ sha2 = "0.10.8"
 base64 = "0.22.1"
 
 [dev-dependencies]
-pprof = { version = "0.13", features = ["flamegraph"] }
+pprof = { version = "0.14", features = ["flamegraph"] }
 criterion = "0.5"
 
 [build-dependencies]

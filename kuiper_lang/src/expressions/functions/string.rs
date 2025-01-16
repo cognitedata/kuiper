@@ -255,6 +255,38 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for StringJoinFunction {
     }
 }
 
+function_def!(StartsWithFunction, "starts_with", 2);
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for StartsWithFunction {
+    fn resolve(
+        &'a self,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        let lh = self.args[0].resolve(state)?;
+        let lh = lh.try_as_string("starts_with", &self.span)?;
+        let rh = self.args[1].resolve(state)?;
+        let rh = rh.try_as_string("starts_with", &self.span)?;
+
+        Ok(lh.starts_with(rh.as_ref()).into())
+    }
+}
+
+function_def!(EndsWithFunction, "ends_with", 2);
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for EndsWithFunction {
+    fn resolve(
+        &'a self,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        let lh = self.args[0].resolve(state)?;
+        let lh = lh.try_as_string("ends_with", &self.span)?;
+        let rh = self.args[1].resolve(state)?;
+        let rh = rh.try_as_string("ends_with", &self.span)?;
+
+        Ok(lh.ends_with(rh.as_ref()).into())
+    }
+}
+
 // Once the function is defined it should be added to the main function enum in expressions/base.rs, and to the get_function_expression function.
 // We can just add a test in this file:
 #[cfg(test)]
@@ -470,5 +502,45 @@ mod tests {
 
         assert_eq!(res.get("test1").unwrap().as_str().unwrap(), "hello there");
         assert_eq!(res.get("test2").unwrap().as_str().unwrap(), "123");
+    }
+
+    #[test]
+    pub fn test_starts_with() {
+        let expr = compile_expression(
+            r#"
+            {
+                "t1": "test".starts_with("tes"),
+                "t2": "foo".starts_with("bar"),
+                "t3": "test".starts_with("test")
+            }
+            "#,
+            &[],
+        )
+        .unwrap();
+
+        let res = expr.run(&[]).unwrap();
+        assert_eq!(res.get("t1").unwrap().as_bool().unwrap(), true);
+        assert_eq!(res.get("t2").unwrap().as_bool().unwrap(), false);
+        assert_eq!(res.get("t3").unwrap().as_bool().unwrap(), true);
+    }
+
+    #[test]
+    pub fn test_ends_with() {
+        let expr = compile_expression(
+            r#"
+            {
+                "t1": "test".ends_with("est"),
+                "t2": "foo".ends_with("bar"),
+                "t3": "test".ends_with("test")
+            }
+            "#,
+            &[],
+        )
+        .unwrap();
+
+        let res = expr.run(&[]).unwrap();
+        assert_eq!(res.get("t1").unwrap().as_bool().unwrap(), true);
+        assert_eq!(res.get("t2").unwrap().as_bool().unwrap(), false);
+        assert_eq!(res.get("t3").unwrap().as_bool().unwrap(), true);
     }
 }

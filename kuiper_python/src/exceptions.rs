@@ -7,8 +7,8 @@ pub fn raise_kuiper_error(
     end: Option<usize>,
 ) -> PyErr {
     Python::with_gil(|py| {
-        let errors = py.import_bound("kuiper").unwrap();
+        let errors = py.import("kuiper").unwrap();
         let exception = errors.getattr(error).unwrap();
-        PyErr::from_value_bound(exception.call1((message, start, end)).unwrap())
+        PyErr::from_value(exception.call1((message, start, end)).unwrap())
     })
 }

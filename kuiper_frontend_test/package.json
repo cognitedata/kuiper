@@ -18,13 +18,13 @@
   "dependencies": {
     "@codemirror/lang-json": "^6.0.1",
     "@cognite/kuiper_js": "./kuiper_js/pkg",
-    "@types/react": "^18.2.9",
-    "@types/react-dom": "^18.2.4",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "@uiw/codemirror-theme-okaidia": "^4.21.2",
     "@uiw/codemirror-themes": "^4.21.2",
     "@uiw/react-codemirror": "^4.21.2",
     "codemirror-lang-kuiper": "./kuiper_lezer",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }

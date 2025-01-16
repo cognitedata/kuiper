@@ -91,6 +91,32 @@ impl CompileError {
             CompileError::Optimizer(t) => t.span(),
         }
     }
+
+    pub fn message(&self) -> String {
+        match self {
+            CompileError::Build(build_error) => match build_error {
+                BuildError::NFunctionArgs(compile_error_data) => {
+                    compile_error_data.detail.to_string()
+                }
+                BuildError::UnexpectedLambda(compile_error_data) => {
+                    compile_error_data.detail.to_string()
+                }
+                BuildError::UnrecognizedFunction(compile_error_data) => {
+                    format!("Unrecognized function {}", compile_error_data.detail)
+                }
+                BuildError::UnknownVariable(compile_error_data) => {
+                    format!("Unknown variable {}", compile_error_data.detail)
+                }
+                BuildError::VariableConflict(compile_error_data) => {
+                    format!("Variable {} already defined", compile_error_data.detail)
+                }
+                BuildError::Other(compile_error_data) => compile_error_data.detail.clone(),
+            },
+            CompileError::Parser(parse_error) => parse_error.to_string(),
+            CompileError::Config(s) => s.clone(),
+            CompileError::Optimizer(transform_error) => transform_error.message(),
+        }
+    }
 }
 
 pub use compiler::{

@@ -37,6 +37,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for MapFunction {
                 }
                 Ok(ResolveResult::Owned(Value::Object(res)))
             }
+            Value::Null => Ok(ResolveResult::Owned(Value::Null)),
             x => Err(TransformError::new_incorrect_type(
                 "Incorrect input to map",
                 "array",

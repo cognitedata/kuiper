@@ -1,3 +1,4 @@
+use if_value::IfValueFunction;
 use logos::Span;
 use serde_json::Value;
 use std::fmt::Display;
@@ -120,7 +121,7 @@ pub struct InternalExpressionExecutionState<'data, 'exec> {
     completions: Option<&'exec mut Completions>,
 }
 
-impl<'data, 'exec> InternalExpressionExecutionState<'data, 'exec> {
+impl<'data> InternalExpressionExecutionState<'data, '_> {
     pub fn get_temp_state<'slf>(&'slf mut self) -> ExpressionExecutionState<'data, 'slf> {
         ExpressionExecutionState {
             data: &self.data,
@@ -259,6 +260,9 @@ pub enum FunctionType {
     RegexAllCaptures(RegexAllCapturesFunction),
     RegexReplace(RegexReplaceFunction),
     RegexReplaceAll(RegexReplaceAllFunction),
+    StartsWith(StartsWithFunction),
+    EndsWith(EndsWithFunction),
+    IfValue(IfValueFunction),
 }
 
 struct FunctionBuilder {
@@ -336,6 +340,9 @@ pub fn get_function_expression(
         "regex_all_captures" => FunctionType::RegexAllCaptures(b.mk()?),
         "regex_replace" => FunctionType::RegexReplace(b.mk()?),
         "regex_replace_all" => FunctionType::RegexReplaceAll(b.mk()?),
+        "starts_with" => FunctionType::StartsWith(b.mk()?),
+        "ends_with" => FunctionType::EndsWith(b.mk()?),
+        "if_value" => FunctionType::IfValue(b.mk()?),
         _ => return Err(BuildError::unrecognized_function(b.pos, name)),
     };
     Ok(ExpressionType::Function(expr))

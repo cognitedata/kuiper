@@ -1,14 +1,12 @@
-from typing import Optional
-
 class KuiperError(BaseException):
-    start: Optional[int]
-    end: Optional[int]
+    start: int | None
+    end: int | None
     ...
 
 class KuiperCompileError(KuiperError): ...
 class KuiperRuntimeError(KuiperError): ...
 
-class KuiperExpression(object):
+class KuiperExpression:
     def run(self, input: str) -> str: ...
     def run_multiple_inputs(self, inputs: list[str]) -> str: ...
 
