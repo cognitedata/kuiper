@@ -96,6 +96,36 @@ impl Borrow<Value> for ResolveResult<'_> {
     }
 }
 
+impl From<bool> for ResolveResult<'_> {
+    fn from(value: bool) -> Self {
+        Self::Owned(Value::Bool(value))
+    }
+}
+
+impl From<i64> for ResolveResult<'_> {
+    fn from(value: i64) -> Self {
+        Self::Owned(Value::from(value))
+    }
+}
+
+impl From<u64> for ResolveResult<'_> {
+    fn from(value: u64) -> Self {
+        Self::Owned(Value::from(value))
+    }
+}
+
+impl From<f64> for ResolveResult<'_> {
+    fn from(value: f64) -> Self {
+        Self::Owned(Value::from(value))
+    }
+}
+
+impl From<String> for ResolveResult<'_> {
+    fn from(value: String) -> Self {
+        Self::Owned(Value::from(value))
+    }
+}
+
 /// Convert a JSON value into a string. May return a direct reference to the JSON string itself if it is already a string.
 /// `desc` is a description of the expression executing this, typically the name of a function or operator.
 /// `val` is the value to be converted.

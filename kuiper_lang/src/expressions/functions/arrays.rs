@@ -239,23 +239,31 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ContainsFunction {
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
         let raw_list = self.args[0].resolve(state)?;
-        let list = raw_list.as_array().ok_or_else(|| {
-            TransformError::new_incorrect_type(
+        let look_for = self.args[1].resolve(state)?;
+        match raw_list.as_ref() {
+            Value::Array(list) => {
+                for i in list {
+                    if i == look_for.as_ref() {
+                        return Ok(ResolveResult::Owned(Value::Bool(true)));
+                    }
+                }
+
+                Ok(ResolveResult::Owned(Value::Bool(false)))
+            }
+            Value::String(s) => {
+                let look_for = look_for.try_as_string("contains", &self.span)?;
+
+                Ok(ResolveResult::Owned(Value::Bool(
+                    s.contains(look_for.as_ref()),
+                )))
+            }
+            _ => Err(TransformError::new_incorrect_type(
                 "contains",
                 "array",
                 TransformError::value_desc(&raw_list),
                 &self.span,
-            )
-        })?;
-        let look_for = self.args[1].resolve(state)?;
-
-        for i in list {
-            if i == look_for.as_ref() {
-                return Ok(ResolveResult::Owned(Value::Bool(true)));
-            }
+            )),
         }
-
-        Ok(ResolveResult::Owned(Value::Bool(false)))
     }
 }
 
@@ -391,6 +399,9 @@ mod tests {
                 "t4": ["hey", "now"].contains("hey1"),
                 "t5": [{"hello": "there"}, "now"].contains("hello"),
                 "t6": [{"hello": "there"}, "now"].contains({"hello": "there"}),
+                "t7": "hello there".contains("hello"),
+                "t8": "goodbye".contains("hello"),
+                "t9": "hell".contains("el"),
             }"#,
             &[],
         )
@@ -404,5 +415,8 @@ mod tests {
         assert_eq!(res.get("t4").unwrap().as_bool().unwrap(), false);
         assert_eq!(res.get("t5").unwrap().as_bool().unwrap(), false);
         assert_eq!(res.get("t6").unwrap().as_bool().unwrap(), true);
+        assert_eq!(res.get("t7").unwrap().as_bool().unwrap(), true);
+        assert_eq!(res.get("t8").unwrap().as_bool().unwrap(), false);
+        assert_eq!(res.get("t9").unwrap().as_bool().unwrap(), true);
     }
 }

@@ -2,6 +2,7 @@ pub mod distinct_by;
 pub mod except;
 pub mod filter;
 pub mod flatmap;
+pub mod if_value;
 pub mod map;
 pub mod objects;
 pub mod reduce;
