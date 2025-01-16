@@ -1,0 +1,5 @@
+# Mark generated files as generated
+Cargo.lock linguist-generated=true
+kuiper_documentation/built_in_functions.md linguist-generated=true
+kuiper_cli/src/builtins.rs linguist-generated=true
+kuiper_lezer/src/builtins.ts linguist-generated=true
