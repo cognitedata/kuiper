@@ -3,7 +3,7 @@ use std::fmt::Display;
 use itertools::Itertools;
 use logos::Span;
 
-use crate::BuildError;
+use crate::{write_list, BuildError};
 
 use super::{Expression, ExpressionMeta, ExpressionType, ResolveResult};
 
@@ -17,14 +17,7 @@ pub struct MacroCallExpression {
 impl Display for MacroCallExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "({})(", self.inner)?;
-        let mut needs_comma = false;
-        for arg in &self.args {
-            if needs_comma {
-                write!(f, ", ")?;
-            }
-            needs_comma = true;
-            write!(f, "{arg}")?;
-        }
+        write_list!(f, &self.args);
         write!(f, ")")
     }
 }

@@ -129,6 +129,21 @@ use logos::Span;
 use serde_json::Value;
 use thiserror::Error;
 
+macro_rules! write_list {
+    ($f:ident, $iter:expr) => {
+        let mut needs_comma = false;
+        for it in $iter {
+            if needs_comma {
+                write!($f, ", ")?;
+            }
+            needs_comma = true;
+            write!($f, "{it}")?;
+        }
+    };
+}
+
+pub(crate) use write_list;
+
 #[cfg(test)]
 mod tests {
     use logos::Span;

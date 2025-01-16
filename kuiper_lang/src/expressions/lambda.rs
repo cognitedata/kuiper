@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use logos::Span;
 
-use crate::compiler::BuildError;
+use crate::{compiler::BuildError, write_list};
 
 use super::{base::ExpressionMeta, Expression, ExpressionType, ResolveResult};
 
@@ -16,14 +16,7 @@ pub struct LambdaExpression {
 impl Display for LambdaExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "(")?;
-        let mut needs_comma = false;
-        for arg in &self.input_names {
-            if needs_comma {
-                write!(f, ", ")?;
-            }
-            needs_comma = true;
-            write!(f, "{arg}")?;
-        }
+        write_list!(f, &self.input_names);
         write!(f, ")")?;
         write!(f, " => {}", self.expr)?;
         Ok(())

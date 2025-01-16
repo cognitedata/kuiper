@@ -206,7 +206,7 @@ impl Display for Token {
             Token::Else => write!(f, "else"),
             Token::SemiColon => write!(f, ";"),
             Token::DefineEqual => write!(f, ":="),
-            Token::DefineSym => write!(f, "def"),
+            Token::DefineSym => write!(f, "#"),
         }
     }
 }

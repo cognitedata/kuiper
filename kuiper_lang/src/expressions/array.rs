@@ -3,7 +3,7 @@ use std::fmt::Display;
 use logos::Span;
 use serde_json::Value;
 
-use crate::compiler::BuildError;
+use crate::{compiler::BuildError, write_list};
 
 use super::{
     base::ExpressionMeta, transform_error::TransformError, Expression, ExpressionExecutionState,
@@ -16,6 +16,15 @@ pub enum ArrayElement {
     Concat(ExpressionType),
 }
 
+impl Display for ArrayElement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Expression(x) => write!(f, "{x}"),
+            Self::Concat(x) => write!(f, "..{x}"),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 /// Array expression. This contains a list of expressions and returns an array.
 pub struct ArrayExpression {
@@ -26,17 +35,7 @@ pub struct ArrayExpression {
 impl Display for ArrayExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[")?;
-        let mut needs_comma = false;
-        for it in self.items.iter() {
-            if needs_comma {
-                write!(f, ", ")?;
-            }
-            needs_comma = true;
-            match it {
-                ArrayElement::Expression(x) => write!(f, "{x}")?,
-                ArrayElement::Concat(x) => write!(f, "..{x}")?,
-            }
-        }
+        write_list!(f, self.items.iter());
         write!(f, "]")?;
         Ok(())
     }
