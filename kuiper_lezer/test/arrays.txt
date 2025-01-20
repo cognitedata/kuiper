@@ -4,7 +4,7 @@
 
 ==>
 
-Result(Expression(Term(Array(CommaSep(
+Program(Expression(Term(Array(CommaSep(
     ArrElem(Expression(Term(Number))),
     ArrElem(Expression(Term(Number))),
     ArrElem(Expression(Term(Array(CommaSep(

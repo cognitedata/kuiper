@@ -3,9 +3,12 @@ use std::fmt::Display;
 use logos::Span;
 use serde_json::{Number, Value};
 
-use crate::expressions::{Operator, TypeLiteral, UnaryOperator};
+use crate::{
+    expressions::{Operator, TypeLiteral, UnaryOperator},
+    write_list,
+};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Selector {
     Expression(Box<Expression>),
     String(String, Span),
@@ -20,7 +23,7 @@ impl Display for Selector {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Constant {
     String(String),
     Integer(u64),
@@ -55,68 +58,77 @@ impl From<Constant> for Value {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub struct Lambda {
+    pub args: Vec<String>,
+    pub inner: Expression,
+    pub loc: Span,
+}
+
+impl Display for Lambda {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Lambda { args, inner, .. } = &self;
+        write!(f, "(")?;
+        write_list!(f, args);
+        write!(f, ") => ")?;
+        write!(f, "{inner}")
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum FunctionParameter {
     Expression(Expression),
-    Lambda {
-        args: Vec<String>,
-        inner: Expression,
-        loc: Span,
-    },
+    Lambda(Lambda),
 }
 
 impl Display for FunctionParameter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             FunctionParameter::Expression(x) => write!(f, "{x}"),
-            FunctionParameter::Lambda {
-                args,
-                inner,
-                loc: _,
-            } => {
-                write!(f, "(")?;
-                let mut needs_comma = false;
-                for arg in args {
-                    if needs_comma {
-                        write!(f, ", ")?;
-                    }
-                    needs_comma = true;
-                    write!(f, "{arg}")?;
-                }
-                write!(f, ") => ")?;
-                write!(f, "{inner}")
-            }
+            FunctionParameter::Lambda(x) => write!(f, "{x}"),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct OpExpression {
     pub lhs: Box<Expression>,
     pub operator: Operator,
     pub rhs: Box<Expression>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IsExpression {
     pub lhs: Box<Expression>,
     pub rhs: TypeLiteral,
     pub not: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ArrayElementAst {
     Expression(Expression),
     Concat(Expression),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ObjectElementAst {
     Pair(Expression, Expression),
     Concat(Expression),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub struct Macro {
+    pub name: String,
+    pub body: Lambda,
+}
+
+#[derive(Debug, Clone)]
+pub struct Program {
+    pub macros: Vec<Macro>,
+    pub expression: Expression,
+}
+
+#[derive(Debug, Clone)]
 pub enum Expression {
     BinaryOperation(OpExpression, Span),
     Is(IsExpression),
@@ -145,6 +157,33 @@ pub enum Expression {
     },
 }
 
+impl Display for Program {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for m in &self.macros {
+            write!(f, "{} := {};", m.name, m.body)?;
+        }
+        write!(f, "{}", self.expression)
+    }
+}
+
+impl Display for ArrayElementAst {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Expression(x) => write!(f, "{x}"),
+            Self::Concat(x) => write!(f, "..{x}"),
+        }
+    }
+}
+
+impl Display for ObjectElementAst {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Pair(lh, rh) => write!(f, "{lh}: {rh}"),
+            Self::Concat(x) => write!(f, "..{x}"),
+        }
+    }
+}
+
 impl Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -158,47 +197,20 @@ impl Display for Expression {
             } => write!(f, "{operator}{rhs}"),
             Expression::Array(a, _) => {
                 write!(f, "[")?;
-                let mut needs_comma = false;
-                for arg in a {
-                    if needs_comma {
-                        write!(f, ", ")?;
-                    }
-                    needs_comma = true;
-                    match arg {
-                        ArrayElementAst::Expression(x) => write!(f, "{x}")?,
-                        ArrayElementAst::Concat(x) => write!(f, "..{x}")?,
-                    }
-                }
+                write_list!(f, a);
                 write!(f, "]")?;
                 Ok(())
             }
             Expression::Object(a, _) => {
                 write!(f, "{{")?;
-                let mut needs_comma = false;
-                for k in a {
-                    if needs_comma {
-                        write!(f, ", ")?;
-                    }
-                    needs_comma = true;
-                    match k {
-                        ObjectElementAst::Pair(lh, rh) => write!(f, "{lh}: {rh}")?,
-                        ObjectElementAst::Concat(x) => write!(f, "..{x}")?,
-                    }
-                }
+                write_list!(f, a);
                 write!(f, "}}")
             }
             Expression::Selector { lhs, sel, loc: _ } => write!(f, "{lhs}{sel}"),
             Expression::Constant(c, _) => write!(f, "{c}"),
             Expression::Function { name, args, loc: _ } => {
                 write!(f, "{name}(")?;
-                let mut needs_comma = false;
-                for arg in args {
-                    if needs_comma {
-                        write!(f, ", ")?;
-                    }
-                    needs_comma = true;
-                    write!(f, "{arg}")?;
-                }
+                write_list!(f, args);
                 write!(f, ")")
             }
             Expression::Variable(v, _) => write!(f, "{v}"),

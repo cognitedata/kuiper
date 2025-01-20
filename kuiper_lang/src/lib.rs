@@ -119,12 +119,30 @@ impl CompileError {
     }
 }
 
-pub use compiler::{compile_expression, BuildError, DebugInfo, ExpressionDebugInfo};
+pub use compiler::{
+    compile_expression, compile_expression_with_config, BuildError, CompilerConfig, DebugInfo,
+    ExpressionDebugInfo,
+};
 pub use expressions::{ExpressionType, TransformError, TransformErrorData};
 pub use lexer::ParseError;
 use logos::Span;
 use serde_json::Value;
 use thiserror::Error;
+
+macro_rules! write_list {
+    ($f:ident, $iter:expr) => {
+        let mut needs_comma = false;
+        for it in $iter {
+            if needs_comma {
+                write!($f, ", ")?;
+            }
+            needs_comma = true;
+            write!($f, "{it}")?;
+        }
+    };
+}
+
+pub(crate) use write_list;
 
 #[cfg(test)]
 mod tests {

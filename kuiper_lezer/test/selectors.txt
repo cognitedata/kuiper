@@ -4,7 +4,7 @@ input.test["dynamic"].foo[0]
 
 ==>
 
-Result(Expression(Term(
+Program(Expression(Term(
     Selector(
         Term(Selector(
             Term(Selector(

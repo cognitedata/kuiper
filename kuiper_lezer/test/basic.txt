@@ -4,7 +4,7 @@
 
 ==>
 
-Result(Expression(Term(Number)))
+Program(Expression(Term(Number)))
 
 # Large number
 
@@ -12,7 +12,7 @@ Result(Expression(Term(Number)))
 
 ==>
 
-Result(Expression(Term(Number)))
+Program(Expression(Term(Number)))
 
 # Float
 
@@ -20,7 +20,7 @@ Result(Expression(Term(Number)))
 
 ==>
 
-Result(Expression(Term(Number)))
+Program(Expression(Term(Number)))
 
 # Exp Float
 
@@ -28,7 +28,7 @@ Result(Expression(Term(Number)))
 
 ==>
 
-Result(Expression(Term(Number)))
+Program(Expression(Term(Number)))
 
 # Null
 
@@ -36,7 +36,7 @@ null
 
 ==>
 
-Result(Expression(Term(Null)))
+Program(Expression(Term(Null)))
 
 # True
 
@@ -44,7 +44,7 @@ true
 
 ==>
 
-Result(Expression(Term(Boolean)))
+Program(Expression(Term(Boolean)))
 
 # False
 
@@ -52,7 +52,7 @@ false
 
 ==>
 
-Result(Expression(Term(Boolean)))
+Program(Expression(Term(Boolean)))
 
 # Variable
 
@@ -60,7 +60,7 @@ hi_imavariable
 
 ==>
 
-Result(Expression(Term(Variable(Var(PlainVar)))))
+Program(Expression(Term(Variable(Var(PlainVar)))))
 
 # Variable like kw
 
@@ -68,7 +68,7 @@ true_hi_im_avariable
 
 ==>
 
-Result(Expression(Term(Variable(Var(PlainVar)))))
+Program(Expression(Term(Variable(Var(PlainVar)))))
 
 # Variable like operator
 
@@ -76,7 +76,7 @@ is_hi_im_avariable
 
 ==>
 
-Result(Expression(Term(Variable(Var(PlainVar)))))
+Program(Expression(Term(Variable(Var(PlainVar)))))
 
 # String
 
@@ -84,7 +84,7 @@ Result(Expression(Term(Variable(Var(PlainVar)))))
 
 ==>
 
-Result(Expression(Term(String)))
+Program(Expression(Term(String)))
 
 # Flexible var
 
@@ -92,7 +92,7 @@ Result(Expression(Term(String)))
 
 ==>
 
-Result(Expression(Term(Variable(Var))))
+Program(Expression(Term(Variable(Var))))
 
 # Fancy string
 
@@ -100,7 +100,7 @@ Result(Expression(Term(Variable(Var))))
 
 ==>
 
-Result(Expression(Term(String)))
+Program(Expression(Term(String)))
 
 # Single quote string
 
@@ -108,7 +108,7 @@ Result(Expression(Term(String)))
 
 ==>
 
-Result(Expression(Term(String)))
+Program(Expression(Term(String)))
 
 # Block comment
 
@@ -116,7 +116,7 @@ Result(Expression(Term(String)))
 
 ==>
 
-Result(Expression(Term(String)), BlockComment, BlockComment)
+Program(Expression(Term(String)), BlockComment, BlockComment)
 
 # Line comment
 
@@ -128,7 +128,7 @@ Result(Expression(Term(String)), BlockComment, BlockComment)
 
 ==>
 
-Result(Expression(Operator(
+Program(Expression(Operator(
     Expression(Term(String)),
     LineComment,
     ArithOp("+"),

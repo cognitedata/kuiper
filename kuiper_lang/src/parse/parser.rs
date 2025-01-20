@@ -2,7 +2,7 @@ use lalrpop_util::lalrpop_mod;
 
 lalrpop_mod!(kuiper);
 
-pub use kuiper::ExprParser;
+pub use kuiper::ProgramParser;
 
 #[cfg(test)]
 mod tests {
@@ -11,13 +11,16 @@ mod tests {
     use crate::{
         expressions::{Operator, UnaryOperator},
         lexer::{Lexer, LexerError, ParseError, Token},
-        parse::ast::{Constant, Expression},
+        parse::{
+            ast::{Constant, Expression},
+            Program,
+        },
     };
 
-    use super::kuiper::ExprParser;
+    use super::kuiper::ProgramParser;
 
-    fn parse(dat: &str) -> Result<Expression, ParseError> {
-        let p = ExprParser::new();
+    fn parse(dat: &str) -> Result<Program, ParseError> {
+        let p = ProgramParser::new();
         let tokens = Lexer::new(dat);
         p.parse(tokens)
     }
@@ -33,7 +36,7 @@ mod tests {
     fn test_const_parse() {
         fn parse_const(dat: &str) -> Constant {
             let r = parse(dat);
-            let r = r.unwrap();
+            let r = r.unwrap().expression;
             match r {
                 Expression::Constant(c, _) => c,
                 _ => panic!("Wrong type of result"),

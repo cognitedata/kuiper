@@ -6,9 +6,45 @@ use std::fmt::Display;
 pub use exec_tree::BuildError;
 pub use optimizer::optimize;
 
-use crate::{expressions::ExpressionType, lexer::Lexer, parse::ExprParser, CompileError};
+use crate::{expressions::ExpressionType, lexer::Lexer, parse::ProgramParser, CompileError};
 
 use self::exec_tree::ExecTreeBuilder;
+
+#[derive(Debug)]
+/// Configuration for the compiler.
+pub struct CompilerConfig {
+    pub(crate) optimizer_operation_limit: i64,
+    pub(crate) max_macro_expansions: i32,
+}
+
+impl CompilerConfig {
+    /// Create a new compiler config instance with default values.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the maximum number of operations during constant execution in the optimizer.
+    /// Defaults to 100 000
+    pub fn optimizer_operation_limit(mut self, limit: i64) -> Self {
+        self.optimizer_operation_limit = limit;
+        self
+    }
+
+    /// Set the maximum number of macro expansions during compilation. Defaults to 20.
+    pub fn max_macro_expansions(mut self, limit: i32) -> Self {
+        self.max_macro_expansions = limit;
+        self
+    }
+}
+
+impl Default for CompilerConfig {
+    fn default() -> Self {
+        Self {
+            optimizer_operation_limit: 100_000,
+            max_macro_expansions: 20,
+        }
+    }
+}
 
 /// Compile an expression. The `known_inputs` map should contain map from
 /// valid input strings to indexes in the input array. You are responsible for ensuring that
@@ -29,11 +65,34 @@ pub fn compile_expression(
     data: &str,
     known_inputs: &[&str],
 ) -> Result<ExpressionType, CompileError> {
+    compile_expression_with_config(data, known_inputs, &Default::default())
+}
+
+/// Compile an expression, specifying compiler options. The `known_inputs` map should contain map from
+/// valid input strings to indexes in the input array. You are responsible for ensuring that
+/// the expression is run with the correct input array, or it will fail with a source missing error.
+///
+/// ```
+/// use kuiper_lang::compile_expression_with_config;
+/// use serde_json::json;
+///
+/// let transform = compile_expression_with_config("input.value + 5", &["input"], &Default::default()).unwrap();
+///
+/// let input = [json!({ "value": 2 })];
+/// let result = transform.run(input.iter()).unwrap();
+///
+/// assert_eq!(result.as_u64().unwrap(), 7);
+/// ```
+pub fn compile_expression_with_config(
+    data: &str,
+    known_inputs: &[&str],
+    config: &CompilerConfig,
+) -> Result<ExpressionType, CompileError> {
     let inp = Lexer::new(data);
-    let parser = ExprParser::new();
+    let parser = ProgramParser::new();
     let res = parser.parse(inp)?;
-    let res = ExecTreeBuilder::new(res, known_inputs).build()?;
-    let optimized = optimize(res, known_inputs.len())?;
+    let res = ExecTreeBuilder::new(res, known_inputs, config)?.build()?;
+    let optimized = optimize(res, known_inputs.len(), config.optimizer_operation_limit)?;
     Ok(optimized)
 }
 
@@ -79,7 +138,11 @@ impl ExpressionDebugInfo {
     /// which is useful for debugging.
     ///
     /// `data` is the program itself `known_inputs` is a list of valid input labels.
-    pub fn new(data: &str, known_inputs: &[&str]) -> Result<Self, CompileError> {
+    pub fn new(
+        data: &str,
+        known_inputs: &[&str],
+        config: &CompilerConfig,
+    ) -> Result<Self, CompileError> {
         let lexer = Lexer::new(data);
         let tokens: Result<Vec<_>, _> = lexer.map(|data| data.map(|(_, t, _)| t)).collect();
         let token_info = DebugInfo {
@@ -90,20 +153,24 @@ impl ExpressionDebugInfo {
         };
 
         let lexer = Lexer::new(data);
-        let parser = ExprParser::new();
+        let parser = ProgramParser::new();
         let ast = parser.parse(lexer)?;
         let ast_info = DebugInfo {
             debug: format!("{:?}", ast),
             clean: ast.to_string(),
         };
 
-        let exec_tree = ExecTreeBuilder::new(ast, known_inputs).build()?;
+        let exec_tree = ExecTreeBuilder::new(ast, known_inputs, config)?.build()?;
         let exec_tree_info = DebugInfo {
             debug: format!("{:?}", exec_tree),
             clean: exec_tree.to_string(),
         };
 
-        let optimized = optimize(exec_tree, known_inputs.len())?;
+        let optimized = optimize(
+            exec_tree,
+            known_inputs.len(),
+            config.optimizer_operation_limit,
+        )?;
         let optimized_info = DebugInfo {
             debug: format!("{:?}", optimized),
             clean: optimized.to_string(),

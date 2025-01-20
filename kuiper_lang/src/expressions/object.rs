@@ -3,7 +3,7 @@ use std::fmt::Display;
 use logos::Span;
 use serde_json::{Map, Value};
 
-use crate::{compiler::BuildError, TransformError};
+use crate::{compiler::BuildError, write_list, TransformError};
 
 use super::{base::ExpressionMeta, Expression, ExpressionType, ResolveResult};
 
@@ -11,6 +11,15 @@ use super::{base::ExpressionMeta, Expression, ExpressionType, ResolveResult};
 pub enum ObjectElement {
     Pair(ExpressionType, ExpressionType),
     Concat(ExpressionType),
+}
+
+impl Display for ObjectElement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Pair(key, value) => write!(f, "{key}: {value}"),
+            Self::Concat(x) => write!(f, "..{x}"),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -22,17 +31,7 @@ pub struct ObjectExpression {
 impl Display for ObjectExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{{")?;
-        let mut needs_comma = false;
-        for k in self.items.iter() {
-            if needs_comma {
-                write!(f, ", ")?;
-            }
-            needs_comma = true;
-            match k {
-                ObjectElement::Pair(key, value) => write!(f, "{key}: {value}")?,
-                ObjectElement::Concat(x) => write!(f, "..{x}")?,
-            }
-        }
+        write_list!(f, &self.items);
         write!(f, "}}")?;
         Ok(())
     }

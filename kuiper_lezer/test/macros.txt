@@ -1,0 +1,73 @@
+# Single macro definition
+
+#m1 := (a, b) => a + b;
+m1(1, 2)
+
+==>
+
+Program(Macros(Macro(
+    FunctionName(Var(PlainVar)),
+    Lambda(
+        CommaSep(
+            Variable(Var(PlainVar)),
+            Variable(Var(PlainVar))
+        ),
+        Arrow,
+        Expression(Operator(
+            Expression(Term(Variable(Var(PlainVar)))),
+            ArithOp,
+            Expression(Term(Variable(Var(PlainVar))))
+        ))
+    )
+)),
+Expression(Term(FunctionCall(
+    FunctionName(Var(PlainVar)),
+    CommaSep(
+        FunctionArg(Expression(Term(Number))),
+        FunctionArg(Expression(Term(Number)))
+    )
+))))
+
+# Multiple macro definition
+
+#m1 := (a, b) => a + b;
+#m2 := (c, d) => c + d;
+m1(1, 2)
+
+==>
+
+Program(Macros(Macro(
+    FunctionName(Var(PlainVar)),
+    Lambda(
+        CommaSep(
+            Variable(Var(PlainVar)),
+            Variable(Var(PlainVar))
+        ),
+        Arrow,
+        Expression(Operator(
+            Expression(Term(Variable(Var(PlainVar)))),
+            ArithOp,
+            Expression(Term(Variable(Var(PlainVar))))
+        ))
+    )
+), Macro(FunctionName(Var(PlainVar)),
+    Lambda(
+        CommaSep(
+            Variable(Var(PlainVar)),
+            Variable(Var(PlainVar))
+        ),
+        Arrow,
+        Expression(Operator(
+            Expression(Term(Variable(Var(PlainVar)))),
+            ArithOp,
+            Expression(Term(Variable(Var(PlainVar))))
+        ))
+    )
+)),
+Expression(Term(FunctionCall(
+    FunctionName(Var(PlainVar)),
+    CommaSep(
+        FunctionArg(Expression(Term(Number))),
+        FunctionArg(Expression(Term(Number)))
+    )
+))))
