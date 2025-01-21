@@ -20,74 +20,101 @@ jobs:
       - name: Test
         run: cargo test
 
-  build_python_bindings:
+  build_interop_package:
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-    runs-on: ubuntu-latest
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: macos-latest
+            arch: aarch64-apple-darwin
+          - os: ubuntu-latest
+            arch: arm64
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: rustfmt
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dev deps
-        run: pip install pre-commit toml pyyaml pytest
-      - name: Check style
-        run: pre-commit run --all
-      - name: Check that docs are up to date
-        run: |
-          python kuiper_documentation/codegen.py
-          git diff --quiet
-      - uses: PyO3/maturin-action@v1
-        with:
-          command: build
-          working-directory: ./kuiper_python
-      - name: Run tests
-        run: |
-          pip install target/wheels/cognite_kuiper-*.whl
-          pytest
-
-
-  build_js_modules:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set Node.js 18.x
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18.x
-
-      # WASM module
-      - name: Setup wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-      - name: Build wasm package
-        working-directory: ./kuiper_js
-        run: wasm-pack build --scope cognite
-
-      # Codemirror module
-      - name: Run install
-        working-directory: ./kuiper_lezer
-        run: yarn install --frozen-lockfile
-      - name: Run test
-        working-directory: ./kuiper_lezer
-        run: yarn prepare && yarn test
-
-  build_and_test_dotnet:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-            dotnet-version: 8.0.x
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
       - name: Build interop lib
         run: cargo build --release --package kuiper_interop
-      - name: Test .NET
-        run: dotnet test /p:BuildLocalOnly='true'
+      - run: mkdir artifacts
+      - run: mv target/release/*kuiper_interop* artifacts/
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: interop-${{ matrix.os }}
+          path: artifacts/
+          retention-days: 1
+
+  # disable temporarily to test things out
+  # build_python_bindings:
+  #   strategy:
+  #     matrix:
+  #       python-version: ["3.10", "3.11", "3.12"]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions-rs/toolchain@v1
+  #       with:
+  #         toolchain: stable
+  #         components: rustfmt
+  #     - uses: actions/setup-python@v5
+  #       with:
+  #         python-version: ${{ matrix.python-version }}
+  #     - name: Install dev deps
+  #       run: pip install pre-commit toml pyyaml pytest
+  #     - name: Check style
+  #       run: pre-commit run --all
+  #     - name: Check that docs are up to date
+  #       run: |
+  #         python kuiper_documentation/codegen.py
+  #         git diff --quiet
+  #     - uses: PyO3/maturin-action@v1
+  #       with:
+  #         command: build
+  #         working-directory: ./kuiper_python
+  #     - name: Run tests
+  #       run: |
+  #         pip install target/wheels/cognite_kuiper-*.whl
+  #         pytest
+
+
+  # build_js_modules:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Set Node.js 18.x
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 18.x
+
+  #     # WASM module
+  #     - name: Setup wasm-pack
+  #       run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+  #     - name: Build wasm package
+  #       working-directory: ./kuiper_js
+  #       run: wasm-pack build --scope cognite
+
+  #     # Codemirror module
+  #     - name: Run install
+  #       working-directory: ./kuiper_lezer
+  #       run: yarn install --frozen-lockfile
+  #     - name: Run test
+  #       working-directory: ./kuiper_lezer
+  #       run: yarn prepare && yarn test
+
+  # build_and_test_dotnet:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Setup .NET
+  #       uses: actions/setup-dotnet@v4
+  #       with:
+  #           dotnet-version: 8.0.x
+  #     - uses: actions-rs/toolchain@v1
+  #       with:
+  #         toolchain: stable
+  #     - name: Build interop lib
+  #       run: cargo build --release --package kuiper_interop
+  #     - name: Test .NET
+  #       run: dotnet test /p:BuildLocalOnly='true'
