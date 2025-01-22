@@ -13,7 +13,7 @@ completions = []
 
 [dependencies]
 chrono = "0.4.38"
-itertools = "0.13.0"
+itertools = "0.14.0"
 lazy_static = "1.4.0"
 logos = "0.15"
 once_cell = "1.19.0"
