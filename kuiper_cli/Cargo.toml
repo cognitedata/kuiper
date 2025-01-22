@@ -17,5 +17,5 @@ kuiper_lang = { path = "../kuiper_lang" }
 clap = { version = "4.5.4", features = ["derive"] }
 rustyline = { version = "15.0.0", features = ["derive"] }
 colored = "3.0.0"
-dirs = "5.0.1"
+dirs = "6.0.0"
 lazy_static = "1.4.0"
