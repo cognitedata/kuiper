@@ -63,10 +63,6 @@ impl KuiperExpression {
             )),
         }
     }
-
-    fn __str__(&self) -> String {
-        self.expression.to_string()
-    }
 }
 
 #[pymethods]
@@ -81,5 +77,9 @@ impl KuiperExpression {
 
     fn run_limited(&self, inputs: Vec<String>, max_operations: i64) -> PyResult<String> {
         self.run_limited_internal(inputs.iter().map(|s| s.as_str()), max_operations)
+    }
+
+    fn __str__(&self) -> String {
+        self.expression.to_string()
     }
 }
