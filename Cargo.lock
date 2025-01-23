@@ -868,7 +868,7 @@ version = "0.13.0"
 dependencies = [
  "kuiper_lang",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.11",
 ]
 
 [[package]]
@@ -878,7 +878,7 @@ dependencies = [
  "jni",
  "kuiper_lang",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.11",
 ]
 
 [[package]]
