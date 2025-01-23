@@ -36,3 +36,6 @@ kuiper_java/src/main/resources
 
 # Mac files
 **/*.DS_Store
+
+# Go files
+go-kuiper/go-kuiper
