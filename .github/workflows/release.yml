@@ -122,7 +122,7 @@ jobs:
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - name: Build wasm package
         working-directory: ./kuiper_js
-        run: wasm-pack build --weak-refs --scope cognite
+        run: wasm-pack build --weak-refs --scope cognite --target web
       - name: Copy npmrc to package dir
         run: cp .npmrc ./kuiper_js/pkg/.npmrc
       - name: Publish wasm package
