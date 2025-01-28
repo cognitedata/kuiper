@@ -66,7 +66,7 @@ jobs:
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - name: Build wasm package
         working-directory: ./kuiper_js
-        run: wasm-pack build --weak-refs --scope cognite --target web
+        run: wasm-pack build --weak-refs --scope cognite
 
       # Codemirror module
       - name: Run install
