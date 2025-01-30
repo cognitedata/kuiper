@@ -19,3 +19,4 @@ rustyline = { version = "15.0.0", features = ["derive"] }
 colored = "3.0.0"
 dirs = "6.0.0"
 lazy_static = "1.4.0"
+regex = { workspace = true }

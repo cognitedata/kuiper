@@ -1,13 +1,17 @@
 mod cmd_helper;
 mod io;
+mod macros;
 mod magic;
 
+use std::collections::HashMap;
 use std::time::Instant;
 
 use colored::Colorize;
-use io::{print_compile_error, print_transform_error};
+use io::{print_compile_error, print_transform_error, printerr};
 use kuiper_lang::compile_expression;
 
+use macros::Macro;
+use regex::Regex;
 use rustyline::error::ReadlineError;
 use rustyline::{CompletionType, Config, Editor};
 
@@ -28,6 +32,9 @@ pub fn repl(verbose_log: bool) {
     let mut history_path = dirs::home_dir().unwrap();
     history_path.push(".kuiper_history");
 
+    let macro_pattern = Regex::new(r"#.*?;").unwrap();
+    let mut macro_defs = HashMap::new();
+
     let _ = readlines.load_history(&history_path);
 
     println!("Kuiper REPL version {}", env!("CARGO_PKG_VERSION"));
@@ -38,15 +45,53 @@ pub fn repl(verbose_log: bool) {
         let line = readlines.readline("kuiper> ");
 
         match line {
-            Ok(expression) => {
+            Ok(mut expression) => {
+                if expression.trim().is_empty() {
+                    continue;
+                }
+
                 let _ = readlines.add_history_entry(expression.as_str());
 
                 if expression.starts_with('/') {
-                    match apply_magic_function(expression, &mut data, &mut inputs, &mut index) {
-                        magic::ReplResult::Continue => continue,
+                    match apply_magic_function(
+                        expression,
+                        &mut data,
+                        &mut inputs,
+                        &mut index,
+                        &mut macro_defs,
+                    ) {
+                        magic::ReplResult::Continue => {
+                            println!();
+                            continue;
+                        }
                         magic::ReplResult::Stop => break,
                     }
                 }
+
+                // Strip off all macro definitions from the expression, store in the macro map.
+                while let Some(m) = macro_pattern.find(&expression) {
+                    match Macro::from_expression(m.as_str()) {
+                        Ok(parsed) => {
+                            macro_defs.insert(parsed.name.clone(), parsed);
+                            expression = expression.replace(m.as_str(), "");
+                        }
+                        Err(error_message) => {
+                            printerr!("Internal error:", error_message);
+                            continue;
+                        }
+                    }
+                }
+                if expression.trim().is_empty() {
+                    // If expression is empty now, it means we only got macro defs. They are stored,
+                    // there's nothing else to do
+                    continue;
+                }
+
+                // Re-add all macro definitions
+                let formatted_macro_defs = macro_defs
+                    .values()
+                    .fold("".to_string(), |acc, e| format!("{} {}", e, acc));
+                expression = format!("{}{}", formatted_macro_defs, expression);
 
                 let chunk_id = format!("var{index}");
                 let compile_start = Instant::now();

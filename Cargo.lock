@@ -849,6 +849,7 @@ dependencies = [
  "dirs",
  "kuiper_lang",
  "lazy_static",
+ "regex",
  "rustyline",
  "serde_json",
 ]
