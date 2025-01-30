@@ -9,3 +9,6 @@ members = [
     "kuiper_java/rust"
 ]
 resolver = "2"
+
+[workspace.dependencies]
+regex = "1.10.4"

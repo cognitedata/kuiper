@@ -1,11 +1,11 @@
-use std::vec;
+use std::{cmp::max, collections::HashMap, vec};
 
 use colored::Colorize;
 use serde_json::Value;
 
 use crate::builtins::{BUILT_INS, HELP};
 
-use super::io::printerr;
+use super::{io::printerr, macros::Macro};
 
 fn help(command: Option<&str>) {
     match command {
@@ -69,6 +69,7 @@ pub fn apply_magic_function(
     data: &mut Vec<Value>,
     inputs: &mut Vec<String>,
     index: &mut usize,
+    macro_defs: &mut HashMap<String, Macro>,
 ) -> ReplResult {
     let parsed_line: Vec<&str> = line.split_whitespace().collect();
 
@@ -79,10 +80,11 @@ pub fn apply_magic_function(
         }
 
         Some(&"/clear") => {
-            println!("Clearing stored values");
+            println!("Clearing stored values and macros");
             *index = 0;
             inputs.clear();
             data.clear();
+            macro_defs.clear();
 
             ReplResult::Continue
         }
@@ -101,6 +103,30 @@ pub fn apply_magic_function(
             };
 
             ReplResult::Continue
+        }
+
+        Some(&"/macros") => {
+            if macro_defs.is_empty() {
+                println!("No macros stored");
+                ReplResult::Continue
+            } else {
+                let first_col_width = macro_defs
+                    .keys()
+                    .fold(0, |max_width, row| max(max_width, row.len()))
+                    + 3;
+                println!(
+                    "{:-width$}{}",
+                    "Name".bold(),
+                    "Expression".bold(),
+                    width = first_col_width
+                );
+
+                for (name, mac) in macro_defs {
+                    println!("{:-width$}{}", name, mac.def, width = first_col_width)
+                }
+
+                ReplResult::Continue
+            }
         }
 
         Some(&"/exit") => ReplResult::Stop,
