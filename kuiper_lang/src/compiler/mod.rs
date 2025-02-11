@@ -4,9 +4,12 @@ mod optimizer;
 use std::fmt::Display;
 
 pub use exec_tree::BuildError;
+use logos::Span;
 pub use optimizer::optimize;
 
-use crate::{expressions::ExpressionType, lexer::Lexer, parse::ProgramParser, CompileError};
+use crate::{
+    expressions::ExpressionType, lex::Token, lexer::Lexer, parse::ProgramParser, CompileError,
+};
 
 use self::exec_tree::ExecTreeBuilder;
 
@@ -90,6 +93,22 @@ pub fn compile_expression_with_config(
 ) -> Result<ExpressionType, CompileError> {
     let inp = Lexer::new(data);
     let parser = ProgramParser::new();
+    let res = parser.parse(inp)?;
+    let res = ExecTreeBuilder::new(res, known_inputs, config)?.build()?;
+    let optimized = optimize(res, known_inputs.len(), config.optimizer_operation_limit)?;
+    Ok(optimized)
+}
+
+/// Compile an expression from an iterator over raw tokens.
+///
+/// Used for testing and fuzzing.
+pub fn compile_from_tokens(
+    data: impl Iterator<Item = Token>,
+    known_inputs: &[&str],
+    config: &CompilerConfig,
+) -> Result<ExpressionType, CompileError> {
+    let parser = ProgramParser::new();
+    let inp = Lexer::new_raw_tokens(data.map(|t| (Ok(t), Span { start: 0, end: 0 })));
     let res = parser.parse(inp)?;
     let res = ExecTreeBuilder::new(res, known_inputs, config)?.build()?;
     let optimized = optimize(res, known_inputs.len(), config.optimizer_operation_limit)?;

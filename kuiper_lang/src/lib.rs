@@ -125,7 +125,19 @@ pub use compiler::{
 };
 pub use expressions::{ExpressionType, TransformError, TransformErrorData};
 pub use lexer::ParseError;
-use logos::Span;
+pub use logos::Span;
+
+/// Module for utilties for working with input data as a stream of tokens,
+/// rather than a string.
+pub mod lex {
+    pub use super::compiler::compile_from_tokens;
+    pub use super::expressions::Operator;
+    pub use super::expressions::TypeLiteral;
+    pub use super::expressions::UnaryOperator;
+    pub use super::lexer::LexerError;
+    pub use super::lexer::Token;
+}
+
 use serde_json::Value;
 use thiserror::Error;
 
