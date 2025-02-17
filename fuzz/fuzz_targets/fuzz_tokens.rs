@@ -1,7 +1,7 @@
 #![no_main]
 #![cfg(feature = "nightly")]
 
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 
 use kuiper_lang::{
     lex::{compile_from_tokens, Operator, Token, TypeLiteral, UnaryOperator},

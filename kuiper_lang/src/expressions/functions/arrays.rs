@@ -109,9 +109,15 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TailFunction {
         };
 
         match number {
-            1 => Ok(ResolveResult::Owned(arr[arr.len() - 1].to_owned())),
+            1 => {
+                if arr.is_empty() {
+                    Ok(ResolveResult::Owned(Value::Null))
+                } else {
+                    Ok(ResolveResult::Owned(arr[arr.len() - 1].to_owned()))
+                }
+            }
             range => {
-                let start = arr.len() - range as usize;
+                let start = arr.len().saturating_sub(range as usize);
                 let end = arr.len();
                 Ok(ResolveResult::Owned(Value::Array(
                     arr[start..end].to_owned(),
