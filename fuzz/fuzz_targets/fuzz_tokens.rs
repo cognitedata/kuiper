@@ -1,15 +1,17 @@
 #![no_main]
 #![cfg(feature = "nightly")]
 
+use std::fmt::{Debug, Display};
+
 use kuiper_lang::{
     lex::{compile_from_tokens, Operator, Token, TypeLiteral, UnaryOperator},
     CompilerConfig,
 };
 use libfuzzer_sys::{arbitrary::Arbitrary, fuzz_target};
 
-fuzz_target!(|data: Vec<TokenWrap>| {
+fuzz_target!(|data: TokensWrapped| {
     let _ = compile_from_tokens(
-        data.into_iter().map(|t| t.0),
+        data.0.into_iter().map(|t| t.0),
         &["input"],
         &CompilerConfig::new(),
     );
@@ -18,7 +20,7 @@ fuzz_target!(|data: Vec<TokenWrap>| {
 fn get_identifier(
     u: &mut libfuzzer_sys::arbitrary::Unstructured<'_>,
 ) -> Result<String, libfuzzer_sys::arbitrary::Error> {
-    Ok(match u.int_in_range(0u8..=30u8)? {
+    Ok(match u.int_in_range(0u8..=70u8)? {
         0 => "pow",
         1 => "log",
         2 => "atan2",
@@ -77,7 +79,7 @@ fn get_identifier(
         55 => "ends_with",
         56 => "if_value",
         57 => "input",
-        v @ 58..70 => return Ok(((b'a' + v) as char).to_string()),
+        v @ 58..=70 => return Ok(((b'a' + v) as char).to_string()),
         _ => unreachable!(),
     }
     .to_owned())
@@ -85,6 +87,21 @@ fn get_identifier(
 
 #[derive(Debug)]
 pub struct TokenWrap(Token);
+
+#[derive(Arbitrary)]
+pub struct TokensWrapped(Vec<TokenWrap>);
+
+// Create a debug impl that is just display.
+// This way the fuzz output contains the actual code
+// that caused the error, instead of just a sequence of tokens.
+impl Debug for TokensWrapped {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for t in &self.0 {
+            write!(f, "{}", t.0)?;
+        }
+        Ok(())
+    }
+}
 
 impl<'a> Arbitrary<'a> for TokenWrap {
     fn arbitrary(
