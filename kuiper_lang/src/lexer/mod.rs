@@ -37,12 +37,12 @@ impl Display for LexerError {
     }
 }
 
-pub struct Lexer<'input> {
-    token_stream: SpannedIter<'input, Token>,
+pub struct Lexer<T> {
+    token_stream: T,
     last: Option<Spanned<Token, usize, LexerError>>,
 }
 
-impl<'input> Lexer<'input> {
+impl<'input> Lexer<SpannedIter<'input, Token>> {
     pub fn new(input: &'input str) -> Self {
         let mut stream = Token::lexer(input).spanned();
 
@@ -62,13 +62,32 @@ impl<'input> Lexer<'input> {
     }
 }
 
-impl Iterator for Lexer<'_> {
+impl<T: Iterator<Item = (Result<Token, LexerError>, Span)>> Lexer<T> {
+    pub fn new_raw_tokens(mut stream: T) -> Self {
+        let last = loop {
+            match stream.next() {
+                Some((Ok(Token::Comment), _)) => (),
+                Some((Ok(t), span)) => break Some(Ok((span.start, t, span.end))),
+                Some((Err(_), span)) => break Some(Err(LexerError::InvalidToken(span))),
+                None => break None,
+            }
+        };
+
+        Self {
+            token_stream: stream,
+            last,
+        }
+    }
+}
+
+impl<T: Iterator<Item = (Result<Token, LexerError>, Span)>> Iterator for Lexer<T> {
     type Item = Spanned<Token, usize, LexerError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let tok = self.token_stream.next().map(|(token, span)| match token {
             Ok(t) => Ok((span.start, t, span.end)),
-            Err(_) => Err(LexerError::InvalidToken(span)),
+            Err(LexerError::UnknownToken) => Err(LexerError::InvalidToken(span)),
+            Err(e) => Err(e),
         });
         // Unpleasant hack to get around LR(1) and a bug in Logos.
         // Keep a token stored, and if we encounter ) =>, combine the two tokens.

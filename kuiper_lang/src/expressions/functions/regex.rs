@@ -34,7 +34,7 @@ macro_rules! regex_function {
         impl $crate::expressions::functions::FunctionExpression for $typ {
             const INFO: $crate::expressions::functions::FunctionInfo =
                 $crate::expressions::functions::FunctionInfo {
-                    minargs: 2,
+                    minargs: $nargs + 1,
                     maxargs: Some($nargs + 1),
                     name: $name,
                 };

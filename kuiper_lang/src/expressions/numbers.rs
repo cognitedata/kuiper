@@ -150,20 +150,25 @@ impl JsonNumber {
     /// Try to add two numbers, the result type depends on the input.
     pub fn try_add(self, rhs: JsonNumber, span: &Span) -> Result<JsonNumber, TransformError> {
         match (self, rhs) {
-            (JsonNumber::PosInteger(x), JsonNumber::PosInteger(y)) => {
-                Ok(JsonNumber::PosInteger(x + y))
-            }
-            (JsonNumber::NegInteger(x), JsonNumber::NegInteger(y)) => {
-                Ok(JsonNumber::NegInteger(x + y))
-            }
+            (JsonNumber::PosInteger(x), JsonNumber::PosInteger(y)) => Ok(JsonNumber::PosInteger(
+                x.checked_add(y)
+                    .ok_or_else(|| TransformError::new_arith_overflow(span))?,
+            )),
+            (JsonNumber::NegInteger(x), JsonNumber::NegInteger(y)) => Ok(JsonNumber::NegInteger(
+                x.checked_add(y)
+                    .ok_or_else(|| TransformError::new_arith_overflow(span))?,
+            )),
             (JsonNumber::Float(x), _) => Ok(JsonNumber::Float(x + rhs.as_f64())),
-            (JsonNumber::NegInteger(x), JsonNumber::PosInteger(_)) => {
-                Ok(JsonNumber::NegInteger(x + rhs.try_as_i64(span)?))
-            }
+            (JsonNumber::NegInteger(x), JsonNumber::PosInteger(y)) => Ok(JsonNumber::NegInteger(
+                x.checked_add_unsigned(y)
+                    .ok_or_else(|| TransformError::new_arith_overflow(span))?,
+            )),
             (_, JsonNumber::Float(y)) => Ok(JsonNumber::Float(self.as_f64() + y)),
-            (JsonNumber::PosInteger(_), JsonNumber::NegInteger(y)) => {
-                Ok(JsonNumber::NegInteger(self.try_as_i64(span)? + y))
-            }
+            (JsonNumber::PosInteger(_), JsonNumber::NegInteger(y)) => Ok(JsonNumber::NegInteger(
+                self.try_as_i64(span)?
+                    .checked_add(y)
+                    .ok_or_else(|| TransformError::new_arith_overflow(span))?,
+            )),
         }
     }
 
@@ -179,37 +184,46 @@ impl JsonNumber {
                             "Failed to convert result into negative integer, cannot produce a negative integer smaller than -9223372036854775808".to_string(), span))?)))
                 }
             }
-            (JsonNumber::NegInteger(x), JsonNumber::NegInteger(y)) => {
-                Ok(JsonNumber::NegInteger(x - y))
-            }
+            (JsonNumber::NegInteger(x), JsonNumber::NegInteger(y)) => Ok(JsonNumber::NegInteger(
+                x.checked_sub(y)
+                    .ok_or_else(|| TransformError::new_arith_overflow(span))?,
+            )),
             (JsonNumber::Float(x), _) => Ok(JsonNumber::Float(x - rhs.as_f64())),
-            (JsonNumber::NegInteger(x), JsonNumber::PosInteger(_)) => {
-                Ok(JsonNumber::NegInteger(x - rhs.try_as_i64(span)?))
-            }
+            (JsonNumber::NegInteger(x), JsonNumber::PosInteger(y)) => Ok(JsonNumber::NegInteger(
+                x.checked_sub_unsigned(y)
+                    .ok_or_else(|| TransformError::new_arith_overflow(span))?,
+            )),
             (_, JsonNumber::Float(y)) => Ok(JsonNumber::Float(self.as_f64() - y)),
-            (JsonNumber::PosInteger(_), JsonNumber::NegInteger(y)) => {
-                Ok(JsonNumber::NegInteger(self.try_as_i64(span)? - y))
-            }
+            (JsonNumber::PosInteger(_), JsonNumber::NegInteger(y)) => Ok(JsonNumber::NegInteger(
+                self.try_as_i64(span)?
+                    .checked_sub(y)
+                    .ok_or_else(|| TransformError::new_arith_overflow(span))?,
+            )),
         }
     }
 
     /// Try to multiply two numbers, result depends on input types.
     pub fn try_mul(self, rhs: JsonNumber, span: &Span) -> Result<JsonNumber, TransformError> {
         match (self, rhs) {
-            (JsonNumber::PosInteger(x), JsonNumber::PosInteger(y)) => {
-                Ok(JsonNumber::PosInteger(x * y))
-            }
-            (JsonNumber::NegInteger(x), JsonNumber::NegInteger(y)) => {
-                Ok(JsonNumber::NegInteger(x * y))
-            }
+            (JsonNumber::PosInteger(x), JsonNumber::PosInteger(y)) => Ok(JsonNumber::PosInteger(
+                x.checked_mul(y)
+                    .ok_or_else(|| TransformError::new_arith_overflow(span))?,
+            )),
+            (JsonNumber::NegInteger(x), JsonNumber::NegInteger(y)) => Ok(JsonNumber::NegInteger(
+                x.checked_mul(y)
+                    .ok_or_else(|| TransformError::new_arith_overflow(span))?,
+            )),
             (JsonNumber::Float(x), _) => Ok(JsonNumber::Float(x * rhs.as_f64())),
-            (JsonNumber::NegInteger(x), JsonNumber::PosInteger(_)) => {
-                Ok(JsonNumber::NegInteger(x * rhs.try_as_i64(span)?))
-            }
+            (JsonNumber::NegInteger(x), JsonNumber::PosInteger(_)) => Ok(JsonNumber::NegInteger(
+                x.checked_mul(rhs.try_as_i64(span)?)
+                    .ok_or_else(|| TransformError::new_arith_overflow(span))?,
+            )),
             (_, JsonNumber::Float(y)) => Ok(JsonNumber::Float(self.as_f64() * y)),
-            (JsonNumber::PosInteger(_), JsonNumber::NegInteger(y)) => {
-                Ok(JsonNumber::NegInteger(self.try_as_i64(span)? * y))
-            }
+            (JsonNumber::PosInteger(_), JsonNumber::NegInteger(y)) => Ok(JsonNumber::NegInteger(
+                self.try_as_i64(span)?
+                    .checked_mul(y)
+                    .ok_or_else(|| TransformError::new_arith_overflow(span))?,
+            )),
         }
     }
 

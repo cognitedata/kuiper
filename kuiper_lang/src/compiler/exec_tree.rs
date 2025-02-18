@@ -156,7 +156,7 @@ impl ExecTreeBuilder {
     }
 
     pub fn build(mut self) -> Result<ExpressionType, BuildError> {
-        self.inner.build_expression(self.expression)
+        self.inner.build_expression(self.expression, 0)
     }
 }
 
@@ -165,29 +165,30 @@ impl BuilderInner {
         &mut self,
         lhs: Expression,
         sel: Selector,
+        depth: usize,
     ) -> Result<Vec<SelectorElement>, BuildError> {
         let x = match sel {
             Selector::Expression(x) => {
-                SelectorElement::Expression(Box::new(self.build_expression(*x)?))
+                SelectorElement::Expression(Box::new(self.build_expression(*x, depth)?))
             }
             Selector::String(x, s) => SelectorElement::Constant(x, s),
         };
 
         match lhs {
             Expression::Selector { lhs, sel, loc: _ } => {
-                let mut ch = self.build_selector(*lhs, sel)?;
+                let mut ch = self.build_selector(*lhs, sel, depth)?;
                 ch.push(x);
                 Ok(ch)
             }
             Expression::Variable(v, s) => Ok(vec![SelectorElement::Constant(v, s), x]),
             r => Ok(vec![
-                SelectorElement::Expression(Box::new(self.build_expression(r)?)),
+                SelectorElement::Expression(Box::new(self.build_expression(r, depth)?)),
                 x,
             ]),
         }
     }
 
-    fn build_lambda(&mut self, expr: Lambda) -> Result<ExpressionType, BuildError> {
+    fn build_lambda(&mut self, expr: Lambda, depth: usize) -> Result<ExpressionType, BuildError> {
         let Lambda { args, inner, loc } = expr;
         // Temporarily add lambda arguments as variables.
         let mut temp_variables = vec![];
@@ -201,7 +202,7 @@ impl BuilderInner {
                 return Err(BuildError::variable_conflict(loc, inp));
             }
         }
-        let r = LambdaExpression::new(args, self.build_expression(inner)?, loc)?;
+        let r = LambdaExpression::new(args, self.build_expression(inner, depth)?, loc)?;
         for var in temp_variables {
             self.known_inputs.remove(&var);
         }
@@ -211,10 +212,11 @@ impl BuilderInner {
     fn build_function_param(
         &mut self,
         expr: FunctionParameter,
+        depth: usize,
     ) -> Result<ExpressionType, BuildError> {
         match expr {
-            FunctionParameter::Expression(x) => self.build_expression(x),
-            FunctionParameter::Lambda(l) => self.build_lambda(l),
+            FunctionParameter::Expression(x) => self.build_expression(x, depth),
+            FunctionParameter::Lambda(l) => self.build_lambda(l, depth),
         }
     }
 
@@ -223,6 +225,7 @@ impl BuilderInner {
         mac: Macro,
         args: Vec<FunctionParameter>,
         span: Span,
+        depth: usize,
     ) -> Result<ExpressionType, BuildError> {
         self.macro_counter.expand_macro(span.clone())?;
         if mac.body.args.len() != args.len() {
@@ -243,10 +246,10 @@ impl BuilderInner {
                 FunctionParameter::Expression(e) => e,
                 FunctionParameter::Lambda(e) => return Err(BuildError::unexpected_lambda(&e.loc)),
             };
-            built_args.push(self.build_expression(expr)?);
+            built_args.push(self.build_expression(expr, depth)?);
         }
         self.macro_stack.push(mac.name.clone());
-        let inner = self.build_lambda(mac.body)?;
+        let inner = self.build_lambda(mac.body, depth)?;
         self.macro_stack.pop();
         Ok(ExpressionType::MacroCallExpression(
             MacroCallExpression::new(inner, built_args, span)?,
@@ -261,27 +264,37 @@ impl BuilderInner {
         }
     }
 
-    pub fn build_expression(&mut self, ast: Expression) -> Result<ExpressionType, BuildError> {
+    pub fn build_expression(
+        &mut self,
+        ast: Expression,
+        depth: usize,
+    ) -> Result<ExpressionType, BuildError> {
+        if depth > 500 {
+            return Err(BuildError::other(
+                Span { start: 0, end: 0 },
+                "Recursion depth exceeded during compilation",
+            ));
+        }
         match ast {
             Expression::BinaryOperation(b, span) => {
                 Ok(ExpressionType::Operator(OpExpression::new(
                     b.operator,
-                    self.build_expression(*b.lhs)?,
-                    self.build_expression(*b.rhs)?,
+                    self.build_expression(*b.lhs, depth + 1)?,
+                    self.build_expression(*b.rhs, depth + 1)?,
                     span,
                 )?))
             }
             Expression::UnaryOperation { operator, rhs, loc } => Ok(ExpressionType::UnaryOperator(
-                UnaryOpExpression::new(operator, self.build_expression(*rhs)?, loc)?,
+                UnaryOpExpression::new(operator, self.build_expression(*rhs, depth + 1)?, loc)?,
             )),
             Expression::Array(arr, span) => Ok(ExpressionType::Array(ArrayExpression::new(
                 arr.into_iter()
                     .map(|e| match e {
-                        crate::parse::ArrayElementAst::Expression(x) => {
-                            Ok(ArrayElement::Expression(self.build_expression(x)?))
-                        }
+                        crate::parse::ArrayElementAst::Expression(x) => Ok(
+                            ArrayElement::Expression(self.build_expression(x, depth + 1)?),
+                        ),
                         crate::parse::ArrayElementAst::Concat(x) => {
-                            Ok(ArrayElement::Concat(self.build_expression(x)?))
+                            Ok(ArrayElement::Concat(self.build_expression(x, depth + 1)?))
                         }
                     })
                     .collect::<Result<Vec<ArrayElement>, _>>()?,
@@ -291,18 +304,18 @@ impl BuilderInner {
                 it.into_iter()
                     .map::<Result<ObjectElement, BuildError>, _>(|e| match e {
                         crate::parse::ObjectElementAst::Pair(k, v) => Ok(ObjectElement::Pair(
-                            self.build_expression(k)?,
-                            self.build_expression(v)?,
+                            self.build_expression(k, depth + 1)?,
+                            self.build_expression(v, depth + 1)?,
                         )),
                         crate::parse::ObjectElementAst::Concat(x) => {
-                            Ok(ObjectElement::Concat(self.build_expression(x)?))
+                            Ok(ObjectElement::Concat(self.build_expression(x, depth + 1)?))
                         }
                     })
                     .collect::<Result<Vec<_>, _>>()?,
                 span,
             )?)),
             Expression::Selector { lhs, sel, loc } => {
-                let elems = self.build_selector(*lhs, sel)?;
+                let elems = self.build_selector(*lhs, sel, depth + 1)?;
                 let mut iter = elems.into_iter();
                 let first = iter.next().unwrap();
 
@@ -322,13 +335,13 @@ impl BuilderInner {
             )),
             Expression::Function { name, args, loc } => {
                 if let Some(m) = self.macros.get(&name).cloned() {
-                    self.build_macro_call(m, args, loc)
+                    self.build_macro_call(m, args, loc, depth + 1)
                 } else {
                     get_function_expression(
                         loc,
                         &name,
                         args.into_iter()
-                            .map(|e| self.build_function_param(e))
+                            .map(|e| self.build_function_param(e, depth + 1))
                             .collect::<Result<Vec<_>, _>>()?,
                     )
                 }
@@ -339,13 +352,13 @@ impl BuilderInner {
                 span,
             )?)),
             Expression::Is(i) => Ok(ExpressionType::Is(IsExpression::new(
-                self.build_expression(*i.lhs)?,
+                self.build_expression(*i.lhs, depth + 1)?,
                 i.rhs,
                 i.not,
             )?)),
             Expression::If { args, loc } => Ok(ExpressionType::If(IfExpression::new(
                 args.into_iter()
-                    .map(|e| self.build_expression(e))
+                    .map(|e| self.build_expression(e, depth + 1))
                     .collect::<Result<Vec<_>, _>>()?,
                 loc,
             ))),

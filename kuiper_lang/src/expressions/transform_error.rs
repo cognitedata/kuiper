@@ -68,6 +68,13 @@ impl TransformError {
         })
     }
 
+    pub(crate) fn new_arith_overflow(span: &Span) -> Self {
+        Self::InvalidOperation(TransformErrorData {
+            desc: "Arithmetic overflow".to_owned(),
+            span: span.clone(),
+        })
+    }
+
     pub(crate) fn value_desc(val: &Value) -> &str {
         match val {
             Value::Null => "null",

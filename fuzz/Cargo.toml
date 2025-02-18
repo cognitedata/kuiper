@@ -1,0 +1,34 @@
+[package]
+name = "kuiper_lang-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[features]
+# default = ["nightly"]
+nightly = ["libfuzzer-sys", "arbitrary"]
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = { version = "0.4", optional = true }
+arbitrary = { version = "1", features = ["derive"], optional = true }
+serde_json = { workspace = true }
+
+[dependencies.kuiper_lang]
+path = "../kuiper_lang"
+
+[[bin]]
+name = "fuzz_single_input"
+path = "fuzz_targets/fuzz_single_input.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_tokens"
+path = "fuzz_targets/fuzz_tokens.rs"
+test = false
+doc = false
+bench = false
