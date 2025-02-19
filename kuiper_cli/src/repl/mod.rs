@@ -41,7 +41,7 @@ pub fn repl(verbose_log: bool) {
     println!("Type /help for a list of available commands. Press ctrl-D to exit.");
     println!();
 
-    loop {
+    'repl: loop {
         let line = readlines.readline("kuiper> ");
 
         match line {
@@ -77,7 +77,7 @@ pub fn repl(verbose_log: bool) {
                         }
                         Err(error_message) => {
                             printerr!("Internal error:", error_message);
-                            continue;
+                            continue 'repl;
                         }
                     }
                 }
