@@ -45,12 +45,13 @@ fn help(command: Option<&str>) {
             );
             println!("{}", "Magic functions".bold().underline());
             [
-                ("/clear", "Clear all stored values"),
+                ("/clear", "Clear all stored values and macros"),
                 (
                     "/help (<function>)",
                     "Display this help page or help for specific functions",
                 ),
                 ("/store <name>", "Store the last result as a named variable"),
+                ("/macros", "List all stored macros and their definitions"),
                 ("/exit", "Quit the REPL"),
             ]
             .into_iter()
