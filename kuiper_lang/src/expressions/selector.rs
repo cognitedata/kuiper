@@ -2,10 +2,11 @@ use std::fmt::Display;
 
 use serde_json::{Map, Value};
 
-use crate::compiler::BuildError;
+use crate::{compiler::BuildError, NULL_CONST};
 
 use super::{
     base::{Expression, ExpressionExecutionState, ExpressionMeta, ExpressionType},
+    numbers::JsonNumber,
     transform_error::TransformError,
     ResolveResult,
 };
@@ -146,24 +147,30 @@ impl SelectorExpression {
                             Some(x) => x,
                             None => return Ok(ResolveResult::Owned(Value::Null)),
                         },
-                        Value::Number(n) => match n.as_u64() {
-                            Some(x) => match elem.as_array().and_then(|a| a.get(x as usize)) {
-                                Some(x) => x,
-                                None => return Ok(ResolveResult::Owned(Value::Null)),
-                            },
-                            _ => {
-                                return Err(TransformError::new_incorrect_type(
-                                    "Incorrect type in selector",
-                                    "positive integer",
-                                    if n.is_f64() {
-                                        "floating point"
+                        Value::Number(n) => {
+                            let num = JsonNumber::from(n.clone());
+                            let val = match num {
+                                JsonNumber::PosInteger(n) => {
+                                    elem.as_array().and_then(|a| a.get(n as usize))
+                                }
+                                JsonNumber::NegInteger(n) => {
+                                    if n < 0 {
+                                        elem.as_array().and_then(|a| a.get(a.len() - (-n as usize)))
                                     } else {
-                                        "negative integer"
-                                    },
-                                    &self.span,
-                                ))
-                            }
-                        },
+                                        elem.as_array().and_then(|a| a.get(n as usize))
+                                    }
+                                }
+                                _ => {
+                                    return Err(TransformError::new_incorrect_type(
+                                        "Incorrect type in selector",
+                                        "positive integer",
+                                        "floating point",
+                                        &self.span,
+                                    ))
+                                }
+                            };
+                            val.unwrap_or(&NULL_CONST)
+                        }
                         _ => {
                             return Err(TransformError::new_incorrect_type(
                                 "Incorrect type in selector",
@@ -236,28 +243,32 @@ impl SelectorExpression {
                                 None => return Ok(ResolveResult::Owned(Value::Null)),
                             }
                         }
-                        Value::Number(n) => match n.as_u64() {
-                            Some(x) => {
-                                match Self::as_array_owned(elem)
-                                    .and_then(|a| a.into_iter().nth(x as usize))
-                                {
-                                    Some(x) => x,
-                                    None => return Ok(ResolveResult::Owned(Value::Null)),
-                                }
-                            }
-                            _ => {
-                                return Err(TransformError::new_incorrect_type(
-                                    "Incorrect type in selector",
-                                    "positive integer",
-                                    if n.is_f64() {
-                                        "floating point"
+                        Value::Number(n) => {
+                            let num = JsonNumber::from(n.clone());
+                            let val = match num {
+                                JsonNumber::PosInteger(n) => Self::as_array_owned(elem)
+                                    .and_then(|a| a.into_iter().nth(n as usize)),
+                                JsonNumber::NegInteger(n) => {
+                                    if n < 0 {
+                                        Self::as_array_owned(elem).and_then(|a| {
+                                            a.into_iter().rev().nth((-n - 1) as usize)
+                                        })
                                     } else {
-                                        "negative integer"
-                                    },
-                                    &self.span,
-                                ))
-                            }
-                        },
+                                        Self::as_array_owned(elem)
+                                            .and_then(|a| a.into_iter().nth(n as usize))
+                                    }
+                                }
+                                _ => {
+                                    return Err(TransformError::new_incorrect_type(
+                                        "Incorrect type in selector",
+                                        "positive integer",
+                                        "floating point",
+                                        &self.span,
+                                    ))
+                                }
+                            };
+                            val.unwrap_or(Value::Null)
+                        }
                         _ => {
                             return Err(TransformError::new_incorrect_type(
                                 "Incorrect type in selector",
@@ -271,5 +282,88 @@ impl SelectorExpression {
             };
         }
         Ok(ResolveResult::Owned(elem))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::Value;
+
+    use crate::compile_expression;
+
+    #[test]
+    fn test_constant_selector() {
+        let expr = compile_expression(
+            r#"{
+                "1": { "foo": 123 }.foo,
+                "2": { "foo": { "bar": 456 } }.foo.bar,
+                "3": { "foo": 123 }.baz,
+                "4": "hello".test,
+                "5": null.test,
+                "6": { "foo": 123 }.foo.bar,
+            }
+            "#,
+            &[],
+        )
+        .unwrap();
+        let r = expr.run(&[]).unwrap().into_owned();
+        assert_eq!(r.get("1").unwrap(), &Value::from(123));
+        assert_eq!(r.get("2").unwrap(), &Value::from(456));
+        assert_eq!(r.get("3").unwrap(), &Value::Null);
+        assert_eq!(r.get("4").unwrap(), &Value::Null);
+        assert_eq!(r.get("5").unwrap(), &Value::Null);
+        assert_eq!(r.get("6").unwrap(), &Value::Null);
+    }
+
+    #[test]
+    fn test_dynamic_selector() {
+        let expr = compile_expression(
+            r#"{
+            "1": { "foo": 123 }["foo"],
+            "2": { "bar": { "foo": 456 } }["bar"]["foo"],
+            "3": { "foo": 123 }["baz"],
+            "4": "hello"["test"],
+            "5": null["test"],
+            "6": { "foo": 123 }["foo"]["bar"],
+        }"#,
+            &[],
+        )
+        .unwrap();
+        let r = expr.run(&[]).unwrap().into_owned();
+        assert_eq!(r.get("1").unwrap(), &Value::from(123));
+        assert_eq!(r.get("2").unwrap(), &Value::from(456));
+        assert_eq!(r.get("3").unwrap(), &Value::Null);
+        assert_eq!(r.get("4").unwrap(), &Value::Null);
+        assert_eq!(r.get("5").unwrap(), &Value::Null);
+        assert_eq!(r.get("6").unwrap(), &Value::Null);
+    }
+
+    #[test]
+    fn test_array_selector() {
+        let expr = compile_expression(
+            r#"{
+            "1": [1, 2, 3][1],
+            "2": [1, 2, 3][-1],
+            "3": [1, 2, [1, 2]][2][1],
+            "4": [1, 2, 3][3],
+            "5": [1, 2, 3][0],
+            "6": [1, 2, 3][-5],
+            "7": { "foo": 123 }[0],
+            "8": null[1][2],
+            "9": [1, 2, 3][3][3],
+        }"#,
+            &[],
+        )
+        .unwrap();
+        let r = expr.run(&[]).unwrap().into_owned();
+        assert_eq!(r.get("1").unwrap(), &Value::from(2));
+        assert_eq!(r.get("2").unwrap(), &Value::from(3));
+        assert_eq!(r.get("3").unwrap(), &Value::from(2));
+        assert_eq!(r.get("4").unwrap(), &Value::Null);
+        assert_eq!(r.get("5").unwrap(), &Value::from(1));
+        assert_eq!(r.get("6").unwrap(), &Value::Null);
+        assert_eq!(r.get("7").unwrap(), &Value::Null);
+        assert_eq!(r.get("8").unwrap(), &Value::Null);
+        assert_eq!(r.get("9").unwrap(), &Value::Null);
     }
 }
