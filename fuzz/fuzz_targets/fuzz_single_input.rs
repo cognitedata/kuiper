@@ -1,26 +1,32 @@
-#![no_main]
-#![cfg(feature = "nightly")]
+#![cfg_attr(feature = "nightly", no_main)]
 
-use std::sync::LazyLock;
+#[cfg(not(feature = "nightly"))]
+fn main() {}
 
-use kuiper_lang::{compile_expression, CompileError};
-use libfuzzer_sys::fuzz_target;
-use serde_json::{json, Value};
+#[cfg(feature = "nightly")]
+mod inner {
+    use std::sync::LazyLock;
 
-static DATA: LazyLock<Value> = LazyLock::new(|| {
-    json!({
-        "foo": "bar"
-    })
-});
+    use kuiper_lang::{compile_expression, CompileError};
+    use libfuzzer_sys::fuzz_target;
+    use serde_json::{json, Value};
 
-fn run_expression(expr: &str) -> Result<(), CompileError> {
-    let expr = compile_expression(expr, &["input"])?;
+    static DATA: LazyLock<Value> = LazyLock::new(|| {
+        json!({
+            "foo": "bar"
+        })
+    });
 
-    let _ = expr.run([&*DATA]);
-    Ok(())
+    fn run_expression(expr: &str) -> Result<(), CompileError> {
+        let expr = compile_expression(expr, &["input"])?;
+
+        let _ = expr.run([&*DATA]);
+        Ok(())
+    }
 }
 
+#[cfg(feature = "nightly")]
 fuzz_target!(|data: &str| {
     // fuzzed code goes here
-    let _ = run_expression(data);
+    let _ = inner::run_expression(data);
 });

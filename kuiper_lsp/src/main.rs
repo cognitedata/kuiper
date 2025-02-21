@@ -30,6 +30,7 @@ async fn main() {
 #[derive(Default)]
 struct DocumentState {
     text: String,
+    #[allow(unused)]
     expression: Option<ExpressionType>,
 }
 
@@ -203,7 +204,7 @@ impl LanguageState {
         }
     }
 
-    async fn get_hover_tooltip(&self, params: HoverParams, client: &Client) -> Option<Hover> {
+    async fn get_hover_tooltip(&self, params: HoverParams, _client: &Client) -> Option<Hover> {
         let docs = self.documents.lock().await;
         let doc = docs.get(&params.text_document_position_params.text_document.uri)?;
 

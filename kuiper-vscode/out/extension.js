@@ -51,8 +51,6 @@ class Context {
 }
 exports.Context = Context;
 async function activate(context) {
-    console.log("Debug please");
-    vscode.window.showErrorMessage("Test");
     const ctx = new Context(context);
     await ctx.start().catch((err) => {
         void vscode.window.showErrorMessage(`Cannot activate cognite-kuiper extension: ${err.message}`);

@@ -70,8 +70,6 @@ export class Context implements KuiperExtensionApi {
 }
 
 export async function activate(context: ExtensionContext): Promise<KuiperExtensionApi> {
-    console.log("Debug please");
-    vscode.window.showErrorMessage("Test");
     const ctx = new Context(context);
 
     await ctx.start().catch((err) => {
