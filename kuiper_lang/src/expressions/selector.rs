@@ -163,7 +163,7 @@ impl SelectorExpression {
                                 _ => {
                                     return Err(TransformError::new_incorrect_type(
                                         "Incorrect type in selector",
-                                        "positive integer",
+                                        "integer",
                                         "floating point",
                                         &self.span,
                                     ))
@@ -261,7 +261,7 @@ impl SelectorExpression {
                                 _ => {
                                     return Err(TransformError::new_incorrect_type(
                                         "Incorrect type in selector",
-                                        "positive integer",
+                                        "integer",
                                         "floating point",
                                         &self.span,
                                     ))
