@@ -1,6 +1,6 @@
 [project]
 name = "cognite-kuiper"
-version = "0.14.3"
+version = "0.15.0"
 description = "A JSON to JSON transform and templating language from Cognite"
 readme = "README.md"
 requires-python = ">=3.10"

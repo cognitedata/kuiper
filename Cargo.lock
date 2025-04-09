@@ -873,7 +873,7 @@ dependencies = [
 
 [[package]]
 name = "kuiper-cli"
-version = "0.14.3"
+version = "0.15.0"
 dependencies = [
  "clap",
  "colored",
@@ -887,7 +887,7 @@ dependencies = [
 
 [[package]]
 name = "kuiper_interop"
-version = "0.14.3"
+version = "0.15.0"
 dependencies = [
  "kuiper_lang",
  "serde_json",
@@ -906,7 +906,7 @@ dependencies = [
 
 [[package]]
 name = "kuiper_js"
-version = "0.14.3"
+version = "0.15.0"
 dependencies = [
  "console_error_panic_hook",
  "gloo-utils",
@@ -918,7 +918,7 @@ dependencies = [
 
 [[package]]
 name = "kuiper_lang"
-version = "0.14.3"
+version = "0.15.0"
 dependencies = [
  "base64",
  "chrono",
@@ -950,7 +950,7 @@ dependencies = [
 
 [[package]]
 name = "kuiper_lang_macros"
-version = "0.14.3"
+version = "0.15.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -959,7 +959,7 @@ dependencies = [
 
 [[package]]
 name = "kuiper_python"
-version = "0.14.3"
+version = "0.15.0"
 dependencies = [
  "kuiper_lang",
  "pyo3",
