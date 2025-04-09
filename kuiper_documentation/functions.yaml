@@ -603,3 +603,11 @@ functions:
       - '"hello".if_value(a => concat(a, " world")) -> "hello world"'
       - 'null.if_value(a => a + 1) -> null'
       - '[1, 2, 3].if_value(a => a[0] + a[1] + a[2]) -> 6'
+
+  - name: parse_json
+    signature: "`parse_json(string)`"
+    description:
+      Parses a string as a JSON object, which can then be used in further transformation.
+      Note that if the passed value is not a string, it will simply be returned as-is.
+    examples:
+      - 'parse_json("{\"a\": 1, \"b\": 2}") -> {"a": 1, "b": 2}'
