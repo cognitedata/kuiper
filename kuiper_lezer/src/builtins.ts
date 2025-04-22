@@ -38,6 +38,7 @@ export const builtIns: KuiperInput[] = [
     { label: "min", description: "`min(a, b)`: Returns the smaller of the two numbers `a` and `b`." },
     { label: "now", description: "`now()`: Returns the current time as a millisecond Unix timestamp, that is, the number of milliseconds since midnight 1/1/1970 UTC." },
     { label: "pairs", description: "`pairs(x)`: Convert the object `x` into a list of key/value pairs." },
+    { label: "parse_json", description: "`parse_json(string)`: Parses a string as a JSON object, which can then be used in further transformation. Note that if the passed value is not a string, it will simply be returned as-is." },
     { label: "pow", description: "`pow(x, y)`: Returns `x` to the power of `y`" },
     { label: "reduce", description: "`reduce(x, (acc, val) => ..., init)`: Returns the value obtained by reducing the list `x`. The lambda function is called once for each element in the list `val`, and the returned value is passed as `acc` in the next iteration. The `init` will be given as the initial `acc` for the first call to the lambda function." },
     { label: "regex_all_captures", description: "`regex_all_captures(haystack, regex)`: Return an array of objects containing all capture groups from each match of the regex in the haystack. Unnamed capture groups are named after their index, so the match itself is always included as capture group `0`. If no match is found, this returns an empty array." },

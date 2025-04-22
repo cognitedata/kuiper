@@ -5,7 +5,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-pub const BUILT_INS: [&str; 57] = [
+pub const BUILT_INS: [&str; 58] = [
     "all(",
     "any(",
     "atan2(",
@@ -36,6 +36,7 @@ pub const BUILT_INS: [&str; 57] = [
     "min(",
     "now(",
     "pairs(",
+    "parse_json(",
     "pow(",
     "reduce(",
     "regex_all_captures(",
@@ -295,6 +296,13 @@ If the value is `null`, the lambda is ignored and `map` returns `null`.",
             FunctionDef {
                 signature: "pairs(x)",
                 description: "Convert the object `x` into a list of key/value pairs.",
+            }
+        ),
+        (
+            "parse_json",
+            FunctionDef {
+                signature: "parse_json(string)",
+                description: "Parses a string as a JSON object, which can then be used in further transformation. Note that if the passed value is not a string, it will simply be returned as-is.",
             }
         ),
         (

@@ -487,6 +487,17 @@ Convert the object `x` into a list of key/value pairs.
 })
 ```
 
+## parse_json
+
+`parse_json(string)`
+
+Parses a string as a JSON object, which can then be used in further transformation. Note that if the passed value is not a string, it will simply be returned as-is.
+
+**Code example**
+```
+parse_json("{\"a\": 1, \"b\": 2}") -> {"a": 1, "b": 2}
+```
+
 ## pow
 
 `pow(x, y)`

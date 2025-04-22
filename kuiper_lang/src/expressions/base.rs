@@ -263,6 +263,7 @@ pub enum FunctionType {
     StartsWith(StartsWithFunction),
     EndsWith(EndsWithFunction),
     IfValue(IfValueFunction),
+    ParseJson(ParseJsonFunction),
 }
 
 struct FunctionBuilder {
@@ -343,6 +344,7 @@ pub fn get_function_expression(
         "starts_with" => FunctionType::StartsWith(b.mk()?),
         "ends_with" => FunctionType::EndsWith(b.mk()?),
         "if_value" => FunctionType::IfValue(b.mk()?),
+        "parse_json" => FunctionType::ParseJson(b.mk()?),
         _ => return Err(BuildError::unrecognized_function(b.pos, name)),
     };
     Ok(ExpressionType::Function(expr))
