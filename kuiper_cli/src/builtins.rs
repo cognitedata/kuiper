@@ -273,15 +273,15 @@ If the value is `null`, the lambda is ignored and `map` returns `null`.",
         (
             "max",
             FunctionDef {
-                signature: "max(a, b)",
-                description: "Returns the larger of the two numbers `a` and `b`.",
+                signature: "max(a, b, ...)",
+                description: "Returns the larger of the given numbers. Can also be used on an array.",
             }
         ),
         (
             "min",
             FunctionDef {
-                signature: "min(a, b)",
-                description: "Returns the smaller of the two numbers `a` and `b`.",
+                signature: "min(a, b, ...)",
+                description: "Returns the smaller of the given numbers. Can also be used on an array.",
             }
         ),
         (
