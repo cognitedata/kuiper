@@ -252,34 +252,20 @@ impl JsonNumber {
     }
 
     /// Get the maximum of two numbers. If both numers are integers, the result will be an integer.
-    /// If one of the numbers is a float, the result will be a float.
     pub fn max(self, other: JsonNumber, span: &Span) -> JsonNumber {
-        let max = if self.cmp(Operator::GreaterThan, other, span) {
+        if self.cmp(Operator::GreaterThan, other, span) {
             self
         } else {
             other
-        };
-
-        if matches!(self, JsonNumber::Float(_)) || matches!(other, JsonNumber::Float(_)) {
-            JsonNumber::Float(max.as_f64())
-        } else {
-            max
         }
     }
 
     /// Get the minimum of two numbers. If both numers are integers, the result will be an integer.
-    /// If one of the numbers is a float, the result will be a float.
     pub fn min(self, other: JsonNumber, span: &Span) -> JsonNumber {
-        let min = if self.cmp(Operator::LessThan, other, span) {
+        if self.cmp(Operator::LessThan, other, span) {
             self
         } else {
             other
-        };
-
-        if matches!(self, JsonNumber::Float(_)) || matches!(other, JsonNumber::Float(_)) {
-            JsonNumber::Float(min.as_f64())
-        } else {
-            min
         }
     }
 
@@ -456,22 +442,22 @@ mod tests {
         let a = JsonNumber::Float(5.0);
         let b = JsonNumber::PosInteger(10);
         match a.max(b, &Span::default()) {
-            JsonNumber::Float(x) => assert_eq!(x, 10.0),
-            _ => panic!("Expected Float"),
+            JsonNumber::PosInteger(x) => assert_eq!(x, 10),
+            _ => panic!("Expected PosInteger"),
         }
 
         let a = JsonNumber::Float(-5.0);
         let b = JsonNumber::PosInteger(10);
         match a.max(b, &Span::default()) {
-            JsonNumber::Float(x) => assert_eq!(x, 10.0),
-            _ => panic!("Expected Float"),
+            JsonNumber::PosInteger(x) => assert_eq!(x, 10),
+            _ => panic!("Expected PosInteger"),
         }
 
         let a = JsonNumber::Float(-5.0);
         let b = JsonNumber::NegInteger(-1);
         match a.max(b, &Span::default()) {
-            JsonNumber::Float(x) => assert_eq!(x, -1.0),
-            _ => panic!("Expected Float"),
+            JsonNumber::NegInteger(x) => assert_eq!(x, -1),
+            _ => panic!("Expected NegInteger"),
         }
     }
 
@@ -508,8 +494,8 @@ mod tests {
         let a = JsonNumber::PosInteger(5);
         let b = JsonNumber::Float(10.0);
         match a.min(b, &Span::default()) {
-            JsonNumber::Float(x) => assert_eq!(x, 5.0),
-            _ => panic!("Expected Float"),
+            JsonNumber::PosInteger(x) => assert_eq!(x, 5),
+            _ => panic!("Expected PosInteger"),
         }
 
         let a = JsonNumber::Float(5.0);
