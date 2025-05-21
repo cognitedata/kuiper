@@ -71,7 +71,7 @@ pub fn pass_through_derive(d: TokenStream) -> TokenStream {
                     })
                     .map(|ex| {
                         let to_exclude: IdentList = ex.parse_args().unwrap();
-                        to_exclude.items.iter().any(|idt| funcname == *idt)
+                        to_exclude.items.contains(&funcname)
                     })
                     .unwrap_or(false);
                 any_excluded |= exclude;

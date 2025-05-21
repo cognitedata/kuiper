@@ -416,24 +416,36 @@ input.data.map(item => {
 
 ## max
 
-`max(a, b)`
+`max(a, b, ...)`
 
-Return the larger of the two numbers `a` and `b`.
+Returns the larger of the given numbers. Can also be used on an array.
 
-**Code example**
+**Code examples**
 ```
 max(1, 2) -> 2
+```
+```
+max(1, 5, 2.0, 6) -> 6.0
+```
+```
+[1, 8, 9, 2, 5, 4].max() -> 9
 ```
 
 ## min
 
-`min(a, b)`
+`min(a, b, ...)`
 
-Return the smaller of the two numbers `a` and `b`.
+Returns the smaller of the given numbers. Can also be used on an array.
 
-**Code example**
+**Code examples**
 ```
 min(1, 2) -> 1
+```
+```
+min(1, 5, 2.0, 6) -> 1.0
+```
+```
+[1, 8, 9, 2, 5, 4].min() -> 1
 ```
 
 ## now
