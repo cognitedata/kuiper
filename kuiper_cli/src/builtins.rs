@@ -78,21 +78,21 @@ lazy_static! {
             "all",
             FunctionDef {
                 signature: "all(x)",
-                description: "Returns `true` if all items in the array `x` is true.",
+                description: "Return `true` if all items in the array `x` is true.",
             }
         ),
         (
             "any",
             FunctionDef {
                 signature: "any(x)",
-                description: "Returns `true` if any items in the array `x` is true.",
+                description: "Return `true` if any items in the array `x` is true.",
             }
         ),
         (
             "atan2",
             FunctionDef {
                 signature: "atan2(x, y)",
-                description: "Returns the inverse tangent of `x`/`y` in radians between -pi and pi.",
+                description: "Return the inverse tangent of `x`/`y` in radians between -pi and pi.",
             }
         ),
         (
@@ -106,21 +106,21 @@ lazy_static! {
             "ceil",
             FunctionDef {
                 signature: "ceil(x)",
-                description: "Returns `x` rounded up to the nearest integer.",
+                description: "Return `x` rounded up to the nearest integer.",
             }
         ),
         (
             "chars",
             FunctionDef {
                 signature: "chars(x)",
-                description: "Creates an array of characters from a string.",
+                description: "Create an array of characters from a string.",
             }
         ),
         (
             "chunk",
             FunctionDef {
                 signature: "chunk(x, s)",
-                description: "Converts the list `x` into several lists of length at most `s`",
+                description: "Convert the list `x` into several lists of length at most `s`",
             }
         ),
         (
@@ -141,7 +141,7 @@ lazy_static! {
             "contains",
             FunctionDef {
                 signature: "contains(x, a)",
-                description: "Returns `true` if the array or string `x` contains item `a`.",
+                description: "Return `true` if the array or string `x` contains item `a`.",
             }
         ),
         (
@@ -155,21 +155,21 @@ lazy_static! {
             "distinct_by",
             FunctionDef {
                 signature: "distinct_by(x, (a(, b)) => ...)",
-                description: "Returns a list or object where the elements are distinct by the returned value of the given lambda function. The lambda function either takes list values, or object (value, key) pairs.",
+                description: "Return a list or object where the elements are distinct by the returned value of the given lambda function. The lambda function either takes list values, or object (value, key) pairs.",
             }
         ),
         (
             "ends_with",
             FunctionDef {
                 signature: "ends_with(item, substring)",
-                description: "Returns `true` if `item` ends with `substring`.",
+                description: "Return `true` if `item` ends with `substring`.",
             }
         ),
         (
             "except",
             FunctionDef {
                 signature: "except(x, (v(, k)) => ...)` or `except(x, l)",
-                description: "Returns a list or object where keys or entries maching the predicate have been removed.
+                description: "Return a list or object where keys or entries maching the predicate have been removed.
 If the second argument is a lambda, it will be given the entry and if it returns `true`, the entry is removed.
 If the second argument is a list, any entry also found in this list will be removed.",
             }
@@ -178,14 +178,14 @@ If the second argument is a list, any entry also found in this list will be remo
             "filter",
             FunctionDef {
                 signature: "filter(x, it => ...)",
-                description: "Removes any item from the list `x` where the lambda function returns `false` or `null`.",
+                description: "Remove any item from the list `x` where the lambda function returns `false` or `null`.",
             }
         ),
         (
             "flatmap",
             FunctionDef {
                 signature: "flatmap(x, it => ...)",
-                description: "Applies the lambda function to every item in the list `x` and flattens the result.
+                description: "Apply the lambda function to every item in the list `x` and flattens the result.
 
 For example, if the lambda function returns a list, the result of the `flatmap` will just be a list instead of a list of lists.",
             }
@@ -194,7 +194,7 @@ For example, if the lambda function returns a list, the result of the `flatmap` 
             "float",
             FunctionDef {
                 signature: "float(x)",
-                description: "Converts `x` into a floating point number if possible. If the conversion fails, the whole mapping will fail.
+                description: "Convert `x` into a floating point number if possible. If the conversion fails, the whole mapping will fail.
 
 Consider using [try_float](#try_float) instead if you need error handling.",
             }
@@ -203,14 +203,14 @@ Consider using [try_float](#try_float) instead if you need error handling.",
             "floor",
             FunctionDef {
                 signature: "floor(x)",
-                description: "Returns `x` rounded down to the nearest integer.",
+                description: "Return `x` rounded down to the nearest integer.",
             }
         ),
         (
             "format_timestamp",
             FunctionDef {
                 signature: "format_timestamp(x, f)",
-                description: "Converts the Unix timestamp `x` into a string representation based on the format `f`.
+                description: "Convert the Unix timestamp `x` into a string representation based on the format `f`.
 
 The format is given using the table found [here](https://docs.rs/chrono/latest/chrono/format/strftime/index.html).",
             }
@@ -219,21 +219,21 @@ The format is given using the table found [here](https://docs.rs/chrono/latest/c
             "if",
             FunctionDef {
                 signature: "if(x, y, (z))",
-                description: "Returns `y` if `x` evaluates to `true`, otherwise return `z`, or `null` if `z` is omitted.",
+                description: "Return `y` if `x` evaluates to `true`, otherwise return `z`, or `null` if `z` is omitted.",
             }
         ),
         (
             "if_value",
             FunctionDef {
                 signature: "if_value(item, item => ...)",
-                description: "Maps a value using a lambda if the value is not null. This is useful if you need to combine parts of some complex object or result of a longer calculation.",
+                description: "Map a value using a lambda if the value is not null. This is useful if you need to combine parts of some complex object or result of a longer calculation.",
             }
         ),
         (
             "int",
             FunctionDef {
                 signature: "int(x)",
-                description: "Converts `x` into an integer if possible. If the conversion fails, the whole mapping will fail.
+                description: "Convert `x` into an integer if possible. If the conversion fails, the whole mapping will fail.
 
 Consider using [try_int](#try_int) instead if you need error handling.",
             }
@@ -242,28 +242,28 @@ Consider using [try_int](#try_int) instead if you need error handling.",
             "join",
             FunctionDef {
                 signature: "join(a, b, ...)",
-                description: "Returns the union of the given objects or arrays. If a key is present in multiple objects, each instance of the key is overwritten by later objects. Arrays are simply merged.",
+                description: "Return the union of the given objects or arrays. If a key is present in multiple objects, each instance of the key is overwritten by later objects. Arrays are simply merged.",
             }
         ),
         (
             "length",
             FunctionDef {
                 signature: "length(x)",
-                description: "Returns the length on the list, string or object `x`.",
+                description: "Return the length on the list, string or object `x`.",
             }
         ),
         (
             "log",
             FunctionDef {
                 signature: "log(x, y)",
-                description: "Returns the base `y` logarithm of `x`.",
+                description: "Return the base `y` logarithm of `x`.",
             }
         ),
         (
             "map",
             FunctionDef {
                 signature: "map(x, (it(, index)) => ...)",
-                description: "Applies the lambda function to every item in the list `x`. The lambda takes an optional second input which is the index of the item in the list.
+                description: "Apply the lambda function to every item in the list `x`. The lambda takes an optional second input which is the index of the item in the list.
 
 If applied to an object, the first input is the value, and the second is the key. The result is the new value.
 
@@ -288,7 +288,7 @@ If the value is `null`, the lambda is ignored and `map` returns `null`.",
             "now",
             FunctionDef {
                 signature: "now()",
-                description: "Returns the current time as a millisecond Unix timestamp, that is, the number of milliseconds since midnight 1/1/1970 UTC.",
+                description: "Return the current time as a millisecond Unix timestamp, that is, the number of milliseconds since midnight 1/1/1970 UTC.",
             }
         ),
         (
@@ -302,21 +302,21 @@ If the value is `null`, the lambda is ignored and `map` returns `null`.",
             "parse_json",
             FunctionDef {
                 signature: "parse_json(string)",
-                description: "Parses a string as a JSON object, which can then be used in further transformation. Note that if the passed value is not a string, it will simply be returned as-is.",
+                description: "Parse a string as a JSON object, which can be used in further transformations. If the passed value isn't a string, it's returned as-is.",
             }
         ),
         (
             "pow",
             FunctionDef {
                 signature: "pow(x, y)",
-                description: "Returns `x` to the power of `y`",
+                description: "Return `x` to the power of `y`",
             }
         ),
         (
             "reduce",
             FunctionDef {
                 signature: "reduce(x, (acc, val) => ..., init)",
-                description: "Returns the value obtained by reducing the list `x`. The lambda function is called once for each element in the list `val`, and the returned value is passed as `acc` in the next iteration. The `init` will be given as the initial `acc` for the first call to the lambda function.",
+                description: "Return the value obtained by reducing the list `x`. The lambda function is called once for each element in the list `val`, and the returned value is passed as `acc` in the next iteration. The `init` will be given as the initial `acc` for the first call to the lambda function.",
             }
         ),
         (
@@ -331,7 +331,7 @@ See [regex_is_match](#regex_is_match) for details on regex support.",
             "regex_all_matches",
             FunctionDef {
                 signature: "regex_all_matches(haystack, regex)",
-                description: "Return an array of all the substrings that match the regex. If no match is found, this returns an empty array. Prefer [regex_first_match](#regex_first_match) if all you need is the first match.
+                description: "Return an array of all the substrings that match the regex. If no match is found, this returns an empty array. If you only need the first match, use [regex_first_match](#regex_first_match).
 See [regex_is_match](#regex_is_match) for details on regex support.",
             }
         ),
@@ -356,14 +356,14 @@ See [regex_is_match](#regex_is_match) for details on regex support.",
             FunctionDef {
                 signature: "regex_is_match(haystack, regex)",
                 description: "Return `true` if the haystack matches the regex. Prefer this over the other regex methods if you only need to check for the presence of a match.
-Note that we support a limited form of regex without certain complex features like backreferences and look-around. See [here](https://docs.rs/regex/1.11.0/regex/index.html#syntax) for a detailed overview of all the available regex syntax. We recommend using [regex101](https://regex101.com/) with the mode set to `rust` for debugging regex.",
+We support a limited form of regex without certain complex features, such as backreferences and look-around. See [all the available regex syntax](https://docs.rs/regex/1.11.0/regex/index.html#syntax). We recommend using [regex101](https://regex101.com/) with the mode set to `rust` for debugging regex.",
             }
         ),
         (
             "regex_replace",
             FunctionDef {
                 signature: "regex_replace(haystack, regex, replace)",
-                description: "Replace the first occurence of the regex in the haystack. The replace object supports referencing capture groups using either the index (`$1`) or the name (`$group`). Use `$$` if you need a literal `$` symbol. `${group}` is equivalent to `$group` but lets you specify the group name exactly.
+                description: "Replace the first occurrence of the regex in the haystack. The replace object supports referencing capture groups using either the index (`$1`) or the name (`$group`). Use `$$` if you need a literal `$` symbol. `${group}` is equivalent to `$group` but lets you specify the group name exactly.
 See [regex_is_match](#regex_is_match) for details on regex support.",
             }
         ),
@@ -371,7 +371,7 @@ See [regex_is_match](#regex_is_match) for details on regex support.",
             "regex_replace_all",
             FunctionDef {
                 signature: "regex_replace_all(haystack, regex, replace)",
-                description: "Replace each occurence of the regex in the haystack. See [regex_replace](#regex_replace) for details.",
+                description: "Replace each occurrence of the regex in the haystack. See [regex_replace](#regex_replace) for details.",
             }
         ),
         (
@@ -385,42 +385,42 @@ See [regex_is_match](#regex_is_match) for details on regex support.",
             "round",
             FunctionDef {
                 signature: "round(x)",
-                description: "Returns `x` rounded to the nearest integer.",
+                description: "Return `x` rounded to the nearest integer.",
             }
         ),
         (
             "select",
             FunctionDef {
                 signature: "select(x, (v(, k)) => ...)` or `select(x, [1, 2, 3])",
-                description: "Returs a list or object where the lambda returns true. If the second argument is a list, the list values or object keys found in that list are used to select from the source.",
+                description: "Return a list or object where the lambda returns true. If the second argument is a list, the list values or object keys found in that list are used to select from the source.",
             }
         ),
         (
             "slice",
             FunctionDef {
                 signature: "slice(x, start(, end))",
-                description: "Creates a sub-array from an array `x` from `start` to `end`. If `end is not specified, go from `start` the end of the array. If `start` or `end` are negative, count from the end of the array.",
+                description: "Create a sub-array from an array `x` from `start` to `end`. If `end is not specified, go from `start` the end of the array. If `start` or `end` are negative, count from the end of the array.",
             }
         ),
         (
             "split",
             FunctionDef {
                 signature: "split(a, b)",
-                description: "Splits string `a` on any occurences of `b`. If `b` is an empty string, this will split on each character, including before the first and after the last.",
+                description: "Split string `a` on any occurences of `b`. If `b` is an empty string, this will split on each character, including before the first and after the last.",
             }
         ),
         (
             "starts_with",
             FunctionDef {
                 signature: "starts_with(item, substring)",
-                description: "Returns `true` if `item` starts with `substring`.",
+                description: "Return `true` if `item` starts with `substring`.",
             }
         ),
         (
             "string",
             FunctionDef {
                 signature: "string(x)",
-                description: "Converts `x` into a string.
+                description: "Convert `x` into a string.
 
 `null`s will be converted into empty strings.",
             }
@@ -429,35 +429,35 @@ See [regex_is_match](#regex_is_match) for details on regex support.",
             "string_join",
             FunctionDef {
                 signature: "string_join(x(, a))",
-                description: "Returns a string with all the elements of `x`, separated by `a`. If `a` is omitted, the strings will be joined without any separator.",
+                description: "Return a string with all the elements of `x`, separated by `a`. If `a` is omitted, the strings will be joined without any separator.",
             }
         ),
         (
             "substring",
             FunctionDef {
                 signature: "substring(x, start(, end))",
-                description: "Creates a substring of an input string `x` from `start` to `end`. If `end` is not specified, go from `start` to end of string. If `start` or `end` are negative, count from the end of the string.",
+                description: "Create a substring of an input string `x` from `start` to `end`. If `end` is not specified, go from `start` to end of string. If `start` or `end` are negative, count from the end of the string.",
             }
         ),
         (
             "sum",
             FunctionDef {
                 signature: "sum(x)",
-                description: "Sums the numbers in the array `x`.",
+                description: "Sum the numbers in the array `x`.",
             }
         ),
         (
             "tail",
             FunctionDef {
                 signature: "tail(x(, n))",
-                description: "Takes the last element of the list `x`. If `n` is given, takes the last `n` elements, and returns a list if `n` > 1.",
+                description: "Take the last element of the list `x`. If `n` is given, takes the last `n` elements, and returns a list if `n` > 1.",
             }
         ),
         (
             "to_object",
             FunctionDef {
                 signature: "to_object(x, val => ...(, val => ...))",
-                description: "Converts the array `x` into an object by producing the key and value from two lambdas.
+                description: "Convert the array `x` into an object by producing the key and value from two lambdas.
 
 The first lambda produces the key, and the second (optional) produces the value. If the second is
 left out, the input is used as a value directly.",
@@ -467,7 +467,7 @@ left out, the input is used as a value directly.",
             "to_unix_timestamp",
             FunctionDef {
                 signature: "to_unix_timestamp(x, f)",
-                description: "Converts the string `x` into a millisecond Unix timestamp using the format string `f`.
+                description: "Convert the string `x` into a millisecond Unix timestamp using the format string `f`.
 
 The format is given using the table found [here](https://docs.rs/chrono/latest/chrono/format/strftime/index.html).",
             }
@@ -476,7 +476,7 @@ The format is given using the table found [here](https://docs.rs/chrono/latest/c
             "trim_whitespace",
             FunctionDef {
                 signature: "trim_whitespace(x)",
-                description: "Removes any whitespace from the start and end of `x`",
+                description: "Remove any whitespace from the start and end of `x`",
             }
         ),
         (
@@ -504,7 +504,7 @@ The format is given using the table found [here](https://docs.rs/chrono/latest/c
             "zip",
             FunctionDef {
                 signature: "zip(x, y, ..., (i1, i2, ...) => ...)",
-                description: "Takes a number of arrays, call the given lambda function on each entry, and return a single array from the result of each call. The returned array will be as long as the longest argument, null will be given for the shorter input arrays when they run out.",
+                description: "Take a number of arrays, call the given lambda function on each entry, and return a single array from the result of each call. The returned array will be as long as the longest argument, null will be given for the shorter input arrays when they run out.",
             }
         ),
     ]);
