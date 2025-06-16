@@ -1,9 +1,13 @@
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
 use logos::Span;
 use serde_json::{Map, Value};
 
-use crate::{compiler::BuildError, write_list, TransformError};
+use crate::{
+    compiler::BuildError,
+    expressions::types::{Object, ObjectField, Type},
+    write_list, TransformError,
+};
 
 use super::{base::ExpressionMeta, Expression, ExpressionType, ResolveResult};
 
@@ -77,6 +81,57 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ObjectExpression {
             }
         }
         Ok(ResolveResult::Owned(Value::Object(output)))
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut super::types::TypeExecutionState<'c, '_>,
+    ) -> Result<super::types::Type, super::types::TypeError> {
+        let mut output = HashMap::with_capacity(self.items.len());
+        for k in self.items.iter() {
+            match k {
+                ObjectElement::Pair(key, value) => {
+                    let key_type = key.resolve_types(state)?;
+                    let value_type = value.resolve_types(state)?;
+                    key_type.assert_assignable_to(
+                        &Type::String
+                            .union_with(Type::number())
+                            .union_with(Type::Boolean)
+                            .union_with(Type::null()),
+                        &self.span,
+                    )?;
+                    if let Type::Constant(Value::String(key_str)) = key_type {
+                        output.insert(ObjectField::Constant(key_str), value_type);
+                    } else {
+                        if let Some(old) = output.remove(&ObjectField::Generic) {
+                            output.insert(ObjectField::Generic, old.union_with(value_type));
+                        } else {
+                            output.insert(ObjectField::Generic, value_type);
+                        }
+                    }
+                }
+                ObjectElement::Concat(x) => {
+                    let conc_type = x.resolve_types(state)?;
+                    let conc_obj = conc_type.try_as_object(&self.span)?;
+                    for (k, v) in conc_obj.fields {
+                        match k {
+                            ObjectField::Constant(key_str) => {
+                                output.insert(ObjectField::Constant(key_str), v);
+                            }
+                            ObjectField::Generic => {
+                                if let Some(old) = output.remove(&ObjectField::Generic) {
+                                    output.insert(ObjectField::Generic, old.union_with(v));
+                                } else {
+                                    output.insert(ObjectField::Generic, v);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(Type::Object(Object { fields: output }))
     }
 }
 

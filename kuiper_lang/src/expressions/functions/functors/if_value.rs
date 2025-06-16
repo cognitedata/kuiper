@@ -2,6 +2,7 @@ use serde_json::Value;
 
 use crate::{
     expressions::{functions::LambdaAcceptFunction, Expression, ResolveResult},
+    types::Type,
     BuildError,
 };
 
@@ -20,6 +21,30 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IfValueFunction {
 
         let res = self.args[1].call(state, &[source.as_ref()])?.into_owned();
         Ok(ResolveResult::Owned(res))
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let source = self.args[0].resolve_types(state)?;
+        if source.is_null() {
+            return Ok(crate::types::Type::null());
+        }
+        // Remove null from the type, if present
+        let source = match source {
+            Type::Union(u) => {
+                Type::Union(u.into_iter().filter(|t| !t.is_null()).collect::<Vec<_>>())
+            }
+            r => r,
+        };
+
+        if source.is_never() {
+            return Ok(crate::types::Type::null());
+        }
+
+        let res = self.args[1].call_types(state, &[&source])?;
+        Ok(res)
     }
 }
 

@@ -3,7 +3,11 @@ use logos::Span;
 use serde_json::Value;
 use std::fmt::Display;
 
-use crate::{compiler::BuildError, NULL_CONST};
+use crate::{
+    compiler::BuildError,
+    expressions::types::{Type, TypeError, TypeExecutionState},
+    NULL_CONST,
+};
 
 use self::objects::ToObjectFunction;
 
@@ -191,6 +195,18 @@ pub trait Expression<'a: 'c, 'c>: Display {
     ) -> Result<ResolveResult<'c>, TransformError> {
         self.resolve(state)
     }
+
+    fn resolve_types(&'a self, _state: &mut TypeExecutionState<'c, '_>) -> Result<Type, TypeError> {
+        Ok(Type::Any)
+    }
+
+    fn call_types(
+        &'a self,
+        _state: &mut TypeExecutionState<'c, '_>,
+        _values: &[&Type],
+    ) -> Result<Type, TypeError> {
+        self.resolve_types(_state)
+    }
 }
 
 /// Additional trait for expressions, separate from Expression to make it easier to implement in macros
@@ -205,6 +221,8 @@ pub trait ExpressionMeta {
 #[pass_through(fn call(&'a self, state: &mut ExpressionExecutionState<'c, '_>, _values: &[&Value]) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn get_is_deterministic(&self) -> bool, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_>, "", ExpressionMeta)]
+#[pass_through(fn resolve_types(&'a self, state: &mut TypeExecutionState<'c, '_>) -> Result<Type, TypeError>, "", Expression<'a, 'c>, where 'a: 'c)]
+#[pass_through(fn call_types(&'a self, state: &mut TypeExecutionState<'c, '_>, _values: &[&Type]) -> Result<Type, TypeError>, "", Expression<'a, 'c>, where 'a: 'c)]
 pub enum FunctionType {
     Pow(PowFunction),
     Log(LogFunction),
@@ -358,6 +376,8 @@ pub fn get_function_expression(
 #[pass_through(fn get_is_deterministic(&self) -> bool, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn call(&'a self, state: &mut ExpressionExecutionState<'c, '_>, _values: &[&Value]) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_>, "", ExpressionMeta)]
+#[pass_through(fn resolve_types(&'a self, state: &mut TypeExecutionState<'c, '_>) -> Result<Type, TypeError>, "", Expression<'a, 'c>, where 'a: 'c)]
+#[pass_through(fn call_types(&'a self, state: &mut TypeExecutionState<'c, '_>, _values: &[&Type]) -> Result<Type, TypeError>, "", Expression<'a, 'c>, where 'a: 'c)]
 pub enum ExpressionType {
     Constant(Constant),
     Operator(OpExpression),
@@ -383,7 +403,19 @@ impl ExpressionType {
         self.run_limited(data, -1)
     }
 
-    /// Run the expression. Takes a list of values.
+    /// Run the expression. Takes a list of values. Also performs type checking.
+    pub fn run_types<'a: 'c, 'c>(
+        &'a self,
+        data: impl IntoIterator<Item = Type>,
+    ) -> Result<Type, TypeError> {
+        let data_owned = data.into_iter().collect::<Vec<_>>();
+        let data = data_owned.iter().collect::<Vec<_>>();
+        let mut state = TypeExecutionState::new(&data);
+        self.resolve_types(&mut state)
+    }
+
+    /// Run the expression. Takes a list of values and a chunk_id, the id is just used for
+    /// errors and logging.
     ///
     /// * `data` - An iterator over the inputs to the expression. The count must match the count provided when the expression was compiled
     /// * `max_operation_count` - The maximum number of operations performed by the program. This is a rough estimate of the complexity of
@@ -460,6 +492,10 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for Constant {
     ) -> Result<ResolveResult<'c>, TransformError> {
         state.inc_op()?;
         Ok(ResolveResult::Borrowed(&self.val))
+    }
+
+    fn resolve_types(&'a self, _state: &mut TypeExecutionState<'c, '_>) -> Result<Type, TypeError> {
+        Ok(Type::from_const(self.val.clone()))
     }
 }
 

@@ -3,7 +3,8 @@ use serde_json::{Number, Value};
 
 use crate::{
     expressions::{numbers::JsonNumber, Expression, ResolveResult},
-    TransformError,
+    types::{Type, TypeError},
+    ExpressionType, TransformError,
 };
 
 /// Macro that creates a math function of the type `my_float.func(arg)`, which becomes `func(my_float, arg)`
@@ -44,6 +45,18 @@ macro_rules! arg2_math_func {
                     )?),
                 ))
             }
+
+            fn resolve_types(
+                &'a self,
+                state: &mut $crate::types::TypeExecutionState<'c, '_>,
+            ) -> Result<$crate::types::Type, $crate::types::TypeError> {
+                for arg in &self.args {
+                    let arg = arg.resolve_types(state)?;
+                    arg.assert_assignable_to(&$crate::types::Type::number(), &self.span)?;
+                }
+
+                Ok($crate::types::Type::Float)
+            }
         }
     };
 }
@@ -81,6 +94,17 @@ macro_rules! arg1_math_func {
                         )
                     })?),
                 ))
+            }
+
+            fn resolve_types(
+                &'a self,
+                state: &mut $crate::types::TypeExecutionState<'c, '_>,
+            ) -> Result<$crate::types::Type, $crate::types::TypeError> {
+                let arg = self.args[0].resolve_types(state)?;
+                arg.assert_assignable_to(
+                    &$crate::types::Type::number(), &self.span
+                )?;
+                Ok($crate::types::Type::Float)
             }
         }
     };
@@ -162,6 +186,20 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IntFunction {
         };
         Ok(ResolveResult::Owned(res))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let arg = self.args[0].resolve_types(state)?;
+        arg.assert_assignable_to(
+            &Type::number()
+                .union_with(Type::String)
+                .union_with(Type::Boolean),
+            &self.span,
+        )?;
+        Ok(Type::Integer)
+    }
 }
 
 function_def!(FloatFunction, "float", 1);
@@ -207,6 +245,21 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FloatFunction {
         Ok(ResolveResult::Owned(Value::Number(
             Number::from_f64(res).unwrap_or_else(|| Number::from_f64(0.0).unwrap()),
         )))
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let arg = self.args[0].resolve_types(state)?;
+        arg.assert_assignable_to(
+            &Type::number()
+                .union_with(Type::String)
+                .union_with(Type::Boolean)
+                .union_with(Type::null()),
+            &self.span,
+        )?;
+        Ok(Type::Float)
     }
 }
 
@@ -275,6 +328,33 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for MaxFunction {
             },
         )?))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let args = flatten_type_args(&self.args, state, &self.span)?;
+
+        for arg in args {
+            arg.assert_assignable_to(&Type::number(), &self.span)?;
+        }
+
+        Ok(Type::number())
+    }
+}
+
+fn flatten_type_args<'a: 'c, 'c>(
+    args: &'a [ExpressionType],
+    state: &mut crate::types::TypeExecutionState<'c, '_>,
+    span: &'a Span,
+) -> Result<Vec<Type>, TypeError> {
+    if args.len() == 1 {
+        let ty = args[0].resolve_types(state)?;
+        if let Ok(arr) = ty.try_as_array(&span) {
+            return Ok(arr.all_elements().map(|x| x.clone()).collect());
+        }
+    }
+    return args.iter().map(|x| x.resolve_types(state)).collect();
 }
 
 function_def!(MinFunction, "min", 1, None);
@@ -310,6 +390,19 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for MinFunction {
                 )
             },
         )?))
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let args = flatten_type_args(&self.args, state, &self.span)?;
+
+        for arg in args {
+            arg.assert_assignable_to(&Type::number(), &self.span)?;
+        }
+
+        Ok(Type::number())
     }
 }
 

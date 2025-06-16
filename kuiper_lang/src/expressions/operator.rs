@@ -3,7 +3,10 @@ use std::fmt::Display;
 use logos::Span;
 use serde_json::Value;
 
-use crate::compiler::BuildError;
+use crate::{
+    compiler::BuildError,
+    expressions::types::{Truthy, Type},
+};
 
 use super::{
     base::{Expression, ExpressionExecutionState, ExpressionMeta, ExpressionType},
@@ -117,6 +120,73 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
                 ),
                 &self.span,
             ))
+        }
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut super::types::TypeExecutionState<'c, '_>,
+    ) -> Result<super::types::Type, super::types::TypeError> {
+        let lh = self.elements[0].resolve_types(state)?;
+        let rh = self.elements[1].resolve_types(state)?;
+        match self.operator {
+            Operator::Plus | Operator::Minus | Operator::Multiply | Operator::Modulo => {
+                lh.assert_assignable_to(&Type::number(), &self.span)?;
+                rh.assert_assignable_to(&Type::number(), &self.span)?;
+
+                if lh.is_integer() && rh.is_integer() {
+                    Ok(Type::Integer)
+                } else if lh.is_float() || rh.is_float() {
+                    Ok(Type::Float)
+                } else {
+                    Ok(Type::number())
+                }
+            }
+            Operator::Divide => {
+                lh.assert_assignable_to(&Type::number(), &self.span)?;
+                rh.assert_assignable_to(&Type::number(), &self.span)?;
+
+                Ok(Type::number())
+            }
+            Operator::And => {
+                let lh = lh.truthyness();
+                let rh = rh.truthyness();
+                match (lh, rh) {
+                    (Truthy::Always, Truthy::Always) => Ok(Type::from(true)),
+                    (Truthy::Never, _) | (_, Truthy::Never) => Ok(Type::from(false)),
+                    _ => Ok(Type::Boolean),
+                }
+            }
+            Operator::Or => {
+                let lh = lh.truthyness();
+                let rh = rh.truthyness();
+                match (lh, rh) {
+                    (Truthy::Always, _) | (_, Truthy::Always) => Ok(Type::from(true)),
+                    (Truthy::Never, Truthy::Never) => Ok(Type::from(false)),
+                    _ => Ok(Type::Boolean),
+                }
+            }
+            Operator::Equals => {
+                if !lh.is_assignable_to(&rh) {
+                    return Ok(Type::from(false));
+                }
+                Ok(Type::Boolean)
+            }
+            Operator::NotEquals => {
+                if !lh.is_assignable_to(&rh) {
+                    return Ok(Type::from(true));
+                }
+                Ok(Type::Boolean)
+            }
+            Operator::GreaterThan
+            | Operator::LessThan
+            | Operator::GreaterThanEquals
+            | Operator::LessThanEquals => {
+                lh.assert_assignable_to(&Type::number(), &self.span)?;
+                rh.assert_assignable_to(&Type::number(), &self.span)?;
+                Ok(Type::Boolean)
+            }
+            Operator::Is => Ok(Type::Boolean),
         }
     }
 }
@@ -289,6 +359,33 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for UnaryOpExpression {
                     // This being option shouldn't be possible. We should never be able to get a NaN here.
                     val.neg().try_into_json().unwrap_or_default(),
                 ))
+            }
+        }
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut super::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, super::types::TypeError> {
+        let rhs = self.element.resolve_types(state)?;
+        match self.operator {
+            UnaryOperator::Negate => {
+                let rhs = rhs.truthyness();
+                match rhs {
+                    Truthy::Always => Ok(Type::from(false)),
+                    Truthy::Never => Ok(Type::from(true)),
+                    Truthy::Maybe => Ok(Type::Boolean),
+                }
+            }
+            UnaryOperator::Minus => {
+                rhs.assert_assignable_to(&Type::number(), &self.span)?;
+                if matches!(rhs, Type::Integer) {
+                    Ok(Type::Integer)
+                } else if matches!(rhs, Type::Float) {
+                    Ok(Type::Float)
+                } else {
+                    Ok(Type::number())
+                }
             }
         }
     }

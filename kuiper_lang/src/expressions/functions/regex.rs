@@ -2,6 +2,7 @@ use serde_json::{Map, Value};
 
 use crate::expressions::functions::FunctionExpression;
 use crate::expressions::{Expression, ResolveResult};
+use crate::types::{Object, ObjectField, Sequence, Type};
 use crate::NULL_CONST;
 
 macro_rules! regex_function {
@@ -98,6 +99,17 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexIsMatchFunction {
         let arg = arg.try_as_string(Self::INFO.name, &self.span)?;
         Ok(ResolveResult::Owned(self.re.is_match(arg.as_ref()).into()))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        for arg in &self.args {
+            arg.resolve_types(state)?
+                .assert_assignable_to(&Type::String, &self.span)?;
+        }
+        Ok(crate::types::Type::Boolean)
+    }
 }
 
 regex_function!(RegexFirstMatchFunction, "regex_first_match", 1);
@@ -115,6 +127,17 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexFirstMatchFunction {
             None => Value::Null,
         }))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        for arg in &self.args {
+            arg.resolve_types(state)?
+                .assert_assignable_to(&Type::String, &self.span)?;
+        }
+        Ok(crate::types::Type::String)
+    }
 }
 
 regex_function!(RegexAllMatchesFunction, "regex_all_matches", 1);
@@ -130,6 +153,20 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexAllMatchesFunction {
         Ok(ResolveResult::Owned(Value::Array(
             m.map(|m| Value::String(m.as_str().to_owned())).collect(),
         )))
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        for arg in &self.args {
+            arg.resolve_types(state)?
+                .assert_assignable_to(&Type::String, &self.span)?;
+        }
+        Ok(crate::types::Type::Sequence(Sequence {
+            elements: vec![],
+            end_dynamic: Some(Box::new(Type::String)),
+        }))
     }
 }
 
@@ -161,6 +198,32 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexFirstCapturesFunction {
             })
             .collect();
         Ok(ResolveResult::Owned(Value::Object(v)))
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        for arg in &self.args {
+            arg.resolve_types(state)?
+                .assert_assignable_to(&Type::String, &self.span)?;
+        }
+
+        let output = self
+            .re
+            .capture_names()
+            .enumerate()
+            .map(|(idx, name)| {
+                (
+                    ObjectField::Constant(
+                        name.map(|n| n.to_owned())
+                            .unwrap_or_else(|| idx.to_string()),
+                    ),
+                    Type::String.union_with(Type::null()),
+                )
+            })
+            .collect();
+        Ok(Type::Object(Object { fields: output }).union_with(Type::null()))
     }
 }
 
@@ -197,6 +260,36 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexAllCapturesFunction {
 
         Ok(ResolveResult::Owned(Value::Array(res)))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        for arg in &self.args {
+            arg.resolve_types(state)?
+                .assert_assignable_to(&Type::String, &self.span)?;
+        }
+
+        let output = self
+            .re
+            .capture_names()
+            .enumerate()
+            .map(|(idx, name)| {
+                (
+                    ObjectField::Constant(
+                        name.map(|n| n.to_owned())
+                            .unwrap_or_else(|| idx.to_string()),
+                    ),
+                    Type::String.union_with(Type::null()),
+                )
+            })
+            .collect();
+        let obj_type = Type::Object(Object { fields: output });
+        Ok(Type::Sequence(Sequence {
+            end_dynamic: Some(Box::new(obj_type)),
+            elements: vec![],
+        }))
+    }
 }
 
 regex_function!(RegexReplaceFunction, "regex_replace", 2);
@@ -213,6 +306,18 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexReplaceFunction {
 
         let r = self.re.replace(arg.as_ref(), repl.as_ref()).into_owned();
         Ok(ResolveResult::Owned(Value::String(r)))
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        for arg in &self.args {
+            arg.resolve_types(state)?
+                .assert_assignable_to(&Type::String, &self.span)?;
+        }
+
+        Ok(Type::String)
     }
 }
 
@@ -233,6 +338,18 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexReplaceAllFunction {
             .replace_all(arg.as_ref(), repl.as_ref())
             .into_owned();
         Ok(ResolveResult::Owned(Value::String(r)))
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        for arg in &self.args {
+            arg.resolve_types(state)?
+                .assert_assignable_to(&Type::String, &self.span)?;
+        }
+
+        Ok(Type::String)
     }
 }
 

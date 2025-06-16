@@ -2,6 +2,7 @@ use serde_json::Value;
 
 use crate::{
     expressions::{functions::LambdaAcceptFunction, Expression, ResolveResult},
+    types::Type,
     BuildError, TransformError,
 };
 
@@ -37,6 +38,68 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FlatMapFunction {
                 &self.span,
             )),
         }
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let input = self.args[0].resolve_types(state)?;
+        let input_seq = input.try_as_array(&self.span)?;
+        let mut out = Vec::with_capacity(input_seq.elements.len());
+        let mut end_dynamic: Option<Type> = None;
+        for arg in input_seq.elements {
+            let res = self.args[1].call_types(state, &[&arg])?;
+            if let Ok(res_seq) = res.try_as_array(&self.span) {
+                if let Some(dynamic) = end_dynamic {
+                    let mut dyn_res = dynamic;
+                    if let Some(dy) = res_seq.end_dynamic {
+                        dyn_res = dyn_res.union_with(*dy);
+                    }
+                    for ty in res_seq.elements {
+                        dyn_res = dyn_res.union_with(ty);
+                    }
+                    end_dynamic = Some(dyn_res);
+                } else {
+                    out.extend(res_seq.elements);
+                }
+            } else {
+                if let Some(dynamic) = end_dynamic {
+                    end_dynamic = Some(dynamic.union_with(arg));
+                } else {
+                    out.push(arg);
+                }
+            }
+        }
+        if let Some(ty) = input_seq.end_dynamic {
+            let res = self.args[1].call_types(state, &[&*ty])?;
+            let mut l_dynamic = if let Some(dynamic) = end_dynamic {
+                dynamic
+            } else {
+                Type::never()
+            };
+
+            if let Ok(res_seq) = res.try_as_array(&self.span) {
+                for ty in res_seq.elements {
+                    l_dynamic = l_dynamic.union_with(ty);
+                }
+                if let Some(dy) = res_seq.end_dynamic {
+                    l_dynamic = l_dynamic.union_with(*dy);
+                }
+            } else {
+                l_dynamic = l_dynamic.union_with(res);
+            }
+            if !l_dynamic.is_never() {
+                end_dynamic = Some(l_dynamic);
+            } else {
+                end_dynamic = None;
+            }
+        }
+
+        Ok(crate::types::Type::Sequence(crate::types::Sequence {
+            elements: out,
+            end_dynamic: end_dynamic.map(Box::new),
+        }))
     }
 }
 

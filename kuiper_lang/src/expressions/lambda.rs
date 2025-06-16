@@ -58,6 +58,23 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for LambdaExpression {
         let r = self.expr.resolve(&mut state)?;
         Ok(ResolveResult::Owned(r.into_owned()))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut super::types::TypeExecutionState<'c, '_>,
+    ) -> Result<super::types::Type, super::types::TypeError> {
+        self.expr.resolve_types(state)
+    }
+
+    fn call_types(
+        &'a self,
+        state: &mut super::types::TypeExecutionState<'c, '_>,
+        values: &[&super::types::Type],
+    ) -> Result<super::types::Type, super::types::TypeError> {
+        let mut inner = state.get_temporary_clone(values.iter().copied(), self.input_names.len());
+        let mut state = inner.get_temp_state();
+        self.expr.resolve_types(&mut state)
+    }
 }
 
 impl ExpressionMeta for LambdaExpression {

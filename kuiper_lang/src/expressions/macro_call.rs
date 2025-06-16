@@ -55,6 +55,18 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for MacroCallExpression {
             .collect_vec();
         self.inner.call(state, &refs)
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut super::types::TypeExecutionState<'c, '_>,
+    ) -> Result<super::types::Type, super::types::TypeError> {
+        let mut args = Vec::with_capacity(self.args.len());
+        for a in &self.args {
+            args.push(a.resolve_types(state)?);
+        }
+        let refs = args.iter().collect_vec();
+        self.inner.call_types(state, &refs)
+    }
 }
 
 impl ExpressionMeta for MacroCallExpression {

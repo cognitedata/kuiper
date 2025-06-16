@@ -2,7 +2,11 @@ use std::fmt::Display;
 
 use serde_json::{Map, Value};
 
-use crate::{compiler::BuildError, NULL_CONST};
+use crate::{
+    compiler::BuildError,
+    expressions::types::{Type, TypeError},
+    NULL_CONST,
+};
 
 use super::{
     base::{Expression, ExpressionExecutionState, ExpressionMeta, ExpressionType},
@@ -89,6 +93,41 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SelectorExpression {
                 }
             }
         }
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut super::types::TypeExecutionState<'c, '_>,
+    ) -> Result<super::types::Type, super::types::TypeError> {
+        let ty = match &self.source {
+            SourceElement::CompiledInput(i) => state.get_type(*i).cloned().unwrap_or(Type::null()),
+            SourceElement::Expression(e) => e.resolve_types(state)?,
+        };
+
+        let mut elem = ty;
+        for p in &self.path {
+            if matches!(elem, Type::Any) {
+                return Ok(Type::Any);
+            }
+            elem = match p {
+                SelectorElement::Constant(x, _) => {
+                    let Ok(obj_ty) = elem.try_as_object(&self.span) else {
+                        return Ok(Type::null());
+                    };
+                    let Some(inner) = obj_ty.index_into(x.as_str()) else {
+                        return Ok(Type::null());
+                    };
+                    inner
+                }
+                SelectorElement::Expression(e) => {
+                    let val = e.resolve_types(state)?;
+                    println!("Selector expression resolved to type: {val}");
+
+                    Self::resolve_type_field(val, elem, &self.span)?
+                }
+            };
+        }
+        Ok(elem)
     }
 }
 
@@ -282,6 +321,109 @@ impl SelectorExpression {
             };
         }
         Ok(ResolveResult::Owned(elem))
+    }
+
+    fn resolve_type_field(
+        selector: Type,
+        select_from: Type,
+        span: &Span,
+    ) -> Result<Type, TypeError> {
+        Ok(match selector {
+            Type::Constant(Value::String(s)) => {
+                let Ok(obj_ty) = select_from.try_as_object(span) else {
+                    return Ok(Type::null());
+                };
+                let Some(inner) = obj_ty.index_into(s.as_str()) else {
+                    return Ok(Type::null());
+                };
+                inner
+            }
+            Type::Constant(Value::Number(n)) => {
+                let Ok(arr_ty) = select_from.try_as_array(span) else {
+                    return Ok(Type::null());
+                };
+
+                let num = JsonNumber::from(n.clone());
+                match num {
+                    JsonNumber::PosInteger(n) => {
+                        arr_ty.index_into(n as usize).unwrap_or_else(Type::null)
+                    }
+                    JsonNumber::NegInteger(n) => {
+                        if n < 0 {
+                            arr_ty
+                                .index_from_end((-n - 1) as usize)
+                                .unwrap_or_else(Type::null)
+                        } else {
+                            arr_ty.index_into(n as usize).unwrap_or_else(Type::null)
+                        }
+                    }
+                    _ => {
+                        return Err(TypeError::ExpectedType(
+                            Type::Integer,
+                            Type::Float,
+                            span.clone(),
+                        ))
+                    }
+                }
+            }
+            Type::Any => match &select_from {
+                Type::Object(o) => o.element_union(),
+                Type::Sequence(s) => s.element_union(),
+                Type::Union(u) => {
+                    let mut typ = Type::Union(Vec::new());
+                    for t in u {
+                        match t {
+                            Type::Object(o) => {
+                                typ = typ.union_with(o.element_union());
+                            }
+                            Type::Sequence(s) => {
+                                typ = typ.union_with(s.element_union());
+                            }
+                            _ => typ = typ.union_with(Type::null()),
+                        }
+                    }
+                    typ
+                }
+                Type::Any => Type::Any,
+                _ => Type::null(),
+            },
+            Type::Union(u) => {
+                let mut typ = Type::Union(Vec::new());
+                for t in &u {
+                    if let Ok(res) = Self::resolve_type_field(t.clone(), select_from.clone(), span)
+                    {
+                        typ = typ.union_with(res);
+                    }
+                }
+                if typ.is_never() {
+                    return Err(TypeError::ExpectedType(
+                        Type::Union(vec![Type::String, Type::Integer]),
+                        Type::Union(u),
+                        span.clone(),
+                    ));
+                }
+                typ
+            }
+            Type::Integer => {
+                let Ok(arr_ty) = select_from.try_as_array(span) else {
+                    return Ok(Type::null());
+                };
+                arr_ty.element_union().union_with(Type::null())
+            }
+            Type::String => {
+                let Ok(obj_ty) = select_from.try_as_object(span) else {
+                    return Ok(Type::null());
+                };
+                obj_ty.element_union().union_with(Type::null())
+            }
+            _ => {
+                return Err(TypeError::ExpectedType(
+                    Type::Union(vec![Type::String, Type::Integer]),
+                    selector,
+                    span.clone(),
+                ))
+            }
+        })
     }
 }
 

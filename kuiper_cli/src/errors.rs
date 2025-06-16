@@ -1,3 +1,4 @@
+use kuiper_lang::types::TypeError;
 use kuiper_lang::{CompileError, PrettyError, TransformError};
 use std::fmt::{Display, Formatter};
 use std::io;
@@ -12,6 +13,7 @@ pub enum KuiperCliError {
     TransformError(TransformError),
     Utf8Error(FromUtf8Error),
     FormatError(PrettyError),
+    TypeError(TypeError),
 }
 
 impl Display for KuiperCliError {
@@ -24,6 +26,7 @@ impl Display for KuiperCliError {
             KuiperCliError::TransformError(e) => e.fmt(f),
             KuiperCliError::Utf8Error(e) => e.fmt(f),
             KuiperCliError::FormatError(e) => e.fmt(f),
+            KuiperCliError::TypeError(e) => e.fmt(f),
         }
     }
 }
@@ -67,5 +70,11 @@ impl From<FromUtf8Error> for KuiperCliError {
 impl From<PrettyError> for KuiperCliError {
     fn from(value: PrettyError) -> Self {
         KuiperCliError::FormatError(value)
+    }
+}
+
+impl From<TypeError> for KuiperCliError {
+    fn from(value: TypeError) -> Self {
+        KuiperCliError::TypeError(value)
     }
 }

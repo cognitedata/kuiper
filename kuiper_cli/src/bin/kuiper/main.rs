@@ -2,6 +2,7 @@ use clap::{Parser, ValueEnum};
 use kuiper_cli::errors::KuiperCliError;
 use kuiper_cli::repl::repl;
 use kuiper_lang::compile_expression;
+use kuiper_lang::types::Type;
 use serde_json::Value;
 use std::fs::{self, read_to_string};
 use std::io;
@@ -88,6 +89,9 @@ fn inner_run(args: Args) -> Result<Vec<String>, KuiperCliError> {
     let expression = load_expression(&args)?;
 
     let expression = compile_expression(&expression, &["input"])?;
+
+    let type_res = expression.run_types([Type::Any])?;
+    println!("{type_res}");
 
     let data = load_input_data(&args)?;
 

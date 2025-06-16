@@ -2,7 +2,11 @@ use itertools::Itertools;
 use serde_json::{Number, Value};
 
 use crate::{
-    expressions::{numbers::JsonNumber, Expression, ResolveResult},
+    expressions::{
+        numbers::JsonNumber,
+        types::{Sequence, Type, TypeError},
+        Expression, ResolveResult,
+    },
     TransformError,
 };
 
@@ -30,6 +34,18 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for LengthFunction {
         };
 
         Ok(ResolveResult::Owned(Value::Number(Number::from(len))))
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, TypeError> {
+        let source = self.args[0].resolve_types(state)?;
+        source.assert_assignable_to(
+            &Type::Union(vec![Type::String, Type::any_array(), Type::any_object()]),
+            &self.span,
+        )?;
+        Ok(Type::Integer)
     }
 }
 
@@ -77,6 +93,23 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ChunkFunction {
         }
         Ok(ResolveResult::Owned(Value::Array(res)))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, TypeError> {
+        let source = self.args[0].resolve_types(state)?;
+        let chunk_size = self.args[1].resolve_types(state)?;
+        chunk_size.assert_assignable_to(&Type::Integer, &self.span)?;
+        let source_arr = source.try_as_array(&self.span)?;
+        Ok(Type::Sequence(Sequence {
+            end_dynamic: Some(Box::new(Type::Sequence(Sequence {
+                elements: Vec::new(),
+                end_dynamic: Some(Box::new(source_arr.element_union())),
+            }))),
+            elements: Vec::new(),
+        }))
+    }
 }
 
 function_def!(TailFunction, "tail", 1, Some(2));
@@ -122,6 +155,63 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TailFunction {
                 Ok(ResolveResult::Owned(Value::Array(
                     arr[start..end].to_owned(),
                 )))
+            }
+        }
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::expressions::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::expressions::types::Type, crate::expressions::types::TypeError> {
+        let source = self.args[0].resolve_types(state)?;
+        let source_arr = source.try_as_array(&self.span)?;
+
+        match self.args.get(1) {
+            None => Ok(source_arr.index_from_end(0).unwrap_or_else(Type::null)),
+            Some(exp) => {
+                let number = exp.resolve_types(state)?;
+                let key = number.clone();
+                number.assert_assignable_to(&Type::Integer, &self.span)?;
+                if let Type::Constant(Value::Number(n)) = number {
+                    let Some(n) = n.as_u64() else {
+                        return Err(TypeError::ExpectedType(
+                            Type::Integer,
+                            key,
+                            self.span.clone(),
+                        ));
+                    };
+                    if n == 1 {
+                        Ok(source_arr.index_from_end(0).unwrap_or_else(Type::null))
+                    } else {
+                        if let Some(end_dynamic) = source_arr.end_dynamic {
+                            Ok(Type::Sequence(Sequence {
+                                end_dynamic: Some(end_dynamic),
+                                elements: vec![],
+                            }))
+                        } else {
+                            let start = source_arr.elements.len().saturating_sub(n as usize);
+                            let res = source_arr.elements[start..].to_owned();
+
+                            Ok(Type::Sequence(Sequence {
+                                elements: res,
+                                end_dynamic: None,
+                            }))
+                        }
+                    }
+                } else {
+                    let mut res = Type::Union(Vec::new());
+                    // If the value is 0
+                    res = res.union_with(Type::null());
+                    // If the value is 1
+                    res = res.union_with(source_arr.index_from_end(0).unwrap_or_else(Type::null));
+                    // If the value is greater than 1. We don't really want to return a combinatorial explosion
+                    // of possible sequences.
+                    res = res.union_with(Type::Sequence(Sequence {
+                        elements: vec![],
+                        end_dynamic: Some(Box::new(source_arr.element_union())),
+                    }));
+                    Ok(res)
+                }
             }
         }
     }
@@ -174,6 +264,32 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SliceFunction {
                 inp_array[start..].iter().cloned().collect_vec(),
             )))
         }
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::expressions::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, TypeError> {
+        let inp_value = self.args[0].resolve_types(state)?;
+        let inp_array = inp_value.try_as_array(&self.span)?;
+
+        let start = self.args[1].resolve_types(state)?;
+        start.assert_assignable_to(&Type::Integer, &self.span)?;
+
+        let end = self
+            .args
+            .get(2)
+            .map(|c| c.resolve_types(state))
+            .transpose()?;
+        if let Some(end) = end {
+            end.assert_assignable_to(&Type::Integer, &self.span)?;
+        }
+
+        // Technically we could check for constant slicing here, TODO. There's reasonably high value to that.
+        Ok(Type::Sequence(Sequence {
+            elements: vec![],
+            end_dynamic: Some(Box::new(inp_array.element_union())),
+        }))
     }
 }
 
@@ -235,6 +351,26 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SumFunction {
             },
         )?))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::expressions::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, TypeError> {
+        let arr = self.args[0].resolve_types(state)?;
+        let arr = arr.try_as_array(&self.span)?;
+
+        let mut return_type = Type::Integer;
+        for it in arr.all_elements() {
+            let ty = it;
+            if ty.is_float() && return_type.is_integer() {
+                return_type = Type::Float;
+            } else if !ty.is_integer() {
+                ty.assert_assignable_to(&Type::number(), &self.span)?;
+                return_type = Type::number();
+            }
+        }
+        Ok(return_type)
+    }
 }
 
 function_def!(ContainsFunction, "contains", 2);
@@ -270,6 +406,16 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ContainsFunction {
                 &self.span,
             )),
         }
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::expressions::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, TypeError> {
+        self.args[0].resolve_types(state)?;
+        self.args[1].resolve_types(state)?;
+        // Technically we could check if it is impossible here, but it's not that useful.
+        Ok(Type::Boolean)
     }
 }
 

@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use serde_json::{Map, Value};
 
 use crate::{
     expressions::{functions::LambdaAcceptFunction, Expression, ResolveResult},
+    types::{Object, ObjectField, Type},
     BuildError, TransformError,
 };
 
@@ -68,6 +71,73 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SelectFunction {
                 &self.span,
             )),
         }
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let source = self.args[0].resolve_types(state)?;
+        let mut source_obj = source.try_as_object(&self.span)?;
+
+        let mut res_fields = HashMap::<ObjectField, Type>::with_capacity(source_obj.fields.len());
+        match &*self.args[1] {
+            crate::ExpressionType::Lambda(expr) => {
+                for (k, v) in source_obj.fields {
+                    let key = match k.clone() {
+                        ObjectField::Constant(r) => Type::from_const(Value::String(r)),
+                        ObjectField::Generic => Type::String,
+                    };
+                    let should_add = expr.call_types(state, &[&v, &key])?;
+                    match should_add.truthyness() {
+                        crate::types::Truthy::Always => {
+                            if let Some(old) = res_fields.remove(&k) {
+                                res_fields.insert(k, old.union_with(v));
+                            } else {
+                                res_fields.insert(k, v);
+                            }
+                        }
+                        crate::types::Truthy::Never => {}
+                        crate::types::Truthy::Maybe => {
+                            if let Some(old) = res_fields.remove(&k) {
+                                res_fields.insert(k, old.union_with(v).union_with(Type::null()));
+                            } else {
+                                res_fields.insert(k, v.union_with(Type::null()));
+                            }
+                        }
+                    }
+                }
+            }
+            expr => {
+                let filter = expr.resolve_types(state)?;
+                let filter_arr = filter.try_as_array(&self.span)?;
+                let mut is_checking = true;
+                for elem in filter_arr
+                    .elements
+                    .iter()
+                    .chain(filter_arr.end_dynamic.iter().map(|r| r.as_ref()))
+                {
+                    elem.assert_assignable_to(&Type::String, &self.span)?;
+                    if !is_checking {
+                        continue;
+                    }
+                    if let Type::Constant(Value::String(k)) = elem {
+                        if let Some(v) = source_obj.fields.remove(&ObjectField::Constant(k.clone()))
+                        {
+                            res_fields.insert(ObjectField::Constant(k.clone()), v.clone());
+                        }
+                    } else {
+                        if !source_obj.fields.is_empty() {
+                            res_fields.insert(ObjectField::Generic, source_obj.element_union());
+                        }
+                        is_checking = false;
+                        continue;
+                    }
+                }
+            }
+        }
+
+        Ok(Type::Object(Object { fields: res_fields }))
     }
 }
 

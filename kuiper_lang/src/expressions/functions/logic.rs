@@ -2,6 +2,7 @@ use serde_json::Value;
 
 use crate::{
     expressions::{Expression, ResolveResult},
+    types::Type,
     TransformError,
 };
 
@@ -20,6 +21,31 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IfFunction {
             Ok(ResolveResult::Owned(Value::Null))
         } else {
             Ok(self.args.get(2).unwrap().resolve(state)?)
+        }
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let cond = self.args[0].resolve_types(state)?;
+        let r1 = self.args[1].resolve_types(state)?;
+        let r2 = self
+            .args
+            .get(2)
+            .map(|a| a.resolve_types(state))
+            .transpose()?;
+
+        match cond.truthyness() {
+            crate::types::Truthy::Always => Ok(r1),
+            crate::types::Truthy::Never => Ok(r2.unwrap_or_else(Type::null)),
+            crate::types::Truthy::Maybe => {
+                if let Some(r2) = r2 {
+                    Ok(r1.union_with(r2))
+                } else {
+                    Ok(r1.union_with(Type::null()))
+                }
+            }
         }
     }
 }
@@ -50,6 +76,30 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for CaseFunction {
             Ok(self.args[self.args.len() - 1].resolve(state)?)
         } else {
             Ok(ResolveResult::Owned(Value::Null))
+        }
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let lhs = self.args[0].resolve_types(state)?;
+        let mut r = Type::never();
+        let pairs = (self.args.len() / 2) - (1 - self.args.len() % 2);
+        for idx in 0..pairs {
+            let rhs = self.args[idx * 2 + 1].resolve_types(state)?;
+            let res = self.args[idx * 2 + 2].resolve_types(state)?;
+            if lhs.const_equals(&rhs) {
+                return Ok(res);
+            } else if lhs.is_assignable_to(&rhs) {
+                r = r.union_with(res);
+            }
+        }
+
+        if self.args.len() % 2 == 0 {
+            Ok(r.union_with(self.args[self.args.len() - 1].resolve_types(state)?))
+        } else {
+            Ok(r.union_with(Type::null()))
         }
     }
 }
@@ -89,6 +139,18 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for AnyFunction {
             )),
         }
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let arg = self.args[0].resolve_types(state)?;
+        arg.assert_assignable_to(
+            &Type::Union(vec![Type::any_array(), Type::any_object()]),
+            &self.span,
+        )?;
+        Ok(Type::Boolean)
+    }
 }
 
 function_def!(AllFunction, "all", 1);
@@ -125,6 +187,18 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for AllFunction {
                 &self.span,
             )),
         }
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let arg = self.args[0].resolve_types(state)?;
+        arg.assert_assignable_to(
+            &Type::Union(vec![Type::any_array(), Type::any_object()]),
+            &self.span,
+        )?;
+        Ok(Type::Boolean)
     }
 }
 

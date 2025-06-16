@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use serde_json::{Map, Value};
 
 use crate::{
     expressions::{functions::LambdaAcceptFunction, Expression, ResolveResult},
+    types::Type,
     BuildError, TransformError,
 };
 
@@ -37,6 +40,58 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ToObjectFunction {
         }
 
         Ok(ResolveResult::Owned(Value::Object(res)))
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let source = self.args[0].resolve_types(state)?;
+        let source_seq = source.try_as_array(&self.span)?;
+
+        let mut res_elems = HashMap::new();
+        for elem in &source_seq.elements {
+            let (key, value) = {
+                let key = self.args[1].call_types(state, &[elem])?;
+
+                let value = if let Some(value_lambda) = self.args.get(2) {
+                    value_lambda.call_types(state, &[elem])?
+                } else {
+                    elem.clone()
+                };
+
+                (key, value)
+            };
+
+            if let Type::Constant(Value::String(s)) = key {
+                res_elems.insert(crate::types::ObjectField::Constant(s.clone()), value);
+            } else {
+                if let Some(old) = res_elems.remove(&crate::types::ObjectField::Generic) {
+                    res_elems.insert(crate::types::ObjectField::Generic, old.union_with(value));
+                } else {
+                    res_elems.insert(crate::types::ObjectField::Generic, value);
+                }
+            }
+        }
+
+        if let Some(end_dynamic) = source_seq.end_dynamic {
+            self.args[1].call_types(state, &[&end_dynamic])?;
+
+            let value = if let Some(value_lambda) = self.args.get(2) {
+                value_lambda.call_types(state, &[&end_dynamic])?
+            } else {
+                *end_dynamic
+            };
+            if let Some(old) = res_elems.remove(&crate::types::ObjectField::Generic) {
+                res_elems.insert(crate::types::ObjectField::Generic, old.union_with(value));
+            } else {
+                res_elems.insert(crate::types::ObjectField::Generic, value);
+            }
+        }
+
+        Ok(crate::types::Type::Object(crate::types::Object {
+            fields: res_elems,
+        }))
     }
 }
 

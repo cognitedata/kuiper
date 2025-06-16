@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+
 use serde_json::{Map, Value};
 
 use crate::{
     compiler::BuildError,
     expressions::{functions::LambdaAcceptFunction, Expression, ResolveResult},
+    types::{Object, ObjectField, Sequence, Type},
     TransformError,
 };
 
@@ -45,6 +48,98 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for MapFunction {
                 &self.span,
             )),
         }
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let source = self.args[0].resolve_types(state)?;
+
+        let mut res_type = Type::never();
+
+        let source_obj = source.try_as_object(&self.span);
+        let source_arr = source.try_as_array(&self.span);
+        let allows_object = source_obj.is_ok();
+        let allows_array = source_arr.is_ok();
+
+        if let Ok(obj) = source_obj {
+            let mut fields = HashMap::new();
+            for (k, v) in obj.fields.iter() {
+                match k {
+                    crate::types::ObjectField::Constant(r) => {
+                        fields.insert(
+                            ObjectField::Constant(r.clone()),
+                            self.args[1].call_types(
+                                state,
+                                &[
+                                    v,
+                                    &if allows_array {
+                                        Type::from_const(Value::String(r.clone()))
+                                            .union_with(Type::Integer)
+                                    } else {
+                                        Type::from_const(Value::String(r.clone()))
+                                    },
+                                ],
+                            )?,
+                        );
+                    }
+                    crate::types::ObjectField::Generic => {
+                        fields.insert(
+                            ObjectField::Generic,
+                            self.args[1].call_types(
+                                state,
+                                &[
+                                    v,
+                                    &if allows_array {
+                                        Type::String.union_with(Type::Integer)
+                                    } else {
+                                        Type::String
+                                    },
+                                ],
+                            )?,
+                        );
+                    }
+                }
+            }
+            res_type = res_type.union_with(Type::Object(Object { fields }));
+        }
+
+        if let Ok(arr) = source_arr {
+            let mut res = Vec::with_capacity(arr.elements.len());
+            for (idx, item) in arr.elements.iter().enumerate() {
+                let mut idx_type = Type::Constant(Value::Number(idx.into()));
+                if allows_object {
+                    idx_type = idx_type.union_with(Type::String);
+                }
+                let res_item = self.args[1].call_types(state, &[item, &idx_type])?;
+                res.push(res_item);
+            }
+
+            let end_dynamic = if let Some(ty) = arr.end_dynamic {
+                let res_end = self.args[1].call_types(
+                    state,
+                    &[
+                        &*ty,
+                        &if allows_object {
+                            Type::Integer.union_with(Type::String)
+                        } else {
+                            Type::Integer
+                        },
+                    ],
+                )?;
+                Some(Box::new(res_end))
+            } else {
+                None
+            };
+
+            res_type = res_type.union_with(Type::Sequence(Sequence {
+                elements: res,
+                end_dynamic,
+            }));
+        }
+
+        Ok(res_type.flatten_union())
     }
 }
 

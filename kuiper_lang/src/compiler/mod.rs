@@ -18,6 +18,7 @@ use self::exec_tree::ExecTreeBuilder;
 pub struct CompilerConfig {
     pub(crate) optimizer_operation_limit: i64,
     pub(crate) max_macro_expansions: i32,
+    pub(crate) run_type_checker: bool,
 }
 
 impl CompilerConfig {
@@ -38,6 +39,12 @@ impl CompilerConfig {
         self.max_macro_expansions = limit;
         self
     }
+
+    /// Enable or disable type checking during compilation. Defaults to false.
+    pub fn run_type_checker(mut self, run: bool) -> Self {
+        self.run_type_checker = run;
+        self
+    }
 }
 
 impl Default for CompilerConfig {
@@ -45,6 +52,7 @@ impl Default for CompilerConfig {
         Self {
             optimizer_operation_limit: 100_000,
             max_macro_expansions: 20,
+            run_type_checker: false,
         }
     }
 }
@@ -95,7 +103,13 @@ pub fn compile_expression_with_config(
     let parser = ProgramParser::new();
     let res = parser.parse(inp)?;
     let res = ExecTreeBuilder::new(res, known_inputs, config)?.build()?;
+    // In test mode, run type-checker before optimization.
+    #[cfg(test)]
+    {
+        res.run_types((0..known_inputs.len()).map(|_| crate::types::Type::Any))?;
+    }
     let optimized = optimize(res, known_inputs.len(), config.optimizer_operation_limit)?;
+    optimized.run_types((0..known_inputs.len()).map(|_| crate::types::Type::Any))?;
     Ok(optimized)
 }
 

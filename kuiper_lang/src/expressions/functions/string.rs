@@ -72,6 +72,14 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for StringFunction {
         };
         Ok(ResolveResult::Owned(Value::String(res)))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        self.args[0].resolve_types(state)?;
+        Ok(crate::types::Type::String)
+    }
 }
 
 // other functions follow... This function converts the input to a string.

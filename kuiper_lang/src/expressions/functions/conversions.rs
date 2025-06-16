@@ -1,4 +1,5 @@
 use crate::expressions::numbers::JsonNumber;
+use crate::expressions::types::Type;
 use crate::expressions::{Expression, ExpressionExecutionState, ResolveResult};
 use crate::TransformError;
 use serde_json::Value;
@@ -52,6 +53,18 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryFloatFunction {
             },
         )
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::expressions::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::expressions::types::Type, crate::expressions::types::TypeError> {
+        let a1 = self.args[0].resolve_types(state)?;
+        let a2 = self.args[1].resolve_types(state)?;
+        if !a1.is_assignable_to(&Type::number().union_with(Type::String)) {
+            return Ok(a2);
+        }
+        Ok(Type::Float.union_with(a2))
+    }
 }
 
 function_def!(TryIntFunction, "try_int", 2);
@@ -78,6 +91,18 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryIntFunction {
             },
         )
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::expressions::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::expressions::types::Type, crate::expressions::types::TypeError> {
+        let a1 = self.args[0].resolve_types(state)?;
+        let a2 = self.args[1].resolve_types(state)?;
+        if !a1.is_assignable_to(&Type::number().union_with(Type::String)) {
+            return Ok(a2);
+        }
+        Ok(Type::Integer.union_with(a2))
+    }
 }
 
 function_def!(TryBoolFunction, "try_bool", 2);
@@ -96,6 +121,18 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryBoolFunction {
             _ => return self.args[1].resolve(state),
         };
         Ok(ResolveResult::Owned(Value::from(r)))
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::expressions::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::expressions::types::Type, crate::expressions::types::TypeError> {
+        let a1 = self.args[0].resolve_types(state)?;
+        let a2 = self.args[1].resolve_types(state)?;
+        if !a1.is_assignable_to(&Type::Boolean.union_with(Type::String)) {
+            return Ok(a2);
+        }
+        Ok(Type::Boolean.union_with(a2))
     }
 }
 

@@ -4,6 +4,7 @@ use serde_json::{Map, Value};
 
 use crate::{
     expressions::{functions::LambdaAcceptFunction, Expression, ResolveResult},
+    types::{Object, Sequence, Type},
     BuildError, TransformError,
 };
 
@@ -47,6 +48,58 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for DistinctByFunction {
             )),
         }
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let source = self.args[0].resolve_types(state)?;
+        let mut res_type = Type::never();
+        let mut allows_object = false;
+
+        if let Ok(obj) = source.try_as_object(&self.span) {
+            for (k, v) in obj.fields.iter() {
+                match k {
+                    crate::types::ObjectField::Constant(r) => {
+                        self.args[1]
+                            .call_types(state, &[v, &Type::from_const(Value::String(r.clone()))])?;
+                    }
+                    crate::types::ObjectField::Generic => {
+                        self.args[1].call_types(state, &[v, &Type::String])?;
+                    }
+                }
+            }
+            res_type = res_type.union_with(Type::Object(Object {
+                fields: [(crate::types::ObjectField::Generic, obj.element_union())]
+                    .into_iter()
+                    .collect(),
+            }));
+            allows_object = true;
+        }
+
+        if let Ok(arr) = source.try_as_array(&self.span) {
+            for item in &arr.elements {
+                self.args[1].call_types(
+                    state,
+                    &[
+                        item,
+                        &if allows_object {
+                            Type::String
+                        } else {
+                            Type::null()
+                        },
+                    ],
+                )?;
+            }
+
+            res_type = res_type.union_with(Type::Sequence(Sequence {
+                elements: vec![],
+                end_dynamic: Some(Box::new(arr.element_union())),
+            }));
+        }
+
+        Ok(res_type.flatten_union())
+    }
 }
 
 impl LambdaAcceptFunction for DistinctByFunction {
@@ -62,7 +115,7 @@ impl LambdaAcceptFunction for DistinctByFunction {
         if !(1..=2).contains(&nargs) {
             return Err(BuildError::n_function_args(
                 lambda.span.clone(),
-                "distict_by takes a function with one argument",
+                "distict_by takes a function with one or two arguments",
             ));
         }
         Ok(())

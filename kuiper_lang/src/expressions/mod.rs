@@ -11,6 +11,7 @@ mod operator;
 mod result;
 mod selector;
 mod transform_error;
+pub mod types;
 
 pub use array::{ArrayElement, ArrayExpression};
 pub use base::{

@@ -56,6 +56,16 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for DigestFunction {
         let base64_out = base64::engine::general_purpose::STANDARD.encode(val);
         Ok(ResolveResult::Owned(Value::String(base64_out)))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::expressions::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::expressions::types::Type, crate::expressions::types::TypeError> {
+        for arg in &self.args {
+            arg.resolve_types(state)?;
+        }
+        Ok(crate::expressions::types::Type::String)
+    }
 }
 
 #[cfg(test)]

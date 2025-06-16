@@ -3,7 +3,7 @@ use std::fmt::Display;
 use logos::Span;
 use serde_json::Value;
 
-use crate::{compiler::BuildError, write_list};
+use crate::{compiler::BuildError, types::Type, write_list};
 
 use super::{
     base::ExpressionMeta, transform_error::TransformError, Expression, ExpressionExecutionState,
@@ -78,6 +78,44 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ArrayExpression {
             }
         }
         Ok(ResolveResult::Owned(Value::Array(arr)))
+    }
+
+    fn resolve_types(
+        &'a self,
+        _state: &mut super::types::TypeExecutionState<'c, '_>,
+    ) -> Result<super::types::Type, super::types::TypeError> {
+        let mut types = vec![];
+        let mut end_dynamic: Option<Type> = None;
+        for item in &self.items {
+            match item {
+                ArrayElement::Expression(x) => {
+                    if let Some(dynamic) = end_dynamic {
+                        end_dynamic = Some(dynamic.union_with(x.resolve_types(_state)?));
+                    } else {
+                        types.push(x.resolve_types(_state)?);
+                    }
+                }
+                ArrayElement::Concat(x) => {
+                    let ty = x.resolve_types(_state)?;
+                    // If this is valid, it must be a sequence type.
+                    let seq = ty.try_as_array(&self.span)?;
+                    // Just chain the elements of the sequence.
+                    if let Some(mut dynamic) = end_dynamic {
+                        for ty in seq.all_elements() {
+                            dynamic = dynamic.union_with(ty.clone());
+                        }
+                        end_dynamic = Some(dynamic);
+                    } else {
+                        types.extend(seq.elements);
+                        end_dynamic = seq.end_dynamic.map(|x| *x);
+                    }
+                }
+            };
+        }
+        Ok(super::types::Type::Sequence(super::types::Sequence {
+            elements: types,
+            end_dynamic: end_dynamic.map(Box::new),
+        }))
     }
 }
 

@@ -1,5 +1,6 @@
 use crate::expressions::functions::LambdaAcceptFunction;
 use crate::expressions::{Expression, ExpressionExecutionState, ResolveResult};
+use crate::types::Type;
 use crate::{BuildError, TransformError};
 use serde_json::Value;
 
@@ -29,6 +30,29 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ReduceFunction {
                 &self.span,
             )),
         }
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let source = self.args[0].resolve_types(state)?;
+        let source_seq = source.try_as_array(&self.span)?;
+
+        let mut value = self.args[2].resolve_types(state)?;
+        for arg in &source_seq.elements {
+            value = self.args[1].call_types(state, &[&value, arg])?;
+        }
+        // It's possible to create a sequence of types with an indeterminate type,
+        // so if the value changes here we just set it to Any.
+        if let Some(end_dynamic) = source_seq.end_dynamic {
+            let next = self.args[1].call_types(state, &[&value, &end_dynamic])?;
+            if value != next {
+                value = Type::Any;
+            }
+        }
+
+        Ok(value)
     }
 }
 

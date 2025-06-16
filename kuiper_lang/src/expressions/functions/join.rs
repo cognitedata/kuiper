@@ -2,6 +2,7 @@ use serde_json::Value;
 
 use crate::{
     expressions::{Expression, ResolveResult},
+    types::Type,
     TransformError,
 };
 
@@ -58,6 +59,80 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for JoinFunction {
                 &self.span,
             )),
         }
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let source = self.args[0].resolve_types(state)?;
+        let mut res_type = Type::never();
+
+        let args = self
+            .args
+            .iter()
+            .skip(1)
+            .map(|a| a.resolve_types(state))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        if source.is_assignable_to(&Type::any_object())
+            && args.iter().all(|a| a.is_assignable_to(&Type::any_object()))
+        {
+            let obj = source.try_as_object(&self.span)?;
+            let mut res_fields = obj.fields;
+            for arg in &args {
+                let res_inner_obj = arg.try_as_object(&self.span)?;
+                for (k, v) in res_inner_obj.fields {
+                    match k {
+                        crate::types::ObjectField::Constant(r) => {
+                            res_fields.insert(crate::types::ObjectField::Constant(r), v);
+                        }
+                        crate::types::ObjectField::Generic => {
+                            if let Some(old) =
+                                res_fields.remove(&crate::types::ObjectField::Generic)
+                            {
+                                res_fields
+                                    .insert(crate::types::ObjectField::Generic, old.union_with(v));
+                            } else {
+                                res_fields.insert(crate::types::ObjectField::Generic, v);
+                            }
+                        }
+                    }
+                }
+            }
+            res_type =
+                res_type.union_with(Type::Object(crate::types::Object { fields: res_fields }));
+        }
+
+        if source.is_assignable_to(&Type::any_array())
+            && args.iter().all(|a| a.is_assignable_to(&Type::any_array()))
+        {
+            let arr = source.try_as_array(&self.span)?;
+            let mut res_elements = arr.elements;
+            let mut res_end_dynamic = arr.end_dynamic.map(|e| *e);
+            for arg in &args {
+                let res_inner_arr = arg.try_as_array(&self.span)?;
+                if let Some(end_dynamic) = res_end_dynamic {
+                    let mut dynamic = end_dynamic;
+                    for elem in res_inner_arr.elements {
+                        dynamic = dynamic.union_with(elem);
+                    }
+                    if let Some(res_inner_dynamic) = res_inner_arr.end_dynamic {
+                        dynamic = dynamic.union_with(*res_inner_dynamic);
+                    }
+                    res_end_dynamic = Some(dynamic);
+                } else {
+                    res_elements.extend(res_inner_arr.elements);
+                    res_end_dynamic = res_inner_arr.end_dynamic.map(|e| *e);
+                }
+            }
+            res_type = res_type.union_with(Type::Sequence(crate::types::Sequence {
+                elements: res_elements,
+                end_dynamic: res_end_dynamic.map(Box::new),
+            }));
+        }
+
+        Ok(res_type.flatten_union())
     }
 }
 

@@ -2,7 +2,10 @@ use std::fmt::Display;
 
 use serde_json::Value;
 
-use crate::{BuildError, ExpressionType, TransformError};
+use crate::{
+    expressions::types::{Truthy, Type},
+    BuildError, ExpressionType, TransformError,
+};
 
 use super::{Expression, ExpressionExecutionState, ExpressionMeta, ResolveResult};
 
@@ -73,6 +76,18 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IsExpression {
             Ok(ResolveResult::Owned(Value::Bool(res)))
         }
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut super::types::TypeExecutionState<'c, '_>,
+    ) -> Result<super::types::Type, super::types::TypeError> {
+        let lhs = self.lhs.resolve_types(state)?;
+        match Self::matches_type(self.rhs, &lhs) {
+            Truthy::Always => Ok(Type::Constant(Value::Bool(!self.not))),
+            Truthy::Maybe => Ok(Type::Boolean),
+            Truthy::Never => Ok(Type::Constant(Value::Bool(self.not))),
+        }
+    }
 }
 
 impl IsExpression {
@@ -83,6 +98,30 @@ impl IsExpression {
             rhs,
             not,
         })
+    }
+
+    fn matches_type(lit: TypeLiteral, rhs: &Type) -> Truthy {
+        match (lit, rhs) {
+            (l, Type::Union(r)) => {
+                if r.iter()
+                    .all(|t| matches!(Self::matches_type(l, t), Truthy::Never))
+                {
+                    Truthy::Never
+                } else {
+                    Truthy::Maybe
+                }
+            }
+            (_, Type::Any) => Truthy::Maybe,
+            (TypeLiteral::Null, Type::Constant(Value::Null)) => Truthy::Always,
+            (TypeLiteral::Int, Type::Constant(v)) if v.is_i64() || v.is_u64() => Truthy::Always,
+            (TypeLiteral::Bool, Type::Constant(Value::Bool(_))) => Truthy::Always,
+            (TypeLiteral::Float, Type::Constant(Value::Number(v))) if v.is_f64() => Truthy::Always,
+            (TypeLiteral::String, Type::Constant(Value::String(_))) => Truthy::Always,
+            (TypeLiteral::Array, Type::Constant(Value::Array(_))) => Truthy::Always,
+            (TypeLiteral::Object, Type::Constant(Value::Object(_))) => Truthy::Always,
+            (TypeLiteral::Number, Type::Constant(Value::Number(_))) => Truthy::Always,
+            _ => Truthy::Never,
+        }
     }
 }
 

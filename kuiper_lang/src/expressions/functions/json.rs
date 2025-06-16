@@ -29,6 +29,18 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ParseJsonFunction {
             _ => Ok(source),
         }
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let source = self.args[0].resolve_types(state)?;
+        if source.is_assignable_to(&crate::types::Type::String) {
+            Ok(crate::types::Type::Any)
+        } else {
+            Ok(source)
+        }
+    }
 }
 
 #[cfg(test)]

@@ -1,8 +1,9 @@
 use std::fmt::Display;
 
 use logos::Span;
+use serde_json::Value;
 
-use crate::ExpressionType;
+use crate::{types::Type, ExpressionType};
 
 use super::{Expression, ExpressionMeta};
 
@@ -60,6 +61,52 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IfExpression {
                     break Ok(super::ResolveResult::Owned(serde_json::Value::Null));
                 }
             }
+        }
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut super::types::TypeExecutionState<'c, '_>,
+    ) -> Result<super::types::Type, super::types::TypeError> {
+        let mut final_type = Type::never();
+
+        let mut iter = self.args.iter();
+        loop {
+            let a1 = iter.next();
+            let a2 = iter.next();
+
+            match (a1, a2) {
+                (Some(a1), Some(a2)) => {
+                    let cond = a1.resolve_types(state)?.truthyness();
+                    match cond {
+                        super::types::Truthy::Always => {
+                            final_type = final_type.union_with(a2.resolve_types(state)?);
+                            break;
+                        }
+                        super::types::Truthy::Never => {
+                            continue;
+                        }
+                        super::types::Truthy::Maybe => {
+                            final_type = final_type.union_with(a2.resolve_types(state)?);
+                        }
+                    }
+                }
+                (Some(a1), None) => {
+                    final_type = final_type.union_with(a1.resolve_types(state)?);
+                    break;
+                }
+                _ => {
+                    final_type = final_type.union_with(super::types::Type::Constant(Value::Null));
+                    break;
+                }
+            }
+        }
+
+        if final_type.is_never() {
+            // Should be unreachable.
+            Ok(super::types::Type::Constant(Value::Null))
+        } else {
+            Ok(final_type.flatten_union())
         }
     }
 }

@@ -2,6 +2,7 @@ use serde_json::{Map, Value};
 
 use crate::{
     expressions::{Expression, ResolveResult},
+    types::{Object, ObjectField, Sequence, Type},
     TransformError,
 };
 
@@ -32,6 +33,28 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for PairsFunction {
             res.push(Value::Object(map));
         }
         Ok(ResolveResult::Owned(Value::Array(res)))
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let inp = self.args[0].resolve_types(state)?;
+        let inp_obj = inp.try_as_object(&self.span)?;
+        Ok(Type::Sequence(Sequence {
+            elements: vec![],
+            end_dynamic: Some(Box::new(Type::Object(Object {
+                fields: [
+                    (ObjectField::Constant("key".to_string()), Type::String),
+                    (
+                        ObjectField::Constant("value".to_string()),
+                        inp_obj.element_union(),
+                    ),
+                ]
+                .into_iter()
+                .collect(),
+            }))),
+        }))
     }
 }
 

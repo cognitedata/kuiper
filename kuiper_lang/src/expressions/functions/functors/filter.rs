@@ -3,6 +3,7 @@ use serde_json::Value;
 use crate::{
     compiler::BuildError,
     expressions::{functions::LambdaAcceptFunction, Expression, ResolveResult},
+    types::Truthy,
     TransformError,
 };
 
@@ -34,6 +35,33 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FilterFunction {
                 &self.span,
             )),
         }
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let source = self.args[0].resolve_types(state)?;
+        let source_seq = source.try_as_array(&self.span)?;
+
+        let mut out = Vec::with_capacity(source_seq.elements.len());
+        for arg in source_seq.elements {
+            let should_add = self.args[1].call_types(state, &[&arg])?;
+            if matches!(should_add.truthyness(), Truthy::Always | Truthy::Maybe) {
+                out.push(arg);
+            }
+        }
+        let mut end_dynamic = None;
+        if let Some(ty) = source_seq.end_dynamic {
+            let should_add = self.args[1].call_types(state, &[&ty])?;
+            if matches!(should_add.truthyness(), Truthy::Always | Truthy::Maybe) {
+                end_dynamic = Some(ty);
+            }
+        }
+        Ok(crate::types::Type::Sequence(crate::types::Sequence {
+            elements: out,
+            end_dynamic,
+        }))
     }
 }
 
