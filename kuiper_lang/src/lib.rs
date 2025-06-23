@@ -701,4 +701,15 @@ mod tests {
         assert!(o.get("8").unwrap().as_bool().unwrap());
         assert!(o.get("9").unwrap().as_bool().unwrap());
     }
+
+    #[test]
+    pub fn test_get_opcount() {
+        let expr = compile_expression("input.map(x => x + 1)", &["input"]).unwrap();
+        let data = json!([1, 2, 3, 4, 5]);
+        let (res, opcount) = expr.run_get_opcount([&data]).unwrap();
+        assert_eq!(5, res.as_array().unwrap().len());
+        // Lookup input once, For each iteration: Call the lambda passed to map, lookup x,
+        //resolve the constant `1` and resolve the `+` operator. 1 + 4 * 5 = 21.
+        assert_eq!(21, opcount);
+    }
 }
