@@ -32,6 +32,9 @@ mod compiler;
 mod expressions;
 mod lexer;
 mod parse;
+mod pretty;
+
+pub use pretty::{format_expression, PrettyError};
 
 static NULL_CONST: Value = Value::Null;
 
