@@ -1,3 +1,5 @@
+use std::iter::Peekable;
+
 use logos::{Logos, Span};
 
 use crate::lex::{LexerError, Token};
@@ -171,6 +173,200 @@ fn prettify_comment(comment: &str) -> String {
     }
 }
 
+struct Formatter<'a, T: Iterator<Item = (usize, Span)>> {
+    /// The raw input string to format.
+    input: &'a str,
+    /// The indentation node stack, which keeps track of the history of tokens that may cause indentation.
+    stack: Vec<IndentNode>,
+    /// The final output.
+    output: String,
+    /// The current indentation level, in spaces.
+    indent: usize,
+    /// The number of indent tokens on the current line.
+    indent_on_line: usize,
+    /// The last end position of the previous token.
+    last_end: usize,
+    /// The last token processed, used to determine spacing.
+    last_token: Option<Token>,
+    /// The number of tokens on the current line.
+    tokens_on_line: usize,
+    /// An iterator over the spans of lines in the input.
+    lines: Peekable<T>,
+}
+
+impl<'a, T: Iterator<Item = (usize, Span)>> Formatter<'a, T> {
+    /// Create a new formatter.
+    fn new(input: &'a str, lines: Peekable<T>) -> Self {
+        Self {
+            input,
+            stack: vec![IndentNode {
+                kind: IndentNodeKind::Initial,
+                line: 0,
+                caused_indent: false,
+                in_postfix_chain: None,
+            }],
+            output: String::new(),
+            indent: 0,
+            indent_on_line: 0,
+            last_end: 0,
+            last_token: None,
+            tokens_on_line: 0,
+            lines,
+        }
+    }
+
+    pub fn run(mut self) -> Result<String, PrettyError> {
+        // Iterate over the tokens and process them.
+        for (token, token_span) in Token::lexer(self.input).spanned() {
+            let token = token?;
+            self.process_token(token, token_span)?;
+        }
+
+        // Finally, push any remaining whitespace after the last token.
+        self.output.push_str(&trim_inter_token_whitespace(
+            &self.input[self.last_end..],
+            self.last_token.as_ref(),
+            None,
+        ));
+
+        Ok(self.output)
+    }
+
+    fn process_token(&mut self, token: Token, token_span: Span) -> Result<(), PrettyError> {
+        let current_line = self.advance_to_line_for_token(&token_span)?;
+        self.update_indent_from_token(&token, &token_span, current_line)?;
+
+        // Push any whitespace between the last token and the current one.
+        self.output.push_str(&trim_inter_token_whitespace(
+            &self.input[self.last_end..token_span.start],
+            self.last_token.as_ref(),
+            Some(&token),
+        ));
+
+        // Update postfix indentation state, if necessary, and get the indent level for the current token.
+        let postfix_indent = self.update_postfix_indent(&token, current_line);
+
+        // If the token is the first on the line, push indent.
+        if self.tokens_on_line == 1 {
+            self.output
+                .push_str(&" ".repeat(self.indent + postfix_indent));
+        }
+
+        // Now, push the raw token to the output.
+        self.last_end = token_span.end;
+        if matches!(token, Token::Comment) {
+            // If the token is a comment, we first clean it up specifically.
+            // Token formatting is not part of normal inter-token padding, because comment start
+            // cannot be its own token. Otherwise, comments would not be allowed to contain invalid tokens.
+            self.output
+                .push_str(&prettify_comment(raw_token(self.input, token_span)));
+        } else {
+            self.output.push_str(raw_token(self.input, token_span));
+        }
+        self.last_token = Some(token);
+
+        Ok(())
+    }
+
+    /// Advance the formatter to the line which contains the token given by `token_span`.
+    fn advance_to_line_for_token(&mut self, token_span: &Span) -> Result<usize, PrettyError> {
+        loop {
+            // This should be impossible.
+            let Some((line_num, line_span)) = self.lines.peek() else {
+                return Err(PrettyError::Pretty(
+                    "Token outside of input".to_string(),
+                    token_span.clone(),
+                ));
+            };
+
+            // Check if the start of the token is on the current line.
+            if line_span.start <= token_span.start && line_span.end > token_span.start {
+                self.tokens_on_line += 1;
+                if self.last_end >= line_span.start {
+                    self.tokens_on_line += 1;
+                }
+                break Ok(*line_num);
+            }
+
+            self.lines.next();
+            self.tokens_on_line = 0;
+            if self.indent_on_line > 0 {
+                self.indent += 4;
+                self.indent_on_line = 0;
+            }
+        }
+    }
+
+    fn update_indent_from_token(
+        &mut self,
+        token: &Token,
+        token_span: &Span,
+        current_line: usize,
+    ) -> Result<(), PrettyError> {
+        // Is the token an opening indent token?
+        if let Some(kind) = to_indent_token(token) {
+            // Only the last indent token on each line is responsible for the indent level.
+            if let Some(n) = self.stack.last_mut() {
+                if n.line == current_line {
+                    n.caused_indent = false;
+                }
+            }
+            self.stack.push(IndentNode {
+                kind: kind,
+                line: current_line,
+                caused_indent: true,
+                in_postfix_chain: None,
+            });
+            self.indent_on_line += 1;
+        }
+        // Is the token a closing indent token?
+        if let Some(node) = check_closing_token(&mut self.stack, token, token_span)? {
+            if node.line == current_line {
+                // If the closing token is on the same line, we just reduce the count of indent tokens on the current line.
+                self.indent_on_line -= 1;
+            } else {
+                // Else, we need to reduce the indent level, if the original node caused an indent.
+                if node.caused_indent {
+                    self.indent -= 4;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Update indentation for postfix chains. This is almost certainly not the best way to do this,
+    /// and we may improve on this in the future with some more concrete cases. Currently, all we do
+    /// is potentially add one layer of indentation if a line starts with a period.
+    fn update_postfix_indent(&mut self, token: &Token, current_line: usize) -> usize {
+        // Certain tokens can cause us to enter or exit a postfix chain, check those.
+        match token {
+            Token::Period => {
+                if let Some(n) = self.stack.last_mut() {
+                    if n.in_postfix_chain.is_none() {
+                        if n.line != current_line {
+                            n.in_postfix_chain = Some(true);
+                        } else {
+                            n.in_postfix_chain = Some(false);
+                        }
+                    }
+                    if n.in_postfix_chain.unwrap_or_default() {
+                        // If we are in a postfix chain, we can indent the next token.
+                        return 4;
+                    }
+                }
+            }
+            Token::Operator(_) | Token::Colon | Token::SemiColon | Token::Comma => {
+                if let Some(n) = self.stack.last_mut() {
+                    n.in_postfix_chain = None;
+                }
+            }
+            _ => (),
+        };
+
+        0
+    }
+}
+
 /// Format a kuiper expression into a pretty printed string.
 /// Returns an error if the input is not a valid kuiper expression.
 ///
@@ -189,145 +385,7 @@ pub fn format_expression(input: &str) -> Result<String, PrettyError> {
     // or produce terrible results.
     crate::parse::ProgramParser::new().parse(crate::lexer::Lexer::new(input))?;
 
-    // We use the raw tokenizer, since we want comment tokens. This does mean we lex the input twice,
-    // but it probably isn't a big deal, considering the normal size of kuiper expressions.
-    let tokens = Token::lexer(input).spanned();
-
-    let mut output = String::new();
-    let mut stack: Vec<IndentNode> = Vec::new();
-    stack.push(IndentNode {
-        kind: IndentNodeKind::Initial,
-        line: 0,
-        caused_indent: false,
-        in_postfix_chain: None,
-    });
-
-    let mut lines = iter_line_spans(input).enumerate().peekable();
-
-    let mut tokens_on_line = 0;
-    let mut indent = 0;
-    let mut indent_on_line = 0;
-    let mut last_end = 0;
-    let mut last_token: Option<Token> = None;
-
-    for (tok, tok_span) in tokens {
-        let tok = tok?;
-        let line;
-        // First, find the line number for the current token.
-        loop {
-            // This should be impossible.
-            let Some((line_num, line_span)) = lines.peek() else {
-                return Err(PrettyError::Pretty(
-                    "Token outside of input".to_string(),
-                    tok_span,
-                ));
-            };
-
-            // Check if the start of the token is on the current line.
-            if line_span.start <= tok_span.start && line_span.end > tok_span.start {
-                line = *line_num;
-                tokens_on_line += 1;
-                if last_end >= line_span.start {
-                    tokens_on_line += 1;
-                }
-                break;
-            }
-
-            lines.next();
-            tokens_on_line = 0;
-            if indent_on_line > 0 {
-                indent += 4;
-                indent_on_line = 0;
-            }
-        }
-
-        // Is the token an opening indent token?
-        if let Some(kind) = to_indent_token(&tok) {
-            // Only the last indent token on each line is responsible for the indent level.
-            if let Some(n) = stack.last_mut() {
-                if n.line == line {
-                    n.caused_indent = false;
-                }
-            }
-            stack.push(IndentNode {
-                kind: kind,
-                line,
-                caused_indent: true,
-                in_postfix_chain: None,
-            });
-            indent_on_line += 1;
-        }
-        // Is the token a closing indent token?
-        if let Some(node) = check_closing_token(&mut stack, &tok, &tok_span)? {
-            if node.line == line {
-                // If the closing token is on the same line, we just reduce the count of indent tokens on the current line.
-                indent_on_line -= 1;
-            } else {
-                // Else, we need to reduce the indent level, if the original node caused an indent.
-                if node.caused_indent {
-                    indent -= 4;
-                }
-            }
-        }
-        // First, push any whitespace between the last token and the current one.
-        output.push_str(&trim_inter_token_whitespace(
-            &input[last_end..tok_span.start],
-            last_token.as_ref(),
-            Some(&tok),
-        ));
-
-        // If the token is a period, we give it extra indentation.
-        // This is a bit of a hack, and can have some slightly weird effects if the code is already badly
-        // formatted, but it works decently well.
-        let mut current_indent = indent;
-
-        // Certain tokens can cause us to enter or exit a postfix chain, check those.
-        match tok {
-            Token::Period => {
-                if let Some(n) = stack.last_mut() {
-                    if n.in_postfix_chain.is_none() {
-                        if n.line != line {
-                            n.in_postfix_chain = Some(true);
-                        } else {
-                            n.in_postfix_chain = Some(false);
-                        }
-                    }
-                    if n.in_postfix_chain.unwrap_or_default() {
-                        // If we are in a postfix chain, we indent the next token.
-                        current_indent += 4;
-                    }
-                }
-            }
-            Token::Operator(_) | Token::Colon | Token::SemiColon | Token::Comma => {
-                if let Some(n) = stack.last_mut() {
-                    n.in_postfix_chain = None;
-                }
-            }
-            _ => (),
-        };
-
-        // If the token is the first on the line, push indent.
-        if tokens_on_line == 1 {
-            output.push_str(&" ".repeat(current_indent));
-        }
-
-        // Now, push the raw token to the output.
-        last_end = tok_span.end;
-        if matches!(tok, Token::Comment) {
-            output.push_str(&prettify_comment(raw_token(input, tok_span)));
-        } else {
-            output.push_str(raw_token(input, tok_span));
-        }
-        last_token = Some(tok);
-    }
-
-    output.push_str(&trim_inter_token_whitespace(
-        &input[last_end..],
-        last_token.as_ref(),
-        None,
-    ));
-
-    Ok(output)
+    Formatter::new(input, iter_line_spans(input).enumerate().peekable()).run()
 }
 
 #[cfg(test)]
@@ -337,6 +395,11 @@ mod tests {
         println!("{result}");
         println!("{expected}");
         assert_eq!(result, expected);
+
+        // Check that the result can be parsed back into a valid program.
+        crate::parse::ProgramParser::new()
+            .parse(crate::lexer::Lexer::new(&result))
+            .expect("Formatted expression should be valid");
     }
 
     #[test]
