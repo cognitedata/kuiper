@@ -29,7 +29,7 @@ struct IndentNode {
     kind: IndentNodeKind,
     line: usize,
     caused_indent: bool,
-    in_postfix_chain: Option<bool>,
+    has_postfix_chain: bool,
 }
 
 fn raw_token(input: &str, span: Span) -> &str {
@@ -182,6 +182,8 @@ struct Formatter<'a, T: Iterator<Item = (usize, Span)>> {
     output: String,
     /// The current indentation level, in spaces.
     indent: usize,
+    /// The current indentation caused by postfix chains.
+    postfix_indent: usize,
     /// The number of indent tokens on the current line.
     indent_on_line: usize,
     /// The last end position of the previous token.
@@ -203,10 +205,11 @@ impl<'a, T: Iterator<Item = (usize, Span)>> Formatter<'a, T> {
                 kind: IndentNodeKind::Initial,
                 line: 0,
                 caused_indent: false,
-                in_postfix_chain: None,
+                has_postfix_chain: false,
             }],
             output: String::new(),
             indent: 0,
+            postfix_indent: 0,
             indent_on_line: 0,
             last_end: 0,
             last_token: None,
@@ -243,13 +246,13 @@ impl<'a, T: Iterator<Item = (usize, Span)>> Formatter<'a, T> {
             Some(&token),
         ));
 
-        // Update postfix indentation state, if necessary, and get the indent level for the current token.
-        let postfix_indent = self.update_postfix_indent(&token, current_line);
+        // Check if we need to indent the output for a postfix chain.
+        self.get_postfix_indent(&token, self.tokens_on_line == 1);
 
         // If the token is the first on the line, push indent.
         if self.tokens_on_line == 1 {
             self.output
-                .push_str(&" ".repeat(self.indent + postfix_indent));
+                .push_str(&" ".repeat(self.indent + self.postfix_indent));
         }
 
         // Now, push the raw token to the output.
@@ -315,7 +318,7 @@ impl<'a, T: Iterator<Item = (usize, Span)>> Formatter<'a, T> {
                 kind: kind,
                 line: current_line,
                 caused_indent: true,
-                in_postfix_chain: None,
+                has_postfix_chain: false,
             });
             self.indent_on_line += 1;
         }
@@ -329,6 +332,9 @@ impl<'a, T: Iterator<Item = (usize, Span)>> Formatter<'a, T> {
                 if node.caused_indent {
                     self.indent -= 4;
                 }
+                if node.has_postfix_chain {
+                    self.postfix_indent -= 4;
+                }
             }
         }
         Ok(())
@@ -337,33 +343,42 @@ impl<'a, T: Iterator<Item = (usize, Span)>> Formatter<'a, T> {
     /// Update indentation for postfix chains. This is almost certainly not the best way to do this,
     /// and we may improve on this in the future with some more concrete cases. Currently, all we do
     /// is potentially add one layer of indentation if a line starts with a period.
-    fn update_postfix_indent(&mut self, token: &Token, current_line: usize) -> usize {
+    ///
+    /// Each block can be indented an additional 4 spaces if it contains a postfix chain, meaning an expression on the form
+    /// ```ignore
+    /// input
+    ///     .foo()
+    ///     .bar()
+    /// ```
+    ///
+    /// The complexity comes from the fact that each block can only have one layer of postfix indentation,
+    /// and that the postfix chain can be interrupted by certain tokens, like commas.
+    ///
+    /// To deal with this we track postfix indentation separately. In practice postfix_indent is equal to
+    /// 4 * number of nodes in the stack with has_postfix_chain set to true.
+    ///
+    /// The list of tokens we currently use for interruption may be incomplete.
+    fn get_postfix_indent(&mut self, token: &Token, is_first_on_line: bool) {
         // Certain tokens can cause us to enter or exit a postfix chain, check those.
         match token {
-            Token::Period => {
+            Token::Period if is_first_on_line => {
                 if let Some(n) = self.stack.last_mut() {
-                    if n.in_postfix_chain.is_none() {
-                        if n.line != current_line {
-                            n.in_postfix_chain = Some(true);
-                        } else {
-                            n.in_postfix_chain = Some(false);
-                        }
-                    }
-                    if n.in_postfix_chain.unwrap_or_default() {
-                        // If we are in a postfix chain, we can indent the next token.
-                        return 4;
+                    if !n.has_postfix_chain {
+                        n.has_postfix_chain = true;
+                        self.postfix_indent += 4;
                     }
                 }
             }
             Token::Operator(_) | Token::Colon | Token::SemiColon | Token::Comma => {
                 if let Some(n) = self.stack.last_mut() {
-                    n.in_postfix_chain = None;
+                    if n.has_postfix_chain {
+                        n.has_postfix_chain = false;
+                        self.postfix_indent -= 4;
+                    }
                 }
             }
             _ => (),
         };
-
-        0
     }
 }
 
@@ -519,6 +534,9 @@ test().foo(bar(baz(
 "#,
         );
 
+        // Yes this does look a little funky, but I think it is correct.
+        // It would look less weird if you indented the `x`, which is probably what a user would
+        // want to do.
         test_pretty_print(
             r#"
 input.map(x => x
@@ -534,6 +552,41 @@ input.map(x => x
         .baz()
     + 5
 )"#,
+        );
+
+        test_pretty_print(
+            r#"
+input.foo()
+.bar(
+    1 + 1
+)
+.baz(
+1 + 1,
+input
+.bar(),
+// Note that there are two layers of indentation here, due to postfix chains.
+input
+.baz(
+1 + 1,
+)
+)
+"#,
+            r#"
+input.foo()
+    .bar(
+        1 + 1
+    )
+    .baz(
+        1 + 1,
+        input
+            .bar(),
+        // Note that there are two layers of indentation here, due to postfix chains.
+        input
+            .baz(
+                1 + 1,
+            )
+    )
+"#,
         );
 
         test_pretty_print(
