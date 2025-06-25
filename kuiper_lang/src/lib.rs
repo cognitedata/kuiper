@@ -158,10 +158,13 @@ pub(crate) use write_list;
 
 #[cfg(test)]
 mod tests {
-    use logos::Span;
+    use logos::{Logos, Span};
     use serde_json::json;
+    use std::path::PathBuf;
 
-    use crate::{compile_expression, compiler::BuildError, CompileError, TransformError};
+    use crate::{
+        compile_expression, compiler::BuildError, lex::Token, CompileError, TransformError,
+    };
 
     fn compile_err(data: &str, inputs: &[&str]) -> CompileError {
         match compile_expression(data, inputs) {
@@ -711,5 +714,90 @@ mod tests {
         // Lookup input once, For each iteration: Call the lambda passed to map, lookup x,
         //resolve the constant `1` and resolve the `+` operator. 1 + 4 * 5 = 21.
         assert_eq!(21, opcount);
+    }
+
+    #[derive(Debug, serde::Deserialize)]
+    struct TestRunConfig {
+        /// List of input parameters for this test run
+        inputs: Vec<serde_json::Value>,
+        /// The expected output
+        expected: serde_json::Value,
+    }
+
+    #[derive(Debug, serde::Deserialize, Default)]
+    struct TestCaseConfig {
+        /// List of input variable names
+        pub inputs: Vec<String>,
+        /// List of input/output pairs to test with
+        pub cases: Option<Vec<TestRunConfig>>,
+    }
+
+    #[test]
+    fn run_compile_tests() {
+        let root_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+
+        let src_path = root_path.join("test_files");
+
+        walkdir::WalkDir::new(src_path)
+            .into_iter()
+            .map(|f| f.expect("Failed to read directory entry"))
+            .filter(|f| f.file_type().is_file())
+            .map(|f| f.path().to_path_buf())
+            .filter(|f| f.extension().is_some_and(|ext| ext == "kp"))
+            .for_each(|test_case| {
+                let raw_expression = std::fs::read_to_string(&test_case).expect(&format!(
+                    "Failed to read test case file {}",
+                    test_case.display()
+                ));
+
+                // Get first token, check if it is a comment. If it is, parse it as JSON and store as the run config.
+
+                let mut tokens = Token::lexer(&raw_expression).spanned();
+                let first = tokens.next();
+                let config = first
+                    .map(|res| match res {
+                        (Ok(Token::Comment), span) => {
+                            Some(raw_expression[span.start..span.end].to_string())
+                        }
+                        _ => None,
+                    })
+                    .flatten()
+                    .map(|raw_config| {
+                        // Remove comment markers before parsing
+                        let config = raw_config
+                            .trim_start_matches("//")
+                            .trim_start_matches("/*")
+                            .trim_end_matches("*/");
+
+                        serde_json::from_str::<TestCaseConfig>(config).expect(&format!(
+                            "Failed to parse config in file {}",
+                            test_case.display()
+                        ))
+                    })
+                    .unwrap_or_default();
+
+                let inputs: Vec<&str> = config.inputs.iter().map(|s| s.as_str()).collect();
+                let expression = compile_expression(&raw_expression, &inputs).expect(&format!(
+                    "Failed to compile expression in file {}",
+                    test_case.display()
+                ));
+
+                for (i, run_case) in config.cases.unwrap_or_default().iter().enumerate() {
+                    let result = expression
+                        .run(run_case.inputs.iter())
+                        .expect(&format!(
+                            "Failed to run expression in file {}",
+                            test_case.display()
+                        ))
+                        .into_owned();
+
+                    assert_eq!(
+                        result,
+                        run_case.expected,
+                        "Test case {i} failed for file {}",
+                        test_case.display(),
+                    );
+                }
+            });
     }
 }
