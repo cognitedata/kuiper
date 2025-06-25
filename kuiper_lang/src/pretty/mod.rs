@@ -61,21 +61,17 @@ fn check_closing_token(
         match (node.kind, tok) {
             (IndentNodeKind::Parenthesis, Token::CloseParenthesis)
             | (IndentNodeKind::Bracket, Token::CloseBracket)
-            | (IndentNodeKind::Brace, Token::CloseBrace) => {
-                return Ok(Some(node));
-            }
-            _ => {
-                return Err(PrettyError::Pretty(
-                    format!("Expected closing token for {:?}", node.kind),
-                    span.clone(),
-                ));
-            }
+            | (IndentNodeKind::Brace, Token::CloseBrace) => Ok(Some(node)),
+            _ => Err(PrettyError::Pretty(
+                format!("Expected closing token for {:?}", node.kind),
+                span.clone(),
+            )),
         }
     } else {
-        return Err(PrettyError::Pretty(
+        Err(PrettyError::Pretty(
             "Unexpected closing token".to_string(),
             span.clone(),
-        ));
+        ))
     }
 }
 
@@ -138,14 +134,14 @@ fn trim_inter_token_whitespace(
         _ => 0,                                                 // Otherwise, no space is expected.
     };
 
-    return " ".repeat(expected_spaces);
+    " ".repeat(expected_spaces)
 }
 
 /// Make sure a comment has a single space before // or /* and after */
 /// Also, if the comment is multiline, remove any trailing whitespace.
 fn prettify_comment(comment: &str) -> String {
-    if comment.starts_with("//") {
-        format!("// {}", &comment[2..].trim_start())
+    if let Some(stripped) = comment.strip_prefix("//") {
+        format!("// {}", stripped.trim_start())
             .trim_end()
             .to_owned()
     } else {
@@ -315,7 +311,7 @@ impl<'a, T: Iterator<Item = (usize, Span)>> Formatter<'a, T> {
                 }
             }
             self.stack.push(IndentNode {
-                kind: kind,
+                kind,
                 line: current_line,
                 caused_indent: true,
                 has_postfix_chain: false,
@@ -421,9 +417,9 @@ mod tests {
     fn test_pretty_printing() {
         test_pretty_print(
             r#"
-input.map(x=> 
+input.map(x=>
 x + 1
-)      
+)
         "#,
             r#"
 input.map(x =>
@@ -510,13 +506,13 @@ test().foo(bar(baz(
 
         test_pretty_print(
             r#"
-"     Multiline strings are preserved entirely, even if they end with whitespace.    
-      
+"     Multiline strings are preserved entirely, even if they end with whitespace.
+
       ".concat("foo")
 "#,
             r#"
-"     Multiline strings are preserved entirely, even if they end with whitespace.    
-      
+"     Multiline strings are preserved entirely, even if they end with whitespace.
+
       ".concat("foo")
 "#,
         );
@@ -646,7 +642,7 @@ input.foo()
 /*This is a multiline
 
 
-comment    
+comment
     Leading whitespace is preserved, but trailing whitespace is removed.
 */
 1//There must be a single token for the expression to be valid.
@@ -672,7 +668,7 @@ input.MessagePayload.pairs().flatmap(deviceOrEdgeApp =>
 deviceOrEdgeApp.value.flatmap(device =>
 device.DataTags.flatmap(dataTags =>
 concat("ts:iot-agora:", input.Header.Company, ":", input.Header.Project, ":", input.Header.EdgeDeviceId, ":",
-if (deviceOrEdgeApp.key == "Devices", "device", "app"), ":", device.Name, ":", dataTags.TagName).if_value(external_id => 
+if (deviceOrEdgeApp.key == "Devices", "device", "app"), ":", device.Name, ":", dataTags.TagName).if_value(external_id =>
 [{
 "type": "time_series",
 "dataSetId": 6124285521957219,
