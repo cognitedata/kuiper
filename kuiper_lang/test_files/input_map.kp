@@ -1,0 +1,8 @@
+// {"inputs": ["input"]}
+input.map(row => {
+    "type": "raw_row",
+    "table": "my-table",
+    "database": "my-db",
+    "key": row.key,
+    "columns": row
+})
