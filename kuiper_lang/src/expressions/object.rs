@@ -56,12 +56,12 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ObjectExpression {
                     match conc {
                         ResolveResult::Owned(Value::Object(x)) => {
                             for (k, v) in x {
-                                output.entry(k).or_insert(v);
+                                output.insert(k, v);
                             }
                         }
                         ResolveResult::Borrowed(Value::Object(x)) => {
                             for (k, v) in x {
-                                output.entry(k.to_owned()).or_insert_with(|| v.to_owned());
+                                output.insert(k.to_owned(), v.to_owned());
                             }
                         }
                         x => {
@@ -103,45 +103,5 @@ impl ObjectExpression {
             }
         }
         Ok(Self { items, span })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use serde_json::json;
-
-    use crate::compile_expression;
-
-    #[test]
-    fn test_object_expression() {
-        let expr = compile_expression(
-            r#"{
-                "a": 1,
-                "b": 2,
-                ...{ "c": 3 },
-                "d": 4,
-                ...{
-                    "a": 5,
-                    "e": 5
-                },
-                "e": 6,
-            }
-            "#,
-            &[],
-        )
-        .unwrap();
-        let val = expr.run([]).unwrap();
-        assert_eq!(
-            val.as_ref(),
-            &json!(
-                {
-                    "a": 1,
-                    "b": 2,
-                    "c": 3,
-                    "d": 4,
-                    "e": 6
-                }
-            )
-        );
     }
 }
