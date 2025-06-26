@@ -373,8 +373,7 @@ pub enum ExpressionType {
 }
 
 impl ExpressionType {
-    /// Run the expression. Takes a list of values and a chunk_id, the id is just used for
-    /// errors and logging.
+    /// Run the expression. Takes a list of values.
     ///
     /// * `data` - An iterator over the inputs to the expression. The count must match the count provided when the expression was compiled
     pub fn run<'a: 'c, 'c>(
@@ -384,8 +383,7 @@ impl ExpressionType {
         self.run_limited(data, -1)
     }
 
-    /// Run the expression. Takes a list of values and a chunk_id, the id is just used for
-    /// errors and logging.
+    /// Run the expression. Takes a list of values.
     ///
     /// * `data` - An iterator over the inputs to the expression. The count must match the count provided when the expression was compiled
     /// * `max_operation_count` - The maximum number of operations performed by the program. This is a rough estimate of the complexity of
@@ -399,6 +397,21 @@ impl ExpressionType {
         let data = data.into_iter().map(Some).collect();
         let mut state = ExpressionExecutionState::new(&data, &mut opcount, max_operation_count);
         self.resolve(&mut state)
+    }
+
+    /// Run the expression. Takes a list of values. Returns the result along with the number of operations performed.
+    ///
+    /// * `max_operation_count` - The maximum number of operations performed by the program. This is a rough estimate of the complexity of
+    ///   the program. If set to -1, no limit is enforced.
+    pub fn run_get_opcount<'a: 'c, 'c>(
+        &'a self,
+        data: impl IntoIterator<Item = &'c Value>,
+    ) -> Result<(ResolveResult<'c>, i64), TransformError> {
+        let mut opcount = 0;
+        let data = data.into_iter().map(Some).collect();
+        let mut state = ExpressionExecutionState::new(&data, &mut opcount, -1);
+        let r = self.resolve(&mut state)?;
+        Ok((r, opcount))
     }
 
     #[cfg(feature = "completions")]

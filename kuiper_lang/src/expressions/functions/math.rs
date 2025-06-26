@@ -1,3 +1,4 @@
+use logos::Span;
 use serde_json::{Number, Value};
 
 use crate::{
@@ -91,8 +92,6 @@ arg2_math_func!(Atan2Function, "atan2", atan2);
 arg1_math_func!(FloorFunction, "floor", floor);
 arg1_math_func!(CeilFunction, "ceil", ceil);
 arg1_math_func!(RoundFunction, "round", round);
-arg2_math_func!(MinFunction, "min", min);
-arg2_math_func!(MaxFunction, "max", max);
 
 function_def!(IntFunction, "int", 1);
 
@@ -211,11 +210,252 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FloatFunction {
     }
 }
 
+fn flatten_args<'a>(
+    args: &'a Vec<ResolveResult<'a>>,
+    desc: &'a str,
+    span: &'a Span,
+) -> Box<dyn Iterator<Item = Result<JsonNumber, TransformError>> + 'a> {
+    match args.len() {
+        0 => Box::new(std::iter::once(Err(TransformError::new_invalid_operation(
+            format!("{desc} function requires at least one argument"),
+            span,
+        )))),
+        1 => {
+            if let Some(array) = args[0].as_array() {
+                if array.is_empty() {
+                    Box::new(std::iter::once(Err(TransformError::new_invalid_operation(
+                        format!("{desc} of an empty array is undefined"),
+                        span,
+                    ))))
+                } else {
+                    Box::new(array.iter().map(|x| JsonNumber::try_from(x, desc, span)))
+                }
+            } else {
+                Box::new(std::iter::once(Err(TransformError::new_invalid_operation(
+                        format!("If only one argument is supplied to the {desc} function, it must be an array of numbers"),
+                        span,
+                    ))))
+            }
+        }
+        _ => Box::new(args.iter().map(|x| x.try_as_number(desc, span))),
+    }
+}
+
+function_def!(MaxFunction, "max", 1, None);
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for MaxFunction {
+    fn resolve(
+        &'a self,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, TransformError> {
+        let args = self
+            .args
+            .iter()
+            .map(|x| x.resolve(state))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Max either accepts many numbers as distinct args, or a single arg which is an array of numbers.
+        // Flatten it to a single iterator of numbers.
+        let mut items = flatten_args(&args, "max", &self.span);
+
+        // Get the first item as the initial max. The unwrap is safe, since we know the iterator from flatten_args is not empty.
+        let first = items.next().unwrap()?;
+        let mut max: JsonNumber = first;
+
+        for item in items {
+            max = max.max(item?, &self.span);
+        }
+
+        Ok(ResolveResult::Owned(max.try_into_json().ok_or_else(
+            || {
+                TransformError::new_conversion_failed(
+                    "Failed to convert result of max to a number",
+                    &self.span,
+                )
+            },
+        )?))
+    }
+}
+
+function_def!(MinFunction, "min", 1, None);
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for MinFunction {
+    fn resolve(
+        &'a self,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, TransformError> {
+        let args = self
+            .args
+            .iter()
+            .map(|x| x.resolve(state))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Min either accepts many numbers as distinct args, or a single arg which is an array of numbers.
+        // Flatten it to a single iterator of numbers.
+        let mut items = flatten_args(&args, "min", &self.span);
+
+        // Get the first item as the initial min. The unwrap is safe, since we know the iterator from flatten_args is not empty.
+        let first = items.next().unwrap()?;
+        let mut min: JsonNumber = first;
+
+        for item in items {
+            min = min.min(item?, &self.span);
+        }
+
+        Ok(ResolveResult::Owned(min.try_into_json().ok_or_else(
+            || {
+                TransformError::new_conversion_failed(
+                    "Failed to convert result of min to a number",
+                    &self.span,
+                )
+            },
+        )?))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
 
     use crate::compile_expression;
+
+    #[test]
+    pub fn test_max_function() {
+        let expr = compile_expression(
+            r#"{
+            "res": max(2, 2),  // Simple base case
+            "res2": max(input.val1, input.val2),  // Max of input (so computation happens at runtime)
+            "res3": max(2, 3, 4, 5, 6, 7), // Max of many numbers
+            "res4": max([1, 2, 3, 4, 5, 6]),  // Max of list
+            "res5": max(7, 3, 5, 8.1, 4),  // Max of mixed floats and ints should be float
+            "res6": max(-4, -10)  // Max of negative numbers
+        }"#,
+            &["input"],
+        )
+        .unwrap();
+
+        let inp = json!({
+            "val1": 10,
+            "val2": 4
+        });
+        let res = expr.run([&inp]).unwrap();
+
+        assert_eq!(2.0, res.get("res").unwrap().as_f64().unwrap());
+        assert_eq!(10.0, res.get("res2").unwrap().as_f64().unwrap());
+        assert_eq!(7, res.get("res3").unwrap().as_u64().unwrap());
+        assert_eq!(6, res.get("res4").unwrap().as_u64().unwrap());
+        assert_eq!(8.1, res.get("res5").unwrap().as_f64().unwrap());
+        assert_eq!(-4, res.get("res6").unwrap().as_i64().unwrap());
+
+        // Make sure the types of the max are correct:
+        //  - If everything is postitive and integer, return an u64
+        //  - If something is negative and everything is integer, return an i64
+        //  - If something is float, return an f64
+        assert!(res.get("res4").unwrap().is_u64());
+        assert!(res.get("res5").unwrap().is_f64());
+        assert!(res.get("res6").unwrap().is_i64());
+
+        let no_args = compile_expression(
+            r#"{
+            "res": max() // No args should yield an error
+        }"#,
+            &[],
+        );
+        assert!(no_args.is_err());
+
+        let empty_list = compile_expression(
+            r#"{
+            "res": max([]) // Empty list should yield an error
+        }"#,
+            &[],
+        );
+        assert!(empty_list.is_err());
+
+        let non_list = compile_expression(
+            r#"{
+            "res": max(1) // If the first arg isn't a list it should yield an error
+        }"#,
+            &[],
+        );
+        assert!(non_list.is_err());
+
+        let non_number = compile_expression(
+            r#"{
+            "res": max([1, 2, 3, 'a']) // If the list contains a non-number it should yield an error
+        }"#,
+            &[],
+        );
+        assert!(non_number.is_err());
+    }
+
+    #[test]
+    pub fn test_min_function() {
+        let expr = compile_expression(
+            r#"{
+            "res": min(2, 2),  // Simple base case
+            "res2": min(input.val1, input.val2),  // Min of input (so computation happens at runtime)
+            "res3": min(2, 3, 4, 5, 6, 7), // Min of many numbers
+            "res4": min([1, 2, 3, 4, 5, 6]),  // Min of list
+            "res5": min(7, 3.1, 5, 8, 4),  // Min of mixed floats and ints should be float
+            "res6": min(-4, -10)  // Min of negative numbers
+        }"#,
+            &["input"],
+        )
+        .unwrap();
+
+        let inp = json!({
+            "val1": 10,
+            "val2": 4
+        });
+        let res = expr.run([&inp]).unwrap();
+
+        assert_eq!(2.0, res.get("res").unwrap().as_f64().unwrap());
+        assert_eq!(4.0, res.get("res2").unwrap().as_f64().unwrap());
+        assert_eq!(2, res.get("res3").unwrap().as_u64().unwrap());
+        assert_eq!(1, res.get("res4").unwrap().as_u64().unwrap());
+        assert_eq!(3.1, res.get("res5").unwrap().as_f64().unwrap());
+        assert_eq!(-10, res.get("res6").unwrap().as_i64().unwrap());
+
+        // Make sure the types of the min are correct:
+        //  - If everything is postitive and integer, return an u64
+        //  - If something is negative and everything is integer, return an i64
+        //  - If something is float, return an f64
+        assert!(res.get("res4").unwrap().is_u64());
+        assert!(res.get("res5").unwrap().is_f64());
+        assert!(res.get("res6").unwrap().is_i64());
+
+        let no_args = compile_expression(
+            r#"{
+            "res": min() // No args should yield an error
+        }"#,
+            &[],
+        );
+        assert!(no_args.is_err());
+
+        let empty_list = compile_expression(
+            r#"{
+            "res": min([]) // Empty list should yield an error
+        }"#,
+            &[],
+        );
+        assert!(empty_list.is_err());
+
+        let non_list = compile_expression(
+            r#"{
+            "res": min(1) // If the first arg isn't a list it should yield an error
+        }"#,
+            &[],
+        );
+        assert!(non_list.is_err());
+
+        let non_number = compile_expression(
+            r#"{
+            "res": min([1, 2, 3, 'a']) // If the list contains a non-number it should yield an error
+        }"#,
+            &[],
+        );
+        assert!(non_number.is_err());
+    }
 
     #[test]
     pub fn test_pow_function() {
