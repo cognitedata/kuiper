@@ -32,6 +32,7 @@ mod compiler;
 mod expressions;
 mod lexer;
 mod parse;
+mod pretty;
 
 static NULL_CONST: Value = Value::Null;
 
