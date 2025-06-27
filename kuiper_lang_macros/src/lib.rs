@@ -45,7 +45,7 @@ pub fn pass_through_derive(d: TokenStream) -> TokenStream {
                 syn::FnArg::Typed(_) => false,
             });
             if !has_self {
-                panic!("Function {} must have self for pass through", funcname);
+                panic!("Function {funcname} must have self for pass through");
             }
 
             let mapped_funcargs: Vec<&Box<Pat>> = funcargs

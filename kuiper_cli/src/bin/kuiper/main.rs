@@ -87,7 +87,7 @@ fn inner_run(args: Args) -> Result<Vec<String>, KuiperCliError> {
         res.push(serde_json::to_string(&*result)?);
 
         if args.verbose {
-            println!("Expression executed with {} operations", opcount);
+            println!("Expression executed with {opcount} operations");
         }
     }
 
@@ -103,7 +103,7 @@ pub fn main() {
     }
 
     match inner_run(args) {
-        Ok(strings) => strings.into_iter().for_each(|s| println!("{}", s)),
-        Err(error) => eprintln!("\x1b[91mError:\x1b[0m {}", error),
+        Ok(strings) => strings.into_iter().for_each(|s| println!("{s}")),
+        Err(error) => eprintln!("\x1b[91mError:\x1b[0m {error}"),
     }
 }

@@ -159,7 +159,7 @@ pub(super) fn prettify_comment(comment: &str) -> String {
                 if inner.is_empty() {
                     line = "*/".to_owned();
                 } else {
-                    line = format!("{} */", inner).to_owned();
+                    line = format!("{inner} */").to_owned();
                 }
             }
 

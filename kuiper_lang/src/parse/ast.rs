@@ -225,8 +225,8 @@ impl Display for Expression {
                     let a2 = iter.next();
 
                     match (a1, a2) {
-                        (Some(a1), Some(a2)) => write!(f, "else if {} {{ {} }}", a1, a2)?,
-                        (Some(a1), None) => write!(f, "else {{ {} }}", a1)?,
+                        (Some(a1), Some(a2)) => write!(f, "else if {a1} {{ {a2} }}")?,
+                        (Some(a1), None) => write!(f, "else {{ {a1} }}")?,
                         _ => break,
                     }
                 }
