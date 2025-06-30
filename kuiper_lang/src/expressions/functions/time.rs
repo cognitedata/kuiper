@@ -118,7 +118,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FormatTimestampFunction {
         let mut res = String::new();
         let to_format = datetime.format(&format_str);
 
-        match write!(&mut res, "{}", to_format) {
+        match write!(&mut res, "{to_format}") {
             Ok(_) => Ok(ResolveResult::Owned(Value::String(res))),
             Err(_) => Err(TransformError::new_conversion_failed(
                 format!("Failed to format timestamp using {format_str}"),

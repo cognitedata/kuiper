@@ -90,8 +90,8 @@ pub fn repl(verbose_log: bool) {
                 // Re-add all macro definitions
                 let formatted_macro_defs = macro_defs
                     .values()
-                    .fold("".to_string(), |acc, e| format!("{} {}", e, acc));
-                expression = format!("{}{}", formatted_macro_defs, expression);
+                    .fold("".to_string(), |acc, e| format!("{e} {acc}"));
+                expression = format!("{formatted_macro_defs}{expression}");
 
                 let chunk_id = format!("var{index}");
                 let compile_start = Instant::now();
