@@ -83,8 +83,12 @@ fn inner_run(args: Args) -> Result<Vec<String>, KuiperCliError> {
 
     let mut res = Vec::new();
     for input in data {
-        let result = expression.run([&input])?;
+        let (result, opcount) = expression.run_get_opcount([&input])?;
         res.push(serde_json::to_string(&*result)?);
+
+        if args.verbose {
+            println!("Expression executed with {opcount} operations");
+        }
     }
 
     Ok(res)
@@ -99,7 +103,7 @@ pub fn main() {
     }
 
     match inner_run(args) {
-        Ok(strings) => strings.into_iter().for_each(|s| println!("{}", s)),
-        Err(error) => eprintln!("\x1b[91mError:\x1b[0m {}", error),
+        Ok(strings) => strings.into_iter().for_each(|s| println!("{s}")),
+        Err(error) => eprintln!("\x1b[91mError:\x1b[0m {error}"),
     }
 }

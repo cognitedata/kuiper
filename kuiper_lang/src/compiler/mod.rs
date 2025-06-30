@@ -165,23 +165,23 @@ impl ExpressionDebugInfo {
         let lexer = Lexer::new(data);
         let tokens: Result<Vec<_>, _> = lexer.map(|data| data.map(|(_, t, _)| t)).collect();
         let token_info = DebugInfo {
-            debug: format!("{:?}", tokens),
+            debug: format!("{tokens:?}"),
             clean: tokens
                 .map(|d| d.into_iter().map(|t| t.to_string()).collect())
-                .unwrap_or_else(|e| format!("{:?}", e)),
+                .unwrap_or_else(|e| format!("{e:?}")),
         };
 
         let lexer = Lexer::new(data);
         let parser = ProgramParser::new();
         let ast = parser.parse(lexer)?;
         let ast_info = DebugInfo {
-            debug: format!("{:?}", ast),
+            debug: format!("{ast:?}"),
             clean: ast.to_string(),
         };
 
         let exec_tree = ExecTreeBuilder::new(ast, known_inputs, config)?.build()?;
         let exec_tree_info = DebugInfo {
-            debug: format!("{:?}", exec_tree),
+            debug: format!("{exec_tree:?}"),
             clean: exec_tree.to_string(),
         };
 
@@ -191,7 +191,7 @@ impl ExpressionDebugInfo {
             config.optimizer_operation_limit,
         )?;
         let optimized_info = DebugInfo {
-            debug: format!("{:?}", optimized),
+            debug: format!("{optimized:?}"),
             clean: optimized.to_string(),
         };
 

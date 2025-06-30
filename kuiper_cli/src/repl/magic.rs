@@ -13,7 +13,7 @@ fn help(command: Option<&str>) {
             Some(function) => {
                 println!(
                     "{}",
-                    format!("Help page for {}", command_name).bold().underline()
+                    format!("Help page for {command_name}").bold().underline()
                 );
                 println!("Signature:  {}\n", function.signature);
                 println!("{}", function.description);
@@ -55,7 +55,7 @@ fn help(command: Option<&str>) {
                 ("/exit", "Quit the REPL"),
             ]
             .into_iter()
-            .for_each(|(func, desc)| println!("  {:-25}{}", func, desc));
+            .for_each(|(func, desc)| println!("  {func:-25}{desc}"));
         }
     }
 }
@@ -94,7 +94,7 @@ pub fn apply_magic_function(
             match parsed_line.get(1) {
                 Some(name) => match (inputs.last(), data.last()) {
                     (Some(old_name), Some(value)) => {
-                        println!("Storing {} as {}", old_name, name);
+                        println!("Storing {old_name} as {name}");
                         inputs.append(&mut vec![name.to_string()]);
                         data.append(&mut vec![value.clone()]);
                     }
