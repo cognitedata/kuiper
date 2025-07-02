@@ -33,6 +33,8 @@ pub(super) struct Formatter<'a, T: Iterator<Item = (usize, Span)>> {
     lines: Peekable<T>,
 }
 
+const INDENT_SIZE: usize = 4;
+
 impl<'a, T: Iterator<Item = (usize, Span)>> Formatter<'a, T> {
     /// Create a new formatter.
     pub(super) fn new(input: &'a str, lines: Peekable<T>) -> Self {
@@ -131,7 +133,7 @@ impl<'a, T: Iterator<Item = (usize, Span)>> Formatter<'a, T> {
             self.lines.next();
             self.tokens_on_line = 0;
             if self.indent_on_line > 0 {
-                self.indent += 4;
+                self.indent += INDENT_SIZE;
                 self.indent_on_line = 0;
             }
         }
@@ -167,10 +169,10 @@ impl<'a, T: Iterator<Item = (usize, Span)>> Formatter<'a, T> {
             } else {
                 // Else, we need to reduce the indent level, if the original node caused an indent.
                 if node.caused_indent {
-                    self.indent -= 4;
+                    self.indent -= INDENT_SIZE;
                 }
                 if node.has_postfix_chain {
-                    self.postfix_indent -= 4;
+                    self.postfix_indent -= INDENT_SIZE;
                 }
             }
         }
@@ -202,7 +204,7 @@ impl<'a, T: Iterator<Item = (usize, Span)>> Formatter<'a, T> {
                 if let Some(n) = self.stack.last_mut() {
                     if !n.has_postfix_chain {
                         n.has_postfix_chain = true;
-                        self.postfix_indent += 4;
+                        self.postfix_indent += INDENT_SIZE;
                     }
                 }
             }
@@ -210,7 +212,7 @@ impl<'a, T: Iterator<Item = (usize, Span)>> Formatter<'a, T> {
                 if let Some(n) = self.stack.last_mut() {
                     if n.has_postfix_chain {
                         n.has_postfix_chain = false;
-                        self.postfix_indent -= 4;
+                        self.postfix_indent -= INDENT_SIZE;
                     }
                 }
             }
