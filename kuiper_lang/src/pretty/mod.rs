@@ -30,15 +30,26 @@ pub fn format_expression(input: &str) -> Result<String, PrettyError> {
 #[cfg(test)]
 mod tests {
     fn test_pretty_print(input: &str, expected: &str) {
+        let initial_parse = crate::parse::ProgramParser::new()
+            .parse(crate::lexer::Lexer::new(input))
+            .expect("Input should be a valid program");
         let result = super::format_expression(input).unwrap();
         println!("{result}");
         println!("{expected}");
         assert_eq!(result, expected);
 
         // Check that the result can be parsed back into a valid program.
-        crate::parse::ProgramParser::new()
+        let final_parse = crate::parse::ProgramParser::new()
             .parse(crate::lexer::Lexer::new(&result))
             .expect("Formatted expression should be valid");
+
+        // Two identical programs will have the same string representation.
+        // This is a good way to check that the formatting didn't change the program.
+        assert_eq!(
+            initial_parse.to_string(),
+            final_parse.to_string(),
+            "The formatted expression should parse back to the same program"
+        );
     }
 
     #[test]

@@ -166,7 +166,8 @@ mod tests {
     use std::path::PathBuf;
 
     use crate::{
-        compile_expression, compiler::BuildError, lex::Token, CompileError, TransformError,
+        compile_expression, compiler::BuildError, format_expression, lex::Token, CompileError,
+        TransformError,
     };
 
     fn compile_err(data: &str, inputs: &[&str]) -> CompileError {
@@ -801,6 +802,17 @@ mod tests {
                         test_case.display(),
                     );
                 }
+                // Check that the expression is formatted correctly.
+                let formatted = format_expression(&raw_expression).expect(&format!(
+                    "Failed to format expression in file {}",
+                    test_case.display()
+                ));
+                assert_eq!(
+                    formatted,
+                    raw_expression,
+                    "Formatted expression does not match original in file {}",
+                    test_case.display()
+                );
             });
     }
 }
