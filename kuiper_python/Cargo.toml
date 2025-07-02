@@ -14,5 +14,5 @@ crate-type = ["cdylib"]
 
 [dependencies]
 kuiper_lang = { path = "../kuiper_lang" }
-pyo3 = { version = "0.24.0", features = ["extension-module"] }
+pyo3 = { version = "0.25.0", features = ["extension-module"] }
 serde_json = { version = "1.0.116" }
