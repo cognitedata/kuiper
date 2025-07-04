@@ -3,7 +3,7 @@ use kuiper_cli::errors::KuiperCliError;
 use kuiper_cli::repl::repl;
 use kuiper_lang::compile_expression;
 use serde_json::Value;
-use std::fs::read_to_string;
+use std::fs::{self, read_to_string};
 use std::io;
 use std::io::Read;
 use std::path::PathBuf;
@@ -35,6 +35,10 @@ struct Args {
     /// Verbose logging
     #[arg(short = 'v', long)]
     verbose: bool,
+
+    /// Run formatter on the expression
+    #[arg(long)]
+    format: bool,
 }
 
 impl Args {
@@ -74,6 +78,12 @@ fn load_expression(args: &Args) -> Result<String, KuiperCliError> {
     }
 }
 
+fn run_formatter(args: &Args) -> Result<String, KuiperCliError> {
+    let expression = load_expression(args)?;
+    let formatted_expression = kuiper_lang::format_expression(&expression)?;
+    Ok(formatted_expression)
+}
+
 fn inner_run(args: Args) -> Result<Vec<String>, KuiperCliError> {
     let expression = load_expression(&args)?;
 
@@ -102,8 +112,26 @@ pub fn main() {
         return;
     }
 
-    match inner_run(args) {
-        Ok(strings) => strings.into_iter().for_each(|s| println!("{s}")),
-        Err(error) => eprintln!("\x1b[91mError:\x1b[0m {error}"),
+    match args.format {
+        true => match run_formatter(&args) {
+            Ok(formatted) => {
+                if let Some(path) = &args.expression_file {
+                    if let Err(e) = fs::write(path, formatted) {
+                        eprintln!(
+                            "\x1b[91mError writing to file {}:\x1b[0m {e}",
+                            path.display()
+                        );
+                    }
+                } else {
+                    println!("{formatted}");
+                }
+            }
+            Err(error) => eprintln!("\x1b[91mError:\x1b[0m {error}"),
+        },
+
+        false => match inner_run(args) {
+            Ok(strings) => strings.into_iter().for_each(|s| println!("{s}")),
+            Err(error) => eprintln!("\x1b[91mError:\x1b[0m {error}"),
+        },
     }
 }
