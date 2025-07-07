@@ -86,7 +86,7 @@ impl<'a, T: Iterator<Item = (usize, Span)>> Formatter<'a, T> {
         ));
 
         // Check if we need to indent the output for a postfix chain.
-        self.get_postfix_indent(&token, self.tokens_on_line == 1);
+        self.update_postfix_indent(&token, self.tokens_on_line == 1);
 
         // If the token is the first on the line, push indent.
         if self.tokens_on_line == 1 {
@@ -197,7 +197,7 @@ impl<'a, T: Iterator<Item = (usize, Span)>> Formatter<'a, T> {
     /// 4 * number of nodes in the stack with has_postfix_chain set to true.
     ///
     /// The list of tokens we currently use for interruption may be incomplete.
-    fn get_postfix_indent(&mut self, token: &Token, is_first_on_line: bool) {
+    fn update_postfix_indent(&mut self, token: &Token, is_first_on_line: bool) {
         // Certain tokens can cause us to enter or exit a postfix chain, check those.
         match token {
             Token::Period if is_first_on_line => {

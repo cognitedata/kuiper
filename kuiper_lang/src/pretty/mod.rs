@@ -22,9 +22,19 @@ pub fn format_expression(input: &str) -> Result<String, PrettyError> {
 
     // Validate that the program parses, otherwise this will almost certainly fail in some other weird way,
     // or produce terrible results.
-    crate::parse::ProgramParser::new().parse(crate::lexer::Lexer::new(input))?;
+    let parse_res = crate::parse::ProgramParser::new().parse(crate::lexer::Lexer::new(input))?;
 
-    Formatter::new(input, iter_line_spans(input).enumerate().peekable()).run()
+    let res = Formatter::new(input, iter_line_spans(input).enumerate().peekable()).run()?;
+
+    let after_format_parse = crate::parse::ProgramParser::new()
+        .parse(crate::lexer::Lexer::new(&res))
+        .map_err(|_| PrettyError::SemanticMismatch)?;
+
+    if after_format_parse.to_string() != parse_res.to_string() {
+        return Err(PrettyError::SemanticMismatch);
+    }
+
+    Ok(res)
 }
 
 #[cfg(test)]

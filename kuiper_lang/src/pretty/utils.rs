@@ -79,6 +79,10 @@ pub enum PrettyError {
     Parser(#[from] ParseError),
     #[error("Pretty printing failed: {0}")]
     Pretty(String, Span),
+    #[error(
+        "Pretty printing resulted in a different semantic output than the original, this is a bug!"
+    )]
+    SemanticMismatch,
 }
 
 impl From<LexerError> for PrettyError {
