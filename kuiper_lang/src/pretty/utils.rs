@@ -1,4 +1,3 @@
-#![expect(unused)] // Temp, until this is actually finished.
 use logos::Span;
 
 use crate::lex::{LexerError, Token};
@@ -25,10 +24,10 @@ pub(super) enum IndentNodeKind {
 }
 
 pub(super) struct IndentNode {
-    kind: IndentNodeKind,
-    line: usize,
-    caused_indent: bool,
-    has_postfix_chain: bool,
+    pub(super) kind: IndentNodeKind,
+    pub(super) line: usize,
+    pub(super) caused_indent: bool,
+    pub(super) has_postfix_chain: bool,
 }
 
 pub(super) fn raw_token(input: &str, span: Span) -> &str {
@@ -80,6 +79,10 @@ pub enum PrettyError {
     Parser(#[from] ParseError),
     #[error("Pretty printing failed: {0}")]
     Pretty(String, Span),
+    #[error(
+        "Pretty printing resulted in a different semantic output than the original, this is a bug!"
+    )]
+    SemanticMismatch,
 }
 
 impl From<LexerError> for PrettyError {
@@ -254,7 +257,7 @@ b - 1
 
     #[test]
     fn test_indent_tokens() {
-        let mut tokens = tokens(r#"input.foo(a, { "b": [1, 2, 3] })"#);
+        let tokens = tokens(r#"input.foo(a, { "b": [1, 2, 3] })"#);
         let mut stack = Vec::new();
         let mut removed = Vec::new();
         for (tok, span) in tokens {
