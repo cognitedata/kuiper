@@ -90,7 +90,7 @@ jobs:
     environment: CD
     needs: ["build_python_bindings_darwin", "build_ubuntu_python_bindings", "build_python_bindings_windows"]
     steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
           pattern: wheels-*
           merge-multiple: true
@@ -175,19 +175,19 @@ jobs:
         with:
             dotnet-version: 8.0.x
       - name: Download Linux Artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
             name: interop-ubuntu-latest
             path: binaries/linux_x64/
 
       - name: Download Windows Artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
             name: interop-windows-latest
             path: binaries/windows_x64/
 
       - name: Download OSX arm64 Artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
             name: interop-macos-latest
             path: binaries/osx_arm64/
