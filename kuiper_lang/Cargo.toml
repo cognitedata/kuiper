@@ -1,6 +1,6 @@
 [package]
 name = "kuiper_lang"
-version = "0.15.0"
+version = "0.17.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "The Kuiper JSON mapping language"
@@ -28,7 +28,7 @@ base64 = "0.22.1"
 
 [dev-dependencies]
 pprof = { version = "0.15", features = ["flamegraph"] }
-criterion = "0.6"
+criterion = "0.7"
 walkdir = "2.5.0"
 
 [build-dependencies]

@@ -137,3 +137,13 @@ pub fn compile_expression(
     )?;
     Ok(KuiperExpression { expression: expr })
 }
+
+#[wasm_bindgen]
+pub fn format_expression(input: String) -> Result<String, KuiperError> {
+    let formatted = kuiper_lang::format_expression(&input).map_err(|e| KuiperError {
+        message: e.to_string(),
+        start: None,
+        end: None,
+    })?;
+    Ok(formatted)
+}
