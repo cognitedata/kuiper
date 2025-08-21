@@ -1,6 +1,6 @@
 [package]
 name = "kuiper_js"
-version = "0.16.0"
+version = "0.17.0"
 edition = "2021"
 authors = ["Einar Omang <einar.omang@cognite.com>"]
 license = "Apache-2.0"
