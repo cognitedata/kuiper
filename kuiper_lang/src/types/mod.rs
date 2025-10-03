@@ -5,6 +5,10 @@ use serde::Serialize;
 use serde_json::Value;
 use thiserror::Error;
 
+mod object;
+
+pub use object::{Object, ObjectField};
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 /// Representation of a type in the Kuiper language.
 /// Since Kuiper is dynamically typed, this needs to represent any
@@ -14,7 +18,8 @@ pub enum Type {
     Constant(Value),
 
     // TODO
-    // Object(Object),
+    /// Some JSON object.
+    Object(Object),
     // Sequence(Sequence),
     /// Some string.
     String,
@@ -38,13 +43,26 @@ pub enum TypeError {
     /// The intersection of the provided type (1) and the expected type (0)
     /// is empty, meaning that the types are guaranteed to be incompatible.
     #[error("Expected {0} but got {1}")]
-    ExpectedType(Type, Type, Span),
+    ExpectedType(Box<Type>, Box<Type>, Span),
+}
+
+impl TypeError {
+    /// Get the span of the type error.
+    pub fn span(&self) -> &Span {
+        match self {
+            TypeError::ExpectedType(_, _, span) => span,
+        }
+    }
+
+    pub fn expected_type(expected: Type, got: Type, span: Span) -> Self {
+        TypeError::ExpectedType(Box::new(expected), Box::new(got), span)
+    }
 }
 
 impl Type {
     /// Create a new constant type.
-    pub fn from_const(value: Value) -> Self {
-        Type::Constant(value)
+    pub fn from_const(value: impl Into<Value>) -> Self {
+        Type::Constant(value.into())
     }
 
     /// Create a new type that can be either number, i.e. either integer or float.
@@ -120,12 +138,83 @@ impl Type {
             _ => self,
         }
     }
+
+    /// Return a type representing any object, i.e. an object with no known fields,
+    /// and where unknown fields are of type `Any`.
+    pub fn any_object() -> Self {
+        Self::object_of_type(Type::Any)
+    }
+
+    /// Return a type representing an object where all fields are of the given type.
+    pub fn object_of_type(field_type: Type) -> Self {
+        Type::Object(Object {
+            fields: [(ObjectField::Generic, field_type)].into_iter().collect(),
+        })
+    }
+
+    /// Try to treat this type as an object type, by inspecting it if
+    /// it is a union or a constant. This will return an error if
+    /// the type
+    ///
+    ///  - Is a union without a variant that can be treated as an object.
+    ///  - Is a constant that is not an object.
+    ///  - Is not an object, union, constant, or any.
+    ///
+    /// Note that this assumes that if it is a union, this union is normalized, i.e.
+    /// contains only types that are not themselves unions, does not contain duplicates,
+    /// and does not contain `Any`.
+    pub fn try_as_object(&self, span: &Span) -> Result<Object, TypeError> {
+        match self {
+            Type::Object(obj) => Ok(obj.clone()),
+            Type::Union(types) => {
+                let obj = types
+                    .iter()
+                    .filter_map(|t| {
+                        if let Type::Object(obj) = t {
+                            Some(obj.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .next();
+                let Some(obj) = obj else {
+                    return Err(TypeError::expected_type(
+                        Type::any_object(),
+                        self.clone(),
+                        span.clone(),
+                    ));
+                };
+                Ok(obj)
+            }
+            Type::Constant(Value::Object(obj)) => {
+                let fields = obj
+                    .iter()
+                    .map(|(k, v)| {
+                        (
+                            ObjectField::Constant(k.clone()),
+                            Type::from_const(v.clone()),
+                        )
+                    })
+                    .collect();
+                Ok(Object { fields })
+            }
+            Type::Any => Ok(Object {
+                fields: [(ObjectField::Generic, Type::Any)].into_iter().collect(),
+            }),
+            _ => Err(TypeError::expected_type(
+                Type::any_object(),
+                self.clone(),
+                span.clone(),
+            )),
+        }
+    }
 }
 
 impl Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Type::Constant(value) => write!(f, "{}", value),
+            Type::Object(o) => write!(f, "{o}"),
             Type::String => write!(f, "String"),
             Type::Integer => write!(f, "Integer"),
             Type::Float => write!(f, "Float"),
@@ -334,5 +423,98 @@ mod tests {
         assert_eq!(temp_state.get_type(1), Some(&Type::Float));
         assert_eq!(temp_state.get_type(2), Some(&Type::String));
         assert_eq!(temp_state.get_type(3), Some(&Type::Constant(Value::Null)));
+    }
+
+    #[test]
+    fn test_try_as_object() {
+        let obj_type = Type::Object(Object {
+            fields: [
+                (ObjectField::Constant("a".to_string()), Type::String),
+                (ObjectField::Generic, Type::Integer),
+            ]
+            .into_iter()
+            .collect(),
+        });
+        let union_type = Type::Union(vec![
+            Type::Object(Object {
+                fields: [(ObjectField::Constant("b".to_string()), Type::Float)]
+                    .into_iter()
+                    .collect(),
+            }),
+            Type::String,
+        ]);
+        let const_obj_type = Type::from_const(json!({"c": 42, "d": "hello"}));
+        let any_type = Type::Any;
+        let non_obj_type = Type::Integer;
+
+        let span = 0..1;
+
+        // Test direct object type
+        let result = obj_type.try_as_object(&span).unwrap();
+        assert_eq!(
+            result.fields.get(&ObjectField::Constant("a".to_string())),
+            Some(&Type::String)
+        );
+        assert_eq!(
+            result.fields.get(&ObjectField::Generic),
+            Some(&Type::Integer)
+        );
+
+        // Test union type with an object variant
+        let result = union_type.try_as_object(&span).unwrap();
+        assert_eq!(
+            result.fields.get(&ObjectField::Constant("b".to_string())),
+            Some(&Type::Float)
+        );
+        assert!(result.fields.get(&ObjectField::Generic).is_none());
+
+        // Test constant object type
+        let result = const_obj_type.try_as_object(&span).unwrap();
+        assert_eq!(
+            result.fields.get(&ObjectField::Constant("c".to_string())),
+            Some(&Type::from_const(42))
+        );
+        assert_eq!(
+            result.fields.get(&ObjectField::Constant("d".to_string())),
+            Some(&Type::from_const("hello"))
+        );
+        assert!(result.fields.get(&ObjectField::Generic).is_none());
+
+        // Test Any type
+        let result = any_type.try_as_object(&span).unwrap();
+        assert_eq!(result.fields.get(&ObjectField::Generic), Some(&Type::Any));
+
+        // Test non-object type
+        let err = non_obj_type.try_as_object(&span).unwrap_err();
+        match err {
+            TypeError::ExpectedType(expected, got, _) => {
+                assert_eq!(
+                    expected,
+                    Box::new(Type::Object(Object {
+                        fields: [(ObjectField::Generic, Type::Any)].into_iter().collect(),
+                    }))
+                );
+                assert_eq!(*got, Type::Integer);
+            }
+        }
+    }
+
+    #[test]
+    fn test_try_as_object_union_without_object() {
+        let union_type = Type::Union(vec![Type::String, Type::Integer]);
+        let span = 0..1;
+
+        let err = union_type.try_as_object(&span).unwrap_err();
+        match err {
+            TypeError::ExpectedType(expected, got, _) => {
+                assert_eq!(
+                    expected,
+                    Box::new(Type::Object(Object {
+                        fields: [(ObjectField::Generic, Type::Any)].into_iter().collect(),
+                    }))
+                );
+                assert_eq!(*got, union_type);
+            }
+        }
     }
 }
