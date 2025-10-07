@@ -115,13 +115,9 @@ impl Type {
     /// This is useful to simplify types after operations that may
     /// produce unions.
     pub fn extract_single_union(self) -> Self {
-        if let Type::Union(types) = self {
-            if types.len() == 1 {
-                return types.into_iter().next().unwrap();
-            }
-            Type::Union(types)
-        } else {
-            self
+        match self {
+            Type::Union(types) if types.len() == 1 => types.into_iter().next().unwrap(),
+            _ => self,
         }
     }
 }
