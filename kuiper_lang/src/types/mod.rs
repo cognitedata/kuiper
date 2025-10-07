@@ -390,6 +390,14 @@ mod tests {
         let t8 = Type::from_const(json!(null));
         let t9 = Type::Union(vec![Type::from_const(json!(1)), Type::from_const(json!(2))]);
         let t10 = Type::Union(vec![Type::from_const(json!(1)), Type::Integer]);
+        let t11 = Type::Object(Object {
+            fields: [
+                (ObjectField::Constant("a".to_string()), Type::String),
+                (ObjectField::Generic, Type::Integer),
+            ]
+            .into_iter()
+            .collect(),
+        });
         assert_eq!(t1.to_string(), "42");
         assert_eq!(t2.to_string(), "String");
         assert_eq!(t3.to_string(), "Union<Integer, Float>");
@@ -400,6 +408,7 @@ mod tests {
         assert_eq!(t8.to_string(), "null");
         assert_eq!(t9.to_string(), "Union<1, 2>");
         assert_eq!(t10.to_string(), "Union<1, Integer>");
+        assert_eq!(t11.to_string(), "{a: String, ...: Integer}");
     }
 
     #[test]

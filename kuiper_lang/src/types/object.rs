@@ -1,10 +1,10 @@
-use std::{collections::HashMap, fmt::Display};
+use std::{collections::BTreeMap, fmt::Display};
 
 use serde::Serialize;
 
 use crate::types::Type;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 /// A field in a JSON object, either a constant field name, or a generic field.
 pub enum ObjectField {
     /// A constant, known field name.
@@ -31,7 +31,7 @@ impl Serialize for ObjectField {
 /// making it possible to represent both "maps", and "structures".
 pub struct Object {
     /// The fields in the object, mapping from field name (or generic) to type.
-    pub fields: HashMap<ObjectField, Type>,
+    pub fields: BTreeMap<ObjectField, Type>,
 }
 
 impl Serialize for Object {
@@ -83,7 +83,7 @@ mod tests {
 
     #[test]
     fn test_object_indexing() {
-        let mut fields = HashMap::new();
+        let mut fields = BTreeMap::new();
         fields.insert(ObjectField::Constant("a".to_string()), Type::String);
         fields.insert(
             ObjectField::Constant("b".to_string()),
@@ -99,7 +99,7 @@ mod tests {
 
     #[test]
     fn test_object_indexing_no_generic() {
-        let mut fields = HashMap::new();
+        let mut fields = BTreeMap::new();
         fields.insert(ObjectField::Constant("a".to_string()), Type::String);
         fields.insert(
             ObjectField::Constant("b".to_string()),
