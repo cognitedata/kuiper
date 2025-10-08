@@ -46,7 +46,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for CaseFunction {
 
         if let Some(idx) = result {
             Ok(self.args[idx].resolve(state)?)
-        } else if self.args.len() % 2 == 0 {
+        } else if self.args.len().is_multiple_of(2) {
             Ok(self.args[self.args.len() - 1].resolve(state)?)
         } else {
             Ok(ResolveResult::Owned(Value::Null))

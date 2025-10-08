@@ -33,6 +33,7 @@ mod expressions;
 mod lexer;
 mod parse;
 mod pretty;
+pub mod types;
 
 pub use pretty::{format_expression, PrettyError};
 
