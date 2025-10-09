@@ -66,5 +66,6 @@ export const builtIns: KuiperInput[] = [
     { label: "try_bool", description: "`try_bool(a, b)`: Try convert `a` to a boolean, if it fails, return `b`." },
     { label: "try_float", description: "`try_float(a, b)`: Try convert `a` to a float, if it fails, return `b`." },
     { label: "try_int", description: "`try_int(a, b)`: Try convert `a` to a int, if it fails, return `b`." },
+    { label: "upper", description: "`upper(x)`: Convert all characters in the string `x` to uppercase. If `x` is a boolean or number, it will be converted to a string first." },
     { label: "zip", description: "`zip(x, y, ..., (i1, i2, ...) => ...)`: Take a number of arrays, call the given lambda function on each entry, and return a single array from the result of each call. The returned array will be as long as the longest argument, null will be given for the shorter input arrays when they run out." },
 ];

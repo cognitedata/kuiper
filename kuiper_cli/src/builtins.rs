@@ -5,7 +5,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-pub const BUILT_INS: [&str; 59] = [
+pub const BUILT_INS: [&str; 60] = [
     "all(",
     "any(",
     "atan2(",
@@ -64,6 +64,7 @@ pub const BUILT_INS: [&str; 59] = [
     "try_bool(",
     "try_float(",
     "try_int(",
+    "upper(",
     "zip(",
 ];
 
@@ -506,6 +507,13 @@ The format is given using the table found [here](https://docs.rs/chrono/latest/c
             FunctionDef {
                 signature: "try_int(a, b)",
                 description: "Try convert `a` to a int, if it fails, return `b`.",
+            }
+        ),
+        (
+            "upper",
+            FunctionDef {
+                signature: "upper(x)",
+                description: "Convert all characters in the string `x` to uppercase. If `x` is a boolean or number, it will be converted to a string first.",
             }
         ),
         (

@@ -304,6 +304,23 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for LowerFunction {
     }
 }
 
+function_def!(UpperFunction, "upper", 1);
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for UpperFunction {
+    fn resolve(
+        &'a self,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        let inp_string = self.args[0]
+            .resolve(state)?
+            .try_into_string("upper", &self.span)?;
+
+        Ok(ResolveResult::Owned(Value::String(
+            inp_string.to_uppercase(),
+        )))
+    }
+}
+
 // Once the function is defined it should be added to the main function enum in expressions/base.rs, and to the get_function_expression function.
 // We can just add a test in this file:
 #[cfg(test)]
@@ -562,7 +579,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_lower() {
+    fn test_lower() {
         let expr = compile_expression(
             r#"
         {
@@ -584,5 +601,30 @@ mod tests {
         assert_eq!(res.get("t4").unwrap().as_str().unwrap(), "tëßt");
         assert_eq!(res.get("t5").unwrap().as_str().unwrap(), "123");
         assert_eq!(res.get("t6").unwrap().as_str().unwrap(), "true");
+    }
+
+    #[test]
+    fn test_upper() {
+        let expr = compile_expression(
+            r#"
+        {
+            "t1": "TEST".upper(),
+            "t2": "TeSt123".upper(),
+            "t3": "test".upper(),
+            "t4": "tëßt".upper(),
+            "t5": 123.upper(),
+            "t6": true.upper(),
+        }"#,
+            &[],
+        )
+        .unwrap();
+
+        let res = expr.run(&[]).unwrap();
+        assert_eq!(res.get("t1").unwrap().as_str().unwrap(), "TEST");
+        assert_eq!(res.get("t2").unwrap().as_str().unwrap(), "TEST123");
+        assert_eq!(res.get("t3").unwrap().as_str().unwrap(), "TEST");
+        assert_eq!(res.get("t4").unwrap().as_str().unwrap(), "TËSST");
+        assert_eq!(res.get("t5").unwrap().as_str().unwrap(), "123");
+        assert_eq!(res.get("t6").unwrap().as_str().unwrap(), "TRUE");
     }
 }

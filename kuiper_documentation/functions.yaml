@@ -619,3 +619,10 @@ functions:
     description: Convert all characters in the string `x` to lowercase. If `x` is a boolean or number, it will be converted to a string.
     examples:
       - '"Hello World".lower() -> "hello world"'
+
+  - name: upper
+    signature: "`upper(x)`"
+    description: Convert all characters in the string `x` to uppercase. If `x` is a boolean or number, it will be converted to a string first.
+    examples:
+      - '"Hello World".upper() -> "HELLO WORLD"'
+      - 'true.upper() -> "TRUE"'

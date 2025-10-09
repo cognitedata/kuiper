@@ -896,6 +896,20 @@ try_int("6", 1) -> 6
 try_int("4", null) -> 4
 ```
 
+## upper
+
+`upper(x)`
+
+Convert all characters in the string `x` to uppercase. If `x` is a boolean or number, it will be converted to a string first.
+
+**Code examples**
+```
+"Hello World".upper() -> "HELLO WORLD"
+```
+```
+true.upper() -> "TRUE"
+```
+
 ## zip
 
 `zip(x, y, ..., (i1, i2, ...) => ...)`
