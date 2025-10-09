@@ -843,6 +843,17 @@ to_unix_timestamp("2023-05-01 12:43:23", "%Y-%m-%d %H:%M:%S") -> 1682945003000
 }
 ```
 
+## translate
+
+`translate(x, from, to)`
+
+Replace characters in the string `x` found in the string `from` with the corresponding character in the string `to`. If `to` and `from` are of different lengths, the expression will fail.
+
+**Code example**
+```
+"hello world".translate("he", "HE") -> "HEllo world"
+```
+
 ## trim_whitespace
 
 `trim_whitespace(x)`

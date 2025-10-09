@@ -5,7 +5,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-pub const BUILT_INS: [&str; 60] = [
+pub const BUILT_INS: [&str; 61] = [
     "all(",
     "any(",
     "atan2(",
@@ -60,6 +60,7 @@ pub const BUILT_INS: [&str; 60] = [
     "tail(",
     "to_object(",
     "to_unix_timestamp(",
+    "translate(",
     "trim_whitespace(",
     "try_bool(",
     "try_float(",
@@ -479,6 +480,13 @@ left out, the input is used as a value directly.",
                 description: "Convert the string `x` into a millisecond Unix timestamp using the format string `f`.
 
 The format is given using the table found [here](https://docs.rs/chrono/latest/chrono/format/strftime/index.html).",
+            }
+        ),
+        (
+            "translate",
+            FunctionDef {
+                signature: "translate(x, from, to)",
+                description: "Replace characters in the string `x` found in the string `from` with the corresponding character in the string `to`. If `to` and `from` are of different lengths, the expression will fail.",
             }
         ),
         (

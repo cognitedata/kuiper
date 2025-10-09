@@ -266,6 +266,7 @@ pub enum FunctionType {
     ParseJson(ParseJsonFunction),
     Lower(LowerFunction),
     Upper(UpperFunction),
+    Translate(TranslateFunction),
 }
 
 struct FunctionBuilder {
@@ -349,6 +350,7 @@ pub fn get_function_expression(
         "parse_json" => FunctionType::ParseJson(b.mk()?),
         "lower" => FunctionType::Lower(b.mk()?),
         "upper" => FunctionType::Upper(b.mk()?),
+        "translate" => FunctionType::Translate(b.mk()?),
         _ => return Err(BuildError::unrecognized_function(b.pos, name)),
     };
     Ok(ExpressionType::Function(expr))

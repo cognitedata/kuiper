@@ -62,6 +62,7 @@ export const builtIns: KuiperInput[] = [
     { label: "tail", description: "`tail(x(, n))`: Take the last element of the list `x`. If `n` is given, takes the last `n` elements, and returns a list if `n` > 1." },
     { label: "to_object", description: "`to_object(x, val => ...(, val => ...))`: Convert the array `x` into an object by producing the key and value from two lambdas." },
     { label: "to_unix_timestamp", description: "`to_unix_timestamp(x, f)`: Convert the string `x` into a millisecond Unix timestamp using the format string `f`." },
+    { label: "translate", description: "`translate(x, from, to)`: Replace characters in the string `x` found in the string `from` with the corresponding character in the string `to`. If `to` and `from` are of different lengths, the expression will fail." },
     { label: "trim_whitespace", description: "`trim_whitespace(x)`: Remove any whitespace from the start and end of `x`" },
     { label: "try_bool", description: "`try_bool(a, b)`: Try convert `a` to a boolean, if it fails, return `b`." },
     { label: "try_float", description: "`try_float(a, b)`: Try convert `a` to a float, if it fails, return `b`." },

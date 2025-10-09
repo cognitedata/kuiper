@@ -626,3 +626,9 @@ functions:
     examples:
       - '"Hello World".upper() -> "HELLO WORLD"'
       - 'true.upper() -> "TRUE"'
+
+  - name: translate
+    signature: "`translate(x, from, to)`"
+    description: "Replace characters in the string `x` found in the string `from` with the corresponding character in the string `to`. If `to` and `from` are of different lengths, the expression will fail."
+    examples:
+      - '"hello world".translate("he", "HE") -> "HEllo world"'

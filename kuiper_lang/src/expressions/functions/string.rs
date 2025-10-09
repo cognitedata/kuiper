@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashMap};
 
 use itertools::Itertools;
 use serde_json::Value;
@@ -321,6 +321,47 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for UpperFunction {
     }
 }
 
+function_def!(TranslateFunction, "translate", 3);
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for TranslateFunction {
+    fn resolve(
+        &'a self,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        let inp_string = self.args[0].resolve(state)?;
+        let inp_string = inp_string.try_as_string("translate", &self.span)?;
+
+        let from = self.args[1].resolve(state)?;
+        let from = from.try_as_string("translate", &self.span)?;
+
+        let to = self.args[2].resolve(state)?;
+        let to = to.try_as_string("translate", &self.span)?;
+
+        let mut map = HashMap::new();
+        for pair in from.chars().zip_longest(to.chars()) {
+            match pair {
+                itertools::EitherOrBoth::Both(from, to) => {
+                    map.insert(from, to);
+                }
+                _ => {
+                    return Err(crate::TransformError::new_invalid_operation(
+                        "In translate, 'from' and 'to' must have the same number of characters"
+                            .to_owned(),
+                        &self.span,
+                    ))
+                }
+            }
+        }
+
+        let result = inp_string
+            .chars()
+            .map(|c| map.get(&c).cloned().unwrap_or(c))
+            .collect();
+
+        Ok(ResolveResult::Owned(Value::String(result)))
+    }
+}
+
 // Once the function is defined it should be added to the main function enum in expressions/base.rs, and to the get_function_expression function.
 // We can just add a test in this file:
 #[cfg(test)]
@@ -626,5 +667,24 @@ mod tests {
         assert_eq!(res.get("t4").unwrap().as_str().unwrap(), "TËSST");
         assert_eq!(res.get("t5").unwrap().as_str().unwrap(), "123");
         assert_eq!(res.get("t6").unwrap().as_str().unwrap(), "TRUE");
+    }
+
+    #[test]
+    fn test_translate() {
+        let expr = compile_expression(
+            r#"
+        {
+            "t1": "hello".translate("ho","jy"),
+            "t2": "hello world".translate("helowr","HELOWR"),
+            "t3": "háøøææ".translate("áõøæ","aooa"),
+        }"#,
+            &[],
+        )
+        .unwrap();
+
+        let res = expr.run(&[]).unwrap();
+        assert_eq!(res.get("t1").unwrap().as_str().unwrap(), "jelly");
+        assert_eq!(res.get("t2").unwrap().as_str().unwrap(), "HELLO WORLd");
+        assert_eq!(res.get("t3").unwrap().as_str().unwrap(), "haooaa");
     }
 }
