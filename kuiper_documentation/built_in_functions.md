@@ -381,6 +381,17 @@ Return the base `y` logarithm of `x`.
 log(16, 2) -> 4.0
 ```
 
+## lower
+
+`lower(x)`
+
+Convert all characters in the string `x` to lowercase. If `x` is a boolean or number, it will be converted to a string.
+
+**Code example**
+```
+"Hello World".lower() -> "hello world"
+```
+
 ## map
 
 `map(x, (it(, index)) => ...)`

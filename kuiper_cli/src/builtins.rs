@@ -5,7 +5,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-pub const BUILT_INS: [&str; 58] = [
+pub const BUILT_INS: [&str; 59] = [
     "all(",
     "any(",
     "atan2(",
@@ -31,6 +31,7 @@ pub const BUILT_INS: [&str; 58] = [
     "join(",
     "length(",
     "log(",
+    "lower(",
     "map(",
     "max(",
     "min(",
@@ -257,6 +258,13 @@ Consider using [try_int](#try_int) instead if you need error handling.",
             FunctionDef {
                 signature: "log(x, y)",
                 description: "Return the base `y` logarithm of `x`.",
+            }
+        ),
+        (
+            "lower",
+            FunctionDef {
+                signature: "lower(x)",
+                description: "Convert all characters in the string `x` to lowercase. If `x` is a boolean or number, it will be converted to a string.",
             }
         ),
         (

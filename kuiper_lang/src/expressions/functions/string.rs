@@ -287,6 +287,23 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for EndsWithFunction {
     }
 }
 
+function_def!(LowerFunction, "lower", 1);
+
+impl<'a: 'c, 'c> Expression<'a, 'c> for LowerFunction {
+    fn resolve(
+        &'a self,
+        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        let inp_string = self.args[0]
+            .resolve(state)?
+            .try_into_string("lower", &self.span)?;
+
+        Ok(ResolveResult::Owned(Value::String(
+            inp_string.to_lowercase(),
+        )))
+    }
+}
+
 // Once the function is defined it should be added to the main function enum in expressions/base.rs, and to the get_function_expression function.
 // We can just add a test in this file:
 #[cfg(test)]
@@ -542,5 +559,30 @@ mod tests {
         assert_eq!(res.get("t1").unwrap().as_bool().unwrap(), true);
         assert_eq!(res.get("t2").unwrap().as_bool().unwrap(), false);
         assert_eq!(res.get("t3").unwrap().as_bool().unwrap(), true);
+    }
+
+    #[test]
+    pub fn test_lower() {
+        let expr = compile_expression(
+            r#"
+        {
+            "t1": "TEST".lower(),
+            "t2": "TeSt123".lower(),
+            "t3": "test".lower(),
+            "t4": "tëßt".lower(),
+            "t5": 123.lower(),
+            "t6": true.lower(),
+        }"#,
+            &[],
+        )
+        .unwrap();
+
+        let res = expr.run(&[]).unwrap();
+        assert_eq!(res.get("t1").unwrap().as_str().unwrap(), "test");
+        assert_eq!(res.get("t2").unwrap().as_str().unwrap(), "test123");
+        assert_eq!(res.get("t3").unwrap().as_str().unwrap(), "test");
+        assert_eq!(res.get("t4").unwrap().as_str().unwrap(), "tëßt");
+        assert_eq!(res.get("t5").unwrap().as_str().unwrap(), "123");
+        assert_eq!(res.get("t6").unwrap().as_str().unwrap(), "true");
     }
 }

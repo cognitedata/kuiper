@@ -613,3 +613,9 @@ functions:
       If the passed value isn't a string, it's returned as-is.
     examples:
       - 'parse_json("{\"a\": 1, \"b\": 2}") -> {"a": 1, "b": 2}'
+
+  - name: lower
+    signature: "`lower(x)`"
+    description: Convert all characters in the string `x` to lowercase. If `x` is a boolean or number, it will be converted to a string.
+    examples:
+      - '"Hello World".lower() -> "hello world"'

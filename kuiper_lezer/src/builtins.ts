@@ -33,6 +33,7 @@ export const builtIns: KuiperInput[] = [
     { label: "join", description: "`join(a, b, ...)`: Return the union of the given objects or arrays. If a key is present in multiple objects, each instance of the key is overwritten by later objects. Arrays are simply merged." },
     { label: "length", description: "`length(x)`: Return the length on the list, string or object `x`." },
     { label: "log", description: "`log(x, y)`: Return the base `y` logarithm of `x`." },
+    { label: "lower", description: "`lower(x)`: Convert all characters in the string `x` to lowercase. If `x` is a boolean or number, it will be converted to a string." },
     { label: "map", description: "`map(x, (it(, index)) => ...)`: Apply the lambda function to every item in the list `x`. The lambda takes an optional second input which is the index of the item in the list." },
     { label: "max", description: "`max(a, b, ...)`: Returns the larger of the given numbers. Can also be used on an array." },
     { label: "min", description: "`min(a, b, ...)`: Returns the smaller of the given numbers. Can also be used on an array." },
