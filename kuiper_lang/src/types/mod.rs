@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use itertools::Itertools;
 use logos::Span;
 use serde::Serialize;
 use serde_json::Value;
@@ -11,7 +12,7 @@ mod object;
 pub use array::Array;
 pub use object::{Object, ObjectField};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Hash)]
 /// Representation of a type in the Kuiper language.
 /// Since Kuiper is dynamically typed, this needs to represent any
 /// JSON value.
@@ -183,18 +184,20 @@ impl Type {
         match self {
             Type::Object(obj) => Ok(obj.clone()),
             Type::Union(types) => {
-                // TODO: This currently just picks the first object it finds,
-                // we likely want to compute the union of all possible objects instead.
                 let obj = types
                     .iter()
-                    .filter_map(|t| {
-                        if let Type::Object(obj) = t {
-                            Some(obj.clone())
-                        } else {
-                            None
-                        }
+                    .filter_map(|t| match t {
+                        Type::Object(a) => Some(a.clone()),
+                        Type::Constant(Value::Object(obj)) => Some(Object::from_const(obj.clone())),
+                        _ => None,
                     })
-                    .next();
+                    .fold(None::<Object>, |acc, obj| {
+                        if let Some(acc) = acc {
+                            Some(acc.union_with(obj))
+                        } else {
+                            Some(obj)
+                        }
+                    });
                 let Some(obj) = obj else {
                     return Err(TypeError::expected_type(
                         Type::any_object(),
@@ -204,18 +207,7 @@ impl Type {
                 };
                 Ok(obj)
             }
-            Type::Constant(Value::Object(obj)) => {
-                let fields = obj
-                    .iter()
-                    .map(|(k, v)| {
-                        (
-                            ObjectField::Constant(k.clone()),
-                            Type::from_const(v.clone()),
-                        )
-                    })
-                    .collect();
-                Ok(Object { fields })
-            }
+            Type::Constant(Value::Object(obj)) => Ok(Object::from_const(obj.clone())),
             Type::Any => Ok(Object {
                 fields: [(ObjectField::Generic, Type::Any)].into_iter().collect(),
             }),
@@ -242,19 +234,21 @@ impl Type {
         match self {
             Type::Array(seq) => Ok(seq.clone()),
             Type::Union(types) => {
-                // TODO: This currently just picks the first array it finds,
-                // we likely want to compute the union of all possible arrays instead.
-                let seq = types
+                let res = types
                     .iter()
-                    .filter_map(|t| {
-                        if let Type::Array(seq) = t {
-                            Some(seq.clone())
-                        } else {
-                            None
-                        }
+                    .filter_map(|t| match t {
+                        Type::Array(a) => Some(a.clone()),
+                        Type::Constant(Value::Array(arr)) => Some(Array::from_const(arr.clone())),
+                        _ => None,
                     })
-                    .next();
-                let Some(seq) = seq else {
+                    .fold(None::<Array>, |acc, seq| {
+                        if let Some(acc) = acc {
+                            Some(acc.union_with(seq))
+                        } else {
+                            Some(seq)
+                        }
+                    });
+                let Some(seq) = res else {
                     return Err(TypeError::expected_type(
                         Type::any_array(),
                         self.clone(),
@@ -263,13 +257,7 @@ impl Type {
                 };
                 Ok(seq)
             }
-            Type::Constant(Value::Array(arr)) => {
-                let elements = arr.iter().map(|v| Type::from_const(v.clone())).collect();
-                Ok(Array {
-                    elements,
-                    end_dynamic: None,
-                })
-            }
+            Type::Constant(Value::Array(arr)) => Ok(Array::from_const(arr.clone())),
             Type::Any => Ok(Array {
                 end_dynamic: Some(Box::new(Type::Any)),
                 elements: vec![],
@@ -279,6 +267,78 @@ impl Type {
                 self.clone(),
                 span.clone(),
             )),
+        }
+    }
+
+    fn simplify_union(union: Vec<Type>) -> Type {
+        let res = union.into_iter().unique().collect::<Vec<_>>();
+        if res.len() == 1 {
+            res.into_iter().next().unwrap()
+        } else {
+            Type::Union(res)
+        }
+    }
+
+    fn merge_into_union(union: Vec<Type>, value: Type) -> Type {
+        let mut res = Vec::with_capacity(union.len());
+
+        // Merge the type into each field of the union, then deduplicate at the end.
+        // This means that Union(123, 234) with Integer, will become just Union(integer)
+        let mut merged_into = false;
+        for elem in union {
+            let merged = elem.union_with(value.clone());
+            if let Type::Union(types) = merged {
+                res.push(types.into_iter().next().unwrap());
+            } else {
+                merged_into = true;
+                res.push(merged);
+            }
+        }
+        if !merged_into {
+            res.push(value);
+        }
+        Self::simplify_union(res)
+    }
+
+    pub fn union_with(self, other: Type) -> Self {
+        if self == other {
+            return self;
+        }
+        match (self, other) {
+            (Type::Union(types), Type::Union(other_types)) => {
+                let mut res = Type::Union(types);
+                for tp in other_types {
+                    res = res.union_with(tp);
+                }
+                res
+            }
+            (Type::Any, _) => Type::Any,
+            (_, Type::Any) => Type::Any,
+            (Type::Union(types), other) | (other, Type::Union(types)) => {
+                Self::merge_into_union(types, other)
+            }
+
+            // Primitive types unioned with constants of the same primitive type
+            (Type::String, Type::Constant(c)) | (Type::Constant(c), Type::String)
+                if c.is_string() =>
+            {
+                Type::String
+            }
+            (Type::Boolean, Type::Constant(c)) | (Type::Constant(c), Type::Boolean)
+                if c.is_boolean() =>
+            {
+                Type::Boolean
+            }
+            (Type::Float, Type::Constant(c)) | (Type::Constant(c), Type::Float) if c.is_f64() => {
+                Type::Float
+            }
+            (Type::Integer, Type::Constant(c)) | (Type::Constant(c), Type::Integer)
+                if c.is_i64() =>
+            {
+                Type::Integer
+            }
+
+            (self_type, other_type) => Type::Union(vec![self_type, other_type]),
         }
     }
 }
@@ -684,5 +744,61 @@ mod tests {
                 assert_eq!(*got, union_type);
             }
         }
+    }
+
+    #[test]
+    fn test_union() {
+        assert_eq!(Type::number(), Type::Integer.union_with(Type::Float));
+        assert_eq!(
+            Type::Integer,
+            Type::Integer.union_with(Type::from_const(123))
+        );
+        assert_eq!(
+            Type::String,
+            Type::String.union_with(Type::from_const("abc"))
+        );
+        assert_eq!(
+            Type::Boolean,
+            Type::Boolean.union_with(Type::from_const(true))
+        );
+        assert_eq!(Type::Float, Type::Float.union_with(Type::from_const(3.14)));
+        assert_eq!(
+            Type::Union(vec![Type::from_const(123.123), Type::from_const(456.456)]),
+            Type::from_const(123.123).union_with(Type::from_const(456.456))
+        );
+
+        let obj1 = Type::Object(Object {
+            fields: [
+                (ObjectField::Constant("a".to_string()), Type::String),
+                (ObjectField::Generic, Type::Integer),
+            ]
+            .into_iter()
+            .collect(),
+        });
+        let obj2 = Type::Object(Object {
+            fields: [
+                (ObjectField::Constant("b".to_string()), Type::Float),
+                (ObjectField::Generic, Type::Integer),
+            ]
+            .into_iter()
+            .collect(),
+        });
+        let res = obj1.clone().union_with(obj2.clone());
+        assert_eq!(res, Type::Union(vec![obj1, obj2]));
+
+        assert_eq!(Type::Any, Type::Any.union_with(Type::Integer));
+        assert_eq!(Type::Any, Type::Float.union_with(Type::Any));
+
+        assert_eq!(
+            Type::Integer,
+            Type::Union(vec![Type::from_const(123), Type::from_const(234)])
+                .union_with(Type::Integer)
+        );
+
+        assert_eq!(
+            Type::Union(vec![Type::Integer, Type::String]),
+            Type::Union(vec![Type::from_const(123), Type::String])
+                .union_with(Type::Union(vec![Type::from_const("abc"), Type::Integer]))
+        )
     }
 }
