@@ -341,7 +341,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TranslateFunction {
         for pair in from.chars().zip_longest(to.chars()) {
             match pair {
                 itertools::EitherOrBoth::Both(from, to) => {
-                    map.insert(from, to);
+                    map.entry(from).or_insert(to);
                 }
                 _ => {
                     return Err(crate::TransformError::new_invalid_operation(
@@ -677,6 +677,7 @@ mod tests {
             "t1": "hello".translate("ho","jy"),
             "t2": "hello world".translate("helowr","HELOWR"),
             "t3": "háøøææ".translate("áõøæ","aooa"),
+            "t4": "hello".translate("hee", "hij"), // first match is prefered.
         }"#,
             &[],
         )
@@ -686,5 +687,6 @@ mod tests {
         assert_eq!(res.get("t1").unwrap().as_str().unwrap(), "jelly");
         assert_eq!(res.get("t2").unwrap().as_str().unwrap(), "HELLO WORLd");
         assert_eq!(res.get("t3").unwrap().as_str().unwrap(), "haooaa");
+        assert_eq!(res.get("t4").unwrap().as_str().unwrap(), "hillo");
     }
 }
