@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use serde_json::{Map, Value};
 
-use crate::{compiler::BuildError, NULL_CONST};
+use crate::{compiler::BuildError, expressions::source::SourceData, NULL_CONST};
 
 use super::{
     base::{Expression, ExpressionExecutionState, ExpressionMeta, ExpressionType},
@@ -79,7 +79,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SelectorExpression {
                         ))
                     }
                 };
-                self.resolve_by_reference(source_ref, state)
+                self.resolve_source_reference(source_ref, state)
             }
             SourceElement::Expression(e) => {
                 let src = e.resolve(state)?;
@@ -120,6 +120,65 @@ impl SelectorExpression {
             }
         }
         Ok(Self { source, path, span })
+    }
+
+    fn resolve_source_reference<'a: 'c, 'c>(
+        &'a self,
+        source: &'c dyn SourceData,
+        state: &mut ExpressionExecutionState<'c, '_>,
+    ) -> Result<ResolveResult<'c>, TransformError> {
+        let mut elem = source;
+        state.inc_op()?;
+
+        for p in self.path.iter() {
+            state.inc_op()?;
+
+            #[cfg(feature = "completions")]
+            Self::register_completions_source(state, p, elem);
+
+            elem = match p {
+                SelectorElement::Constant(x, _) => elem.get_key(x),
+                SelectorElement::Expression(x) => {
+                    let val = x.resolve(state)?;
+                    match val.as_ref() {
+                        Value::String(s) => elem.get_key(s),
+                        Value::Number(n) => {
+                            let num = JsonNumber::from(n.clone());
+                            match num {
+                                JsonNumber::PosInteger(n) => elem.get_index(n as usize),
+                                JsonNumber::NegInteger(n) => {
+                                    if n < 0 {
+                                        elem.get_index(elem.len().unwrap_or(0) - (-n as usize))
+                                    } else {
+                                        elem.get_index(n as usize)
+                                    }
+                                }
+                                _ => {
+                                    return Err(TransformError::new_incorrect_type(
+                                        "Incorrect type in selector",
+                                        "integer",
+                                        "floating point",
+                                        &self.span,
+                                    ))
+                                }
+                            }
+                        }
+                        _ => {
+                            return Err(TransformError::new_incorrect_type(
+                                "Incorrect type in selector",
+                                "integer or string",
+                                TransformError::value_desc(&val),
+                                &self.span,
+                            ))
+                        }
+                    }
+                }
+            };
+            if elem.is_null() {
+                break;
+            }
+        }
+        Ok(elem.resolve())
     }
 
     fn resolve_by_reference<'a: 'c, 'c>(
@@ -182,6 +241,9 @@ impl SelectorExpression {
                     }
                 }
             };
+            if elem.is_null() {
+                break;
+            }
         }
         Ok(ResolveResult::Borrowed(elem))
     }
@@ -196,8 +258,20 @@ impl SelectorExpression {
             return;
         };
         if let Some(o) = source.as_object() {
-            state.add_completion_entries(o.keys(), s.clone());
+            state.add_completion_entries(|| o.keys(), s.clone());
         }
+    }
+
+    #[cfg(feature = "completions")]
+    fn register_completions_source(
+        state: &mut ExpressionExecutionState<'_, '_>,
+        p: &SelectorElement,
+        source: &dyn SourceData,
+    ) {
+        let SelectorElement::Constant(_, s) = p else {
+            return;
+        };
+        state.add_completion_entries(|| source.keys(), s.clone());
     }
 
     fn as_object_owned(value: Value) -> Option<Map<String, Value>> {
@@ -280,6 +354,9 @@ impl SelectorExpression {
                     }
                 }
             };
+            if elem.is_null() {
+                break;
+            }
         }
         Ok(ResolveResult::Owned(elem))
     }

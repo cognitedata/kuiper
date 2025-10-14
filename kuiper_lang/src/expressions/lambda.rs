@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use logos::Span;
 
-use crate::{compiler::BuildError, write_list};
+use crate::{compiler::BuildError, expressions::source::SourceData, write_list};
 
 use super::{base::ExpressionMeta, Expression, ExpressionType, ResolveResult};
 
@@ -53,7 +53,10 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for LambdaExpression {
         values: &[&'d serde_json::Value],
     ) -> Result<super::ResolveResult<'c>, crate::TransformError> {
         state.inc_op()?;
-        let mut inner = state.get_temporary_clone(values.iter().copied(), self.input_names.len());
+        let mut inner = state.get_temporary_clone(
+            values.iter().map(|v| *v as &dyn SourceData),
+            self.input_names.len(),
+        );
         let mut state = inner.get_temp_state();
         let r = self.expr.resolve(&mut state)?;
         Ok(ResolveResult::Owned(r.into_owned()))

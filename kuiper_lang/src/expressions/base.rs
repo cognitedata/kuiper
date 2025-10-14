@@ -3,7 +3,7 @@ use logos::Span;
 use serde_json::Value;
 use std::fmt::Display;
 
-use crate::{compiler::BuildError, NULL_CONST};
+use crate::{compiler::BuildError, expressions::source::SourceData, NULL_CONST};
 
 use self::objects::ToObjectFunction;
 
@@ -31,7 +31,7 @@ type Completions = std::collections::HashMap<Span, std::collections::HashSet<Str
 /// Notably lifetime heavy. `'a` is the lifetime of the input data.
 /// `'b` is the lifetime of the transform execution, so the temporary data in the transform.
 pub struct ExpressionExecutionState<'data, 'exec> {
-    data: &'exec Vec<Option<&'data Value>>,
+    data: &'exec Vec<Option<&'data dyn SourceData>>,
     opcount: &'exec mut i64,
     max_opcount: i64,
     #[cfg(feature = "completions")]
@@ -41,12 +41,12 @@ pub struct ExpressionExecutionState<'data, 'exec> {
 impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
     /// Try to obtain a value with the given key from the state.
     #[inline]
-    pub fn get_value(&self, key: usize) -> Option<&'data Value> {
+    pub fn get_value(&self, key: usize) -> Option<&'data dyn SourceData> {
         self.data.get(key).copied().and_then(|o| o)
     }
 
     pub fn new(
-        data: &'exec Vec<Option<&'data Value>>,
+        data: &'exec Vec<Option<&'data dyn SourceData>>,
         opcount: &'exec mut i64,
         max_opcount: i64,
     ) -> Self {
@@ -61,7 +61,7 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
 
     pub fn get_temporary_clone<'inner>(
         &'inner mut self,
-        extra_values: impl Iterator<Item = &'inner Value>,
+        extra_values: impl Iterator<Item = &'inner dyn SourceData>,
         num_values: usize,
     ) -> InternalExpressionExecutionState<'inner, 'inner>
     where
@@ -101,20 +101,20 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
     }
 
     #[cfg(feature = "completions")]
-    pub fn add_completion_entries(
+    pub fn add_completion_entries<I: Iterator<Item = impl Into<String>>, F: Fn() -> I>(
         &mut self,
-        it: impl Iterator<Item = impl Into<String>>,
+        it: F,
         span: Span,
     ) {
         if let Some(c) = &mut self.completions {
-            c.entry(span).or_default().extend(it.map(|i| i.into()));
+            c.entry(span).or_default().extend(it().map(|i| i.into()));
         }
     }
 }
 
 #[derive(Debug)]
 pub struct InternalExpressionExecutionState<'data, 'exec> {
-    data: Vec<Option<&'data Value>>,
+    data: Vec<Option<&'data dyn SourceData>>,
     opcount: &'exec mut i64,
     max_opcount: i64,
     #[cfg(feature = "completions")]
@@ -394,7 +394,10 @@ impl ExpressionType {
         max_operation_count: i64,
     ) -> Result<ResolveResult<'c>, TransformError> {
         let mut opcount = 0;
-        let data = data.into_iter().map(Some).collect();
+        let data = data
+            .into_iter()
+            .map(|v| Some(v as &dyn SourceData))
+            .collect();
         let mut state = ExpressionExecutionState::new(&data, &mut opcount, max_operation_count);
         self.resolve(&mut state)
     }
@@ -408,7 +411,10 @@ impl ExpressionType {
         data: impl IntoIterator<Item = &'c Value>,
     ) -> Result<(ResolveResult<'c>, i64), TransformError> {
         let mut opcount = 0;
-        let data = data.into_iter().map(Some).collect();
+        let data = data
+            .into_iter()
+            .map(|v| Some(v as &dyn SourceData))
+            .collect();
         let mut state = ExpressionExecutionState::new(&data, &mut opcount, -1);
         let r = self.resolve(&mut state)?;
         Ok((r, opcount))
@@ -423,13 +429,26 @@ impl ExpressionType {
     ) -> Result<(ResolveResult<'c>, Completions), TransformError> {
         use std::collections::HashMap;
 
-        let data = data.into_iter().map(Some).collect();
+        let data = data
+            .into_iter()
+            .map(|v| Some(v as &dyn SourceData))
+            .collect();
         let mut opcount = 0;
         let mut state = ExpressionExecutionState::new(&data, &mut opcount, -1);
         let mut completions = HashMap::new();
         state.completions = Some(&mut completions);
         let r = self.resolve(&mut state)?;
         Ok((r, completions))
+    }
+
+    pub fn run_custom_input<'a: 'c, 'c>(
+        &'a self,
+        data: impl IntoIterator<Item = &'c dyn SourceData>,
+    ) -> Result<ResolveResult<'c>, TransformError> {
+        let mut opcount = 0;
+        let data = data.into_iter().map(Some).collect();
+        let mut state = ExpressionExecutionState::new(&data, &mut opcount, -1);
+        self.resolve(&mut state)
     }
 
     pub(crate) fn fail_if_lambda(&self) -> Result<(), BuildError> {
