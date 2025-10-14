@@ -148,7 +148,10 @@ impl SelectorExpression {
                                 JsonNumber::PosInteger(n) => elem.get_index(n as usize),
                                 JsonNumber::NegInteger(n) => {
                                     if n < 0 {
-                                        elem.get_index(elem.len().unwrap_or(0) - (-n as usize))
+                                        elem.len()
+                                            .unwrap_or(0)
+                                            .checked_sub(-n as usize)
+                                            .map_or(&NULL_CONST, |i| elem.get_index(i))
                                     } else {
                                         elem.get_index(n as usize)
                                     }
@@ -214,7 +217,9 @@ impl SelectorExpression {
                                 }
                                 JsonNumber::NegInteger(n) => {
                                     if n < 0 {
-                                        elem.as_array().and_then(|a| a.get(a.len() - (-n as usize)))
+                                        elem.as_array().and_then(|a| {
+                                            a.len().checked_sub(-n as usize).and_then(|l| a.get(l))
+                                        })
                                     } else {
                                         elem.as_array().and_then(|a| a.get(n as usize))
                                     }
@@ -428,6 +433,7 @@ mod tests {
             "7": { "foo": 123 }[0],
             "8": null[1][2],
             "9": [1, 2, 3][3][3],
+            "10": [1, 2, 3][-4],
         }"#,
             &[],
         )
@@ -442,5 +448,6 @@ mod tests {
         assert_eq!(r.get("7").unwrap(), &Value::Null);
         assert_eq!(r.get("8").unwrap(), &Value::Null);
         assert_eq!(r.get("9").unwrap(), &Value::Null);
+        assert_eq!(r.get("10").unwrap(), &Value::Null);
     }
 }
