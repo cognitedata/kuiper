@@ -5,8 +5,10 @@ use serde::Serialize;
 use serde_json::Value;
 use thiserror::Error;
 
+mod array;
 mod object;
 
+pub use array::Array;
 pub use object::{Object, ObjectField};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -20,7 +22,8 @@ pub enum Type {
     // TODO
     /// Some JSON object.
     Object(Object),
-    // Sequence(Sequence),
+    /// Some JSON array.
+    Array(Array),
     /// Some string.
     String,
     /// Some integer number.
@@ -152,8 +155,21 @@ impl Type {
         })
     }
 
+    /// Return a type representing any array, i.e. an array where all elements are of type `Any`.
+    pub fn any_array() -> Self {
+        Type::array_of_type(Type::Any)
+    }
+
+    /// Return a type representing an array where all elements are of the given type.
+    pub fn array_of_type(field_type: Type) -> Self {
+        Type::Array(Array {
+            elements: Vec::new(),
+            end_dynamic: Some(Box::new(field_type)),
+        })
+    }
+
     /// Try to treat this type as an object type, by inspecting it if
-    /// it is a union or a constant. This will return an error if
+    /// it is a union, a constant, or any. This will return an error if
     /// the type
     ///
     ///  - Is a union without a variant that can be treated as an object.
@@ -167,6 +183,8 @@ impl Type {
         match self {
             Type::Object(obj) => Ok(obj.clone()),
             Type::Union(types) => {
+                // TODO: This currently just picks the first object it finds,
+                // we likely want to compute the union of all possible objects instead.
                 let obj = types
                     .iter()
                     .filter_map(|t| {
@@ -208,6 +226,61 @@ impl Type {
             )),
         }
     }
+
+    /// Try to treat this type as an array type, by inspecting it if
+    /// it is a union, a constant, or any. This will return an error if
+    /// the type
+    ///
+    ///  - Is a union without a variant that can be treated as an array.
+    ///  - Is a constant that is not an array.
+    ///  - Is not an array, union, constant, or any.
+    ///
+    /// Note that this assumes that if it is a union, this union is normalized, i.e.
+    /// contains only types that are not themselves unions, does not contain duplicates,
+    /// and does not contain `Any`.
+    pub fn try_as_array(&self, span: &Span) -> Result<Array, TypeError> {
+        match self {
+            Type::Array(seq) => Ok(seq.clone()),
+            Type::Union(types) => {
+                // TODO: This currently just picks the first array it finds,
+                // we likely want to compute the union of all possible arrays instead.
+                let seq = types
+                    .iter()
+                    .filter_map(|t| {
+                        if let Type::Array(seq) = t {
+                            Some(seq.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .next();
+                let Some(seq) = seq else {
+                    return Err(TypeError::expected_type(
+                        Type::any_array(),
+                        self.clone(),
+                        span.clone(),
+                    ));
+                };
+                Ok(seq)
+            }
+            Type::Constant(Value::Array(arr)) => {
+                let elements = arr.iter().map(|v| Type::from_const(v.clone())).collect();
+                Ok(Array {
+                    elements,
+                    end_dynamic: None,
+                })
+            }
+            Type::Any => Ok(Array {
+                end_dynamic: Some(Box::new(Type::Any)),
+                elements: vec![],
+            }),
+            _ => Err(TypeError::expected_type(
+                Type::any_array(),
+                self.clone(),
+                span.clone(),
+            )),
+        }
+    }
 }
 
 impl Display for Type {
@@ -215,6 +288,7 @@ impl Display for Type {
         match self {
             Type::Constant(value) => write!(f, "{}", value),
             Type::Object(o) => write!(f, "{o}"),
+            Type::Array(s) => write!(f, "{s}"),
             Type::String => write!(f, "String"),
             Type::Integer => write!(f, "Integer"),
             Type::Float => write!(f, "Float"),
@@ -398,6 +472,10 @@ mod tests {
             .into_iter()
             .collect(),
         });
+        let t12 = Type::Array(Array {
+            elements: vec![Type::String, Type::Integer],
+            end_dynamic: Some(Box::new(Type::Float)),
+        });
         assert_eq!(t1.to_string(), "42");
         assert_eq!(t2.to_string(), "String");
         assert_eq!(t3.to_string(), "Union<Integer, Float>");
@@ -409,6 +487,7 @@ mod tests {
         assert_eq!(t9.to_string(), "Union<1, 2>");
         assert_eq!(t10.to_string(), "Union<1, Integer>");
         assert_eq!(t11.to_string(), "{a: String, ...: Integer}");
+        assert_eq!(t12.to_string(), "[String, Integer, ...Float]");
     }
 
     #[test]
@@ -520,6 +599,86 @@ mod tests {
                     expected,
                     Box::new(Type::Object(Object {
                         fields: [(ObjectField::Generic, Type::Any)].into_iter().collect(),
+                    }))
+                );
+                assert_eq!(*got, union_type);
+            }
+        }
+    }
+
+    #[test]
+    fn test_try_as_array() {
+        let arr_type = Type::Array(Array {
+            elements: vec![Type::String, Type::Integer],
+            end_dynamic: Some(Box::new(Type::Float)),
+        });
+        let union_type = Type::Union(vec![
+            Type::Array(Array {
+                elements: vec![Type::Boolean],
+                end_dynamic: None,
+            }),
+            Type::String,
+        ]);
+        let const_arr_type = Type::from_const(json!(["hello", 42, 3.14]));
+        let any_type = Type::Any;
+        let non_arr_type = Type::Integer;
+
+        let span = 0..1;
+
+        // Test direct array type
+        let result = arr_type.try_as_array(&span).unwrap();
+        assert_eq!(result.elements.len(), 2);
+        assert_eq!(result.elements[0], Type::String);
+        assert_eq!(result.elements[1], Type::Integer);
+        assert_eq!(*result.end_dynamic.unwrap(), Type::Float);
+
+        // Test union type with an array variant
+        let result = union_type.try_as_array(&span).unwrap();
+        assert_eq!(result.elements.len(), 1);
+        assert_eq!(result.elements[0], Type::Boolean);
+        assert!(result.end_dynamic.is_none());
+
+        // Test constant array type
+        let result = const_arr_type.try_as_array(&span).unwrap();
+        assert_eq!(result.elements.len(), 3);
+        assert_eq!(result.elements[0], Type::from_const("hello"));
+        assert_eq!(result.elements[1], Type::from_const(42));
+        assert_eq!(result.elements[2], Type::from_const(3.14));
+        assert!(result.end_dynamic.is_none());
+
+        // Test Any type
+        let result = any_type.try_as_array(&span).unwrap();
+        assert!(result.elements.is_empty());
+        assert_eq!(*result.end_dynamic.unwrap(), Type::Any);
+
+        // Test non-array type
+        let err = non_arr_type.try_as_array(&span).unwrap_err();
+        match err {
+            TypeError::ExpectedType(expected, got, _) => {
+                assert_eq!(
+                    expected,
+                    Box::new(Type::Array(Array {
+                        elements: vec![],
+                        end_dynamic: Some(Box::new(Type::Any)),
+                    }))
+                );
+                assert_eq!(*got, Type::Integer);
+            }
+        }
+    }
+
+    #[test]
+    fn test_try_as_array_union_without_array() {
+        let union_type = Type::Union(vec![Type::String, Type::Integer]);
+        let span = 0..1;
+        let err = union_type.try_as_array(&span).unwrap_err();
+        match err {
+            TypeError::ExpectedType(expected, got, _) => {
+                assert_eq!(
+                    expected,
+                    Box::new(Type::Array(Array {
+                        elements: vec![],
+                        end_dynamic: Some(Box::new(Type::Any)),
                     }))
                 );
                 assert_eq!(*got, union_type);

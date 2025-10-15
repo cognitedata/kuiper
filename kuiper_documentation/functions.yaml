@@ -613,3 +613,22 @@ functions:
       If the passed value isn't a string, it's returned as-is.
     examples:
       - 'parse_json("{\"a\": 1, \"b\": 2}") -> {"a": 1, "b": 2}'
+
+  - name: lower
+    signature: "`lower(x)`"
+    description: Convert all characters in the string `x` to lowercase. If `x` is a boolean or number, it will be converted to a string.
+    examples:
+      - '"Hello World".lower() -> "hello world"'
+
+  - name: upper
+    signature: "`upper(x)`"
+    description: Convert all characters in the string `x` to uppercase. If `x` is a boolean or number, it will be converted to a string first.
+    examples:
+      - '"Hello World".upper() -> "HELLO WORLD"'
+      - 'true.upper() -> "TRUE"'
+
+  - name: translate
+    signature: "`translate(x, from, to)`"
+    description: "Replace characters in the string `x` found in the string `from` with the corresponding character in the string `to`. If `to` and `from` are of different lengths, the expression will fail."
+    examples:
+      - '"hello world".translate("he", "HE") -> "HEllo world"'
