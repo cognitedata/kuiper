@@ -381,6 +381,17 @@ Return the base `y` logarithm of `x`.
 log(16, 2) -> 4.0
 ```
 
+## lower
+
+`lower(x)`
+
+Convert all characters in the string `x` to lowercase. If `x` is a boolean or number, it will be converted to a string.
+
+**Code example**
+```
+"Hello World".lower() -> "hello world"
+```
+
 ## map
 
 `map(x, (it(, index)) => ...)`
@@ -832,6 +843,17 @@ to_unix_timestamp("2023-05-01 12:43:23", "%Y-%m-%d %H:%M:%S") -> 1682945003000
 }
 ```
 
+## translate
+
+`translate(x, from, to)`
+
+Replace characters in the string `x` found in the string `from` with the corresponding character in the string `to`. If `to` and `from` are of different lengths, the expression will fail.
+
+**Code example**
+```
+"hello world".translate("he", "HE") -> "HEllo world"
+```
+
 ## trim_whitespace
 
 `trim_whitespace(x)`
@@ -883,6 +905,20 @@ try_int("6", 1) -> 6
 ```
 ```
 try_int("4", null) -> 4
+```
+
+## upper
+
+`upper(x)`
+
+Convert all characters in the string `x` to uppercase. If `x` is a boolean or number, it will be converted to a string first.
+
+**Code examples**
+```
+"Hello World".upper() -> "HELLO WORLD"
+```
+```
+true.upper() -> "TRUE"
 ```
 
 ## zip
