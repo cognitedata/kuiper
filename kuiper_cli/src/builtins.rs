@@ -5,7 +5,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-pub const BUILT_INS: [&str; 58] = [
+pub const BUILT_INS: [&str; 61] = [
     "all(",
     "any(",
     "atan2(",
@@ -31,6 +31,7 @@ pub const BUILT_INS: [&str; 58] = [
     "join(",
     "length(",
     "log(",
+    "lower(",
     "map(",
     "max(",
     "min(",
@@ -59,10 +60,12 @@ pub const BUILT_INS: [&str; 58] = [
     "tail(",
     "to_object(",
     "to_unix_timestamp(",
+    "translate(",
     "trim_whitespace(",
     "try_bool(",
     "try_float(",
     "try_int(",
+    "upper(",
     "zip(",
 ];
 
@@ -257,6 +260,13 @@ Consider using [try_int](#try_int) instead if you need error handling.",
             FunctionDef {
                 signature: "log(x, y)",
                 description: "Return the base `y` logarithm of `x`.",
+            }
+        ),
+        (
+            "lower",
+            FunctionDef {
+                signature: "lower(x)",
+                description: "Convert all characters in the string `x` to lowercase. If `x` is a boolean or number, it will be converted to a string.",
             }
         ),
         (
@@ -473,6 +483,13 @@ The format is given using the table found [here](https://docs.rs/chrono/latest/c
             }
         ),
         (
+            "translate",
+            FunctionDef {
+                signature: "translate(x, from, to)",
+                description: "Replace characters in the string `x` found in the string `from` with the corresponding character in the string `to`. If `to` and `from` are of different lengths, the expression will fail.",
+            }
+        ),
+        (
             "trim_whitespace",
             FunctionDef {
                 signature: "trim_whitespace(x)",
@@ -498,6 +515,13 @@ The format is given using the table found [here](https://docs.rs/chrono/latest/c
             FunctionDef {
                 signature: "try_int(a, b)",
                 description: "Try convert `a` to a int, if it fails, return `b`.",
+            }
+        ),
+        (
+            "upper",
+            FunctionDef {
+                signature: "upper(x)",
+                description: "Convert all characters in the string `x` to uppercase. If `x` is a boolean or number, it will be converted to a string first.",
             }
         ),
         (
