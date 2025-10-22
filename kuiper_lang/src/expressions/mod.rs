@@ -10,6 +10,7 @@ mod object;
 mod operator;
 mod result;
 mod selector;
+mod source;
 mod transform_error;
 
 pub use array::{ArrayElement, ArrayExpression};
