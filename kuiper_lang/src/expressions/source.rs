@@ -12,6 +12,10 @@ use crate::{expressions::ResolveResult, NULL_CONST};
 ///
 /// The primary purpose of this is to avoid allocations when providing complex context data to expressions.
 /// If allocations are not a concern, using `serde_json::Value` directly is simpler.
+#[allow(
+    clippy::len_without_is_empty,
+    reason = "Not a traditional length check. is_empty isn't really necessary."
+)]
 pub trait SourceData: Debug {
     /// Get the current value as a JSON value.
     fn resolve(&self) -> ResolveResult<'_>;
