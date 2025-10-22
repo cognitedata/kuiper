@@ -129,7 +129,9 @@ pub use compiler::{
     compile_expression, compile_expression_with_config, BuildError, CompilerConfig, DebugInfo,
     ExpressionDebugInfo,
 };
-pub use expressions::{ExpressionType, TransformError, TransformErrorData};
+pub use expressions::{
+    ExpressionType, ResolveResult, SourceData, TransformError, TransformErrorData,
+};
 pub use lexer::ParseError;
 pub use logos::Span;
 
