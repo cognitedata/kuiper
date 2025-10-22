@@ -37,7 +37,9 @@ pub mod types;
 
 pub use pretty::{format_expression, PrettyError};
 
-static NULL_CONST: Value = Value::Null;
+/// A constant null value, which can be handy when implementing SourceData, as a fallback
+/// if a key is not found.
+pub static NULL_CONST: Value = Value::Null;
 
 /// A failed compilation, contains sub-errors for each stage of the compilation.
 #[derive(Debug, Error)]
