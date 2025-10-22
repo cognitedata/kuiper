@@ -227,6 +227,16 @@ where
     }
 }
 
+impl SourceData for () {
+    fn resolve(&self) -> ResolveResult<'_> {
+        ResolveResult::Owned(serde_json::Value::Null)
+    }
+
+    fn is_null(&self) -> bool {
+        true
+    }
+}
+
 macro_rules! impl_source_for_primitive {
     ($($t:ty),*) => {
         $(
