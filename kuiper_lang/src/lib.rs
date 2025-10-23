@@ -129,9 +129,7 @@ pub use compiler::{
     compile_expression, compile_expression_with_config, BuildError, CompilerConfig, DebugInfo,
     ExpressionDebugInfo,
 };
-pub use expressions::{
-    ExpressionType, ResolveResult, SourceData, TransformError, TransformErrorData,
-};
+pub use expressions::{ExpressionType, ResolveResult, TransformError, TransformErrorData};
 pub use lexer::ParseError;
 pub use logos::Span;
 
@@ -144,6 +142,12 @@ pub mod lex {
     pub use super::expressions::UnaryOperator;
     pub use super::lexer::LexerError;
     pub use super::lexer::Token;
+}
+
+/// Module containing the SourceData trait and related types,
+/// used for creating custom input data sources for expressions.
+pub mod source {
+    pub use super::expressions::{LazySourceData, LazySourceDataJson, SourceData};
 }
 
 use serde_json::Value;

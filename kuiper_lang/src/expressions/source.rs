@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, fmt::Debug};
+use std::{collections::BTreeMap, fmt::Debug, sync::OnceLock};
+
+use serde::Serialize;
+use serde_json::Value;
 
 use crate::{expressions::ResolveResult, NULL_CONST};
 
@@ -131,6 +134,27 @@ where
 }
 
 impl<T> SourceData for Vec<T>
+where
+    T: SourceData,
+{
+    fn resolve(&self) -> ResolveResult<'_> {
+        ResolveResult::Owned(serde_json::Value::Array(
+            self.iter().map(|v| v.resolve().into_owned()).collect(),
+        ))
+    }
+
+    fn get_index(&self, index: usize) -> &dyn SourceData {
+        self.get(index)
+            .map(|v| v as &dyn SourceData)
+            .unwrap_or(&NULL_CONST)
+    }
+
+    fn array_len(&self) -> Option<usize> {
+        Some(self.len())
+    }
+}
+
+impl<T> SourceData for &[T]
 where
     T: SourceData,
 {
@@ -321,6 +345,77 @@ macro_rules! impl_source_for_primitive {
 impl_source_for_primitive!(bool, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, &str, usize);
 impl_source_for_primitive!([clone] String, serde_json::Number);
 
+#[derive(Debug)]
+/// A type that implements SourceData by converting the underlying data to some other
+/// type that implements SourceData lazily on first access.
+///
+/// This is useful for cases where the conversion is expensive, and you want to avoid
+/// doing it unless the data is actually accessed.
+pub struct LazySourceData<T, F, R>
+where
+    F: Fn(&T) -> R,
+{
+    data: T,
+    resolver: F,
+    resolved: OnceLock<R>,
+}
+
+impl<T, F: Fn(&T) -> R, R: SourceData> LazySourceData<T, F, R> {
+    /// Create a new LazySourceData instance, with the given resolver.
+    pub fn new(data: T, resolver: F) -> Self {
+        Self {
+            data,
+            resolver,
+            resolved: OnceLock::new(),
+        }
+    }
+
+    /// Get the resolved data, computing it if necessary.
+    fn get_resolved(&self) -> &R {
+        self.resolved.get_or_init(|| (self.resolver)(&self.data))
+    }
+}
+
+impl<T: Debug, F: Fn(&T) -> R + Debug, R: SourceData> SourceData for LazySourceData<T, F, R> {
+    fn resolve(&self) -> ResolveResult<'_> {
+        self.get_resolved().resolve()
+    }
+
+    fn array_len(&self) -> Option<usize> {
+        self.get_resolved().array_len()
+    }
+
+    fn get_index(&self, index: usize) -> &dyn SourceData {
+        self.get_resolved().get_index(index)
+    }
+
+    fn get_key(&self, key: &str) -> &dyn SourceData {
+        self.get_resolved().get_key(key)
+    }
+
+    fn is_null(&self) -> bool {
+        self.get_resolved().is_null()
+    }
+
+    fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
+        self.get_resolved().keys()
+    }
+}
+
+fn resolve_json<T: Serialize>(value: &T) -> Value {
+    serde_json::to_value(value).unwrap_or(serde_json::Value::Null)
+}
+
+/// A LazySourceData that simply serializes the underlying data to JSON on first access.
+pub type LazySourceDataJson<T> = LazySourceData<T, fn(&T) -> serde_json::Value, serde_json::Value>;
+
+impl<T: Serialize> LazySourceDataJson<T> {
+    /// Create a new LazySourceDataJson instance.
+    pub fn new_json(value: T) -> Self {
+        Self::new(value, resolve_json as fn(&T) -> serde_json::Value)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use serde::Serialize;
@@ -372,6 +467,38 @@ mod tests {
         )
         .unwrap();
         let result = expr.run_custom_input([&data as &dyn SourceData]).unwrap();
+        let expected = serde_json::json!({
+            "foo": "test",
+            "bar": 2,
+            "baz": {
+                "name": "test",
+                "values": [1, 2, 3]
+            }
+        });
+        assert_eq!(result.into_owned(), expected);
+    }
+
+    #[test]
+    fn test_lazy_source_data() {
+        let data = CustomData {
+            name: "test".to_string(),
+            values: vec![1, 2, 3],
+        };
+        let lazy_data = crate::expressions::source::LazySourceDataJson::new_json(data);
+        let expr = compile_expression(
+            r#"
+        {
+            "foo": input.name,
+            "bar": input.values[1],
+            "baz": input
+        }
+        "#,
+            &["input"],
+        )
+        .unwrap();
+        let result = expr
+            .run_custom_input([&lazy_data as &dyn SourceData])
+            .unwrap();
         let expected = serde_json::json!({
             "foo": "test",
             "bar": 2,

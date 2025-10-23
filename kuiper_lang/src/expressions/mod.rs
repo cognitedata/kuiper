@@ -26,5 +26,5 @@ pub use object::{ObjectElement, ObjectExpression};
 pub use operator::{OpExpression, Operator, UnaryOpExpression, UnaryOperator};
 pub use result::*;
 pub use selector::{SelectorElement, SelectorExpression, SourceElement};
-pub use source::SourceData;
+pub use source::{LazySourceData, LazySourceDataJson, SourceData};
 pub use transform_error::{TransformError, TransformErrorData};
