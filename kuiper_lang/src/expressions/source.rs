@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{collections::BTreeMap, fmt::Debug};
 
 use crate::{expressions::ResolveResult, NULL_CONST};
 
@@ -12,10 +12,6 @@ use crate::{expressions::ResolveResult, NULL_CONST};
 ///
 /// The primary purpose of this is to avoid allocations when providing complex context data to expressions.
 /// If allocations are not a concern, using `serde_json::Value` directly is simpler.
-#[allow(
-    clippy::len_without_is_empty,
-    reason = "Not a traditional length check. is_empty isn't really necessary."
-)]
 pub trait SourceData: Debug {
     /// Get the current value as a JSON value.
     fn resolve(&self) -> ResolveResult<'_>;
@@ -30,7 +26,7 @@ pub trait SourceData: Debug {
     fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
         Box::new(std::iter::empty())
     }
-    fn len(&self) -> Option<usize> {
+    fn array_len(&self) -> Option<usize> {
         None
     }
     fn is_null(&self) -> bool {
@@ -64,10 +60,9 @@ impl SourceData for serde_json::Value {
         }
     }
 
-    fn len(&self) -> Option<usize> {
+    fn array_len(&self) -> Option<usize> {
         match self {
             serde_json::Value::Array(arr) => Some(arr.len()),
-            serde_json::Value::Object(map) => Some(map.len()),
             _ => None,
         }
     }
@@ -97,8 +92,8 @@ where
         (*self).keys()
     }
 
-    fn len(&self) -> Option<usize> {
-        (*self).len()
+    fn array_len(&self) -> Option<usize> {
+        (*self).array_len()
     }
 
     fn is_null(&self) -> bool {
@@ -126,8 +121,8 @@ where
         (**self).keys()
     }
 
-    fn len(&self) -> Option<usize> {
-        (**self).len()
+    fn array_len(&self) -> Option<usize> {
+        (**self).array_len()
     }
 
     fn is_null(&self) -> bool {
@@ -151,7 +146,7 @@ where
             .unwrap_or(&NULL_CONST)
     }
 
-    fn len(&self) -> Option<usize> {
+    fn array_len(&self) -> Option<usize> {
         Some(self.len())
     }
 }
@@ -188,9 +183,9 @@ where
         }
     }
 
-    fn len(&self) -> Option<usize> {
+    fn array_len(&self) -> Option<usize> {
         match self {
-            Some(v) => v.len(),
+            Some(v) => v.array_len(),
             None => None,
         }
     }
@@ -221,9 +216,74 @@ where
     fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
         Box::new(self.keys().map(|k| k.as_str()))
     }
+}
 
-    fn len(&self) -> Option<usize> {
-        Some(self.len())
+impl<T> SourceData for std::collections::HashMap<&str, T>
+where
+    T: SourceData,
+{
+    fn resolve(&self) -> ResolveResult<'_> {
+        let map: serde_json::Map<String, serde_json::Value> = self
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.resolve().into_owned()))
+            .collect();
+        ResolveResult::Owned(serde_json::Value::Object(map))
+    }
+
+    fn get_key(&self, key: &str) -> &dyn SourceData {
+        self.get(key)
+            .map(|v| v as &dyn SourceData)
+            .unwrap_or(&NULL_CONST)
+    }
+
+    fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
+        Box::new(self.keys().copied())
+    }
+}
+
+impl<T> SourceData for BTreeMap<String, T>
+where
+    T: SourceData,
+{
+    fn resolve(&self) -> ResolveResult<'_> {
+        let map: serde_json::Map<String, serde_json::Value> = self
+            .iter()
+            .map(|(k, v)| (k.clone(), v.resolve().into_owned()))
+            .collect();
+        ResolveResult::Owned(serde_json::Value::Object(map))
+    }
+
+    fn get_key(&self, key: &str) -> &dyn SourceData {
+        self.get(key)
+            .map(|v| v as &dyn SourceData)
+            .unwrap_or(&NULL_CONST)
+    }
+
+    fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
+        Box::new(self.keys().map(|k| k.as_str()))
+    }
+}
+
+impl<T> SourceData for BTreeMap<&str, T>
+where
+    T: SourceData,
+{
+    fn resolve(&self) -> ResolveResult<'_> {
+        let map: serde_json::Map<String, serde_json::Value> = self
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.resolve().into_owned()))
+            .collect();
+        ResolveResult::Owned(serde_json::Value::Object(map))
+    }
+
+    fn get_key(&self, key: &str) -> &dyn SourceData {
+        self.get(key)
+            .map(|v| v as &dyn SourceData)
+            .unwrap_or(&NULL_CONST)
+    }
+
+    fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
+        Box::new(self.keys().copied())
     }
 }
 
@@ -291,10 +351,6 @@ mod tests {
 
         fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
             Box::new(["name", "values"].into_iter())
-        }
-
-        fn len(&self) -> Option<usize> {
-            Some(2)
         }
     }
 
