@@ -1,4 +1,8 @@
-use std::{collections::BTreeMap, fmt::Debug, sync::OnceLock};
+use std::{
+    collections::BTreeMap,
+    fmt::{Debug, Formatter},
+    sync::OnceLock,
+};
 
 use serde::Serialize;
 use serde_json::Value;
@@ -133,47 +137,33 @@ where
     }
 }
 
-impl<T> SourceData for Vec<T>
-where
-    T: SourceData,
-{
-    fn resolve(&self) -> ResolveResult<'_> {
-        ResolveResult::Owned(serde_json::Value::Array(
-            self.iter().map(|v| v.resolve().into_owned()).collect(),
-        ))
-    }
+macro_rules! impl_source_data_arr {
+    ($t:ty) => {
+        impl<T> SourceData for $t
+        where
+            T: SourceData,
+        {
+            fn resolve(&self) -> ResolveResult<'_> {
+                ResolveResult::Owned(serde_json::Value::Array(
+                    self.iter().map(|v| v.resolve().into_owned()).collect(),
+                ))
+            }
 
-    fn get_index(&self, index: usize) -> &dyn SourceData {
-        self.get(index)
-            .map(|v| v as &dyn SourceData)
-            .unwrap_or(&NULL_CONST)
-    }
+            fn get_index(&self, index: usize) -> &dyn SourceData {
+                self.get(index)
+                    .map(|v| v as &dyn SourceData)
+                    .unwrap_or(&NULL_CONST)
+            }
 
-    fn array_len(&self) -> Option<usize> {
-        Some(self.len())
-    }
+            fn array_len(&self) -> Option<usize> {
+                Some(self.len())
+            }
+        }
+    };
 }
 
-impl<T> SourceData for &[T]
-where
-    T: SourceData,
-{
-    fn resolve(&self) -> ResolveResult<'_> {
-        ResolveResult::Owned(serde_json::Value::Array(
-            self.iter().map(|v| v.resolve().into_owned()).collect(),
-        ))
-    }
-
-    fn get_index(&self, index: usize) -> &dyn SourceData {
-        self.get(index)
-            .map(|v| v as &dyn SourceData)
-            .unwrap_or(&NULL_CONST)
-    }
-
-    fn array_len(&self) -> Option<usize> {
-        Some(self.len())
-    }
-}
+impl_source_data_arr!(Vec<T>);
+impl_source_data_arr!(&[T]);
 
 impl<T> SourceData for Option<T>
 where
@@ -219,97 +209,38 @@ where
     }
 }
 
-impl<T> SourceData for std::collections::HashMap<String, T>
-where
-    T: SourceData,
-{
-    fn resolve(&self) -> ResolveResult<'_> {
-        let map: serde_json::Map<String, serde_json::Value> = self
-            .iter()
-            .map(|(k, v)| (k.clone(), v.resolve().into_owned()))
-            .collect();
-        ResolveResult::Owned(serde_json::Value::Object(map))
-    }
+macro_rules! impl_source_data_map {
+    ($t:ty, $($st:tt)*) => {
+        impl<T> SourceData for $t
+        where
+            T: SourceData,
+        {
+            fn resolve(&self) -> ResolveResult<'_> {
+                let map: serde_json::Map<String, serde_json::Value> = self
+                    .iter()
+                    .map(|(k, v)| ((*k).to_owned(), v.resolve().into_owned()))
+                    .collect();
+                ResolveResult::Owned(serde_json::Value::Object(map))
+            }
 
-    fn get_key(&self, key: &str) -> &dyn SourceData {
-        self.get(key)
-            .map(|v| v as &dyn SourceData)
-            .unwrap_or(&NULL_CONST)
-    }
+            fn get_key(&self, key: &str) -> &dyn SourceData {
+                self.get(key)
+                    .map(|v| v as &dyn SourceData)
+                    .unwrap_or(&NULL_CONST)
+            }
 
-    fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
-        Box::new(self.keys().map(|k| k.as_str()))
-    }
+            fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
+                Box::new(self.keys().$($st)*)
+            }
+        }
+    };
 }
 
-impl<T> SourceData for std::collections::HashMap<&str, T>
-where
-    T: SourceData,
-{
-    fn resolve(&self) -> ResolveResult<'_> {
-        let map: serde_json::Map<String, serde_json::Value> = self
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.resolve().into_owned()))
-            .collect();
-        ResolveResult::Owned(serde_json::Value::Object(map))
-    }
-
-    fn get_key(&self, key: &str) -> &dyn SourceData {
-        self.get(key)
-            .map(|v| v as &dyn SourceData)
-            .unwrap_or(&NULL_CONST)
-    }
-
-    fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
-        Box::new(self.keys().copied())
-    }
-}
-
-impl<T> SourceData for BTreeMap<String, T>
-where
-    T: SourceData,
-{
-    fn resolve(&self) -> ResolveResult<'_> {
-        let map: serde_json::Map<String, serde_json::Value> = self
-            .iter()
-            .map(|(k, v)| (k.clone(), v.resolve().into_owned()))
-            .collect();
-        ResolveResult::Owned(serde_json::Value::Object(map))
-    }
-
-    fn get_key(&self, key: &str) -> &dyn SourceData {
-        self.get(key)
-            .map(|v| v as &dyn SourceData)
-            .unwrap_or(&NULL_CONST)
-    }
-
-    fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
-        Box::new(self.keys().map(|k| k.as_str()))
-    }
-}
-
-impl<T> SourceData for BTreeMap<&str, T>
-where
-    T: SourceData,
-{
-    fn resolve(&self) -> ResolveResult<'_> {
-        let map: serde_json::Map<String, serde_json::Value> = self
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.resolve().into_owned()))
-            .collect();
-        ResolveResult::Owned(serde_json::Value::Object(map))
-    }
-
-    fn get_key(&self, key: &str) -> &dyn SourceData {
-        self.get(key)
-            .map(|v| v as &dyn SourceData)
-            .unwrap_or(&NULL_CONST)
-    }
-
-    fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
-        Box::new(self.keys().copied())
-    }
-}
+// str-as-str is an unstable feature, so we need to disambiguate for the iterator.
+impl_source_data_map!(std::collections::HashMap<String, T>, map(|k| k.as_str()));
+impl_source_data_map!(std::collections::HashMap<&str, T>, copied());
+impl_source_data_map!(BTreeMap<String, T>, map(|k| k.as_str()));
+impl_source_data_map!(BTreeMap<&str, T>, copied());
 
 impl SourceData for () {
     fn resolve(&self) -> ResolveResult<'_> {
@@ -345,7 +276,6 @@ macro_rules! impl_source_for_primitive {
 impl_source_for_primitive!(bool, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, &str, usize);
 impl_source_for_primitive!([clone] String, serde_json::Number);
 
-#[derive(Debug)]
 /// A type that implements SourceData by converting the underlying data to some other
 /// type that implements SourceData lazily on first access.
 ///
@@ -358,6 +288,14 @@ where
     data: T,
     resolver: F,
     resolved: OnceLock<R>,
+}
+
+impl<T: Debug, F: Fn(&T) -> R, R> Debug for LazySourceData<T, F, R> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LazySourceData")
+            .field("data", &self.data)
+            .finish()
+    }
 }
 
 impl<T, F: Fn(&T) -> R, R: SourceData> LazySourceData<T, F, R> {
@@ -376,7 +314,7 @@ impl<T, F: Fn(&T) -> R, R: SourceData> LazySourceData<T, F, R> {
     }
 }
 
-impl<T: Debug, F: Fn(&T) -> R + Debug, R: SourceData> SourceData for LazySourceData<T, F, R> {
+impl<T: Debug, F: Fn(&T) -> R, R: SourceData> SourceData for LazySourceData<T, F, R> {
     fn resolve(&self) -> ResolveResult<'_> {
         self.get_resolved().resolve()
     }
@@ -418,6 +356,7 @@ impl<T: Serialize> LazySourceDataJson<T> {
 
 #[cfg(test)]
 mod tests {
+    use kuiper_lang_macros::SourceData;
     use serde::Serialize;
 
     use crate::{
@@ -425,28 +364,12 @@ mod tests {
         expressions::{source::SourceData, ResolveResult},
     };
 
-    #[derive(Debug, Serialize)]
+    use crate as kuiper_lang;
+
+    #[derive(Debug, Serialize, SourceData)]
     struct CustomData {
         name: String,
         values: Vec<i32>,
-    }
-
-    impl SourceData for CustomData {
-        fn resolve(&self) -> crate::expressions::ResolveResult<'_> {
-            ResolveResult::Owned(serde_json::to_value(self).unwrap())
-        }
-
-        fn get_key(&self, key: &str) -> &dyn SourceData {
-            match key {
-                "name" => &self.name,
-                "values" => &self.values,
-                _ => &crate::NULL_CONST,
-            }
-        }
-
-        fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
-            Box::new(["name", "values"].into_iter())
-        }
     }
 
     #[test]
