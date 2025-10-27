@@ -1,6 +1,7 @@
 use std::{collections::BTreeMap, fmt::Display};
 
 use serde::Serialize;
+use serde_json::Value;
 
 use crate::types::Type;
 
@@ -25,7 +26,7 @@ impl Serialize for ObjectField {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 /// A JSON object type, containing both specific, known fields, and a generic field type.
 /// The generic field type is used for fields that are not explicitly listed in the object,
 /// making it possible to represent both "maps", and "structures".
@@ -51,8 +52,70 @@ impl Object {
         self.fields
             .get(&ObjectField::Constant(key.to_string()))
             .cloned()
-            // TODO: Union here once we have methods for creating unions.
-            .or_else(|| self.fields.get(&ObjectField::Generic).cloned())
+            .or_else(|| {
+                self.fields
+                    .get(&ObjectField::Generic)
+                    .cloned()
+                    .map(|v| v.union_with(Type::null()))
+            })
+    }
+
+    pub fn union_with(mut self, mut other: Object) -> Self {
+        // We have to be conservative when merging objects. If either has a generic field,
+        // any fields in the other object must be unioned with the generic field from the first.
+        let left_union = self.fields.remove(&ObjectField::Generic);
+        let right_union = other.fields.remove(&ObjectField::Generic);
+
+        let mut res = BTreeMap::new();
+
+        // First, make sure every field in the left object is unioned with the right generic field,
+        // if it exists.
+        for (key, value) in self.fields {
+            if let Some(right_union) = &right_union {
+                res.insert(key, value.union_with(right_union.clone()));
+            } else {
+                res.insert(key, value);
+            }
+        }
+
+        // Next, merge the right object fields into the result, unioning each field with the left
+        // generic field if it exists.
+        for (key, mut value) in other.fields.into_iter() {
+            match res.entry(key) {
+                std::collections::btree_map::Entry::Vacant(e) => {
+                    if let Some(left_union) = &left_union {
+                        value = value.union_with(left_union.clone());
+                    }
+                    e.insert(value)
+                }
+                std::collections::btree_map::Entry::Occupied(mut e) => {
+                    let mut val = e.get().clone();
+                    val = val.union_with(value);
+                    e.insert(val);
+                    e.into_mut()
+                }
+            };
+        }
+
+        let union = match (left_union, right_union) {
+            (Some(l), Some(r)) => Some(l.union_with(r)),
+            (Some(v), None) | (None, Some(v)) => Some(v),
+            (None, None) => None,
+        };
+
+        if let Some(union) = union {
+            res.insert(ObjectField::Generic, union);
+        }
+
+        Object { fields: res }
+    }
+
+    pub fn from_const(value: serde_json::Map<String, Value>) -> Self {
+        let fields = value
+            .into_iter()
+            .map(|(k, v)| (ObjectField::Constant(k), Type::from_const(v)))
+            .collect();
+        Object { fields }
     }
 }
 
@@ -94,7 +157,10 @@ mod tests {
 
         assert_eq!(obj.index_into("a"), Some(Type::String));
         assert_eq!(obj.index_into("b"), Some(Type::from_const(123)));
-        assert_eq!(obj.index_into("c"), Some(Type::Float));
+        assert_eq!(
+            obj.index_into("c"),
+            Some(Type::Union(vec![Type::Float, Type::null()]))
+        );
     }
 
     #[test]
@@ -110,5 +176,42 @@ mod tests {
         assert_eq!(obj.index_into("a"), Some(Type::String));
         assert_eq!(obj.index_into("b"), Some(Type::from_const(123)));
         assert_eq!(obj.index_into("c"), None);
+    }
+
+    #[test]
+    fn test_object_union() {
+        let mut fields1 = BTreeMap::new();
+        fields1.insert(ObjectField::Constant("a".to_string()), Type::String);
+        fields1.insert(
+            ObjectField::Constant("b".to_string()),
+            Type::from_const(123),
+        );
+        fields1.insert(ObjectField::Generic, Type::Float);
+        let obj1 = Object { fields: fields1 };
+
+        let mut fields2 = BTreeMap::new();
+        fields2.insert(ObjectField::Constant("b".to_string()), Type::Boolean);
+        fields2.insert(
+            ObjectField::Constant("c".to_string()),
+            Type::from_const("abc"),
+        );
+        let obj2 = Object { fields: fields2 };
+
+        let un = obj1.union_with(obj2);
+        let mut expected_fields = BTreeMap::new();
+        expected_fields.insert(ObjectField::Constant("a".to_string()), Type::String);
+        expected_fields.insert(
+            ObjectField::Constant("b".to_string()),
+            Type::Union(vec![Type::from_const(123), Type::Boolean]),
+        );
+        expected_fields.insert(
+            ObjectField::Constant("c".to_string()),
+            Type::Union(vec![Type::from_const("abc"), Type::Float]),
+        );
+        expected_fields.insert(ObjectField::Generic, Type::Float);
+        let expected = Object {
+            fields: expected_fields,
+        };
+        assert_eq!(un, expected);
     }
 }

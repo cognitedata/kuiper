@@ -4,7 +4,7 @@ use serde::Serialize;
 
 use crate::types::Type;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Hash)]
 /// A JSON array type, containing a sequence of types for known elements,
 /// and an optional type for any additional elements found at the end.
 pub struct Array {
@@ -21,8 +21,7 @@ impl Array {
             return Some(elem.clone());
         }
         if let Some(end_dynamic) = &self.end_dynamic {
-            // TODO: Union with null here once we have implemented union calculation.
-            return Some(end_dynamic.as_ref().clone());
+            return Some(end_dynamic.as_ref().clone().union_with(Type::null()));
         }
         None
     }
@@ -31,6 +30,73 @@ impl Array {
         self.elements
             .iter()
             .chain(self.end_dynamic.iter().map(|d| d.as_ref()))
+    }
+
+    pub fn union_with(self, other: Array) -> Self {
+        let mut res = Vec::new();
+        let mut iter_1 = self.elements.into_iter().peekable();
+        let mut iter_2 = other.elements.into_iter().peekable();
+
+        // First, iterate through the known elements, unioning them pairwise,
+        // so long as both arrays have known elements.
+        while iter_1.peek().is_some() && iter_2.peek().is_some() {
+            let Some(elem_1) = iter_1.next() else {
+                break;
+            };
+            let Some(elem_2) = iter_2.next() else {
+                break;
+            };
+            res.push(elem_1.union_with(elem_2));
+        }
+
+        let mut end_dynamic = None;
+        if let Some(end_dynamic_1) = self.end_dynamic {
+            if let Some(end_dynamic_2) = other.end_dynamic {
+                // Both arrays have dynamic end, we need to union with anything
+                // left in the iterators.
+                let mut dynamic = end_dynamic_1.union_with(end_dynamic_2.as_ref().clone());
+                for elem in iter_1.chain(iter_2) {
+                    dynamic = dynamic.union_with(elem);
+                }
+                end_dynamic = Some(Box::new(dynamic));
+            } else {
+                // Only array 1 has dynamic end, so we can include anything left in it,
+                // and merge the rest of array 2 into the dynamic end.
+                let mut dynamic = *end_dynamic_1;
+                for elem in iter_2 {
+                    dynamic = dynamic.union_with(elem);
+                }
+                res.extend(iter_1);
+                end_dynamic = Some(Box::new(dynamic));
+            }
+        } else if let Some(end_dynamic_2) = other.end_dynamic {
+            // Only array 2 has dynamic end, so we can include anything left in it,
+            // and merge the rest of array 1 into the dynamic end.
+            let mut dynamic = *end_dynamic_2;
+            for elem in iter_1 {
+                dynamic = dynamic.union_with(elem);
+            }
+            res.extend(iter_2);
+            end_dynamic = Some(Box::new(dynamic));
+        } else {
+            // Neither sequence has dynamic end, so we can just extend with the rest.
+            // Note that one of these will be empty.
+            res.extend(iter_1);
+            res.extend(iter_2);
+        }
+
+        Array {
+            elements: res,
+            end_dynamic,
+        }
+    }
+
+    pub fn from_const(value: Vec<serde_json::Value>) -> Self {
+        let elements = value.into_iter().map(Type::from_const).collect::<Vec<_>>();
+        Array {
+            elements,
+            end_dynamic: None,
+        }
     }
 }
 
@@ -69,8 +135,89 @@ mod tests {
         };
         assert_eq!(arr.index_into(0), Some(Type::String));
         assert_eq!(arr.index_into(1), Some(Type::from_const(123)));
-        assert_eq!(arr.index_into(2), Some(Type::Float));
-        assert_eq!(arr.index_into(3), Some(Type::Float));
-        assert_eq!(arr.index_into(100), Some(Type::Float));
+        assert_eq!(
+            arr.index_into(2),
+            Some(Type::Union(vec![Type::Float, Type::null()]))
+        );
+        assert_eq!(
+            arr.index_into(100),
+            Some(Type::Union(vec![Type::Float, Type::null()]))
+        );
+    }
+
+    #[test]
+    fn test_array_union() {
+        // Shorter with dynamic end.
+        let arr1 = Array {
+            elements: vec![Type::String, Type::from_const(123)],
+            end_dynamic: Some(Box::new(Type::Float)),
+        };
+        let arr2 = Array {
+            elements: vec![
+                Type::from_const("abc"),
+                Type::from_const(456),
+                Type::Boolean,
+            ],
+            end_dynamic: None,
+        };
+        let un = arr1.union_with(arr2);
+        assert_eq!(
+            un,
+            Array {
+                elements: vec![
+                    Type::String,
+                    Type::Union(vec![Type::from_const(123), Type::from_const(456)]),
+                ],
+                end_dynamic: Some(Type::Union(vec![Type::Float, Type::Boolean]).into()),
+            }
+        );
+
+        // Longer with dynamic end.
+        let arr1 = Array {
+            elements: vec![Type::String, Type::from_const(123), Type::Boolean],
+            end_dynamic: Some(Box::new(Type::Float)),
+        };
+        let arr2 = Array {
+            elements: vec![Type::from_const("abc"), Type::from_const(456)],
+            end_dynamic: None,
+        };
+        let un = arr1.union_with(arr2);
+        assert_eq!(
+            un,
+            Array {
+                elements: vec![
+                    Type::String,
+                    Type::Union(vec![Type::from_const(123), Type::from_const(456)]),
+                    Type::Boolean,
+                ],
+                end_dynamic: Some(Type::Float.into()),
+            }
+        );
+
+        // Neither has dynamic end.
+        let arr1 = Array {
+            elements: vec![Type::String, Type::from_const(123)],
+            end_dynamic: None,
+        };
+        let arr2 = Array {
+            elements: vec![
+                Type::from_const("abc"),
+                Type::from_const(456),
+                Type::Boolean,
+            ],
+            end_dynamic: None,
+        };
+        let un = arr1.union_with(arr2);
+        assert_eq!(
+            un,
+            Array {
+                elements: vec![
+                    Type::String,
+                    Type::Union(vec![Type::from_const(123), Type::from_const(456)]),
+                    Type::Boolean,
+                ],
+                end_dynamic: None,
+            }
+        );
     }
 }
