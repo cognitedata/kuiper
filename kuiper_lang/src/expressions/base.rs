@@ -6,6 +6,7 @@ use std::fmt::Display;
 use crate::{
     compiler::BuildError,
     expressions::{run_builder::ExpressionRunBuilder, source::SourceData},
+    types::{Type, TypeError, TypeExecutionState},
     NULL_CONST,
 };
 
@@ -200,6 +201,22 @@ pub trait Expression<'a: 'c, 'c>: Display {
     ) -> Result<ResolveResult<'c>, TransformError> {
         self.resolve(state)
     }
+
+    fn resolve_types(
+        &'a self,
+        _state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        Ok(Type::Any)
+    }
+
+    #[allow(unused)]
+    fn call_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        _arguments: &[&Type],
+    ) -> Result<Type, crate::types::TypeError> {
+        self.resolve_types(state)
+    }
 }
 
 /// Additional trait for expressions, separate from Expression to make it easier to implement in macros
@@ -214,6 +231,8 @@ pub trait ExpressionMeta {
 #[pass_through(fn call(&'a self, state: &mut ExpressionExecutionState<'c, '_>, _values: &[&Value]) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn get_is_deterministic(&self) -> bool, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_>, "", ExpressionMeta)]
+#[pass_through(fn resolve_types(&'a self, state: &mut crate::types::TypeExecutionState<'c, '_>) -> Result<Type, crate::types::TypeError>, "", Expression<'a, 'c>, where 'a: 'c)]
+#[pass_through(fn call_types(&'a self, state: &mut crate::types::TypeExecutionState<'c, '_>, _arguments: &[&Type]) -> Result<Type, crate::types::TypeError>, "", Expression<'a, 'c>, where 'a: 'c)]
 pub enum FunctionType {
     Pow(PowFunction),
     Log(LogFunction),
@@ -373,6 +392,8 @@ pub fn get_function_expression(
 #[pass_through(fn get_is_deterministic(&self) -> bool, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn call(&'a self, state: &mut ExpressionExecutionState<'c, '_>, _values: &[&Value]) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_>, "", ExpressionMeta)]
+#[pass_through(fn resolve_types(&'a self, state: &mut crate::types::TypeExecutionState<'c, '_>) -> Result<Type, crate::types::TypeError>, "", Expression<'a, 'c>, where 'a: 'c)]
+#[pass_through(fn call_types(&'a self, state: &mut crate::types::TypeExecutionState<'c, '_>, _arguments: &[&Type]) -> Result<Type, crate::types::TypeError>, "", Expression<'a, 'c>, where 'a: 'c)]
 pub enum ExpressionType {
     Constant(Constant),
     Operator(OpExpression),
@@ -447,6 +468,17 @@ impl ExpressionType {
         self.builder().with_custom_items(data).run()
     }
 
+    /// Run the expression in type space with a list of types.
+    pub fn run_types<'a: 'c, 'c>(
+        &'a self,
+        data: impl IntoIterator<Item = Type>,
+    ) -> Result<Type, TypeError> {
+        let data_owned = data.into_iter().collect::<Vec<_>>();
+        let data = data_owned.iter().collect::<Vec<_>>();
+        let mut state = TypeExecutionState::new(&data);
+        self.resolve_types(&mut state)
+    }
+
     pub(crate) fn fail_if_lambda(&self) -> Result<(), BuildError> {
         if let ExpressionType::Lambda(lambda) = self {
             Err(BuildError::unexpected_lambda(&lambda.span))
@@ -476,6 +508,13 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for Constant {
         state.inc_op()?;
         Ok(ResolveResult::Borrowed(&self.val))
     }
+
+    fn resolve_types(
+        &'a self,
+        _state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        Ok(Type::from_const(self.value().clone()))
+    }
 }
 
 impl ExpressionMeta for Constant {
@@ -491,5 +530,24 @@ impl Constant {
 
     pub(crate) fn value(&self) -> &Value {
         &self.val
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::compile_expression;
+
+    #[test]
+    fn test_constant_type_resolution() {
+        let expr = compile_expression("15", &[]).unwrap();
+        let r = expr.run_types([]).unwrap();
+        assert_eq!(r, crate::types::Type::from_const(15));
+    }
+
+    #[test]
+    fn test_optimized_type_resolution() {
+        let expr = compile_expression(r#""test".concat("hello")"#, &[]).unwrap();
+        let r = expr.run_types([]).unwrap();
+        assert_eq!(r, crate::types::Type::from_const("testhello".to_string()));
     }
 }
