@@ -517,7 +517,7 @@ impl<'a> Iterator for IterUnion<'a> {
             }
             _ if self.index == 0 => {
                 self.index += 1;
-                Some(&self.typ)
+                Some(self.typ)
             }
             _ => None,
         }

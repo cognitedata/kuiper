@@ -116,7 +116,13 @@ pub fn compile_expression_with_config(
     let parser = ProgramParser::new();
     let res = parser.parse(inp)?;
     let res = ExecTreeBuilder::new(res, known_inputs, config)?.build()?;
+    if matches!(config.type_checker, TypeCheckerMode::Early) {
+        res.run_types((0..known_inputs.len()).map(|_| Type::Any))?;
+    }
     let optimized = optimize(res, known_inputs.len(), config.optimizer_operation_limit)?;
+    if matches!(config.type_checker, TypeCheckerMode::Late) {
+        optimized.run_types((0..known_inputs.len()).map(|_| Type::Any))?;
+    }
     Ok(optimized)
 }
 
