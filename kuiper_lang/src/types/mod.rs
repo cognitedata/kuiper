@@ -457,6 +457,15 @@ impl Type {
             (self_type, other_type) => self_type == other_type,
         }
     }
+
+    /// Return an iterator over the types in this type, if it is a union.
+    /// If it is not a union, the iterator will just yield a single value.
+    pub fn iter_union(&self) -> impl Iterator<Item = &Type> {
+        IterUnion {
+            typ: self,
+            index: 0,
+        }
+    }
 }
 
 impl Display for Type {
@@ -483,6 +492,34 @@ impl Display for Type {
                 write!(f, ">")
             }
             Type::Any => write!(f, "Any"),
+        }
+    }
+}
+
+struct IterUnion<'a> {
+    typ: &'a Type,
+    index: usize,
+}
+
+impl<'a> Iterator for IterUnion<'a> {
+    type Item = &'a Type;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.typ {
+            Type::Union(types) => {
+                if self.index < types.len() {
+                    let res = &types[self.index];
+                    self.index += 1;
+                    Some(res)
+                } else {
+                    None
+                }
+            }
+            _ if self.index == 0 => {
+                self.index += 1;
+                Some(&self.typ)
+            }
+            _ => None,
         }
     }
 }
@@ -1009,5 +1046,22 @@ mod tests {
             Truthy::Never
         );
         assert_eq!(Type::Any.truthyness(), Truthy::Maybe);
+    }
+
+    #[test]
+    fn test_iter_union() {
+        let union_type = Type::Union(vec![Type::Integer, Type::String, Type::Float]);
+        let mut iter = union_type.iter_union();
+
+        assert_eq!(iter.next(), Some(&Type::Integer));
+        assert_eq!(iter.next(), Some(&Type::String));
+        assert_eq!(iter.next(), Some(&Type::Float));
+        assert_eq!(iter.next(), None);
+
+        let non_union_type = Type::Boolean;
+        let mut iter = non_union_type.iter_union();
+
+        assert_eq!(iter.next(), Some(&Type::Boolean));
+        assert_eq!(iter.next(), None);
     }
 }
