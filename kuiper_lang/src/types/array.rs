@@ -98,6 +98,53 @@ impl Array {
             end_dynamic: None,
         }
     }
+
+    pub fn is_assignable_to(&self, other: &Array) -> bool {
+        let mut self_iter = self.elements.iter();
+        let mut other_iter = other.elements.iter();
+
+        loop {
+            let Some(self_elem) = self_iter.next() else {
+                // If we run out of elements in self, all remaining elements in other must be
+                // compatible with the end dynamic of self.
+                if let Some(end_dynamic) = &self.end_dynamic {
+                    for other_elem in other_iter {
+                        if !end_dynamic.is_assignable_to(other_elem) {
+                            return false;
+                        }
+                    }
+                    return true;
+                } else {
+                    // If self has no end dynamic, and there are still elements in other,
+                    // it means that they are not compatible.
+                    return other_iter.next().is_none();
+                }
+            };
+            let Some(other_elem) = other_iter.next() else {
+                // If we run out of elements in other, all remaining elements in self must be
+                // compatible with the end dynamic of other.
+                if let Some(end_dynamic) = &other.end_dynamic {
+                    if !self_elem.is_assignable_to(end_dynamic) {
+                        return false;
+                    }
+                    for self_elem in self_iter {
+                        if !self_elem.is_assignable_to(end_dynamic) {
+                            return false;
+                        }
+                    }
+                    return true;
+                } else {
+                    // If other has no end dynamic, it means it is not compatible with any remaining
+                    // elements in self.
+                    return false;
+                }
+            };
+
+            if !self_elem.is_assignable_to(other_elem) {
+                return false;
+            }
+        }
+    }
 }
 
 impl Display for Array {
