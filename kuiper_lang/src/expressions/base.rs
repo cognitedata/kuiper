@@ -3,7 +3,11 @@ use logos::Span;
 use serde_json::Value;
 use std::fmt::Display;
 
-use crate::{compiler::BuildError, expressions::source::SourceData, NULL_CONST};
+use crate::{
+    compiler::BuildError,
+    expressions::{run_builder::ExpressionRunBuilder, source::SourceData},
+    NULL_CONST,
+};
 
 use self::objects::ToObjectFunction;
 
@@ -25,7 +29,7 @@ use super::{
 use kuiper_lang_macros::PassThrough;
 
 #[cfg(feature = "completions")]
-type Completions = std::collections::HashMap<Span, std::collections::HashSet<String>>;
+pub type Completions = std::collections::HashMap<Span, std::collections::HashSet<String>>;
 
 /// State for expression execution. This struct is constructed for each expression.
 /// Notably lifetime heavy. `'a` is the lifetime of the input data.
@@ -43,6 +47,11 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
     #[inline]
     pub fn get_value(&self, key: usize) -> Option<&'data dyn SourceData> {
         self.data.get(key).copied().and_then(|o| o)
+    }
+
+    #[cfg(feature = "completions")]
+    pub(crate) fn set_completions(&mut self, completions: &'exec mut Completions) {
+        self.completions = Some(completions);
     }
 
     pub fn new(
@@ -389,6 +398,11 @@ impl ExpressionType {
         self.run_limited(data, -1)
     }
 
+    /// Get a builder for running the expression.
+    pub fn builder(&self) -> ExpressionRunBuilder<'_, '_, ()> {
+        ExpressionRunBuilder::<'_, '_, ()>::new(self)
+    }
+
     /// Run the expression. Takes a list of values.
     ///
     /// * `data` - An iterator over the inputs to the expression. The count must match the count provided when the expression was compiled
@@ -399,13 +413,10 @@ impl ExpressionType {
         data: impl IntoIterator<Item = &'c Value>,
         max_operation_count: i64,
     ) -> Result<ResolveResult<'c>, TransformError> {
-        let mut opcount = 0;
-        let data = data
-            .into_iter()
-            .map(|v| Some(v as &dyn SourceData))
-            .collect();
-        let mut state = ExpressionExecutionState::new(&data, &mut opcount, max_operation_count);
-        self.resolve(&mut state)
+        self.builder()
+            .with_values(data)
+            .max_operation_count(max_operation_count)
+            .run()
     }
 
     /// Run the expression. Takes a list of values. Returns the result along with the number of operations performed.
@@ -416,14 +427,7 @@ impl ExpressionType {
         &'a self,
         data: impl IntoIterator<Item = &'c Value>,
     ) -> Result<(ResolveResult<'c>, i64), TransformError> {
-        let mut opcount = 0;
-        let data = data
-            .into_iter()
-            .map(|v| Some(v as &dyn SourceData))
-            .collect();
-        let mut state = ExpressionExecutionState::new(&data, &mut opcount, -1);
-        let r = self.resolve(&mut state)?;
-        Ok((r, opcount))
+        self.builder().with_values(data).run_get_opcount()
     }
 
     #[cfg(feature = "completions")]
@@ -433,28 +437,14 @@ impl ExpressionType {
         &'a self,
         data: impl IntoIterator<Item = &'c Value>,
     ) -> Result<(ResolveResult<'c>, Completions), TransformError> {
-        use std::collections::HashMap;
-
-        let data = data
-            .into_iter()
-            .map(|v| Some(v as &dyn SourceData))
-            .collect();
-        let mut opcount = 0;
-        let mut state = ExpressionExecutionState::new(&data, &mut opcount, -1);
-        let mut completions = HashMap::new();
-        state.completions = Some(&mut completions);
-        let r = self.resolve(&mut state)?;
-        Ok((r, completions))
+        self.builder().with_values(data).run_get_completions()
     }
 
     pub fn run_custom_input<'a: 'c, 'c>(
         &'a self,
         data: impl IntoIterator<Item = &'c dyn SourceData>,
     ) -> Result<ResolveResult<'c>, TransformError> {
-        let mut opcount = 0;
-        let data = data.into_iter().map(Some).collect();
-        let mut state = ExpressionExecutionState::new(&data, &mut opcount, -1);
-        self.resolve(&mut state)
+        self.builder().with_custom_items(data).run()
     }
 
     pub(crate) fn fail_if_lambda(&self) -> Result<(), BuildError> {

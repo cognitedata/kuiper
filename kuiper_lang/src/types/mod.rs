@@ -300,6 +300,19 @@ impl Type {
         Self::simplify_union(res)
     }
 
+    /// Create a nullable version of this type, if it is not already nullable.
+    pub fn nullable(self) -> Self {
+        self.union_with(Type::null())
+    }
+
+    pub fn is_nullable(&self) -> bool {
+        Self::null().is_assignable_to(self)
+    }
+
+    /// Compute the union of this type with another type.
+    ///
+    /// This will simplify the produced union where possible, for example
+    /// merging primitive types with their constant variants.
     pub fn union_with(self, other: Type) -> Self {
         if self == other {
             return self;
@@ -339,6 +352,60 @@ impl Type {
             }
 
             (self_type, other_type) => Type::Union(vec![self_type, other_type]),
+        }
+    }
+
+    /// Validate that `other` is a valid receiver for `self`, i.e. that
+    /// there is any overlap between the two types at all.
+    pub fn is_assignable_to(&self, other: &Type) -> bool {
+        match (self, other) {
+            // There is always overlap between the Any type and any other type.
+            (Type::Any, _) | (_, Type::Any) => true,
+            // Constants only overlap if they are equal.
+            (Type::Constant(v1), Type::Constant(v2)) => v1 == v2,
+            // Constants also overlap with their primitive type.
+            (Type::Constant(v), Type::String) | (Type::String, Type::Constant(v)) => v.is_string(),
+            (Type::Constant(v), Type::Boolean) | (Type::Boolean, Type::Constant(v)) => {
+                v.is_boolean()
+            }
+            (Type::Constant(v), Type::Integer) | (Type::Integer, Type::Constant(v)) => {
+                v.is_i64() || v.is_u64()
+            }
+            (Type::Constant(v), Type::Float) | (Type::Float, Type::Constant(v)) => v.is_f64(),
+
+            // A constant object can be assigned to an object type if all fields in the constant
+            // object are accepted
+            (Type::Constant(Value::Object(const_obj)), Type::Object(obj_type)) => {
+                let const_type = Object::from_const(const_obj.clone());
+                const_type.is_assignable_to(obj_type)
+            }
+            (Type::Object(obj_type), Type::Constant(Value::Object(const_obj))) => {
+                let const_type = Object::from_const(const_obj.clone());
+                obj_type.is_assignable_to(&const_type)
+            }
+
+            (Type::Object(self_obj), Type::Object(other_obj)) => {
+                self_obj.is_assignable_to(other_obj)
+            }
+
+            (Type::Constant(Value::Array(const_arr)), Type::Array(arr_type)) => {
+                let const_type = Array::from_const(const_arr.clone());
+                const_type.is_assignable_to(arr_type)
+            }
+            (Type::Array(arr_type), Type::Constant(Value::Array(const_arr))) => {
+                let const_type = Array::from_const(const_arr.clone());
+                arr_type.is_assignable_to(&const_type)
+            }
+            (Type::Array(self_type), Type::Array(other_type)) => {
+                self_type.is_assignable_to(other_type)
+            }
+
+            // A union can be assigned to some other type if at least one of its variants can be assigned.
+            (Type::Union(types), other) => types.iter().any(|t| t.is_assignable_to(other)),
+            (other, Type::Union(types)) => types.iter().any(|t| other.is_assignable_to(t)),
+
+            // Fall back to exact equality for other types.
+            (self_type, other_type) => self_type == other_type,
         }
     }
 }
@@ -800,5 +867,66 @@ mod tests {
             Type::Union(vec![Type::from_const(123), Type::String])
                 .union_with(Type::Union(vec![Type::from_const("abc"), Type::Integer]))
         )
+    }
+
+    #[test]
+    fn test_assignable_simple() {
+        assert!(Type::Integer.is_assignable_to(&Type::Integer));
+        assert!(Type::from_const(123).is_assignable_to(&Type::Integer));
+        assert!(Type::Integer.is_assignable_to(&Type::from_const(123)));
+        assert!(!Type::Integer.is_assignable_to(&Type::Float));
+        assert!(!Type::from_const(123).is_assignable_to(&Type::Float));
+        assert!(!Type::Float.is_assignable_to(&Type::from_const(123)));
+        assert!(Type::Any.is_assignable_to(&Type::Integer));
+        assert!(Type::Integer.is_assignable_to(&Type::Any));
+        assert!(Type::String.is_assignable_to(&Type::from_const("hello")));
+        assert!(Type::from_const("hello").is_assignable_to(&Type::String));
+        assert!(!Type::String.is_assignable_to(&Type::from_const(123)));
+    }
+
+    #[test]
+    fn test_assignable_union() {
+        assert!(Type::number().is_assignable_to(&Type::Float));
+        assert!(Type::number().is_assignable_to(&Type::Integer));
+        assert!(Type::from_const(123).is_assignable_to(&Type::number()));
+        assert!(Type::from_const(3.14).is_assignable_to(&Type::number()));
+        assert!(!Type::String.is_assignable_to(&Type::number()));
+        assert!(!Type::number().is_assignable_to(&Type::String));
+        assert!(Type::Union(vec![Type::String, Type::Float])
+            .is_assignable_to(&Type::from_const("hello").nullable()));
+    }
+
+    #[test]
+    fn test_assignable_array() {
+        let arr_type = Type::Array(Array {
+            elements: vec![Type::String, Type::Integer],
+            end_dynamic: Some(Box::new(Type::Float)),
+        });
+        let const_arr_type = Type::from_const(json!(["hello", 42, 3.14]));
+
+        assert!(const_arr_type.is_assignable_to(&arr_type));
+        assert!(arr_type.is_assignable_to(&const_arr_type));
+
+        let wrong_const_arr_type = Type::from_const(json!(["hello", "world"]));
+        assert!(!wrong_const_arr_type.is_assignable_to(&arr_type));
+    }
+
+    #[test]
+    fn test_assignable_object() {
+        let obj_type = Type::Object(Object {
+            fields: [
+                (ObjectField::Constant("a".to_string()), Type::String),
+                (ObjectField::Generic, Type::Integer),
+            ]
+            .into_iter()
+            .collect(),
+        });
+        let const_obj_type = Type::from_const(json!({"a": "hello", "b": 42, "c": 100}));
+
+        assert!(const_obj_type.is_assignable_to(&obj_type));
+        assert!(obj_type.is_assignable_to(&const_obj_type));
+
+        let wrong_const_obj_type = Type::from_const(json!({"a": 123, "b": 42}));
+        assert!(!wrong_const_obj_type.is_assignable_to(&obj_type));
     }
 }
