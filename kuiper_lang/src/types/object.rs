@@ -117,6 +117,84 @@ impl Object {
             .collect();
         Object { fields }
     }
+
+    pub fn accepts_field(&self, key: &str, ty: &Type) -> bool {
+        // Either the specific field type accepts it, or the generic field type accepts it.
+        if let Some(field_type) = self.fields.get(&ObjectField::Constant(key.to_string())) {
+            ty.is_assignable_to(field_type)
+        } else if let Some(field_type) = self.fields.get(&ObjectField::Generic) {
+            ty.is_assignable_to(field_type)
+        } else {
+            false
+        }
+    }
+
+    /// Check if this object type is assignable to another object type.
+    /// This means that all fields in `self` must be accepted by `other`,
+    /// and all fields in `other` must be either nullable or contained in `self`.
+    pub fn is_assignable_to(&self, other: &Object) -> bool {
+        // Check if each field in self is accepted by other.
+        for (key, value) in &self.fields {
+            match key {
+                ObjectField::Constant(k) => {
+                    if !other.accepts_field(k, value) {
+                        return false;
+                    }
+                }
+                ObjectField::Generic => {
+                    if let Some(other_generic) = other.fields.get(&ObjectField::Generic) {
+                        if !value.is_assignable_to(other_generic) {
+                            return false;
+                        }
+                    } else {
+                        // If other has no generic field, technically we can be received by
+                        // _any_ field in other that is not explicitly matched:
+                        let mut matched = false;
+                        for field in other
+                            .fields
+                            .iter()
+                            .filter(|(k, _)| !self.fields.contains_key(k))
+                        {
+                            if value.is_assignable_to(field.1) {
+                                matched = true;
+                                break;
+                            }
+                        }
+                        if !matched {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Check if each field in other is either nullable or contained in self.
+        for (key, value) in &other.fields {
+            // We don't care about generic fields here.
+            let ObjectField::Constant(k) = key else {
+                continue;
+            };
+
+            // If the field is nullable, it's fine if we don't have it.
+            if Type::null().is_assignable_to(value) {
+                continue;
+            }
+            // Otherwise, we must have the field in self, and it must be assignable.
+            if let Some(self_value) = self.fields.get(&ObjectField::Constant(k.clone())) {
+                if !self_value.is_assignable_to(value) {
+                    return false;
+                }
+            } else if let Some(generic) = self.fields.get(&ObjectField::Generic) {
+                if !generic.is_assignable_to(value) {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+
+        true
+    }
 }
 
 impl Display for Object {
