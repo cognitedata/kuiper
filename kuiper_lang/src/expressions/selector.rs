@@ -2,7 +2,12 @@ use std::fmt::Display;
 
 use serde_json::{Map, Value};
 
-use crate::{compiler::BuildError, expressions::source::SourceData, NULL_CONST};
+use crate::{
+    compiler::BuildError,
+    expressions::source::SourceData,
+    types::{Type, TypeError},
+    NULL_CONST,
+};
 
 use super::{
     base::{Expression, ExpressionExecutionState, ExpressionMeta, ExpressionType},
@@ -89,6 +94,41 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SelectorExpression {
                 }
             }
         }
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let ty = match &self.source {
+            SourceElement::CompiledInput(i) => state.get_type(*i).cloned().unwrap_or(Type::null()),
+            SourceElement::Expression(e) => e.resolve_types(state)?,
+        };
+
+        let mut elem = ty;
+        for p in &self.path {
+            if matches!(elem, Type::Any) {
+                return Ok(Type::Any);
+            }
+            elem = match p {
+                SelectorElement::Constant(x, _) => {
+                    let Ok(obj_ty) = elem.try_as_object(&self.span) else {
+                        return Ok(Type::null());
+                    };
+                    let Some(inner) = obj_ty.index_into(x.as_str()) else {
+                        return Ok(Type::null());
+                    };
+                    inner
+                }
+                SelectorElement::Expression(e) => {
+                    let val = e.resolve_types(state)?;
+                    println!("Selector expression resolved to type: {val}");
+
+                    Self::resolve_type_field(val, elem, &self.span)?
+                }
+            };
+        }
+        Ok(elem)
     }
 }
 
@@ -365,13 +405,119 @@ impl SelectorExpression {
         }
         Ok(ResolveResult::Owned(elem))
     }
+
+    fn resolve_type_field(
+        selector: Type,
+        select_from: Type,
+        span: &Span,
+    ) -> Result<Type, TypeError> {
+        Ok(match selector {
+            Type::Constant(Value::String(s)) => {
+                let Ok(obj_ty) = select_from.try_as_object(span) else {
+                    return Ok(Type::null());
+                };
+                let Some(inner) = obj_ty.index_into(s.as_str()) else {
+                    return Ok(Type::null());
+                };
+                inner
+            }
+            Type::Constant(Value::Number(n)) => {
+                let Ok(arr_ty) = select_from.try_as_array(span) else {
+                    return Ok(Type::null());
+                };
+
+                let num = JsonNumber::from(n.clone());
+                match num {
+                    JsonNumber::PosInteger(n) => {
+                        arr_ty.index_into(n as usize).unwrap_or_else(Type::null)
+                    }
+                    JsonNumber::NegInteger(n) => {
+                        if n < 0 {
+                            arr_ty
+                                .index_from_end((-n - 1) as usize)
+                                .unwrap_or_else(Type::null)
+                        } else {
+                            arr_ty.index_into(n as usize).unwrap_or_else(Type::null)
+                        }
+                    }
+                    _ => {
+                        return Err(TypeError::expected_type(
+                            Type::Integer,
+                            Type::Float,
+                            span.clone(),
+                        ))
+                    }
+                }
+            }
+            Type::Any => match &select_from {
+                Type::Object(o) => o.element_union(),
+                Type::Array(s) => s.element_union(),
+                Type::Union(u) => {
+                    let mut typ = Type::null();
+                    for t in u {
+                        match t {
+                            Type::Object(o) => {
+                                typ = typ.union_with(o.element_union());
+                            }
+                            Type::Array(s) => {
+                                typ = typ.union_with(s.element_union());
+                            }
+                            _ => (),
+                        }
+                    }
+                    typ
+                }
+                Type::Any => Type::Any,
+                _ => Type::null(),
+            },
+            Type::Union(u) => {
+                let mut typ = Type::null();
+                for t in &u {
+                    if let Ok(res) = Self::resolve_type_field(t.clone(), select_from.clone(), span)
+                    {
+                        typ = typ.union_with(res);
+                    }
+                }
+                if typ.is_never() {
+                    return Err(TypeError::expected_type(
+                        Type::Union(vec![Type::String, Type::Integer]),
+                        Type::Union(u),
+                        span.clone(),
+                    ));
+                }
+                typ
+            }
+            Type::Integer => {
+                let Ok(arr_ty) = select_from.try_as_array(span) else {
+                    return Ok(Type::null());
+                };
+                arr_ty.element_union().union_with(Type::null())
+            }
+            Type::String => {
+                let Ok(obj_ty) = select_from.try_as_object(span) else {
+                    return Ok(Type::null());
+                };
+                obj_ty.element_union().union_with(Type::null())
+            }
+            _ => {
+                return Err(TypeError::expected_type(
+                    Type::Union(vec![Type::String, Type::Integer]),
+                    selector,
+                    span.clone(),
+                ))
+            }
+        })
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use serde_json::Value;
 
-    use crate::compile_expression;
+    use crate::{
+        compile_expression,
+        types::{Array, Object, Type},
+    };
 
     #[test]
     fn test_constant_selector() {
@@ -449,5 +595,179 @@ mod tests {
         assert_eq!(r.get("8").unwrap(), &Value::Null);
         assert_eq!(r.get("9").unwrap(), &Value::Null);
         assert_eq!(r.get("10").unwrap(), &Value::Null);
+    }
+
+    #[test]
+    fn test_selector_types_array() {
+        let expr = crate::compile_expression(
+            r#"
+        input[0]
+        "#,
+            &["input"],
+        )
+        .unwrap();
+        let r = expr
+            .run_types([Type::array_of_type(Type::Boolean)])
+            .unwrap();
+        // The array might be empty, so result could be null.
+        assert_eq!(r, Type::Boolean.union_with(Type::null()));
+        let r = expr
+            .run_types([Type::Array(Array {
+                elements: vec![Type::Integer, Type::Boolean],
+                end_dynamic: Some(Box::new(Type::Float)),
+            })])
+            .unwrap();
+        assert_eq!(r, Type::Integer);
+
+        // Empty array
+        let r = expr.run_types([Type::Array(Array::default())]).unwrap();
+        assert_eq!(r, Type::null());
+    }
+
+    #[test]
+    fn test_selector_types_array_neg() {
+        let expr = crate::compile_expression(
+            r#"
+        input[-1]
+        "#,
+            &["input"],
+        )
+        .unwrap();
+        let r = expr
+            .run_types([Type::array_of_type(Type::Boolean)])
+            .unwrap();
+        // The array might be empty, so result could be null.
+        assert_eq!(r, Type::Boolean.union_with(Type::null()));
+
+        let r = expr
+            .run_types([Type::Array(Array {
+                elements: vec![Type::Integer, Type::Boolean],
+                end_dynamic: Some(Box::new(Type::Float)),
+            })])
+            .unwrap();
+        // The result could either be the last element in the known static array, or
+        // the end_dynamic type. It can't be the first type, since that would require us to take
+        // at least 2 elements from the array.
+        assert_eq!(r, Type::Float.union_with(Type::Boolean));
+
+        // Empty array
+        let r = expr.run_types([Type::Array(Array::default())]).unwrap();
+        assert_eq!(r, Type::null());
+    }
+
+    #[test]
+    fn test_selector_types_array_dynamic() {
+        let expr = crate::compile_expression(
+            r#"
+            input[now()]
+            "#,
+            &["input"],
+        )
+        .unwrap();
+        let r = expr
+            .run_types([Type::Array(Array {
+                elements: vec![Type::Integer, Type::Boolean],
+                end_dynamic: Some(Box::new(Type::Float)),
+            })])
+            .unwrap();
+        // We have no idea what the selector is, the result is any element in the array.
+        assert_eq!(
+            r,
+            Type::Integer
+                .union_with(Type::Boolean)
+                .union_with(Type::Float)
+        );
+    }
+
+    #[test]
+    fn test_selector_types_object() {
+        let expr = crate::compile_expression(
+            r#"
+            input.foo
+            "#,
+            &["input"],
+        )
+        .unwrap();
+        // Just all dynamic.
+        let r = expr
+            .run_types([Type::object_of_type(Type::Boolean)])
+            .unwrap();
+        // foo might not be in the object at all.
+        assert_eq!(r, Type::Boolean.nullable());
+
+        // Foo is defined.
+        let r = expr
+            .run_types([Type::Object(
+                Object::default()
+                    .with_field("foo", Type::Float)
+                    .with_field("bar", Type::Integer),
+            )])
+            .unwrap();
+        assert_eq!(r, Type::Float);
+
+        // Foo isn't defined.
+        let r = expr
+            .run_types([Type::Object(
+                Object::default()
+                    .with_field("bar", Type::Float)
+                    .with_field("baz", Type::Integer),
+            )])
+            .unwrap();
+        assert_eq!(r, Type::null());
+    }
+
+    #[test]
+    fn test_selector_types_object_const_dynamic() {
+        let expr = crate::compile_expression(
+            r#"
+            input["foo"]
+            "#,
+            &["input"],
+        )
+        .unwrap();
+        // Should yield the same as just `input.foo`.
+        // Just all dynamic.
+        let r = expr
+            .run_types([Type::object_of_type(Type::Boolean)])
+            .unwrap();
+        // foo might not be in the object at all.
+        assert_eq!(r, Type::Boolean.nullable());
+
+        // Foo is defined.
+        let r = expr
+            .run_types([Type::Object(
+                Object::default()
+                    .with_field("foo", Type::Float)
+                    .with_field("bar", Type::Integer),
+            )])
+            .unwrap();
+        assert_eq!(r, Type::Float);
+    }
+
+    #[test]
+    fn test_selector_types_object_dynamic() {
+        let expr = crate::compile_expression(
+            r#"
+            input[string(now())]"#,
+            &["input"],
+        )
+        .unwrap();
+        // We don't know what the key is, so we just return the union of every field.
+        let r = expr
+            .run_types([Type::Object(
+                Object::default()
+                    .with_field("foo", Type::Float)
+                    .with_field("bar", Type::Integer)
+                    .with_field("baz", Type::from_const(123))
+                    .with_generic_field(Type::Boolean),
+            )])
+            .unwrap();
+        // The constant 123 is eaten by the generic integer, since {123} ⊂ Integer
+        assert_eq!(
+            r,
+            Type::Integer
+                .union_with(Type::Float)
+                .union_with(Type::Boolean)
+        );
     }
 }

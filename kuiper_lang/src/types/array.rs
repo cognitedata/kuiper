@@ -4,7 +4,7 @@ use serde::Serialize;
 
 use crate::types::Type;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Hash, Default)]
 /// A JSON array type, containing a sequence of types for known elements,
 /// and an optional type for any additional elements found at the end.
 pub struct Array {
@@ -26,10 +26,45 @@ impl Array {
         None
     }
 
+    /// Index into the array from the end, so index 0 here is the last element of the
+    /// array.
+    /// Note that since arrays set an end_dynamic, this typically is less
+    /// certain than `index_into`.
+    pub fn index_from_end(&self, index: usize) -> Option<Type> {
+        let len = self.elements.len();
+        // If there is an end dynamic, we always just return the full union.
+        if index < len && self.end_dynamic.is_none() {
+            return Some(self.elements[len - index - 1].clone());
+        } else if let Some(end_dynamic) = &self.end_dynamic {
+            let mut r = end_dynamic.as_ref().clone();
+            for el in self.elements.iter().rev().take(index + 1) {
+                r = r.union_with(el.clone());
+            }
+            if index >= len {
+                r = r.union_with(Type::null());
+            }
+            return Some(r);
+        }
+
+        None
+    }
+
     pub fn all_elements(&self) -> impl Iterator<Item = &Type> {
         self.elements
             .iter()
             .chain(self.end_dynamic.iter().map(|d| d.as_ref()))
+    }
+
+    /// Return a union of all the elements in this array.
+    pub fn element_union(&self) -> Type {
+        let mut union = Type::never();
+        for elem in &self.elements {
+            union = union.union_with(elem.clone());
+        }
+        if let Some(end_dynamic) = &self.end_dynamic {
+            union = union.union_with(end_dynamic.as_ref().clone());
+        }
+        union
     }
 
     pub fn union_with(self, other: Array) -> Self {
