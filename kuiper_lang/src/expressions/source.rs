@@ -298,7 +298,20 @@ impl<T: Debug, F: Fn(&T) -> R, R> Debug for LazySourceData<T, F, R> {
     }
 }
 
-impl<T, F: Fn(&T) -> R, R: SourceData> LazySourceData<T, F, R> {
+impl<T, F, R> Serialize for LazySourceData<T, F, R>
+where
+    F: Fn(&T) -> R,
+    R: Serialize,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.get_resolved().serialize(serializer)
+    }
+}
+
+impl<T, F: Fn(&T) -> R, R> LazySourceData<T, F, R> {
     /// Create a new LazySourceData instance, with the given resolver.
     pub fn new(data: T, resolver: F) -> Self {
         Self {
