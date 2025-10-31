@@ -359,10 +359,7 @@ mod tests {
     use kuiper_lang_macros::SourceData;
     use serde::Serialize;
 
-    use crate::{
-        compile_expression,
-        expressions::{source::SourceData, ResolveResult},
-    };
+    use crate::{compile_expression, expressions::source::SourceData};
 
     use crate as kuiper_lang;
 
@@ -429,6 +426,43 @@ mod tests {
                 "name": "test",
                 "values": [1, 2, 3]
             }
+        });
+        assert_eq!(result.into_owned(), expected);
+    }
+
+    #[derive(Debug, Serialize, SourceData)]
+    struct CustomDataGeneric<'a, 'b, T, R> {
+        foo: &'a str,
+        bar: &'b str,
+        data_1: T,
+        data_2: R,
+    }
+
+    #[test]
+    fn test_custom_data_generic() {
+        let data = CustomDataGeneric {
+            foo: "hello",
+            bar: "world",
+            data_1: vec![1, 2, 3],
+            data_2: serde_json::json!({"a": 1, "b": 2}),
+        };
+        let expr = compile_expression(
+            r#"
+        {
+            "foo": input.foo,
+            "bar": input.bar,
+            "data_1": input.data_1[0],
+            "data_2": input.data_2.b
+        }"#,
+            &["input"],
+        )
+        .unwrap();
+        let result = expr.run_custom_input([&data as &dyn SourceData]).unwrap();
+        let expected = serde_json::json!({
+            "foo": "hello",
+            "bar": "world",
+            "data_1": 1,
+            "data_2": 2
         });
         assert_eq!(result.into_owned(), expected);
     }

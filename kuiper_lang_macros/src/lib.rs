@@ -4,8 +4,8 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
 use syn::{
-    parse::Parse, parse_macro_input, Data, DeriveInput, Generics, Ident, LitStr, Pat, Result,
-    Signature, Token, WhereClause,
+    parse::Parse, parse_macro_input, parse_quote, Data, DeriveInput, Generics, Ident, LitStr, Pat,
+    Result, Signature, Token, WhereClause,
 };
 
 #[proc_macro_derive(PassThrough, attributes(pass_through_exclude, pass_through))]
@@ -231,10 +231,19 @@ pub fn source_data_derive(d: TokenStream) -> TokenStream {
         }
     }
 
+    let mut generics = en.generics.clone();
+    let where_clause = generics.make_where_clause();
+    for generic in en.generics.type_params() {
+        where_clause
+            .predicates
+            .push(parse_quote!(#generic: kuiper_lang::source::SourceData + serde::Serialize));
+    }
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
     let output = quote! {
-        impl kuiper_lang::source::SourceData for #name {
+        impl #impl_generics kuiper_lang::source::SourceData for #name #ty_generics #where_clause {
             fn resolve(&self) -> kuiper_lang::ResolveResult<'_> {
-                ResolveResult::Owned(serde_json::to_value(self).unwrap_or(serde_json::Value::Null))
+                kuiper_lang::ResolveResult::Owned(serde_json::to_value(self).unwrap_or(serde_json::Value::Null))
             }
 
             fn get_key(&self, key: &str) -> &dyn kuiper_lang::source::SourceData {
