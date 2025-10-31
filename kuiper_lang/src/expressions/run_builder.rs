@@ -2,7 +2,8 @@ use std::marker::PhantomData;
 
 use crate::{
     expressions::{Expression, ExpressionExecutionState},
-    ExpressionType, ResolveResult, SourceData, TransformError,
+    source::SourceData,
+    ExpressionType, ResolveResult, TransformError,
 };
 
 pub struct ExpressionRunBuilder<'a, 'c, T> {

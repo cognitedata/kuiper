@@ -132,8 +132,7 @@ pub use compiler::{
 #[cfg(feature = "completions")]
 pub use expressions::Completions;
 pub use expressions::{
-    ExpressionRunBuilder, ExpressionType, ResolveResult, SourceData, TransformError,
-    TransformErrorData,
+    ExpressionRunBuilder, ExpressionType, ResolveResult, TransformError, TransformErrorData,
 };
 pub use lexer::ParseError;
 pub use logos::Span;
