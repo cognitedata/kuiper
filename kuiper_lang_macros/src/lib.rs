@@ -4,8 +4,8 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
 use syn::{
-    parse::Parse, parse_macro_input, parse_quote, Data, DeriveInput, Generics, Ident, LitStr, Pat,
-    Result, Signature, Token, WhereClause,
+    ext::IdentExt, parse::Parse, parse_macro_input, parse_quote, Data, DeriveInput, Generics,
+    Ident, LitStr, Pat, Result, Signature, Token, WhereClause,
 };
 
 #[proc_macro_derive(PassThrough, attributes(pass_through_exclude, pass_through))]
@@ -192,7 +192,42 @@ impl Parse for FuncAndError {
     }
 }
 
-#[proc_macro_derive(SourceData)]
+struct FieldAttrBody {
+    rename: Option<LitStr>,
+}
+
+impl Parse for FieldAttrBody {
+    fn parse(input: syn::parse::ParseStream) -> Result<Self> {
+        let mut rename: Option<LitStr> = None;
+
+        while !input.is_empty() {
+            let lookahead = input.lookahead1();
+            if lookahead.peek(Ident::peek_any) {
+                let key = input.parse::<Ident>()?;
+                let key = key.to_string();
+                if key != "rename" {
+                    return Err(syn::Error::new(
+                        Span::call_site(),
+                        format!("Unknown attribute key: {}", key),
+                    ));
+                }
+                input.parse::<Token![=]>()?;
+                let ren: LitStr = input.parse()?;
+                rename = Some(ren);
+            } else {
+                return Err(lookahead.error());
+            }
+
+            if input.peek(Token![,]) {
+                input.parse::<Token![,]>()?;
+            }
+        }
+
+        Ok(FieldAttrBody { rename })
+    }
+}
+
+#[proc_macro_derive(SourceData, attributes(source_data))]
 /// Macro for deriving the SourceData trait for a struct.
 ///
 /// This only works for structs with named fields, where each field also implements SourceData.
@@ -215,7 +250,18 @@ pub fn source_data_derive(d: TokenStream) -> TokenStream {
                     .into();
                 };
 
-                let field_name = ident.to_string();
+                let mut field_name = ident.to_string();
+                for attr in &field.attrs {
+                    if attr.path().is_ident("source_data") {
+                        let args: FieldAttrBody = match attr.parse_args() {
+                            Ok(a) => a,
+                            Err(e) => return e.to_compile_error().into(),
+                        };
+                        if let Some(ren) = args.rename {
+                            field_name = ren.value();
+                        }
+                    }
+                }
                 keys_block.extend(quote! {
                     #field_name,
                 });
