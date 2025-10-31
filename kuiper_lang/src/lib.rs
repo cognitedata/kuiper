@@ -149,6 +149,13 @@ pub mod lex {
     pub use super::lexer::Token;
 }
 
+/// Module containing the SourceData trait and related types,
+/// used for creating custom input data sources for expressions.
+pub mod source {
+    pub use super::expressions::{LazySourceData, LazySourceDataJson, SourceData};
+    pub use kuiper_lang_macros::SourceData;
+}
+
 use serde_json::Value;
 use thiserror::Error;
 

@@ -148,7 +148,7 @@ impl SelectorExpression {
                                 JsonNumber::PosInteger(n) => elem.get_index(n as usize),
                                 JsonNumber::NegInteger(n) => {
                                     if n < 0 {
-                                        elem.len()
+                                        elem.array_len()
                                             .unwrap_or(0)
                                             .checked_sub(-n as usize)
                                             .map_or(&NULL_CONST, |i| elem.get_index(i))
