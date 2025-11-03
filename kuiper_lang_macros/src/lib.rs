@@ -4,8 +4,8 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
 use syn::{
-    ext::IdentExt, parse::Parse, parse_macro_input, parse_quote, Data, DeriveInput, Generics,
-    Ident, LitStr, Pat, Result, Signature, Token, WhereClause,
+    ext::IdentExt, parse::Parse, parse_macro_input, parse_quote, spanned::Spanned, Data,
+    DeriveInput, Generics, Ident, LitStr, Pat, Result, Signature, Token, WhereClause,
 };
 
 #[proc_macro_derive(PassThrough, attributes(pass_through_exclude, pass_through))]
@@ -204,15 +204,18 @@ impl Parse for FieldAttrBody {
             let lookahead = input.lookahead1();
             if lookahead.peek(Ident::peek_any) {
                 let key = input.parse::<Ident>()?;
-                let key = key.to_string();
-                if key != "rename" {
+                let key_str = key.to_string();
+                if key_str != "rename" {
                     return Err(syn::Error::new(
-                        Span::call_site(),
+                        key.span(),
                         format!("Unknown attribute key: {}", key),
                     ));
                 }
                 input.parse::<Token![=]>()?;
                 let ren: LitStr = input.parse()?;
+                if rename.is_some() {
+                    return Err(syn::Error::new(ren.span(), "Duplicate rename attribute"));
+                }
                 rename = Some(ren);
             } else {
                 return Err(lookahead.error());
@@ -251,8 +254,18 @@ pub fn source_data_derive(d: TokenStream) -> TokenStream {
                 };
 
                 let mut field_name = ident.to_string();
+                let mut any_attr = false;
                 for attr in &field.attrs {
                     if attr.path().is_ident("source_data") {
+                        if any_attr {
+                            return syn::Error::new(
+                                attr.path().span(),
+                                "Multiple source_data attributes on the same field",
+                            )
+                            .to_compile_error()
+                            .into();
+                        }
+                        any_attr = true;
                         let args: FieldAttrBody = match attr.parse_args() {
                             Ok(a) => a,
                             Err(e) => return e.to_compile_error().into(),
