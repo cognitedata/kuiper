@@ -4,8 +4,8 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
 use syn::{
-    parse::Parse, parse_macro_input, DeriveInput, Generics, Ident, LitStr, Pat, Result, Signature,
-    Token, WhereClause,
+    parse::Parse, parse_macro_input, parse_quote, Data, DeriveInput, Generics, Ident, LitStr, Pat,
+    Result, Signature, Token, WhereClause,
 };
 
 #[proc_macro_derive(PassThrough, attributes(pass_through_exclude, pass_through))]
@@ -190,4 +190,76 @@ impl Parse for FuncAndError {
             where_clause: Some(wh),
         })
     }
+}
+
+#[proc_macro_derive(SourceData)]
+/// Macro for deriving the SourceData trait for a struct.
+///
+/// This only works for structs with named fields, where each field also implements SourceData.
+pub fn source_data_derive(d: TokenStream) -> TokenStream {
+    let en = parse_macro_input!(d as DeriveInput);
+    let name = en.ident.clone();
+
+    let mut keys_block = quote! {};
+    let mut get_key_block = quote! {};
+
+    match &en.data {
+        Data::Struct(fields) => {
+            for field in &fields.fields {
+                let Some(ident) = &field.ident else {
+                    return syn::Error::new(
+                        name.span(),
+                        "SourceData can only be derived for structs with named fields",
+                    )
+                    .to_compile_error()
+                    .into();
+                };
+
+                let field_name = ident.to_string();
+                keys_block.extend(quote! {
+                    #field_name,
+                });
+                get_key_block.extend(quote! {
+                    #field_name => &self.#ident,
+                });
+            }
+        }
+        _ => {
+            return syn::Error::new(name.span(), "SourceData can only be derived for structs")
+                .to_compile_error()
+                .into()
+        }
+    }
+
+    let mut generics = en.generics.clone();
+    let where_clause = generics.make_where_clause();
+    for generic in en.generics.type_params() {
+        where_clause
+            .predicates
+            .push(parse_quote!(#generic: kuiper_lang::source::SourceData + serde::Serialize));
+    }
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    let output = quote! {
+        impl #impl_generics kuiper_lang::source::SourceData for #name #ty_generics #where_clause {
+            fn resolve(&self) -> kuiper_lang::ResolveResult<'_> {
+                kuiper_lang::ResolveResult::Owned(serde_json::to_value(self).unwrap_or(serde_json::Value::Null))
+            }
+
+            fn get_key(&self, key: &str) -> &dyn kuiper_lang::source::SourceData {
+                match key {
+                    #get_key_block
+                    _ => &kuiper_lang::NULL_CONST,
+                }
+            }
+
+            fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
+                Box::new([
+                    #keys_block
+                ].into_iter())
+            }
+        }
+    };
+
+    output.into()
 }
