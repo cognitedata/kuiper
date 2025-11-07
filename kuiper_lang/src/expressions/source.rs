@@ -448,6 +448,7 @@ mod tests {
         foo: &'a str,
         bar: &'b str,
         data_1: T,
+        #[source_data(rename = "data2")]
         data_2: R,
     }
 
@@ -465,7 +466,7 @@ mod tests {
             "foo": input.foo,
             "bar": input.bar,
             "data_1": input.data_1[0],
-            "data_2": input.data_2.b
+            "data_2": input.data2.b
         }"#,
             &["input"],
         )
