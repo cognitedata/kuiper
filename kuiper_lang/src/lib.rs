@@ -52,6 +52,8 @@ pub enum CompileError {
     Config(String),
     #[error("Compilation failed: {0}")]
     Optimizer(#[from] TransformError),
+    #[error("Type checking failed: {0}")]
+    TypeChecker(#[from] TypeError),
 }
 
 impl CompileError {
@@ -95,6 +97,7 @@ impl CompileError {
             },
             CompileError::Config(_) => None,
             CompileError::Optimizer(t) => t.span(),
+            CompileError::TypeChecker(t) => Some(t.span().clone()),
         }
     }
 
@@ -121,6 +124,7 @@ impl CompileError {
             CompileError::Parser(parse_error) => parse_error.to_string(),
             CompileError::Config(s) => s.clone(),
             CompileError::Optimizer(transform_error) => transform_error.message(),
+            CompileError::TypeChecker(type_error) => type_error.to_string(),
         }
     }
 }
@@ -172,6 +176,8 @@ macro_rules! write_list {
 }
 
 pub(crate) use write_list;
+
+use crate::types::TypeError;
 
 #[cfg(test)]
 mod tests {

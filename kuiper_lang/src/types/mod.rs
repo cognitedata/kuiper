@@ -63,6 +63,18 @@ impl TypeError {
     }
 }
 
+/// The truthyness of a type, meaning how it evaluates as a boolean.
+/// In general, `null` and `false` are falsy, everything else is truthy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Truthy {
+    /// The value is always true.
+    Always,
+    /// The value might be either true or false.
+    Maybe,
+    /// The value is always false.
+    Never,
+}
+
 impl Type {
     /// Create a new constant type.
     pub fn from_const(value: impl Into<Value>) -> Self {
@@ -167,6 +179,43 @@ impl Type {
             elements: Vec::new(),
             end_dynamic: Some(Box::new(field_type)),
         })
+    }
+
+    /// Return the truthyness of this type,
+    /// how it would be evaluated as a boolean.
+    pub fn truthyness(&self) -> Truthy {
+        match self {
+            Type::Constant(Value::Null | Value::Bool(false)) => Truthy::Never,
+            Type::Constant(_) => Truthy::Always,
+            Type::Object(_) => Truthy::Always,
+            Type::Array(_) => Truthy::Always,
+            Type::String => Truthy::Always,
+            Type::Integer => Truthy::Always,
+            Type::Float => Truthy::Always,
+            Type::Boolean => Truthy::Maybe,
+            Type::Union(items) => {
+                let mut t = None;
+                for item in items {
+                    match (t, item.truthyness()) {
+                        (None, r) => t = Some(r),
+                        (_, Truthy::Maybe) | (Some(Truthy::Maybe), _) => return Truthy::Maybe,
+                        (Some(Truthy::Always), Truthy::Always) => continue,
+                        (Some(Truthy::Never), Truthy::Never) => continue,
+                        (Some(Truthy::Always), Truthy::Never)
+                        | (Some(Truthy::Never), Truthy::Always) => return Truthy::Maybe,
+                    }
+                }
+                // In this case the union is a never-type, so it's technically neither
+                // true nor false. Type checking code that gets here probably has other issues,
+                // but we can treat it as never. The alternative would be to panic here,
+                // which isn't great either.
+                let Some(t) = t else {
+                    return Truthy::Never;
+                };
+                t
+            }
+            Type::Any => Truthy::Maybe,
+        }
     }
 
     /// Try to treat this type as an object type, by inspecting it if
@@ -408,6 +457,15 @@ impl Type {
             (self_type, other_type) => self_type == other_type,
         }
     }
+
+    /// Return an iterator over the types in this type, if it is a union.
+    /// If it is not a union, the iterator will just yield a single value.
+    pub fn iter_union(&self) -> impl Iterator<Item = &Type> {
+        IterUnion {
+            typ: self,
+            index: 0,
+        }
+    }
 }
 
 impl Display for Type {
@@ -434,6 +492,34 @@ impl Display for Type {
                 write!(f, ">")
             }
             Type::Any => write!(f, "Any"),
+        }
+    }
+}
+
+struct IterUnion<'a> {
+    typ: &'a Type,
+    index: usize,
+}
+
+impl<'a> Iterator for IterUnion<'a> {
+    type Item = &'a Type;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.typ {
+            Type::Union(types) => {
+                if self.index < types.len() {
+                    let res = &types[self.index];
+                    self.index += 1;
+                    Some(res)
+                } else {
+                    None
+                }
+            }
+            _ if self.index == 0 => {
+                self.index += 1;
+                Some(self.typ)
+            }
+            _ => None,
         }
     }
 }
@@ -928,5 +1014,54 @@ mod tests {
 
         let wrong_const_obj_type = Type::from_const(json!({"a": 123, "b": 42}));
         assert!(!wrong_const_obj_type.is_assignable_to(&obj_type));
+    }
+
+    #[test]
+    fn test_truthyness() {
+        assert_eq!(Type::from_const(json!(true)).truthyness(), Truthy::Always);
+        assert_eq!(Type::from_const(json!(false)).truthyness(), Truthy::Never);
+        assert_eq!(Type::from_const(json!(null)).truthyness(), Truthy::Never);
+        assert_eq!(Type::String.truthyness(), Truthy::Always);
+        assert_eq!(Type::Integer.truthyness(), Truthy::Always);
+        assert_eq!(Type::Float.truthyness(), Truthy::Always);
+        assert_eq!(Type::Boolean.truthyness(), Truthy::Maybe);
+        assert_eq!(
+            Type::Union(vec![
+                Type::from_const(json!(true)),
+                Type::from_const(json!(false))
+            ])
+            .truthyness(),
+            Truthy::Maybe
+        );
+        assert_eq!(
+            Type::Union(vec![Type::String, Type::Integer]).truthyness(),
+            Truthy::Always
+        );
+        assert_eq!(
+            Type::Union(vec![
+                Type::from_const(json!(null)),
+                Type::from_const(json!(false))
+            ])
+            .truthyness(),
+            Truthy::Never
+        );
+        assert_eq!(Type::Any.truthyness(), Truthy::Maybe);
+    }
+
+    #[test]
+    fn test_iter_union() {
+        let union_type = Type::Union(vec![Type::Integer, Type::String, Type::Float]);
+        let mut iter = union_type.iter_union();
+
+        assert_eq!(iter.next(), Some(&Type::Integer));
+        assert_eq!(iter.next(), Some(&Type::String));
+        assert_eq!(iter.next(), Some(&Type::Float));
+        assert_eq!(iter.next(), None);
+
+        let non_union_type = Type::Boolean;
+        let mut iter = non_union_type.iter_union();
+
+        assert_eq!(iter.next(), Some(&Type::Boolean));
+        assert_eq!(iter.next(), None);
     }
 }

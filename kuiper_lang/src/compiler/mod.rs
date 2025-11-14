@@ -8,16 +8,30 @@ use logos::Span;
 pub use optimizer::optimize;
 
 use crate::{
-    expressions::ExpressionType, lex::Token, lexer::Lexer, parse::ProgramParser, CompileError,
+    expressions::ExpressionType, lex::Token, lexer::Lexer, parse::ProgramParser, types::Type,
+    CompileError,
 };
 
 use self::exec_tree::ExecTreeBuilder;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Config for when to run the type checker.
+pub enum TypeCheckerMode {
+    /// Run the type checker early, before optimization.
+    /// This is useful for testing.
+    Early,
+    /// Run the type checker after optimization.
+    Late,
+    /// Disable the type checker.
+    Off,
+}
 
 #[derive(Debug)]
 /// Configuration for the compiler.
 pub struct CompilerConfig {
     pub(crate) optimizer_operation_limit: i64,
     pub(crate) max_macro_expansions: i32,
+    pub(crate) type_checker: TypeCheckerMode,
 }
 
 impl CompilerConfig {
@@ -38,6 +52,12 @@ impl CompilerConfig {
         self.max_macro_expansions = limit;
         self
     }
+
+    /// Set the mode for the type checker. Defaults to Off.
+    pub fn type_checker_mode(mut self, mode: TypeCheckerMode) -> Self {
+        self.type_checker = mode;
+        self
+    }
 }
 
 impl Default for CompilerConfig {
@@ -45,6 +65,7 @@ impl Default for CompilerConfig {
         Self {
             optimizer_operation_limit: 100_000,
             max_macro_expansions: 20,
+            type_checker: TypeCheckerMode::Off,
         }
     }
 }
@@ -95,7 +116,13 @@ pub fn compile_expression_with_config(
     let parser = ProgramParser::new();
     let res = parser.parse(inp)?;
     let res = ExecTreeBuilder::new(res, known_inputs, config)?.build()?;
+    if matches!(config.type_checker, TypeCheckerMode::Early) {
+        res.run_types((0..known_inputs.len()).map(|_| Type::Any))?;
+    }
     let optimized = optimize(res, known_inputs.len(), config.optimizer_operation_limit)?;
+    if matches!(config.type_checker, TypeCheckerMode::Late) {
+        optimized.run_types((0..known_inputs.len()).map(|_| Type::Any))?;
+    }
     Ok(optimized)
 }
 
@@ -111,7 +138,13 @@ pub fn compile_from_tokens(
     let inp = Lexer::new_raw_tokens(data.map(|t| (Ok(t), Span { start: 0, end: 0 })));
     let res = parser.parse(inp)?;
     let res = ExecTreeBuilder::new(res, known_inputs, config)?.build()?;
+    if matches!(config.type_checker, TypeCheckerMode::Early) {
+        res.run_types((0..known_inputs.len()).map(|_| Type::Any))?;
+    }
     let optimized = optimize(res, known_inputs.len(), config.optimizer_operation_limit)?;
+    if matches!(config.type_checker, TypeCheckerMode::Late) {
+        optimized.run_types((0..known_inputs.len()).map(|_| Type::Any))?;
+    }
     Ok(optimized)
 }
 
