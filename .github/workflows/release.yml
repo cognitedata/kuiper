@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Setup QEMU
-        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
       - uses: PyO3/maturin-action@86b9d133d34bc1b40018696f782949dac11bd380 # v1
         with:
           command: build
@@ -28,7 +28,7 @@ jobs:
           args: --release -i python${{ matrix.python-version }}
           manylinux: auto
       - name: Upload wheels
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: wheels-linux-${{ matrix.python-version }}
           path: ./target/wheels
@@ -55,7 +55,7 @@ jobs:
           args: --release -i python${{ matrix.python-version }} --target ${{ matrix.arch }}
           manylinux: auto
       - name: Upload wheels
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: wheels-mac-${{ matrix.arch }}-${{ matrix.python-version }}
           path: ./target/wheels
@@ -80,7 +80,7 @@ jobs:
           working-directory: ./kuiper_python
           args: --release -i python${{ matrix.python-version }}
       - name: Upload wheels
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: wheels-win-${{ matrix.python-version }}
           path: ./target/wheels
@@ -90,7 +90,7 @@ jobs:
     environment: CD
     needs: ["build_python_bindings_darwin", "build_ubuntu_python_bindings", "build_python_bindings_windows"]
     steps:
-      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
         with:
           pattern: wheels-*
           merge-multiple: true
@@ -158,7 +158,7 @@ jobs:
       - run: mkdir artifacts
       - run: mv target/release/*kuiper_interop* artifacts/
       - name: Upload artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: interop-${{ matrix.os }}
           path: artifacts/
@@ -175,19 +175,19 @@ jobs:
         with:
             dotnet-version: 8.0.x
       - name: Download Linux Artifacts
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
         with:
             name: interop-ubuntu-latest
             path: binaries/linux_x64/
 
       - name: Download Windows Artifacts
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
         with:
             name: interop-windows-latest
             path: binaries/windows_x64/
 
       - name: Download OSX arm64 Artifacts
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
         with:
             name: interop-macos-latest
             path: binaries/osx_arm64/

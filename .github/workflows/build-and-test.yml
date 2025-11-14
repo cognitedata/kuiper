@@ -3,6 +3,8 @@ name: Build and test library
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
 
 jobs:
   build_and_test:
@@ -17,8 +19,19 @@ jobs:
         run: cargo clippy -- -D warnings
       - name: Run cargo format
         run: cargo fmt --check
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
       - name: Test
-        run: cargo test
+        run: cargo llvm-cov --workspace --exclude kuiper-cli --codecov --output-path codecov.json --locked
+
+      - name: Upload coverage to codecov.io
+        uses: codecov/codecov-action@v5
+        with:
+          files: codecov.json
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: cognitedata/kuiper
 
   build_python_bindings:
     strategy:
