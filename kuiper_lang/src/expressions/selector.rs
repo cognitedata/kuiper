@@ -122,9 +122,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SelectorExpression {
                 }
                 SelectorElement::Expression(e) => {
                     let val = e.resolve_types(state)?;
-                    println!("Selector expression resolved to type: {val}");
-
-                    Self::resolve_type_field(val, elem, &self.span)?
+                    Self::resolve_type_field(val, &elem, &self.span)?
                 }
             };
         }
@@ -408,7 +406,7 @@ impl SelectorExpression {
 
     fn resolve_type_field(
         selector: Type,
-        select_from: Type,
+        select_from: &Type,
         span: &Span,
     ) -> Result<Type, TypeError> {
         Ok(match selector {
@@ -473,8 +471,7 @@ impl SelectorExpression {
             Type::Union(u) => {
                 let mut typ = Type::null();
                 for t in &u {
-                    if let Ok(res) = Self::resolve_type_field(t.clone(), select_from.clone(), span)
-                    {
+                    if let Ok(res) = Self::resolve_type_field(t.clone(), select_from, span) {
                         typ = typ.union_with(res);
                     }
                 }
