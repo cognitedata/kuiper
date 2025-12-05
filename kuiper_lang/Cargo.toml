@@ -28,7 +28,7 @@ base64 = "0.22.1"
 
 [dev-dependencies]
 pprof = { version = "0.15", features = ["flamegraph"] }
-criterion = "0.7"
+criterion = "0.8"
 walkdir = "2.5.0"
 
 [build-dependencies]
