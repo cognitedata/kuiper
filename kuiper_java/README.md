@@ -1,6 +1,6 @@
 # Kuiper, the Cognite mapping language
 
-This package contains Java bindings for the Kuiper programming language, letting you build and call Kuiper expressions from .NET code.
+This package contains Java bindings for the Kuiper programming language, letting you build and call Kuiper expressions from Java code.
 
 The language itself is documented [here](https://docs.cognite.com/cdf/integration/guides/extraction/hosted_extractors/kuiper_concepts).
 

@@ -1,10 +1,10 @@
 # Contributing
 
-This project adheres to [Contributor Covenant v2.0][contributor-convenant] as a code of conduct.
+This project adheres to [Contributor Covenant v2.0][contributor-covenant] as a code of conduct.
 
 ## Setup
 
-You will need to install [cargo][cargo], and the latest stable rust version using [rustup][rustup]. For language bindings, see individual READMEs.
+You will need to install [cargo][https://doc.rust-lang.org/cargo/], and the latest stable rust version using [rustup][https://rustup.rs/]. For language bindings, see individual READMEs.
 
 `cargo build` builds a development version of the language.
 

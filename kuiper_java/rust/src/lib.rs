@@ -1,5 +1,3 @@
-use std::ptr;
-
 use jni::{
     objects::{JClass, JObject, JObjectArray, JString},
     sys::{jlong, jstring},
@@ -199,7 +197,5 @@ pub unsafe extern "system" fn Java_com_cognite_kuiper_Kuiper_free_1expression<'l
         return;
     }
 
-    unsafe {
-        ptr::drop_in_place(expression as *mut ExpressionType);
-    }
+    unsafe { drop(Box::from_raw(expression as *mut ExpressionType)) }
 }

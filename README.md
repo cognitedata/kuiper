@@ -53,7 +53,7 @@ This repository contains a number of language bindings and auxillary packages, t
  - `kuiper_lezer` is a lezer library for kuiper. Lezer is a JS library to create parsers. It is used for the frontend code editor.
  - `kuiper_frontend_test` is a very simple react app using `kuiper_js` and `kuiper_lezer` to provide a live editor.
  - `kuiper_lang_macros` is an auxillary macro library used for `kuiper_lang`.
- - `kuiper_python` contains python bindings for kuiper, using `pyo3`. These are published to pypi.
- - `KuiperNet` contains .NET bindings for kuiper. These are publishd to nuget, with native binaries for windows and linux.
+ - `kuiper_python` contains python bindings for kuiper, using `pyo3`. These are published to PyPI.
+ - `KuiperNet` contains .NET bindings for kuiper. These are published to nuget, with native binaries for Windows and Linux.
  - `KuiperNet.Test` is a test project for `KuiperNet`.
  - `fuzz` is a set of fuzz tests for kuiper.

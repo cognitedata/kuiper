@@ -1,4 +1,4 @@
-// A header file for documenting the kuiper interop API.
+// A header file documenting the kuiper interop API.
 
 // An opaque type representing a compiled kuiper expression.
 // This is allocated by the `compile_expression` function and should be
@@ -13,13 +13,13 @@ struct KuiperError {
     bool is_error;
     unsigned long start;
     unsigned long end;
-} KuiperError;
+};
 
 // The result of compiling a kuiper expression. Either `error` is set, or `result` is set.
 struct CompileResult {
     KuiperError error;
     ExpressionType* result;
-} CompileResult;
+};
 
 // Compile a kuiper expression with the given input argument names.
 CompileResult* compile_expression(const char* expression, const char** inputs, size_t input_count);
@@ -28,7 +28,7 @@ CompileResult* compile_expression(const char* expression, const char** inputs, s
 struct TransformResult {
     KuiperError error;
     char* result;
-} TransformResult;
+};
 
 // Run a compiled kuiper expression with the given input data.
 TransformResult* run_expression(const char** data, size_t input_count, ExpressionType* expr);
