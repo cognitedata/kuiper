@@ -4,7 +4,11 @@ version = "0.18.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "The Kuiper JSON mapping language"
-homepage = "htttps://github.com/cognitedata/kuiper"
+homepage = "https://github.com/cognitedata/kuiper"
+repository = "https://github.com/cognitedata/kuiper"
+readme = "README.md"
+categories = ["parser-implementations"]
+keywords = ["kuiper", "json", "language"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -37,3 +41,6 @@ lalrpop = "0.22.0"
 [[bench]]
 name = "bench_execute"
 harness = false
+
+[package.metadata.docs.rs]
+all-features = true

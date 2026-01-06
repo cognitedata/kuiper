@@ -1,5 +1,4 @@
 #![no_main]
-#![cfg(feature = "nightly")]
 
 use std::fmt::Debug;
 
@@ -7,9 +6,8 @@ use kuiper_lang::{
     lex::{compile_from_tokens, Operator, Token, TypeLiteral, UnaryOperator},
     CompilerConfig,
 };
-use libfuzzer_sys::{arbitrary::Arbitrary, fuzz_target};
 
-fuzz_target!(|data: TokensWrapped| {
+libfuzzer_sys::fuzz_target!(|data: TokensWrapped| {
     let _ = compile_from_tokens(
         data.0.into_iter().map(|t| t.0),
         &["input"],
@@ -88,7 +86,7 @@ fn get_identifier(
 #[derive(Debug)]
 pub struct TokenWrap(Token);
 
-#[derive(Arbitrary)]
+#[derive(libfuzzer_sys::arbitrary::Arbitrary)]
 pub struct TokensWrapped(Vec<TokenWrap>);
 
 // Create a debug impl that is just display.
@@ -103,7 +101,7 @@ impl Debug for TokensWrapped {
     }
 }
 
-impl<'a> Arbitrary<'a> for TokenWrap {
+impl<'a> libfuzzer_sys::arbitrary::Arbitrary<'a> for TokenWrap {
     fn arbitrary(
         u: &mut libfuzzer_sys::arbitrary::Unstructured<'a>,
     ) -> libfuzzer_sys::arbitrary::Result<Self> {

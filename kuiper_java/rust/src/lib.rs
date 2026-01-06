@@ -1,3 +1,5 @@
+use std::ptr;
+
 use jni::{
     objects::{JClass, JObject, JObjectArray, JString},
     sys::{jlong, jstring},
@@ -183,7 +185,7 @@ pub unsafe extern "system" fn Java_com_cognite_kuiper_Kuiper_run_1expression<'lo
 ///
 /// Do not call this method, called from JNI. `expression` must be a
 /// valid pointer allocated by `...compile_1expression`
-pub unsafe extern "system" fn Java_com_cognite_kuiper_Kuiper_free_1expresion<'local>(
+pub unsafe extern "system" fn Java_com_cognite_kuiper_Kuiper_free_1expression<'local>(
     mut env: JNIEnv<'local>,
     _class: JClass<'local>,
     expression: jlong,
@@ -197,5 +199,7 @@ pub unsafe extern "system" fn Java_com_cognite_kuiper_Kuiper_free_1expresion<'lo
         return;
     }
 
-    unsafe { drop(Box::from_raw(expression as *mut ExpressionType)) }
+    unsafe {
+        ptr::drop_in_place(expression as *mut ExpressionType);
+    }
 }
