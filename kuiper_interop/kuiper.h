@@ -1,3 +1,6 @@
+#ifndef KUIPER_H
+#define KUIPER_H
+
 // A header file documenting the kuiper interop API.
 
 // An opaque type representing a compiled kuiper expression.
@@ -52,3 +55,5 @@ void destroy_expression(ExpressionType* expr);
 
 // Destroy a compile result allocated by `compile_expression`.
 void destroy_compile_result(CompileResult* result);
+
+#endif
