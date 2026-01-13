@@ -1,9 +1,9 @@
 package com.cognite.kuiper;
 
+import org.junit.Test;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
-
-import org.junit.Test;
 
 public class KuiperTest {
     public KuiperTest() {}

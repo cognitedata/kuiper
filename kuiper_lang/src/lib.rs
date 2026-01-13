@@ -1,9 +1,11 @@
-//! # Unnamed JSON transform library
+//! # The Kuiper language
 //!
 //! This library defines a JSON to JSON transform and templating language. The language itself is
 //! inspired by JavaScript. Expressions always terminate, as the language has no form of recursion.
 //! This means that while there are loops, they only operate on input arrays. So it is possible to iterate over
 //! an array, and even pairs of arrays, but it is not possible to implement recursion.
+//!
+//! The language itself is documented [here](https://docs.cognite.com/cdf/integration/guides/extraction/hosted_extractors/kuiper_concepts).
 //!
 //! ## Features
 //!
@@ -13,6 +15,7 @@
 //! - [Built in functions], like `map`, `float`, `concat`, etc. Either `pow(base, exp) or base.pow(exp)`
 //! - [Functors], `map` is a functor, meaning it accepts a lambda: `map(arr, field => ...)` or `arr.map(field => ...)`
 //! - [Selector expressions], `[1, 2, 3][1] == 2`, `input.field.value["dynamic"]`, etc.
+//! - **Macros**, `#my_macro := (a, b) => a + b; my_macro(1, 2)`
 //!
 //! ## Usage
 //!
@@ -20,12 +23,11 @@
 //! use kuiper_lang::compile_expression;
 //! use serde_json::json;
 //!
-//! let transform = compile_expression("input.value + 5", &["input"]).unwrap();
-//!
-//! let input = [json!({ "value": 2 })];
-//! let result = transform.run(input.iter()).unwrap();
-//!
-//! assert_eq!(result.as_u64().unwrap(), 7);
+//! let expr = compile_expression("input.test + 5", &["input"])?;
+//! let result = expr.run([&json!({
+//!     "test": 3,
+//! })])?;
+//! assert_eq!(result.as_ref(), &json!(8));
 //! ```
 
 mod compiler;
@@ -156,6 +158,7 @@ pub mod lex {
 /// used for creating custom input data sources for expressions.
 pub mod source {
     pub use super::expressions::{LazySourceData, LazySourceDataJson, SourceData};
+    #[doc(inline)]
     pub use kuiper_lang_macros::SourceData;
 }
 
