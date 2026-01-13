@@ -95,7 +95,7 @@ namespace Cognite.Kuiper
         /// </summary>
         /// <param name="expression">Expression code</param>
         /// <param name="inputs">A list of available input arguments</param>
-        public KuiperExpression(string expression, string[] inputs)
+        public KuiperExpression(string expression, params string[] inputs)
         {
             unsafe
             {

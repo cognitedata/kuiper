@@ -4,6 +4,35 @@ This crate is the main entrypoint for anything relating to the Kuiper
 transformation language. It provides the `compile_expression` function along
 with a few other variants.
 
+The language itself is documented [here](https://docs.cognite.com/cdf/integration/guides/extraction/hosted_extractors/kuiper_concepts).
+
+## Usage
+
+```rust
+use kuiper_lang::compile_expression;
+use serde_json::json;
+
+let expr = compile_expression("input.test + 5", &["input"])?;
+let result = expr.run([&json!({
+    "test": 3,
+})])?;
+assert_eq!(result.as_ref(), &json!(8));
+```
+
+### Features
+
+ - `completions` enables collecting information for auto-completing keywords when running expressions. Note that enabling this feature incurs a small performance cost on all expression executions.
+
+## Language Features
+
+- **Operators**, `+`, `-`, `*`, `/`, `==`, `!=`, `>=`, `<=`, `>`, `<`, `&&`, `||` with precendence taken from the C++ standard.
+- **Arrays**, `[1, 2, "test", 123.123, [123, 2]]`
+- **Objects**, `{ "test": "123", concat("test", "test"): 321 }`
+- **Built in functions**, like `map`, `float`, `concat`, etc. Either `pow(base, exp) or base.pow(exp)`
+- **Functors**, `map` is a functor, meaning it accepts a lambda: `map(arr, field => ...)` or `arr.map(field => ...)`
+- **Selector expressions**, `[1, 2, 3][1] == 2`, `input.field.value["dynamic"]`, etc.
+- **Macros**, `#my_macro := (a, b) => a + b; my_macro(1, 2)`
+
 ## The `test_files` directory
 
 The `test_files` directory contains a collection of expressions that are known
