@@ -30,12 +30,18 @@ pub trait SourceData: Debug {
     fn get_index(&self, _index: usize) -> &dyn SourceData {
         &NULL_CONST
     }
+
+    /// Get an iterator over the keys of this object, if it is an object.
     fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
         Box::new(std::iter::empty())
     }
+
+    /// Get the length of this array, if it is an array.
     fn array_len(&self) -> Option<usize> {
         None
     }
+
+    /// Check if this value is null.
     fn is_null(&self) -> bool {
         false
     }

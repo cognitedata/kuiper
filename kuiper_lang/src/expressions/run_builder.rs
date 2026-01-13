@@ -6,6 +6,7 @@ use crate::{
     ExpressionType, ResolveResult, TransformError,
 };
 
+/// Builder for running an expression with custom inputs.
 pub struct ExpressionRunBuilder<'a, 'c, T> {
     expression: &'a ExpressionType,
     _phantom: PhantomData<&'c ()>,
