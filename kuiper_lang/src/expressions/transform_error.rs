@@ -5,8 +5,11 @@ use serde_json::Value;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
+/// Data associated with a transform error.
 pub struct TransformErrorData {
+    /// The span in the source code where the error occurred.
     pub span: Span,
+    /// A description of the error.
     pub desc: String,
 }
 
@@ -22,14 +25,19 @@ impl Display for TransformErrorData {
 /// These are typically runtime type errors, or other invalid operations.
 #[derive(Debug, Error)]
 pub enum TransformError {
+    /// The source value does not exist.
     #[error("Source does not exist: {0}")]
     SourceMissingError(TransformErrorData),
+    /// A field had an incorrect type.
     #[error("{0}")]
     IncorrectTypeInField(TransformErrorData),
+    /// A conversion between types failed.
     #[error("{0}")]
     ConversionFailed(TransformErrorData),
+    /// An invalid operation was performed.
     #[error("{0}")]
     InvalidOperation(TransformErrorData),
+    /// The operation limit was exceeded.
     #[error("Too many operations: the transform expression was terminated because it exceeded the operation limit")]
     OperationLimitExceeded,
 }
@@ -86,6 +94,7 @@ impl TransformError {
         }
     }
 
+    /// Get the span in the source code where the error occurred, if available.
     pub fn span(&self) -> Option<Span> {
         match self {
             TransformError::SourceMissingError(x) => Some(x.span.clone()),
@@ -96,6 +105,7 @@ impl TransformError {
         }
     }
 
+    /// Get a human-readable message describing the error.
     pub fn message(&self) -> String {
         match self {
             TransformError::SourceMissingError(transform_error_data) => {

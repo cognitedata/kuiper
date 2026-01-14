@@ -34,16 +34,22 @@ impl Display for CompileErrorData {
 /// This is typically a missing function, or the wrong number or type of function arguments.
 #[derive(Debug, Error)]
 pub enum BuildError {
+    /// Incorrect number of function arguments.
     #[error("{0}")]
     NFunctionArgs(CompileErrorData),
+    /// A lambda was encountered where an expression was expected.
     #[error("{0}")]
     UnexpectedLambda(CompileErrorData),
+    /// An unrecognized function was called.
     #[error("Unrecognized function: {0}")]
     UnrecognizedFunction(CompileErrorData),
+    /// An unknown variable was referenced.
     #[error("Unknown variable: {0}")]
     UnknownVariable(CompileErrorData),
+    /// A variable was defined more than once.
     #[error("Variable already defined: {0}")]
     VariableConflict(CompileErrorData),
+    /// Some other compile error.
     #[error("{0}")]
     Other(CompileErrorData),
 }

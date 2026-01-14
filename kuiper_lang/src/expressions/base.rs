@@ -29,6 +29,7 @@ use super::{
 
 use kuiper_lang_macros::PassThrough;
 
+/// Type for storing completions collected during expression execution.
 #[cfg(feature = "completions")]
 pub type Completions = std::collections::HashMap<Span, std::collections::HashSet<String>>;
 
@@ -141,22 +142,6 @@ impl<'data> InternalExpressionExecutionState<'data, '_> {
             completions: self.completions.as_deref_mut(),
         }
     }
-}
-
-#[macro_export]
-macro_rules! with_temp_values {
-    ($inner:ident, $inner_state:ident, $values:expr, $func:expr) => {{
-        let len = $values.len();
-        for val in $values {
-            $inner.data.push(val);
-        }
-        let $inner_state = $inner.get_temp_state();
-        let r = $func;
-        for _ in 0..len {
-            $inner.data.pop();
-        }
-        r
-    }};
 }
 
 /// Trait for top-level expressions.
@@ -395,16 +380,27 @@ pub fn get_function_expression(
 #[pass_through(fn resolve_types(&'a self, state: &mut crate::types::TypeExecutionState<'c, '_>) -> Result<Type, crate::types::TypeError>, "", Expression<'a, 'c>, where 'a: 'c)]
 #[pass_through(fn call_types(&'a self, state: &mut crate::types::TypeExecutionState<'c, '_>, _arguments: &[&Type]) -> Result<Type, crate::types::TypeError>, "", Expression<'a, 'c>, where 'a: 'c)]
 pub enum ExpressionType {
+    /// A constant value expression.
     Constant(Constant),
+    /// A binary operator expression.
     Operator(OpExpression),
+    /// A unary operator expression.
     UnaryOperator(UnaryOpExpression),
+    /// A selector expression, i.e. accessing fields in objects or arrays.
     Selector(SelectorExpression),
+    /// A function call expression.
     Function(FunctionType),
+    /// An array expression.
     Array(ArrayExpression),
+    /// An object expression.
     Object(ObjectExpression),
+    /// A lambda expression.
     Lambda(LambdaExpression),
+    /// An "is" type check expression.
     Is(IsExpression),
+    /// An "if" conditional expression.
     If(IfExpression),
+    /// A macro call expression.
     MacroCallExpression(MacroCallExpression),
 }
 
@@ -461,6 +457,7 @@ impl ExpressionType {
         self.builder().with_values(data).run_get_completions()
     }
 
+    /// Run the expression with a list of custom input data.
     pub fn run_custom_input<'a: 'c, 'c>(
         &'a self,
         data: impl IntoIterator<Item = &'c dyn SourceData>,
