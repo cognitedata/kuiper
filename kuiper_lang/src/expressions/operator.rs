@@ -12,20 +12,35 @@ use super::{
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+/// A binary operator supported by kuiper.
 pub enum Operator {
+    /// Addition operator.
     Plus,
+    /// Subtraction operator.
     Minus,
+    /// Multiplication operator.
     Multiply,
+    /// Division operator.
     Divide,
+    /// Boolean AND operator.
     And,
+    /// Boolean OR operator.
     Or,
+    /// Strict equality operator.
     Equals,
+    /// Strict inequality operator.
     NotEquals,
+    /// Greater than operator.
     GreaterThan,
+    /// Less than operator.
     LessThan,
+    /// Greater than or equals operator.
     GreaterThanEquals,
+    /// Less than or equals operator.
     LessThanEquals,
+    /// Modulo (remainder) operator.
     Modulo,
+    /// Type checking operator.
     Is,
 }
 
@@ -51,8 +66,11 @@ impl Display for Operator {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+/// A unary operator supported by kuiper.
 pub enum UnaryOperator {
+    /// Logical negation operator, i.e. !true == false.
     Negate,
+    /// Numeric negation operator. i.e. -5
     Minus,
 }
 

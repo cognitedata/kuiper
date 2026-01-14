@@ -154,6 +154,7 @@ pub unsafe extern "C" fn compile_expression(
     Box::into_raw(Box::new(res))
 }
 
+#[repr(C)]
 pub struct TransformResult {
     pub error: KuiperError,
     pub result: *mut c_char,

@@ -26,7 +26,7 @@ public class UnitTest1
     [Fact]
     public void TestKuiperWithInputs()
     {
-        var expr = new KuiperExpression("in1 + in2 + in3", ["in1", "in2", "in3"]);
+        var expr = new KuiperExpression("in1 + in2 + in3", "in1", "in2", "in3");
         Assert.Equal("6", expr.Run("1", "2", "3"));
     }
 }

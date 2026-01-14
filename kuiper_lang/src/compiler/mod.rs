@@ -166,9 +166,13 @@ impl Display for DebugInfo {
 /// When converted to string this shows the state of the compiler at each compilation stage.
 #[derive(Debug)]
 pub struct ExpressionDebugInfo {
+    /// Debug info from the lexer stage.
     pub lexer: DebugInfo,
+    /// Debug info from the AST stage.
     pub ast: DebugInfo,
+    /// Debug info from the execution tree stage.
     pub exec_tree: DebugInfo,
+    /// Debug info from the optimized execution tree stage.
     pub optimized: DebugInfo,
 }
 

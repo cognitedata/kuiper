@@ -26,12 +26,14 @@ impl Array {
         None
     }
 
+    /// Get an iterator over all known elements, followed by the dynamic end if it exists.
     pub fn all_elements(&self) -> impl Iterator<Item = &Type> {
         self.elements
             .iter()
             .chain(self.end_dynamic.iter().map(|d| d.as_ref()))
     }
 
+    /// Produce a new array type that is the union of this array type and another.
     pub fn union_with(self, other: Array) -> Self {
         let mut res = Vec::new();
         let mut iter_1 = self.elements.into_iter().peekable();
@@ -91,6 +93,7 @@ impl Array {
         }
     }
 
+    /// Produce an array type from a constant JSON value.
     pub fn from_const(value: Vec<serde_json::Value>) -> Self {
         let elements = value.into_iter().map(Type::from_const).collect::<Vec<_>>();
         Array {
@@ -99,6 +102,9 @@ impl Array {
         }
     }
 
+    /// Check whether this array type is assignable to another,
+    /// i.e. whether a value of this array type can be assigned to a variable of the other array type
+    /// without changing the other array type.
     pub fn is_assignable_to(&self, other: &Array) -> bool {
         let mut self_iter = self.elements.iter();
         let mut other_iter = other.elements.iter();

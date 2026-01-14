@@ -1,9 +1,11 @@
-//! # Unnamed JSON transform library
+//! # The Kuiper language
 //!
 //! This library defines a JSON to JSON transform and templating language. The language itself is
 //! inspired by JavaScript. Expressions always terminate, as the language has no form of recursion.
 //! This means that while there are loops, they only operate on input arrays. So it is possible to iterate over
 //! an array, and even pairs of arrays, but it is not possible to implement recursion.
+//!
+//! The language itself is documented [here](https://docs.cognite.com/cdf/integration/guides/extraction/hosted_extractors/kuiper_concepts).
 //!
 //! ## Features
 //!
@@ -13,6 +15,7 @@
 //! - [Built in functions], like `map`, `float`, `concat`, etc. Either `pow(base, exp) or base.pow(exp)`
 //! - [Functors], `map` is a functor, meaning it accepts a lambda: `map(arr, field => ...)` or `arr.map(field => ...)`
 //! - [Selector expressions], `[1, 2, 3][1] == 2`, `input.field.value["dynamic"]`, etc.
+//! - **Macros**, `#my_macro := (a, b) => a + b; my_macro(1, 2)`
 //!
 //! ## Usage
 //!
@@ -20,13 +23,13 @@
 //! use kuiper_lang::compile_expression;
 //! use serde_json::json;
 //!
-//! let transform = compile_expression("input.value + 5", &["input"]).unwrap();
-//!
-//! let input = [json!({ "value": 2 })];
-//! let result = transform.run(input.iter()).unwrap();
-//!
-//! assert_eq!(result.as_u64().unwrap(), 7);
+//! let expr = compile_expression("input.test + 5", &["input"]).unwrap();
+//! let value = json!({ "test": 3 });
+//! let result = expr.run([&value]).unwrap();
+//! assert_eq!(result.as_ref(), &json!(8));
 //! ```
+
+#![warn(missing_docs)]
 
 mod compiler;
 mod expressions;
@@ -44,19 +47,22 @@ pub static NULL_CONST: Value = Value::Null;
 /// A failed compilation, contains sub-errors for each stage of the compilation.
 #[derive(Debug, Error)]
 pub enum CompileError {
+    /// An error during the build phase of compilation.
     #[error("Compilation failed: {0}")]
     Build(#[from] BuildError),
+    /// An error during parsing.
     #[error("Compilation failed: {0}")]
     Parser(#[from] ParseError),
-    #[error("Compilation failed: {0}")]
-    Config(String),
+    /// An error during optimization.
     #[error("Compilation failed: {0}")]
     Optimizer(#[from] TransformError),
+    /// An error during type checking.
     #[error("Type checking failed: {0}")]
     TypeChecker(#[from] TypeError),
 }
 
 impl CompileError {
+    /// Get the span of code that caused the error, if available.
     pub fn span(&self) -> Option<Span> {
         match self {
             CompileError::Build(x) => match x {
@@ -95,12 +101,12 @@ impl CompileError {
                     lexer::LexerError::InvalidEscapeChar(x) => Some(x.1.clone()),
                 },
             },
-            CompileError::Config(_) => None,
             CompileError::Optimizer(t) => t.span(),
             CompileError::TypeChecker(t) => Some(t.span().clone()),
         }
     }
 
+    /// Get a human readable message describing the error.
     pub fn message(&self) -> String {
         match self {
             CompileError::Build(build_error) => match build_error {
@@ -122,7 +128,6 @@ impl CompileError {
                 BuildError::Other(compile_error_data) => compile_error_data.detail.clone(),
             },
             CompileError::Parser(parse_error) => parse_error.to_string(),
-            CompileError::Config(s) => s.clone(),
             CompileError::Optimizer(transform_error) => transform_error.message(),
             CompileError::TypeChecker(type_error) => type_error.to_string(),
         }
@@ -156,6 +161,7 @@ pub mod lex {
 /// used for creating custom input data sources for expressions.
 pub mod source {
     pub use super::expressions::{LazySourceData, LazySourceDataJson, SourceData};
+    #[doc(inline)]
     pub use kuiper_lang_macros::SourceData;
 }
 

@@ -15,11 +15,15 @@ use super::{numbers::JsonNumber, ExpressionExecutionState};
 /// By returning references as often as possible we reduce the number of clones.
 #[derive(Clone, Debug)]
 pub enum ResolveResult<'a> {
+    /// An owned JSON value.
     Owned(Value),
+    /// A borrowed JSON value.
     Borrowed(&'a Value),
 }
 
 impl<'a> ResolveResult<'a> {
+    /// Convert the resolve result into an owned JSON value,
+    /// cloning if necessary.
     pub fn into_owned(self) -> Value {
         match self {
             Self::Owned(v) => v,
@@ -27,6 +31,7 @@ impl<'a> ResolveResult<'a> {
         }
     }
 
+    /// Check whether the value is truthy, i.e. whether it is not null or false.
     pub fn as_bool(&self) -> bool {
         !matches!(self.deref(), Value::Null | Value::Bool(false))
     }
@@ -39,6 +44,7 @@ impl<'a> ResolveResult<'a> {
         get_number_from_value(desc, self, span)
     }
 
+    /// Try to convert the resolve reslult into a string.
     pub fn try_into_string(self, desc: &str, span: &Span) -> Result<Cow<'a, str>, TransformError> {
         match self {
             Self::Owned(v) => get_string_from_value_owned(desc, v, span),
@@ -46,7 +52,7 @@ impl<'a> ResolveResult<'a> {
         }
     }
 
-    pub fn map_clone_string<'b: 'a, 'c, T>(
+    pub(crate) fn map_clone_string<'b: 'a, 'c, T>(
         self,
         state: &'a mut ExpressionExecutionState<'b, 'c>,
         string: impl FnOnce(String, &'a mut ExpressionExecutionState<'b, 'c>) -> T,
@@ -59,6 +65,7 @@ impl<'a> ResolveResult<'a> {
         }
     }
 
+    /// Try to convert the resolve result into a string slice.
     pub fn try_as_string<'b: 'a>(
         &'b self,
         desc: &str,
