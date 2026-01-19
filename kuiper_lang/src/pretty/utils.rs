@@ -73,12 +73,16 @@ pub(super) fn check_closing_token(
     }
 }
 
+/// Error from the pretty printer.
 #[derive(Debug, thiserror::Error)]
 pub enum PrettyError {
+    /// Input could not be parsed.
     #[error("Failed to parse input: {0}")]
     Parser(#[from] ParseError),
+    /// Some other pretty printing error.
     #[error("Pretty printing failed: {0}")]
     Pretty(String, Span),
+    /// Sanity check failed, indicating a bug in the pretty printer.
     #[error(
         "Pretty printing resulted in a different semantic output than the original, this is a bug!"
     )]
