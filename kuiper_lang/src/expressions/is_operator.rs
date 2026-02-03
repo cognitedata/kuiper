@@ -7,14 +7,23 @@ use crate::{BuildError, ExpressionType, TransformError};
 use super::{Expression, ExpressionExecutionState, ExpressionMeta, ResolveResult};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+/// A type literal used in "is" expressions.
 pub enum TypeLiteral {
+    /// The null type.
     Null,
+    /// An integer.
     Int,
+    /// A boolean.
     Bool,
+    /// A floating point number.
     Float,
+    /// A string.
     String,
+    /// An array.
     Array,
+    /// An object
     Object,
+    /// Any number, floating point or integer.
     Number,
 }
 

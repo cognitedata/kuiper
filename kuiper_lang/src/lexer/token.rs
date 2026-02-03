@@ -67,6 +67,7 @@ pub enum Token {
     #[token(",")]
     Comma,
 
+    /// Used in array and object expressions for concatenation.
     #[token("...")]
     DotDot,
 
@@ -79,6 +80,7 @@ pub enum Token {
     #[regex(r#"(\d)+"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseInt((e, lex.span()))), priority = 2)]
     Integer(u64),
 
+    /// A boolean literal.
     #[token("true", |_| true)]
     #[token("false", |_| false)]
     Boolean(bool),
@@ -124,9 +126,11 @@ pub enum Token {
     #[token("not")]
     Not,
 
+    /// The `if` keyword for conditional expressions.
     #[token("if")]
     If,
 
+    /// The `else` keyword for conditional expressions.
     #[token("else")]
     Else,
 
@@ -145,27 +149,35 @@ pub enum Token {
     #[token("]")]
     CloseBracket,
 
+    /// Open brace for object and if expressions.
     #[token("{")]
     OpenBrace,
 
+    /// Close brace for object and if expressions.
     #[token("}")]
     CloseBrace,
 
+    /// Colon used in object construction.
     #[token(":")]
     Colon,
 
+    /// Arrow used in lambda expressions.
     #[token("=>")]
     Arrow,
 
+    /// Semicolon used in macro separation.
     #[token(";")]
     SemiColon,
 
+    /// Define equal used in macro definitions.
     #[token(":=")]
     DefineEqual,
 
+    /// Define symbol used in macro definitions.
     #[token("#")]
     DefineSym,
 
+    /// Combined arrow used in lambda expressions with multiple arguments.
     CombinedArrow,
 
     #[token("/*", |lex| {
@@ -173,6 +185,7 @@ pub enum Token {
         lex.bump(len + 2); // include len of `*/`
         Some(())
     })]
+    /// A comment, the content is ignored.
     #[regex("//[^\n]*")]
     Comment,
 }

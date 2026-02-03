@@ -1,4 +1,3 @@
-#[macro_export]
 macro_rules! function_def {
     // Base, should have defined the struct
     (_display $typ:ident) => {

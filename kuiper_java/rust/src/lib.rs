@@ -1,3 +1,7 @@
+#![warn(missing_docs)]
+
+//! JNI bindings for the kuiper language.
+
 use jni::{
     objects::{JClass, JObject, JObjectArray, JString},
     sys::{jlong, jstring},
@@ -8,6 +12,11 @@ use serde_json::Value;
 
 #[no_mangle]
 #[allow(non_snake_case, reason = "JNI names")]
+/// Compile a kuiper expression, called from JNI.
+///
+/// # Safety
+///
+/// Do not call this method, it must be linked from JNI.
 pub extern "system" fn Java_com_cognite_kuiper_Kuiper_compile_1expression<'local>(
     mut env: JNIEnv<'local>,
     _class: JClass<'local>,
@@ -183,7 +192,7 @@ pub unsafe extern "system" fn Java_com_cognite_kuiper_Kuiper_run_1expression<'lo
 ///
 /// Do not call this method, called from JNI. `expression` must be a
 /// valid pointer allocated by `...compile_1expression`
-pub unsafe extern "system" fn Java_com_cognite_kuiper_Kuiper_free_1expresion<'local>(
+pub unsafe extern "system" fn Java_com_cognite_kuiper_Kuiper_free_1expression<'local>(
     mut env: JNIEnv<'local>,
     _class: JClass<'local>,
     expression: jlong,
