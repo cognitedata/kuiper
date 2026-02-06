@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use logos::{Logos, Span};
+use logos::{Lexer, Logos, Span};
 
 use crate::expressions::{Operator, TypeLiteral, UnaryOperator};
 
@@ -43,6 +43,12 @@ fn parse_string(mut raw: &str, border_char: char, start: usize) -> Result<String
         pos += 1;
     }
     Ok(res)
+}
+
+fn consume_comment(lex: &mut Lexer<'_, Token>) -> Option<()> {
+    let len = lex.remainder().find("*/")?;
+    lex.bump(len + 2); // include len of `*/`
+    Some(())
 }
 
 /// The Token type is the entry point for expressions. The input is a string that is automatically tokenized by Logos.
@@ -180,13 +186,9 @@ pub enum Token {
     /// Combined arrow used in lambda expressions with multiple arguments.
     CombinedArrow,
 
-    #[token("/*", |lex| {
-        let len = lex.remainder().find("*/")?;
-        lex.bump(len + 2); // include len of `*/`
-        Some(())
-    })]
+    #[token("/*", |lex| consume_comment(lex))]
     /// A comment, the content is ignored.
-    #[regex("//[^\n]*")]
+    #[regex("//[^\n]*", allow_greedy = true)]
     Comment,
 }
 
@@ -445,5 +447,23 @@ mod test {
                 Span { start: 5, end: 6 }
             ))))
         );
+    }
+
+    #[test]
+    pub fn test_line_comment() {
+        let mut lex = Token::lexer(
+            r#"
+// This is a line comment
+1 + 1
+// This is also a line comment 5 * 5
+"#,
+        )
+        .map(|t| t.unwrap());
+        assert_eq!(lex.next(), Some(Token::Comment));
+        assert_eq!(lex.next(), Some(Token::Integer(1)));
+        assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
+        assert_eq!(lex.next(), Some(Token::Integer(1)));
+        assert_eq!(lex.next(), Some(Token::Comment));
+        assert_eq!(lex.next(), None);
     }
 }
