@@ -14,3 +14,8 @@ This package requires `libkuiper_java` somewhere on the library path. You'll fin
 ## Testing
 
 To test, set `LD_LIBRARY_PATH` as described above, then call `mvn test`.
+
+
+## Warning
+
+This library, unlike the other bindings in this repo, is more of a proof of concept. It is not published anywhere, and may have issues. JNI has a lot of footguns, making it easy to make mistakes.
