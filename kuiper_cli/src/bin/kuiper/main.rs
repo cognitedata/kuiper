@@ -36,9 +36,13 @@ struct Args {
     #[arg(short = 'v', long)]
     verbose: bool,
 
-    /// Run formatter on the expression
+    /// Run formatter on the expression. If expression file is provided, it will be overwritten with the formatted expression unless output file is specified.
     #[arg(long)]
     format: bool,
+
+    /// Output results to a file instead of STDOUT
+    #[arg(short, long)]
+    output: Option<PathBuf>,
 }
 
 impl Args {
@@ -84,7 +88,7 @@ fn run_formatter(args: &Args) -> Result<String, KuiperCliError> {
     Ok(formatted_expression)
 }
 
-fn inner_run(args: Args) -> Result<Vec<String>, KuiperCliError> {
+fn inner_run(args: &Args) -> Result<Vec<String>, KuiperCliError> {
     let expression = load_expression(&args)?;
 
     let expression = compile_expression(&expression, &["input"])?;
@@ -115,7 +119,14 @@ pub fn main() {
     match args.format {
         true => match run_formatter(&args) {
             Ok(formatted) => {
-                if let Some(path) = &args.expression_file {
+                if let Some(path) = &args.output {
+                    if let Err(e) = fs::write(path, formatted) {
+                        eprintln!(
+                            "\x1b[91mError writing to file {}:\x1b[0m {e}",
+                            path.display()
+                        );
+                    }
+                } else if let Some(path) = &args.expression_file {
                     if let Err(e) = fs::write(path, formatted) {
                         eprintln!(
                             "\x1b[91mError writing to file {}:\x1b[0m {e}",
@@ -129,8 +140,19 @@ pub fn main() {
             Err(error) => eprintln!("\x1b[91mError:\x1b[0m {error}"),
         },
 
-        false => match inner_run(args) {
-            Ok(strings) => strings.into_iter().for_each(|s| println!("{s}")),
+        false => match inner_run(&args) {
+            Ok(strings) => strings.into_iter().for_each(|s| {
+                if let Some(path) = &args.output {
+                    fs::write(path, s).unwrap_or_else(|e| {
+                        eprintln!(
+                            "\x1b[91mError writing to file {}:\x1b[0m {e}",
+                            path.display()
+                        )
+                    });
+                } else {
+                    println!("{s}");
+                }
+            }),
             Err(error) => eprintln!("\x1b[91mError:\x1b[0m {error}"),
         },
     }
