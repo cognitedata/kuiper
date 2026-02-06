@@ -1,4 +1,4 @@
-# Kuiper, the Cognite mapping language
+# Java bindings for Kuiper
 
 This package contains Java bindings for the Kuiper programming language, letting you build and call Kuiper expressions from Java code.
 
