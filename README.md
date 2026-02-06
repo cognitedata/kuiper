@@ -17,6 +17,36 @@ an array, and even pairs of arrays, but it is not possible to implement recursio
 
 ## Usage
 
+There are several ways of using Kuiper. It can be used both as a standalone program, and as a library in other programs.
+
+### Using the CLI
+
+The easiest way to start using Kuiper is to use the standalone CLI. The CLI will operate on an input JSON file, and
+either an inline expression (with the `-e` argument) or an expression file (with the `-f` argument):
+
+``` commandline
+$ cat input.json
+[1, 2, 3, 4]
+$ kuiper -e "input.sum()" input.json
+10
+```
+
+You can also use Kuiper with pipes:
+
+``` commandline
+$ cat input.json | kuiper -e "input.sum()"
+10
+```
+
+Run `kuiper --help` for a full list of possible arguments.
+
+The CLI also contains a REPL, which you can launch by just running `kuiper`.
+
+
+### As a rust library
+
+Kuiper can also be used as a Rust library.
+
 ```rust
 use kuiper_lang::compile_expression;
 use serde_json::json;
@@ -28,6 +58,16 @@ let result = transform.run(input.iter()).unwrap();
 
 assert_eq!(result.as_u64().unwrap(), 7);
 ```
+
+### Bindings to other languages
+
+Bindings to several other languages exists, for more info on those see their specific package:
+
+ * [Python](./kuiper_python/)
+ * [.NET](./KuiperNet/)
+ * [C](./kuiper_interop/)
+ * [Javascript (WebAssembly)](./kuiper_js/)
+ * [Java](./kuiper_java/)
 
 ## Design
 
