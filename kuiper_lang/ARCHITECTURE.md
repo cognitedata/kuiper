@@ -8,7 +8,7 @@ For example, the expression `input.test.value + 5` has the following in-memory s
    - Selector (0, "test", "value")
    - Constant (5)
 
-The label `input` is known to the compiler, and transformed into an index in the input array during compilation. In this case `0`. Operator precedence is also expressed this way, for example `1 * 2 + 3` is the expression tree
+The label `input` is passed to the compiler as an input argument along with the source code, and transformed into an index in the input array during compilation. In this case `0`. Operator precedence is also expressed this way, for example `1 * 2 + 3` is the expression tree
 
  - Operator (+)
    - Operator (*)
@@ -28,7 +28,7 @@ The lexer parses the expression into tokens. This greedily consumes the input st
 
 is transformed into the stream
 
-`[concat, (, string, (, 5, *, 4, ), ",", "hello", ), Comment]`
+`[concat, (, string, (, 5, *, 4, ), ",", "hello", Comment, )]`
 
 Note that we don't capture the content of comments, but we do preserve the original position in the input string. Each symbol becomes its own token. You can find the token definition in `src/lexer/token.rs`. We use a tokenizer called "Logos". Before we pass this to the next stage we do a few minor modifications:
 
@@ -67,7 +67,7 @@ This means that the final compiled expression for something like
 
 is actually just
 
-`10 + input.foo`
+`25 + input.foo`
 
 ## Type checking
 
