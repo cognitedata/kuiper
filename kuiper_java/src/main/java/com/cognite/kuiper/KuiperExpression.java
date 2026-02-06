@@ -10,7 +10,7 @@ public class KuiperExpression {
     public KuiperExpression(String input, String... known_inputs) throws KuiperException {
         this.expression = Kuiper.compile_expression(input, known_inputs);
         long ptr = this.expression;
-        cleaner.register(this, () -> Kuiper.free_expresion(ptr));
+        cleaner.register(this, () -> Kuiper.free_expression(ptr));
     }
 
     public String run(String... input) throws KuiperException {
