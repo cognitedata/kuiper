@@ -89,11 +89,11 @@ fn run_formatter(args: &Args) -> Result<String, KuiperCliError> {
 }
 
 fn inner_run(args: &Args) -> Result<Vec<String>, KuiperCliError> {
-    let expression = load_expression(&args)?;
+    let expression = load_expression(args)?;
 
     let expression = compile_expression(&expression, &["input"])?;
 
-    let data = load_input_data(&args)?;
+    let data = load_input_data(args)?;
 
     let mut res = Vec::new();
     for input in data {
