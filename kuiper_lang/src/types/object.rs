@@ -26,7 +26,7 @@ impl Serialize for ObjectField {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 /// A JSON object type, containing both specific, known fields, and a generic field type.
 /// The generic field type is used for fields that are not explicitly listed in the object,
 /// making it possible to represent both "maps", and "structures".
@@ -118,6 +118,28 @@ impl Object {
             .map(|(k, v)| (ObjectField::Constant(k), Type::from_const(v)))
             .collect();
         Object { fields }
+    }
+
+    /// Return a union of all the elements in this object.
+    pub fn element_union(&self) -> Type {
+        let mut res = Type::never();
+        for value in self.fields.values() {
+            res = res.union_with(value.clone());
+        }
+        res
+    }
+
+    /// Add a field to this object, using a builder-like pattern.
+    pub fn with_field(mut self, field: &str, ty: Type) -> Self {
+        self.fields
+            .insert(ObjectField::Constant(field.to_owned()), ty);
+        self
+    }
+
+    /// Set the generic field of this object, using a builder-like pattern.
+    pub fn with_generic_field(mut self, ty: Type) -> Self {
+        self.fields.insert(ObjectField::Generic, ty);
+        self
     }
 
     /// Check whether this object type accepts a field with the given key and type,

@@ -409,6 +409,21 @@ impl Type {
         }
     }
 
+    /// Validate that this type can be assigned to the other type, returning an error if not.
+    ///
+    /// This is just for convenience, it just calls `is_assignable_to` and returns an error if it returns false.
+    pub fn assert_assignable_to(&self, other: &Type, span: &Span) -> Result<(), TypeError> {
+        if self.is_assignable_to(other) {
+            Ok(())
+        } else {
+            Err(TypeError::expected_type(
+                other.clone(),
+                self.clone(),
+                span.clone(),
+            ))
+        }
+    }
+
     /// Validate that `other` is a valid receiver for `self`, i.e. that
     /// there is any overlap between the two types at all.
     pub fn is_assignable_to(&self, other: &Type) -> bool {
