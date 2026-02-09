@@ -567,6 +567,15 @@ mod tests {
         let res = expr.run([&inp]).unwrap();
         assert!((2.0 - res.get("res").unwrap().as_f64().unwrap()).abs() < 0.00000001);
         assert!((10.0 - res.get("res2").unwrap().as_f64().unwrap()).abs() < 0.00000001);
+
+        let expr = compile_expression(
+            r#"{
+            "res": sqrt(-1)
+        }"#,
+            &[],
+        );
+
+        assert!(expr.is_err());
     }
 
     #[test]
@@ -638,5 +647,8 @@ mod tests {
         assert!(
             (0.4636476090008061 - res.get("res10").unwrap().as_f64().unwrap()).abs() < 0.00000001
         );
+
+        assert!(compile_expression(r#"{"res": asin(2)}"#, &[],).is_err()); // asin(2) is undefined, should yield an error
+        assert!(compile_expression(r#"{"res": acos(2)}"#, &[],).is_err()); // acos(2) is undefined, should yield an error
     }
 }
