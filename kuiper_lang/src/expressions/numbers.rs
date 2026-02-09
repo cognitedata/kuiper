@@ -108,7 +108,7 @@ impl JsonNumber {
         match self {
             Self::PosInteger(x) => x.try_into().map_err(|e| {
                 TransformError::new_conversion_failed(
-                    format!("Failed to convert positive integer to signed integer: {e}"),
+                    format!("Failed to convert positive integer {x} to signed integer: {e}"),
                     span,
                 )
             }),
@@ -116,15 +116,14 @@ impl JsonNumber {
             Self::Float(x) => {
                 if x.fract() != 0.0f64 {
                     Err(TransformError::new_conversion_failed(
-                        "Failed to convert floating point number to integer: not a whole number"
-                            .to_string(),
+                        format!("Failed to convert floating point number {x} to integer: not a whole number"),
                         span,
                     ))
                 } else if x <= i64::MAX as f64 && x >= i64::MIN as f64 {
                     Ok(x as i64)
                 } else {
                     Err(TransformError::new_conversion_failed(
-                        "Failed to convert floating point number to integer: number does not fit within (-9223372036854775808, 9223372036854775807)".to_string(), span))
+                        format!("Failed to convert floating point number {x} to integer: number does not fit within (-9223372036854775808, 9223372036854775807)"), span))
                 }
             }
         }
@@ -403,7 +402,7 @@ mod tests {
     use logos::Span;
 
     #[test]
-    pub fn test_max_function() {
+    fn test_max_function() {
         let a = JsonNumber::PosInteger(5);
         let b = JsonNumber::PosInteger(10);
         match a.max(b, &Span::default()) {
@@ -462,7 +461,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_min_function() {
+    fn test_min_function() {
         let a = JsonNumber::PosInteger(5);
         let b = JsonNumber::PosInteger(10);
         match a.min(b, &Span::default()) {
@@ -518,5 +517,319 @@ mod tests {
             JsonNumber::Float(x) => assert_eq!(x, -5.0),
             _ => panic!("Expected Float"),
         }
+    }
+
+    #[test]
+    fn test_try_as_u64() {
+        let n = JsonNumber::NegInteger(10);
+        assert_eq!(10u64, n.try_as_u64(&Span::default()).unwrap());
+
+        let n = JsonNumber::PosInteger(10);
+        assert_eq!(10u64, n.try_as_u64(&Span::default()).unwrap());
+
+        let n = JsonNumber::Float(10.0);
+        assert_eq!(10u64, n.try_as_u64(&Span::default()).unwrap());
+
+        let n = JsonNumber::Float(10.5);
+        assert_eq!(
+            "Failed to convert floating point number 10.5 to integer: not a whole number at 0..0",
+            n.try_as_u64(&Span::default()).unwrap_err().to_string()
+        );
+
+        let n = JsonNumber::Float(-5.0);
+        assert_eq!(
+            "Failed to convert floating point number -5 to positive integer: number does not fit within (0, 18446744073709551615) at 0..0",
+            n.try_as_u64(&Span::default()).unwrap_err().to_string()
+        );
+        let n = JsonNumber::Float(1e20);
+        assert_eq!(
+            "Failed to convert floating point number 100000000000000000000 to positive integer: number does not fit within (0, 18446744073709551615) at 0..0",
+            n.try_as_u64(&Span::default()).unwrap_err().to_string()
+        );
+        let n = JsonNumber::Float(-1e20);
+        assert_eq!(
+            "Failed to convert floating point number -100000000000000000000 to positive integer: number does not fit within (0, 18446744073709551615) at 0..0",
+            n.try_as_u64(&Span::default()).unwrap_err().to_string()
+        );
+        let n = JsonNumber::Float(f64::INFINITY);
+        assert_eq!(
+            "Failed to convert floating point number inf to integer: not a whole number at 0..0",
+            n.try_as_u64(&Span::default()).unwrap_err().to_string()
+        );
+
+        let n = JsonNumber::NegInteger(-10);
+        assert_eq!(
+            "Failed to convert negative integer -10 to unsigned: out of range integral type conversion attempted at 0..0",
+            n.try_as_u64(&Span::default()).unwrap_err().to_string()
+        );
+    }
+
+    #[test]
+    fn test_try_as_i64() {
+        let n = JsonNumber::NegInteger(-10);
+        assert_eq!(-10i64, n.try_as_i64(&Span::default()).unwrap());
+
+        let n = JsonNumber::PosInteger(10);
+        assert_eq!(10i64, n.try_as_i64(&Span::default()).unwrap());
+
+        let n = JsonNumber::Float(10.0);
+        assert_eq!(10i64, n.try_as_i64(&Span::default()).unwrap());
+
+        let n = JsonNumber::PosInteger(u64::MAX);
+        assert_eq!(
+            "Failed to convert positive integer 18446744073709551615 to signed integer: out of range integral type conversion attempted at 0..0",
+            n.try_as_i64(&Span::default()).unwrap_err().to_string()
+        );
+
+        let n = JsonNumber::Float(10.5);
+        assert_eq!(
+            "Failed to convert floating point number 10.5 to integer: not a whole number at 0..0",
+            n.try_as_i64(&Span::default()).unwrap_err().to_string()
+        );
+
+        let n = JsonNumber::Float(1e20);
+        assert_eq!(
+            "Failed to convert floating point number 100000000000000000000 to integer: number does not fit within (-9223372036854775808, 9223372036854775807) at 0..0",
+            n.try_as_i64(&Span::default()).unwrap_err().to_string()
+        );
+        let n = JsonNumber::Float(-1e20);
+        assert_eq!(
+            "Failed to convert floating point number -100000000000000000000 to integer: number does not fit within (-9223372036854775808, 9223372036854775807) at 0..0",
+            n.try_as_i64(&Span::default()).unwrap_err().to_string()
+        );
+        let n = JsonNumber::Float(f64::INFINITY);
+        assert_eq!(
+            "Failed to convert floating point number inf to integer: not a whole number at 0..0",
+            n.try_as_i64(&Span::default()).unwrap_err().to_string()
+        );
+    }
+
+    #[test]
+    fn test_try_cast_integer() {
+        assert_eq!(
+            JsonNumber::PosInteger(10),
+            JsonNumber::PosInteger(10)
+                .try_cast_integer(&Span::default())
+                .unwrap()
+        );
+        assert_eq!(
+            JsonNumber::NegInteger(-10),
+            JsonNumber::NegInteger(-10)
+                .try_cast_integer(&Span::default())
+                .unwrap()
+        );
+        assert_eq!(
+            JsonNumber::PosInteger(10),
+            JsonNumber::Float(10.5)
+                .try_cast_integer(&Span::default())
+                .unwrap()
+        );
+        assert_eq!(
+            JsonNumber::NegInteger(-10),
+            JsonNumber::Float(-10.5)
+                .try_cast_integer(&Span::default())
+                .unwrap()
+        );
+        assert_eq!(
+            "Failed to convert floating point number 100000000000000000000 to integer, too large. at 0..0",
+            JsonNumber::Float(100000000000000000000.0)
+                .try_cast_integer(&Span::default())
+                .unwrap_err()
+                .to_string()
+        );
+    }
+
+    #[test]
+    fn test_try_add() {
+        assert_eq!(
+            JsonNumber::PosInteger(5),
+            JsonNumber::PosInteger(2)
+                .try_add(JsonNumber::PosInteger(3), &Span::default())
+                .unwrap()
+        );
+        assert_eq!(
+            JsonNumber::NegInteger(-5),
+            JsonNumber::NegInteger(-2)
+                .try_add(JsonNumber::NegInteger(-3), &Span::default())
+                .unwrap()
+        );
+        assert_eq!(
+            JsonNumber::Float(5.5),
+            JsonNumber::Float(2.0)
+                .try_add(JsonNumber::Float(3.5), &Span::default())
+                .unwrap()
+        );
+        assert_eq!(
+            JsonNumber::NegInteger(-1),
+            JsonNumber::NegInteger(-2)
+                .try_add(JsonNumber::PosInteger(1), &Span::default())
+                .unwrap()
+        );
+        assert_eq!(
+            JsonNumber::Float(5.0),
+            JsonNumber::Float(2.0)
+                .try_add(JsonNumber::PosInteger(3), &Span::default())
+                .unwrap()
+        );
+        assert_eq!(
+            JsonNumber::Float(5.0),
+            JsonNumber::PosInteger(2)
+                .try_add(JsonNumber::Float(3.0), &Span::default())
+                .unwrap()
+        );
+
+        assert_eq!(
+            "Arithmetic overflow at 0..0",
+            JsonNumber::PosInteger(u64::MAX - 1)
+                .try_add(JsonNumber::PosInteger(2), &Span::default())
+                .unwrap_err()
+                .to_string()
+        );
+        assert_eq!(
+            "Arithmetic overflow at 0..0",
+            JsonNumber::NegInteger(i64::MIN + 1)
+                .try_add(JsonNumber::NegInteger(-2), &Span::default())
+                .unwrap_err()
+                .to_string()
+        );
+        assert_eq!(
+            "Arithmetic overflow at 0..0",
+            JsonNumber::NegInteger(i64::MIN + 1)
+                .try_add(JsonNumber::PosInteger(u64::MAX), &Span::default())
+                .unwrap_err()
+                .to_string()
+        );
+        assert_eq!(
+            "Failed to convert positive integer 18446744073709551615 to signed integer: out of range integral type conversion attempted at 0..0",
+            JsonNumber::PosInteger(u64::MAX)
+                .try_add(JsonNumber::NegInteger(i64::MIN + 1), &Span::default())
+                .unwrap_err()
+                .to_string()
+        );
+    }
+
+    #[test]
+    fn test_try_sub() {
+        assert_eq!(
+            JsonNumber::PosInteger(2),
+            JsonNumber::PosInteger(5)
+                .try_sub(JsonNumber::PosInteger(3), &Span::default())
+                .unwrap()
+        );
+        assert_eq!(
+            JsonNumber::NegInteger(-2),
+            JsonNumber::NegInteger(-5)
+                .try_sub(JsonNumber::NegInteger(-3), &Span::default())
+                .unwrap()
+        );
+        assert_eq!(
+            JsonNumber::Float(2.0),
+            JsonNumber::Float(5.0)
+                .try_sub(JsonNumber::Float(3.0), &Span::default())
+                .unwrap()
+        );
+        assert_eq!(
+            JsonNumber::NegInteger(-3),
+            JsonNumber::NegInteger(-2)
+                .try_sub(JsonNumber::PosInteger(1), &Span::default())
+                .unwrap()
+        );
+        assert_eq!(
+            JsonNumber::Float(-1.0),
+            JsonNumber::Float(2.0)
+                .try_sub(JsonNumber::PosInteger(3), &Span::default())
+                .unwrap()
+        );
+        assert_eq!(
+            JsonNumber::Float(-1.0),
+            JsonNumber::PosInteger(2)
+                .try_sub(JsonNumber::Float(3.0), &Span::default())
+                .unwrap()
+        );
+
+        assert_eq!(
+            "Failed to convert result into negative integer, cannot produce a negative integer smaller than -9223372036854775808 at 0..0",
+            JsonNumber::PosInteger(1)
+                .try_sub(JsonNumber::PosInteger(u64::MAX), &Span::default())
+                .unwrap_err()
+                .to_string()
+        );
+        assert_eq!(
+            "Arithmetic overflow at 0..0",
+            JsonNumber::NegInteger(i64::MIN + 1)
+                .try_sub(JsonNumber::NegInteger(i64::MAX), &Span::default())
+                .unwrap_err()
+                .to_string()
+        );
+        assert_eq!(
+            "Arithmetic overflow at 0..0",
+            JsonNumber::NegInteger(i64::MIN + 1)
+                .try_sub(JsonNumber::PosInteger(u64::MAX), &Span::default())
+                .unwrap_err()
+                .to_string()
+        );
+        assert_eq!(
+            "Failed to convert positive integer 18446744073709551615 to signed integer: out of range integral type conversion attempted at 0..0",
+            JsonNumber::PosInteger(u64::MAX)
+                .try_sub(JsonNumber::NegInteger(i64::MIN + 1), &Span::default())
+                .unwrap_err()
+                .to_string()
+        );
+    }
+
+    #[test]
+    fn test_try_mul() {
+        assert_eq!(
+            JsonNumber::PosInteger(6),
+            JsonNumber::PosInteger(2)
+                .try_mul(JsonNumber::PosInteger(3), &Span::default())
+                .unwrap()
+        );
+        assert_eq!(
+            JsonNumber::NegInteger(6),
+            JsonNumber::NegInteger(-2)
+                .try_mul(JsonNumber::NegInteger(-3), &Span::default())
+                .unwrap()
+        );
+        assert_eq!(
+            JsonNumber::Float(6.0),
+            JsonNumber::Float(2.0)
+                .try_mul(JsonNumber::Float(3.0), &Span::default())
+                .unwrap()
+        );
+        assert_eq!(
+            JsonNumber::NegInteger(-2),
+            JsonNumber::NegInteger(-2)
+                .try_mul(JsonNumber::PosInteger(1), &Span::default())
+                .unwrap()
+        );
+        assert_eq!(
+            "Failed to convert positive integer 18446744073709551615 to signed integer: out of range integral type conversion attempted at 0..0",
+            JsonNumber::PosInteger(u64::MAX)
+                .try_mul(JsonNumber::NegInteger(i64::MIN + 1), &Span::default())
+                .unwrap_err()
+                .to_string()
+        );
+        assert_eq!(
+            "Arithmetic overflow at 0..0",
+            JsonNumber::NegInteger(i64::MIN + 1)
+                .try_mul(JsonNumber::NegInteger(i64::MAX), &Span::default())
+                .unwrap_err()
+                .to_string()
+        );
+        assert_eq!(
+            "Arithmetic overflow at 0..0",
+            JsonNumber::NegInteger(i64::MIN + 1)
+                .try_mul(JsonNumber::PosInteger(5), &Span::default())
+                .unwrap_err()
+                .to_string()
+        );
+        assert_eq!(
+            "Arithmetic overflow at 0..0",
+            JsonNumber::PosInteger(u64::MAX - 1)
+                .try_mul(JsonNumber::PosInteger(2), &Span::default())
+                .unwrap_err()
+                .to_string()
+        );
     }
 }

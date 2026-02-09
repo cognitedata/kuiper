@@ -20,7 +20,7 @@ impl Display for ArrayElement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Expression(x) => write!(f, "{x}"),
-            Self::Concat(x) => write!(f, "..{x}"),
+            Self::Concat(x) => write!(f, "...{x}"),
         }
     }
 }
@@ -100,5 +100,19 @@ impl ArrayExpression {
             expr.fail_if_lambda()?;
         }
         Ok(Self { items, span })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tests::compile_err;
+
+    #[test]
+    fn test_invalid_concat() {
+        let err = compile_err("[1, ...2]", &[]);
+        assert_eq!(
+            err.to_string(),
+            "Compilation failed: array. Got number, expected array at 0..9"
+        );
     }
 }
