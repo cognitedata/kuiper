@@ -17,7 +17,7 @@ impl Display for ObjectElement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Pair(key, value) => write!(f, "{key}: {value}"),
-            Self::Concat(x) => write!(f, "..{x}"),
+            Self::Concat(x) => write!(f, "...{x}"),
         }
     }
 }

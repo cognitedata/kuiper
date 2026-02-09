@@ -186,17 +186,18 @@ pub(crate) use write_list;
 use crate::types::TypeError;
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use logos::{Logos, Span};
     use serde_json::json;
     use std::path::PathBuf;
 
     use crate::{
-        compile_expression, compiler::BuildError, format_expression, lex::Token, CompileError,
+        compile_expression, compile_expression_with_config, compiler::BuildError,
+        format_expression, lex::Token, CompileError, CompilerConfig, ExpressionDebugInfo,
         TransformError,
     };
 
-    fn compile_err(data: &str, inputs: &[&str]) -> CompileError {
+    pub(crate) fn compile_err(data: &str, inputs: &[&str]) -> CompileError {
         match compile_expression(data, inputs) {
             Ok(_) => panic!("Expected compilation to fail"),
             Err(x) => x,
@@ -744,6 +745,218 @@ mod tests {
         // Lookup input once, For each iteration: Call the lambda passed to map, lookup x,
         //resolve the constant `1` and resolve the `+` operator. 1 + 4 * 5 = 21.
         assert_eq!(21, opcount);
+    }
+
+    #[test]
+    fn test_optimizer_operation_limit() {
+        let err = compile_expression_with_config(
+            "1 + 1 + 1",
+            &[],
+            &CompilerConfig::new().optimizer_operation_limit(2),
+        )
+        .unwrap_err();
+
+        assert!(matches!(
+            err,
+            CompileError::Optimizer(TransformError::OperationLimitExceeded)
+        ));
+    }
+
+    #[test]
+    fn test_max_macro_expansions() {
+        let err = compile_expression_with_config(
+            r#"
+            #my_macro := (a) => a + 1;
+            my_macro(1) + my_macro(2) + my_macro(3)
+        "#,
+            &[],
+            &CompilerConfig::new().max_macro_expansions(2),
+        )
+        .unwrap_err();
+
+        match err {
+            CompileError::Build(BuildError::Other(d)) => {
+                assert_eq!(d.detail, "Too many macro expansions, maximum is 2");
+            }
+            _ => panic!("Wrong type of error {err:?}"),
+        }
+    }
+
+    #[test]
+    fn test_compile_from_tokens() {
+        use crate::lex::compile_from_tokens;
+        let tokens = vec![
+            Token::Integer(2),
+            Token::Operator(crate::lex::Operator::Plus),
+            Token::Integer(1),
+        ];
+
+        let expr = compile_from_tokens(tokens.into_iter(), &[], &Default::default()).unwrap();
+        let res = expr.run(&[]).unwrap().into_owned();
+        assert_eq!(res.as_u64().unwrap(), 3);
+    }
+
+    #[test]
+    fn test_debug_info_ok() {
+        let info = ExpressionDebugInfo::new("1 + 1 + input.test", &["input"], &Default::default())
+            .unwrap();
+        assert_eq!(info.lexer.to_string(), "1+1+`input`.`test`");
+        assert_eq!(info.ast.to_string(), "((1 + 1) + input.test)");
+        assert_eq!(info.exec_tree.to_string(), "((1 + 1) + $0.test)");
+        assert_eq!(info.optimized.to_string(), "(2 + $0.test)");
+
+        assert_eq!(
+            info.to_string(),
+            r#"{
+    lexer: 1+1+`input`.`test`
+    ast: ((1 + 1) + input.test)
+    exec_tree: ((1 + 1) + $0.test)
+    optimized: (2 + $0.test)
+}"#
+        );
+    }
+
+    #[test]
+    fn test_unexpected_lambda() {
+        let err = compile_err("float(a => a)", &[]);
+        match err {
+            CompileError::Build(BuildError::UnexpectedLambda(d)) => {
+                assert_eq!(d.detail, "Expected expression, got lambda");
+                assert_eq!(d.position, Span { start: 6, end: 12 });
+            }
+            _ => panic!("Wrong type of error {err:?}"),
+        }
+    }
+
+    #[test]
+    fn test_unrecognized_function() {
+        let err = compile_err("unknown_func(1)", &[]);
+        match err {
+            CompileError::Build(BuildError::UnrecognizedFunction(d)) => {
+                assert_eq!(d.detail, "unknown_func");
+                assert_eq!(d.position, Span { start: 0, end: 15 });
+            }
+            _ => panic!("Wrong type of error {err:?}"),
+        }
+    }
+
+    #[test]
+    fn test_wrong_number_of_macro_args() {
+        let err = compile_err(
+            r#"
+            #my_macro := (a, b) => a + b;
+            my_macro(1)
+        "#,
+            &[],
+        );
+        match err {
+            CompileError::Build(BuildError::NFunctionArgs(d)) => {
+                assert_eq!(
+                    d.detail,
+                    "Incorrect number of function args: Expected 2 arguments to macro"
+                );
+                assert_eq!(d.position, Span { start: 55, end: 66 });
+            }
+            _ => panic!("Wrong type of error {err:?}"),
+        }
+    }
+
+    #[test]
+    fn test_unexpected_lambda_in_macro() {
+        let err = compile_err(
+            r#"
+            #my_macro := (a) => a + b;
+            my_macro(a => a)
+        "#,
+            &[],
+        );
+        match err {
+            CompileError::Build(BuildError::UnexpectedLambda(d)) => {
+                assert_eq!(d.detail, "Expected expression, got lambda");
+                assert_eq!(d.position, Span { start: 61, end: 67 });
+            }
+            _ => panic!("Wrong type of error {err:?}"),
+        }
+    }
+
+    #[test]
+    fn test_recursion_depth() {
+        let bad = "1 +".repeat(500) + " 1";
+        let err = compile_err(&bad, &[]);
+        match err {
+            CompileError::Build(BuildError::Other(d)) => {
+                assert_eq!(
+                    d.detail,
+                    "Recursion depth limit exceeded during compilation"
+                );
+            }
+            _ => panic!("Wrong type of error {err:?}"),
+        }
+    }
+
+    #[test]
+    fn test_duplicate_macro() {
+        let err = compile_err(
+            r#"
+            #my_macro := (a) => a + 1;
+            #my_macro := (a) => a * 2;
+            my_macro(1)
+        "#,
+            &[],
+        );
+        match err {
+            CompileError::Build(BuildError::Other(d)) => {
+                assert_eq!(d.detail, "Duplicate macro definition");
+            }
+            _ => panic!("Wrong type of error {err:?}"),
+        }
+    }
+
+    #[test]
+    fn test_invalid_input_variable() {
+        let err = compile_err("1 + foo", &[]);
+        match err {
+            CompileError::Build(BuildError::UnknownVariable(d)) => {
+                assert_eq!(d.detail, "foo");
+                assert_eq!(d.position, Span { start: 4, end: 7 });
+            }
+            _ => panic!("Wrong type of error {err:?}"),
+        }
+    }
+
+    #[test]
+    fn test_display_expression() {
+        fn expr_matches(expr: &str, expected: &str) {
+            let compiled = compile_expression(expr, &["input"]).unwrap();
+            assert_eq!(
+                compiled.to_string(),
+                expected,
+                "Expression did not format as expected. Got '{}', expected '{}'",
+                compiled,
+                expected
+            );
+        }
+
+        expr_matches("1 + input", "(1 + $0)");
+        expr_matches("[1, 2, ...input]", "[1, 2, ...$0]");
+        expr_matches("{\"foo\": \"bar\", ...input}", "{\"foo\": \"bar\", ...$0}");
+        expr_matches(
+            "if input > 5 { 0 } else if input > 3 { 1 } else { 2 }",
+            "if ($0 > 5) { 0 } else if ($0 > 3) { 1 } else { 2 }",
+        );
+        expr_matches("input is null", "$0 is null");
+        expr_matches("input is not array", "$0 is not array");
+        expr_matches("input is object", "$0 is object");
+        expr_matches("input is number", "$0 is number");
+        expr_matches("input is bool", "$0 is bool");
+        expr_matches("input.map(a => a + 1)", "map($0, (a) => ($1 + 1))");
+        expr_matches(
+            r#"
+        #foo := (a) => a + 1;
+        foo(input)
+        "#,
+            "((a) => ($1 + 1))($0)",
+        );
     }
 
     #[derive(Debug, serde::Deserialize)]
