@@ -568,14 +568,7 @@ mod tests {
         assert!((2.0 - res.get("res").unwrap().as_f64().unwrap()).abs() < 0.00000001);
         assert!((10.0 - res.get("res2").unwrap().as_f64().unwrap()).abs() < 0.00000001);
 
-        let expr = compile_expression(
-            r#"{
-            "res": sqrt(-1)
-        }"#,
-            &[],
-        );
-
-        assert!(expr.is_err());
+        assert!(compile_expression(r#"{"res": sqrt(-1)}"#, &[],).is_err()); // sqrt(-1) is undefined, should yield an error
     }
 
     #[test]
