@@ -92,6 +92,14 @@ arg2_math_func!(Atan2Function, "atan2", atan2);
 arg1_math_func!(FloorFunction, "floor", floor);
 arg1_math_func!(CeilFunction, "ceil", ceil);
 arg1_math_func!(RoundFunction, "round", round);
+arg1_math_func!(SqrtFunction, "sqrt", sqrt);
+arg1_math_func!(ExpFunction, "exp", exp);
+arg1_math_func!(SinFunction, "sin", sin);
+arg1_math_func!(CosFunction, "cos", cos);
+arg1_math_func!(TanFunction, "tan", tan);
+arg1_math_func!(AsinFunction, "asin", asin);
+arg1_math_func!(AcosFunction, "acos", acos);
+arg1_math_func!(AtanFunction, "atan", atan);
 
 function_def!(IntFunction, "int", 1);
 

@@ -6,6 +6,20 @@ title: Functions
 
 # Functions
 
+## acos
+
+`acos(x)`
+
+Return the inverse cosine of `x` in radians between 0 and pi.
+
+**Code examples**
+```
+acos(0) -> 1.5707963267948966
+```
+```
+acos(1) -> 0.0
+```
+
 ## all
 
 `all(x)`
@@ -32,6 +46,34 @@ Return `true` if any items in the array `x` is true.
 ```
 ```
 [false, false, false, false].any() -> false
+```
+
+## asin
+
+`asin(x)`
+
+Return the inverse sine of `x` in radians between -pi/2 and pi/2.
+
+**Code examples**
+```
+asin(0) -> 0.0
+```
+```
+asin(1) -> 1.5707963267948966
+```
+
+## atan
+
+`atan(x)`
+
+Return the inverse tangent of `x` in radians between -pi/2 and pi/2.
+
+**Code examples**
+```
+atan(0) -> 0.0
+```
+```
+atan(1) -> 0.7853981633974483
 ```
 
 ## atan2
@@ -133,6 +175,20 @@ Return `true` if the array or string `x` contains item `a`.
 "hello world".contains("llo wo") -> true
 ```
 
+## cos
+
+`cos(x)`
+
+Return the cosine of `x`, where `x` is in radians.
+
+**Code examples**
+```
+cos(0) -> 1.0
+```
+```
+cos(3.141592653589793 / 2) -> 0.0
+```
+
 ## digest
 
 `digest(a, b, ...)`
@@ -202,6 +258,20 @@ If the second argument is a list, any entry also found in this list will be remo
     "a": 1,
     "b": 2
 }
+```
+
+## exp
+
+`exp(x)`
+
+Return e to the power of `x`.
+
+**Code examples**
+```
+exp(1) -> 2.718281828459045
+```
+```
+exp(10) -> 22026.465794806718
 ```
 
 ## filter
@@ -700,6 +770,20 @@ Return a list or object where the lambda returns true. If the second argument is
 }
 ```
 
+## sin
+
+`sin(x)`
+
+Return the sine of `x`, where `x` is in radians.
+
+**Code examples**
+```
+sin(0) -> 0.0
+```
+```
+sin(3.141592653589793 / 2) -> 1.0
+```
+
 ## slice
 
 `slice(x, start(, end))`
@@ -726,6 +810,17 @@ Split string `a` on any occurences of `b`. If `b` is an empty string, this will 
 ```
 ```
 "hello".split("") -> ["", "h", "e", "l", "l", "o", ""]
+```
+
+## sqrt
+
+`sqrt(x)`
+
+Return the square root of `x`.
+
+**Code example**
+```
+sqrt(16) -> 4.0
 ```
 
 ## starts_with
@@ -803,6 +898,20 @@ Take the last element of the list `x`. If `n` is given, takes the last `n` eleme
 ```
 ```
 [1, 2, 3, 4, 5].tail(2) -> [4, 5]
+```
+
+## tan
+
+`tan(x)`
+
+Return the tangent of `x`, where `x` is in radians.
+
+**Code examples**
+```
+tan(0) -> 0.0
+```
+```
+tan(3.141592653589793 / 4) -> 1.0
 ```
 
 ## to_object
