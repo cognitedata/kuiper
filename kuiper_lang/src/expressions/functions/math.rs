@@ -327,6 +327,8 @@ mod tests {
 
     use crate::compile_expression;
 
+    const TINY: f64 = 0.00000001;
+
     #[test]
     pub fn test_max_function() {
         let expr = compile_expression(
@@ -503,7 +505,7 @@ mod tests {
         let res = expr.run([&inp]).unwrap();
         assert_eq!(1.0, res.get("res").unwrap().as_f64().unwrap());
         // Yes, this does yield 2.9999999999999996, blame computers.
-        assert!((3.0 - res.get("res2").unwrap().as_f64().unwrap()).abs() < 0.00000001);
+        assert!((3.0 - res.get("res2").unwrap().as_f64().unwrap()).abs() < TINY);
     }
 
     #[test]
@@ -565,8 +567,8 @@ mod tests {
             "val1": 100
         });
         let res = expr.run([&inp]).unwrap();
-        assert!((2.0 - res.get("res").unwrap().as_f64().unwrap()).abs() < 0.00000001);
-        assert!((10.0 - res.get("res2").unwrap().as_f64().unwrap()).abs() < 0.00000001);
+        assert!((2.0 - res.get("res").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((10.0 - res.get("res2").unwrap().as_f64().unwrap()).abs() < TINY);
 
         assert!(compile_expression(r#"{"res": sqrt(-1)}"#, &[],).is_err()); // sqrt(-1) is undefined, should yield an error
     }
@@ -586,12 +588,9 @@ mod tests {
             "val1": 2
         });
         let res = expr.run([&inp]).unwrap();
+        assert!((std::f64::consts::E - res.get("res").unwrap().as_f64().unwrap()).abs() < TINY);
         assert!(
-            (std::f64::consts::E - res.get("res").unwrap().as_f64().unwrap()).abs() < 0.00000001
-        );
-        assert!(
-            (std::f64::consts::E.powi(2) - res.get("res2").unwrap().as_f64().unwrap()).abs()
-                < 0.00000001
+            (std::f64::consts::E.powi(2) - res.get("res2").unwrap().as_f64().unwrap()).abs() < TINY
         );
     }
 
@@ -617,29 +616,17 @@ mod tests {
 
         let inp = json!(0.5);
         let res = expr.run([&inp]).unwrap();
-        assert!((0.0 - res.get("res0").unwrap().as_f64().unwrap()).abs() < 0.00000001);
-        assert!(
-            (0.479425538604203 - res.get("res1").unwrap().as_f64().unwrap()).abs() < 0.00000001
-        );
-        assert!((1.0 - res.get("res2").unwrap().as_f64().unwrap()).abs() < 0.00000001);
-        assert!(
-            (0.8775825618903726 - res.get("res3").unwrap().as_f64().unwrap()).abs() < 0.00000001
-        );
-        assert!((0.0 - res.get("res4").unwrap().as_f64().unwrap()).abs() < 0.00000001);
-        assert!((0.0 - res.get("res5").unwrap().as_f64().unwrap()).abs() < 0.00000001);
-        assert!(
-            (0.5235987755982989 - res.get("res6").unwrap().as_f64().unwrap()).abs() < 0.00000001
-        );
-        assert!(
-            (1.5707963267948966 - res.get("res7").unwrap().as_f64().unwrap()).abs() < 0.00000001
-        );
-        assert!(
-            (1.0471975511965979 - res.get("res8").unwrap().as_f64().unwrap()).abs() < 0.00000001
-        );
-        assert!((0.0 - res.get("res9").unwrap().as_f64().unwrap()).abs() < 0.00000001);
-        assert!(
-            (0.4636476090008061 - res.get("res10").unwrap().as_f64().unwrap()).abs() < 0.00000001
-        );
+        assert!((0.0 - res.get("res0").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((0.479425538604203 - res.get("res1").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((1.0 - res.get("res2").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((0.8775825618903726 - res.get("res3").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((0.0 - res.get("res4").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((0.0 - res.get("res5").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((0.5235987755982989 - res.get("res6").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((1.5707963267948966 - res.get("res7").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((1.0471975511965979 - res.get("res8").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((0.0 - res.get("res9").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((0.4636476090008061 - res.get("res10").unwrap().as_f64().unwrap()).abs() < TINY);
 
         assert!(compile_expression(r#"{"res": asin(2)}"#, &[],).is_err()); // asin(2) is undefined, should yield an error
         assert!(compile_expression(r#"{"res": acos(2)}"#, &[],).is_err()); // acos(2) is undefined, should yield an error
