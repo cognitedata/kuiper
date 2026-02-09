@@ -1,9 +1,13 @@
-use std::fmt::Display;
+use std::{collections::BTreeMap, fmt::Display};
 
 use logos::Span;
 use serde_json::{Map, Value};
 
-use crate::{compiler::BuildError, write_list, TransformError};
+use crate::{
+    compiler::BuildError,
+    types::{Object, ObjectField, Type},
+    write_list, TransformError,
+};
 
 use super::{base::ExpressionMeta, Expression, ExpressionType, ResolveResult};
 
@@ -78,6 +82,55 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ObjectExpression {
         }
         Ok(ResolveResult::Owned(Value::Object(output)))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let mut output = BTreeMap::new();
+        for k in self.items.iter() {
+            match k {
+                ObjectElement::Pair(key, value) => {
+                    let key_type = key.resolve_types(state)?;
+                    let value_type = value.resolve_types(state)?;
+                    key_type.assert_assignable_to(
+                        &Type::String
+                            .union_with(Type::number())
+                            .union_with(Type::Boolean)
+                            .union_with(Type::null()),
+                        &self.span,
+                    )?;
+                    if let Type::Constant(Value::String(key_str)) = key_type {
+                        output.insert(ObjectField::Constant(key_str), value_type);
+                    } else if let Some(old) = output.remove(&ObjectField::Generic) {
+                        output.insert(ObjectField::Generic, old.union_with(value_type));
+                    } else {
+                        output.insert(ObjectField::Generic, value_type);
+                    }
+                }
+                ObjectElement::Concat(x) => {
+                    let conc_type = x.resolve_types(state)?;
+                    let conc_obj = conc_type.try_as_object(&self.span)?;
+                    for (k, v) in conc_obj.fields {
+                        match k {
+                            ObjectField::Constant(key_str) => {
+                                output.insert(ObjectField::Constant(key_str), v);
+                            }
+                            ObjectField::Generic => {
+                                if let Some(old) = output.remove(&ObjectField::Generic) {
+                                    output.insert(ObjectField::Generic, old.union_with(v));
+                                } else {
+                                    output.insert(ObjectField::Generic, v);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(Type::Object(Object { fields: output }))
+    }
 }
 
 impl ExpressionMeta for ObjectExpression {
@@ -103,5 +156,59 @@ impl ObjectExpression {
             }
         }
         Ok(Self { items, span })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::types::Type;
+
+    #[test]
+    fn test_object_types() {
+        let expr = crate::compile_expression(
+            r#"
+        {
+            "a": 5,
+            "b": "hello",
+            ...{"b": 6, "c": true, "d": null},
+            ...{"e": input.value}
+        }
+        "#,
+            &["input"],
+        )
+        .unwrap();
+        let r = expr.run_types([Type::Any]).unwrap();
+        assert_eq!(
+            r,
+            Type::Object(
+                crate::types::Object::default()
+                    .with_field("a", Type::from_const(5))
+                    .with_field("b", Type::from_const(6))
+                    .with_field("c", Type::from_const(true))
+                    .with_field("d", Type::null())
+                    .with_field("e", Type::Any)
+            )
+        );
+    }
+
+    #[test]
+    fn test_object_wrong_key_type() {
+        let expr = crate::compile_expression(
+            r#"
+            {
+                input: "value"
+            }
+            "#,
+            &["input"],
+        )
+        .unwrap();
+
+        let r = expr
+            .run_types([Type::object_of_type(Type::String)])
+            .unwrap_err();
+        assert_eq!(
+            r.to_string(),
+            "Expected Union<Integer, Float, String, Boolean, null> but got {...: String}"
+        );
     }
 }
