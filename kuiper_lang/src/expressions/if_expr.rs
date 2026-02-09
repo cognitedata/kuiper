@@ -105,12 +105,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IfExpression {
             }
         }
 
-        if final_type.is_never() {
-            // Should be unreachable.
-            Ok(Type::Constant(Value::Null))
-        } else {
-            Ok(final_type)
-        }
+        Ok(final_type)
     }
 }
 
