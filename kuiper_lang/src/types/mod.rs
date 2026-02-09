@@ -1,3 +1,7 @@
+//! Module containing logic for representing and manipulating types
+//! in the Kuiper language. Note that this feature is unstable and
+//! incomplete.
+
 use std::fmt::Display;
 
 use itertools::Itertools;
@@ -58,7 +62,7 @@ impl TypeError {
         }
     }
 
-    pub fn expected_type(expected: Type, got: Type, span: Span) -> Self {
+    pub(crate) fn expected_type(expected: Type, got: Type, span: Span) -> Self {
         TypeError::ExpectedType(Box::new(expected), Box::new(got), span)
     }
 }
@@ -354,6 +358,7 @@ impl Type {
         self.union_with(Type::null())
     }
 
+    /// Check whether this type is nullable, i.e. whether it can be null.
     pub fn is_nullable(&self) -> bool {
         Self::null().is_assignable_to(self)
     }
@@ -404,6 +409,9 @@ impl Type {
         }
     }
 
+    /// Validate that this type can be assigned to the other type, returning an error if not.
+    ///
+    /// This is just for convenience, it just calls `is_assignable_to` and returns an error if it returns false.
     pub fn assert_assignable_to(&self, other: &Type, span: &Span) -> Result<(), TypeError> {
         if self.is_assignable_to(other) {
             Ok(())
@@ -536,21 +544,24 @@ impl<'a> Iterator for IterUnion<'a> {
     }
 }
 
-pub struct TypeExecutionState<'data, 'exec> {
+// These types are WIP.
+
+#[allow(unused)]
+pub(crate) struct TypeExecutionState<'data, 'exec> {
     data: &'exec Vec<&'data Type>,
 }
-
+#[allow(unused)]
 static NULL_TYPE_CONST: Type = Type::Constant(Value::Null);
 
 impl<'data, 'exec> TypeExecutionState<'data, 'exec> {
     pub fn new(data: &'exec Vec<&'data Type>) -> Self {
         Self { data }
     }
-
+    #[allow(unused)]
     pub fn get_type(&self, index: usize) -> Option<&'data Type> {
         self.data.get(index).cloned()
     }
-
+    #[allow(unused)]
     pub fn get_temporary_clone<'inner>(
         &'inner mut self,
         extra_types: impl Iterator<Item = &'inner Type>,
@@ -577,11 +588,12 @@ impl<'data, 'exec> TypeExecutionState<'data, 'exec> {
         InternalTypeExecutionState { data }
     }
 }
-
-pub struct InternalTypeExecutionState<'data> {
+#[allow(unused)]
+pub(crate) struct InternalTypeExecutionState<'data> {
     data: Vec<&'data Type>,
 }
 
+#[allow(unused)]
 impl<'data> InternalTypeExecutionState<'data> {
     pub fn get_temp_state<'slf>(&'slf mut self) -> TypeExecutionState<'data, 'slf> {
         TypeExecutionState::new(&self.data)

@@ -1,5 +1,4 @@
 #![no_main]
-#![cfg(feature = "nightly")]
 
 use std::sync::LazyLock;
 

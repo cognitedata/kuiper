@@ -60,6 +60,7 @@ impl Object {
             })
     }
 
+    /// Produce a new object type that is the union of this object type and another.
     pub fn union_with(mut self, mut other: Object) -> Self {
         // We have to be conservative when merging objects. If either has a generic field,
         // any fields in the other object must be unioned with the generic field from the first.
@@ -110,6 +111,7 @@ impl Object {
         Object { fields: res }
     }
 
+    /// Produce an object type from a constant JSON value.
     pub fn from_const(value: serde_json::Map<String, Value>) -> Self {
         let fields = value
             .into_iter()
@@ -140,6 +142,9 @@ impl Object {
         self
     }
 
+    /// Check whether this object type accepts a field with the given key and type,
+    /// i.e. whether a field with the given key and type can be assigned to this object type
+    /// without changing it.
     pub fn accepts_field(&self, key: &str, ty: &Type) -> bool {
         // Either the specific field type accepts it, or the generic field type accepts it.
         if let Some(field_type) = self.fields.get(&ObjectField::Constant(key.to_string())) {

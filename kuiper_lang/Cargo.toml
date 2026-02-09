@@ -1,10 +1,14 @@
 [package]
 name = "kuiper_lang"
-version = "0.18.0"
+version = "0.18.1"
 edition = "2021"
 license = "Apache-2.0"
 description = "The Kuiper JSON mapping language"
-homepage = "htttps://github.com/cognitedata/kuiper"
+homepage = "https://github.com/cognitedata/kuiper"
+repository = "https://github.com/cognitedata/kuiper"
+readme = "README.md"
+categories = ["parser-implementations"]
+keywords = ["kuiper", "json", "language"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -15,7 +19,7 @@ completions = []
 chrono = "0.4.38"
 itertools = "0.14.0"
 lazy_static = "1.4.0"
-logos = "0.15"
+logos = "0.16"
 once_cell = "1.19.0"
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -28,7 +32,7 @@ base64 = "0.22.1"
 
 [dev-dependencies]
 pprof = { version = "0.15", features = ["flamegraph"] }
-criterion = "0.7"
+criterion = "0.8"
 walkdir = "2.5.0"
 
 [build-dependencies]
@@ -37,3 +41,6 @@ lalrpop = "0.22.0"
 [[bench]]
 name = "bench_execute"
 harness = false
+
+[package.metadata.docs.rs]
+all-features = true

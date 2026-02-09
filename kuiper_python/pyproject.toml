@@ -1,6 +1,6 @@
 [project]
 name = "cognite-kuiper"
-version = "0.18.0"
+version = "0.18.1"
 description = "A JSON to JSON transform and templating language from Cognite"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -35,7 +35,7 @@ repository = "https://github.com/cognitedata/kuiper"
 
 [tool.ruff]
 line-length = 120
-target-version = "py311"
+target-version = "py310"
 
 [tool.ruff.lint.per-file-ignores]
 "python/kuiper/__init__.py" = ["F403"]

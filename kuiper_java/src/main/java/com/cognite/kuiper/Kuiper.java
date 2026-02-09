@@ -5,7 +5,7 @@ class Kuiper {
 
     public static native String run_expression(long expression, String[] inputs) throws KuiperException;
 
-    public static native void free_expresion(long expression);
+    public static native void free_expression(long expression);
 
     static {
         System.loadLibrary("kuiper_java");

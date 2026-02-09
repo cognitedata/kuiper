@@ -15,13 +15,19 @@ pub type Spanned<Tok, Loc, Error> = Result<(Loc, Tok, Loc), Error>;
 /// as well as rich information about valid tokens at the given location.
 pub type ParseError = lalrpop_util::ParseError<usize, Token, LexerError>;
 
+/// An error from the lexer.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub enum LexerError {
+    /// An unknown token was encountered.
     #[default]
     UnknownToken,
+    /// An invalid token was encountered.
     InvalidToken(Span),
+    /// Failed to parse an integer.
     ParseInt((ParseIntError, Span)),
+    /// Failed to parse a float.
     ParseFloat((ParseFloatError, Span)),
+    /// An invalid escape character was encountered.
     InvalidEscapeChar((char, Span)),
 }
 

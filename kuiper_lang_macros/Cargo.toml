@@ -1,10 +1,11 @@
 [package]
 name = "kuiper_lang_macros"
-version = "0.18.0"
+version = "0.18.1"
 edition = "2021"
 license = "Apache-2.0"
-description = "The Kuiper JSON mapping language"
-homepage = "htttps://github.com/cognitedata/kuiper"
+description = "Proc-macro library for the Kuiper JSON mapping language"
+homepage = "https://github.com/cognitedata/kuiper"
+repository = "https://github.com/cognitedata/kuiper"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

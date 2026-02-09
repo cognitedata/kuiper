@@ -17,6 +17,36 @@ an array, and even pairs of arrays, but it is not possible to implement recursio
 
 ## Usage
 
+There are several ways of using Kuiper. It can be used both as a standalone program, and as a library in other programs.
+
+### Using the CLI
+
+The easiest way to start using Kuiper is to use the standalone CLI. The CLI will operate on an input JSON file, and
+either an inline expression (with the `-e` argument) or an expression file (with the `-f` argument):
+
+``` commandline
+$ cat input.json
+[1, 2, 3, 4]
+$ kuiper -e "input.sum()" input.json
+10
+```
+
+You can also use Kuiper with pipes:
+
+``` commandline
+$ cat input.json | kuiper -e "input.sum()"
+10
+```
+
+Run `kuiper --help` for a full list of possible arguments.
+
+The CLI also contains a REPL, which you can launch by just running `kuiper`.
+
+
+### As a rust library
+
+Kuiper can also be used as a Rust library.
+
 ```rust
 use kuiper_lang::compile_expression;
 use serde_json::json;
@@ -29,6 +59,16 @@ let result = transform.run(input.iter()).unwrap();
 assert_eq!(result.as_u64().unwrap(), 7);
 ```
 
+### Bindings to other languages
+
+Bindings to several other languages exists, for more info on those see their specific package:
+
+ * [Python](./kuiper_python/)
+ * [.NET](./KuiperNet/)
+ * [C](./kuiper_interop/)
+ * [Javascript (WebAssembly)](./kuiper_js/)
+ * [Java](./kuiper_java/)
+
 ## Design
 
 This library contains part of a compiler:
@@ -39,3 +79,21 @@ This library contains part of a compiler:
  - `compiler/optimizer.rs` contains the fourth and final stage of the compiler, which attempts to execute each part of the program recursively. If this fails with a `source missing` error, we traverse its children recursively. If it fails with any other error, this is a compile-time error. If it succeeds, the expression is replaced by a constant. This stage also replaces the variable identifiers with indexes in the input array.
 
 So in summary, an expression is produced from `raw input -> Token stream -> AST -> Expression tree -> Optimized tree`
+
+## In this repository
+
+This repository contains a number of language bindings and auxillary packages, the following is an overview:
+
+ - `kuiper_lang` is the rust crate containing the language itself.
+ - `kuiper_cli` is a CLI tool for kuiper, letting you use it like you would a tool like `jq`. It also contains a REPL.
+ - `kuiper_documentation` contains utilities for generating markdown documentation as well as a few source code files from a list of built-in functions in `functions.yaml`.
+ - `kuiper_interop` is a set of C bindings for `kuiper_lang`, these are currently used for `KuiperNet` only.
+ - `kuiper_java` is java bindings for kuiper, using JNI. These are not currently published anywhere.
+ - `kuiper_js` is a set of WASM bindings for kuiper, published to NPM.
+ - `kuiper_lezer` is a lezer library for kuiper. Lezer is a JS library to create parsers. It is used for the frontend code editor.
+ - `kuiper_frontend_test` is a very simple react app using `kuiper_js` and `kuiper_lezer` to provide a live editor.
+ - `kuiper_lang_macros` is an auxillary macro library used for `kuiper_lang`.
+ - `kuiper_python` contains python bindings for kuiper, using `pyo3`. These are published to PyPI.
+ - `KuiperNet` contains .NET bindings for kuiper. These are published to nuget, with native binaries for Windows and Linux.
+ - `KuiperNet.Test` is a test project for `KuiperNet`.
+ - `fuzz` is a set of fuzz tests for kuiper.

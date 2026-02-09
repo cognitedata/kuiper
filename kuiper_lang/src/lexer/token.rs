@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use logos::{Logos, Span};
+use logos::{Lexer, Logos, Span};
 
 use crate::expressions::{Operator, TypeLiteral, UnaryOperator};
 
@@ -45,6 +45,12 @@ fn parse_string(mut raw: &str, border_char: char, start: usize) -> Result<String
     Ok(res)
 }
 
+fn consume_comment(lex: &mut Lexer<'_, Token>) -> Option<()> {
+    let len = lex.remainder().find("*/")?;
+    lex.bump(len + 2); // include len of `*/`
+    Some(())
+}
+
 /// The Token type is the entry point for expressions. The input is a string that is automatically tokenized by Logos.
 /// Any new operators, special symbols, or behavior needs to be added here.
 /// Aim to do all the actual text parsing here, so that the parser can operate purely on tokens.
@@ -67,6 +73,7 @@ pub enum Token {
     #[token(",")]
     Comma,
 
+    /// Used in array and object expressions for concatenation.
     #[token("...")]
     DotDot,
 
@@ -79,6 +86,7 @@ pub enum Token {
     #[regex(r#"(\d)+"#, |lex| lex.slice().parse().map_err(|e| LexerError::ParseInt((e, lex.span()))), priority = 2)]
     Integer(u64),
 
+    /// A boolean literal.
     #[token("true", |_| true)]
     #[token("false", |_| false)]
     Boolean(bool),
@@ -124,9 +132,11 @@ pub enum Token {
     #[token("not")]
     Not,
 
+    /// The `if` keyword for conditional expressions.
     #[token("if")]
     If,
 
+    /// The `else` keyword for conditional expressions.
     #[token("else")]
     Else,
 
@@ -145,35 +155,40 @@ pub enum Token {
     #[token("]")]
     CloseBracket,
 
+    /// Open brace for object and if expressions.
     #[token("{")]
     OpenBrace,
 
+    /// Close brace for object and if expressions.
     #[token("}")]
     CloseBrace,
 
+    /// Colon used in object construction.
     #[token(":")]
     Colon,
 
+    /// Arrow used in lambda expressions.
     #[token("=>")]
     Arrow,
 
+    /// Semicolon used in macro separation.
     #[token(";")]
     SemiColon,
 
+    /// Define equal used in macro definitions.
     #[token(":=")]
     DefineEqual,
 
+    /// Define symbol used in macro definitions.
     #[token("#")]
     DefineSym,
 
+    /// Combined arrow used in lambda expressions with multiple arguments.
     CombinedArrow,
 
-    #[token("/*", |lex| {
-        let len = lex.remainder().find("*/")?;
-        lex.bump(len + 2); // include len of `*/`
-        Some(())
-    })]
-    #[regex("//[^\n]*")]
+    #[token("/*", |lex| consume_comment(lex))]
+    /// A comment, the content is ignored.
+    #[regex("//[^\n]*", allow_greedy = true)]
     Comment,
 }
 
@@ -432,5 +447,23 @@ mod test {
                 Span { start: 5, end: 6 }
             ))))
         );
+    }
+
+    #[test]
+    pub fn test_line_comment() {
+        let mut lex = Token::lexer(
+            r#"
+// This is a line comment
+1 + 1
+// This is also a line comment 5 * 5
+"#,
+        )
+        .map(|t| t.unwrap());
+        assert_eq!(lex.next(), Some(Token::Comment));
+        assert_eq!(lex.next(), Some(Token::Integer(1)));
+        assert_eq!(lex.next(), Some(Token::Operator(Operator::Plus)));
+        assert_eq!(lex.next(), Some(Token::Integer(1)));
+        assert_eq!(lex.next(), Some(Token::Comment));
+        assert_eq!(lex.next(), None);
     }
 }
