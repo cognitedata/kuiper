@@ -3,7 +3,11 @@ use std::fmt::Display;
 use logos::Span;
 use serde_json::Value;
 
-use crate::{compiler::BuildError, write_list};
+use crate::{
+    compiler::BuildError,
+    types::{Array, Type},
+    write_list,
+};
 
 use super::{
     base::ExpressionMeta, transform_error::TransformError, Expression, ExpressionExecutionState,
@@ -79,6 +83,47 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ArrayExpression {
         }
         Ok(ResolveResult::Owned(Value::Array(arr)))
     }
+
+    fn resolve_types(
+        &'a self,
+        _state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let mut types = vec![];
+        let mut end_dynamic: Option<Type> = None;
+        // When adding items to an array type, we either know the exact elements of the array,
+        // in which case we simply add them to the list of types, or we have a dynamic end,
+        // in which case we union each new type with the dynamic end type.
+        for item in &self.items {
+            match item {
+                ArrayElement::Expression(x) => {
+                    if let Some(dynamic) = end_dynamic {
+                        end_dynamic = Some(dynamic.union_with(x.resolve_types(_state)?));
+                    } else {
+                        types.push(x.resolve_types(_state)?);
+                    }
+                }
+                ArrayElement::Concat(x) => {
+                    let ty = x.resolve_types(_state)?;
+                    // If this is valid, it must be a sequence type.
+                    let seq = ty.try_as_array(&self.span)?;
+                    // Just chain the elements of the sequence.
+                    if let Some(mut dynamic) = end_dynamic {
+                        for ty in seq.all_elements() {
+                            dynamic = dynamic.union_with(ty.clone());
+                        }
+                        end_dynamic = Some(dynamic);
+                    } else {
+                        types.extend(seq.elements);
+                        end_dynamic = seq.end_dynamic.map(|x| *x);
+                    }
+                }
+            };
+        }
+        Ok(Type::Array(Array {
+            elements: types,
+            end_dynamic: end_dynamic.map(Box::new),
+        }))
+    }
 }
 
 impl ExpressionMeta for ArrayExpression {
@@ -105,7 +150,11 @@ impl ArrayExpression {
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::compile_err;
+    use crate::{
+        compile_expression,
+        tests::compile_err,
+        types::{Array, Type},
+    };
 
     #[test]
     fn test_invalid_concat() {
@@ -114,5 +163,65 @@ mod tests {
             err.to_string(),
             "Compilation failed: array. Got number, expected array at 0..9"
         );
+    }
+
+    #[test]
+    fn test_array_types_known() {
+        let expr = compile_expression(
+            "[1, 'a', ...[true, false], ...[1, 2, 3], input]",
+            &["input"],
+        )
+        .unwrap();
+        let ty = expr.run_types([Type::Integer]).unwrap();
+        assert_eq!(
+            ty,
+            Type::Array(Array {
+                elements: vec![
+                    Type::from_const(1),
+                    Type::from_const("a"),
+                    Type::from_const(true),
+                    Type::from_const(false),
+                    Type::from_const(1),
+                    Type::from_const(2),
+                    Type::from_const(3),
+                    Type::Integer,
+                ],
+                end_dynamic: None,
+            })
+        );
+        assert_eq!(ty.to_string(), "[1, \"a\", true, false, 1, 2, 3, Integer]");
+    }
+
+    #[test]
+    fn test_array_types_dynamic() {
+        let expr = compile_expression("[1, ...input, ...context]", &["input", "context"]).unwrap();
+        let ty = expr
+            .run_types([
+                Type::Array(Array {
+                    elements: vec![],
+                    end_dynamic: Some(Box::new(Type::Integer)),
+                }),
+                Type::Array(Array {
+                    elements: vec![
+                        Type::from_const(1),
+                        Type::from_const(2),
+                        Type::from_const("a"),
+                    ],
+                    end_dynamic: Some(Box::new(Type::Float)),
+                }),
+            ])
+            .unwrap();
+        assert_eq!(
+            ty,
+            Type::Array(Array {
+                elements: vec![Type::from_const(1)],
+                end_dynamic: Some(Box::new(
+                    Type::Integer
+                        .union_with(Type::from_const("a"))
+                        .union_with(Type::Float)
+                )),
+            })
+        );
+        assert_eq!(ty.to_string(), "[1, ...Union<Integer, \"a\", Float>]");
     }
 }

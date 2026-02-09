@@ -2,7 +2,10 @@ use std::fmt::Display;
 
 use serde_json::Value;
 
-use crate::{BuildError, ExpressionType, TransformError};
+use crate::{
+    types::{Truthy, Type},
+    BuildError, ExpressionType, TransformError,
+};
 
 use super::{Expression, ExpressionExecutionState, ExpressionMeta, ResolveResult};
 
@@ -82,6 +85,18 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IsExpression {
             Ok(ResolveResult::Owned(Value::Bool(res)))
         }
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let lhs = self.lhs.resolve_types(state)?;
+        match Self::matches_type(self.rhs, &lhs) {
+            Truthy::Always => Ok(Type::from_const(!self.not)),
+            Truthy::Maybe => Ok(Type::Boolean),
+            Truthy::Never => Ok(Type::from_const(self.not)),
+        }
+    }
 }
 
 impl IsExpression {
@@ -93,10 +108,71 @@ impl IsExpression {
             not,
         })
     }
+
+    fn matches_type(lit: TypeLiteral, rhs: &Type) -> Truthy {
+        match (lit, rhs) {
+            (l, Type::Union(r)) => r
+                .iter()
+                .map(|v| Self::matches_type(l, v))
+                .reduce(|i1, i2| i1.combine(i2))
+                .unwrap_or(Truthy::Never),
+            (_, Type::Any) => Truthy::Maybe,
+            (TypeLiteral::Null, Type::Constant(Value::Null)) => Truthy::Always,
+            (TypeLiteral::Int, Type::Constant(v)) if v.is_i64() || v.is_u64() => Truthy::Always,
+            (TypeLiteral::Int, Type::Integer) => Truthy::Always,
+            (TypeLiteral::Bool, Type::Constant(Value::Bool(_)) | Type::Boolean) => Truthy::Always,
+            (TypeLiteral::Float, Type::Constant(Value::Number(v))) if v.is_f64() => Truthy::Always,
+            (TypeLiteral::Float, Type::Float) => Truthy::Always,
+            (TypeLiteral::String, Type::Constant(Value::String(_)) | Type::String) => {
+                Truthy::Always
+            }
+            (TypeLiteral::Array, Type::Constant(Value::Array(_)) | Type::Array(_)) => {
+                Truthy::Always
+            }
+            (TypeLiteral::Object, Type::Constant(Value::Object(_)) | Type::Object(_)) => {
+                Truthy::Always
+            }
+            (
+                TypeLiteral::Number,
+                Type::Constant(Value::Number(_)) | Type::Integer | Type::Float,
+            ) => Truthy::Always,
+            _ => Truthy::Never,
+        }
+    }
 }
 
 impl ExpressionMeta for IsExpression {
     fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
         Box::new([self.lhs.as_mut()].into_iter())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::types::Type;
+
+    #[test]
+    fn test_is_expr_types() {
+        let expr = crate::compile_expression(
+            r#"
+            input is int
+        "#,
+            &["input"],
+        )
+        .unwrap();
+        let ty = expr.run_types([Type::Integer]).unwrap();
+        assert_eq!(Type::from_const(true), ty);
+        let ty = expr.run_types([Type::String]).unwrap();
+        assert_eq!(Type::from_const(false), ty);
+        let ty = expr
+            .run_types([Type::String.union_with(Type::Boolean)])
+            .unwrap();
+        assert_eq!(Type::from_const(false), ty);
+        let ty = expr
+            .run_types([Type::Integer.union_with(Type::Boolean)])
+            .unwrap();
+        assert_eq!(Type::Boolean, ty);
+        let ty = expr.run_types([Type::Any]).unwrap();
+        assert_eq!(Type::Boolean, ty);
     }
 }

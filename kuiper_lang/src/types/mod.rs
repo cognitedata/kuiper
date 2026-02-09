@@ -79,6 +79,18 @@ pub enum Truthy {
     Never,
 }
 
+impl Truthy {
+    /// Combine the truthyness of two types. The resulting truthyness is
+    /// confident, i.e. "always" or "never" if both inputs agree, and "maybe" otherwise.
+    pub fn combine(self, other: Self) -> Self {
+        match (self, other) {
+            (Truthy::Always, Truthy::Always) => Truthy::Always,
+            (Truthy::Never, Truthy::Never) => Truthy::Never,
+            _ => Truthy::Maybe,
+        }
+    }
+}
+
 impl Type {
     /// Create a new constant type.
     pub fn from_const(value: impl Into<Value>) -> Self {
@@ -123,6 +135,11 @@ impl Type {
         }
     }
 
+    /// Check whether the type is numeric, i.e. a float or an integer.
+    pub fn is_numeric(&self) -> bool {
+        self.is_integer() || self.is_float()
+    }
+
     /// Create a new never type, which is a union of no types.
     /// If the result of an expression is the never type, it means that
     /// the expression will never successfully complete.
@@ -141,10 +158,10 @@ impl Type {
     /// Check whether the other type is always equal to this type,
     /// meaning they are both constant and have the same value.
     /// If either type is not constant, this will return false.
-    pub fn const_equals(&self, other: &Type) -> bool {
+    pub fn const_equality(&self, other: &Type) -> Option<bool> {
         match (self, other) {
-            (Type::Constant(v1), Type::Constant(v2)) => v1 == v2,
-            _ => false,
+            (Type::Constant(v1), Type::Constant(v2)) => Some(v1 == v2),
+            _ => None,
         }
     }
 
@@ -612,9 +629,9 @@ mod tests {
         let t3 = Type::from_const(json!(43));
         let t4 = Type::Integer;
 
-        assert!(t1.const_equals(&t2));
-        assert!(!t1.const_equals(&t3));
-        assert!(!t1.const_equals(&t4));
+        assert_eq!(Some(true), t1.const_equality(&t2));
+        assert_eq!(Some(false), t1.const_equality(&t3));
+        assert_eq!(None, t1.const_equality(&t4));
     }
 
     #[test]
