@@ -5,9 +5,12 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-pub const BUILT_INS: [&str; 61] = [
+pub const BUILT_INS: [&str; 69] = [
+    "acos(",
     "all(",
     "any(",
+    "asin(",
+    "atan(",
     "atan2(",
     "case(",
     "ceil(",
@@ -16,10 +19,12 @@ pub const BUILT_INS: [&str; 61] = [
     "coalesce(",
     "concat(",
     "contains(",
+    "cos(",
     "digest(",
     "distinct_by(",
     "ends_with(",
     "except(",
+    "exp(",
     "filter(",
     "flatmap(",
     "float(",
@@ -50,14 +55,17 @@ pub const BUILT_INS: [&str; 61] = [
     "replace(",
     "round(",
     "select(",
+    "sin(",
     "slice(",
     "split(",
+    "sqrt(",
     "starts_with(",
     "string(",
     "string_join(",
     "substring(",
     "sum(",
     "tail(",
+    "tan(",
     "to_object(",
     "to_unix_timestamp(",
     "translate(",
@@ -78,6 +86,13 @@ lazy_static! {
     pub static ref HELP: HashMap<&'static str, FunctionDef> = HashMap::from([
 
         (
+            "acos",
+            FunctionDef {
+                signature: "acos(x)",
+                description: "Return the inverse cosine of `x` in radians between 0 and pi.",
+            }
+        ),
+        (
             "all",
             FunctionDef {
                 signature: "all(x)",
@@ -89,6 +104,20 @@ lazy_static! {
             FunctionDef {
                 signature: "any(x)",
                 description: "Return `true` if any items in the array `x` is true.",
+            }
+        ),
+        (
+            "asin",
+            FunctionDef {
+                signature: "asin(x)",
+                description: "Return the inverse sine of `x` in radians between -pi/2 and pi/2.",
+            }
+        ),
+        (
+            "atan",
+            FunctionDef {
+                signature: "atan(x)",
+                description: "Return the inverse tangent of `x` in radians between -pi/2 and pi/2.",
             }
         ),
         (
@@ -148,6 +177,13 @@ lazy_static! {
             }
         ),
         (
+            "cos",
+            FunctionDef {
+                signature: "cos(x)",
+                description: "Return the cosine of `x`, where `x` is in radians.",
+            }
+        ),
+        (
             "digest",
             FunctionDef {
                 signature: "digest(a, b, ...)",
@@ -175,6 +211,13 @@ lazy_static! {
                 description: "Return a list or object where keys or entries maching the predicate have been removed.
 If the second argument is a lambda, it will be given the entry and if it returns `true`, the entry is removed.
 If the second argument is a list, any entry also found in this list will be removed.",
+            }
+        ),
+        (
+            "exp",
+            FunctionDef {
+                signature: "exp(x)",
+                description: "Return e to the power of `x`.",
             }
         ),
         (
@@ -406,6 +449,13 @@ See [regex_is_match](#regex_is_match) for details on regex support.",
             }
         ),
         (
+            "sin",
+            FunctionDef {
+                signature: "sin(x)",
+                description: "Return the sine of `x`, where `x` is in radians.",
+            }
+        ),
+        (
             "slice",
             FunctionDef {
                 signature: "slice(x, start(, end))",
@@ -417,6 +467,13 @@ See [regex_is_match](#regex_is_match) for details on regex support.",
             FunctionDef {
                 signature: "split(a, b)",
                 description: "Split string `a` on any occurences of `b`. If `b` is an empty string, this will split on each character, including before the first and after the last.",
+            }
+        ),
+        (
+            "sqrt",
+            FunctionDef {
+                signature: "sqrt(x)",
+                description: "Return the square root of `x`.",
             }
         ),
         (
@@ -461,6 +518,13 @@ See [regex_is_match](#regex_is_match) for details on regex support.",
             FunctionDef {
                 signature: "tail(x(, n))",
                 description: "Take the last element of the list `x`. If `n` is given, takes the last `n` elements, and returns a list if `n` > 1.",
+            }
+        ),
+        (
+            "tan",
+            FunctionDef {
+                signature: "tan(x)",
+                description: "Return the tangent of `x`, where `x` is in radians.",
             }
         ),
         (

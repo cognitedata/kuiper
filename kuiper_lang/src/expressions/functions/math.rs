@@ -92,6 +92,14 @@ arg2_math_func!(Atan2Function, "atan2", atan2);
 arg1_math_func!(FloorFunction, "floor", floor);
 arg1_math_func!(CeilFunction, "ceil", ceil);
 arg1_math_func!(RoundFunction, "round", round);
+arg1_math_func!(SqrtFunction, "sqrt", sqrt);
+arg1_math_func!(ExpFunction, "exp", exp);
+arg1_math_func!(SinFunction, "sin", sin);
+arg1_math_func!(CosFunction, "cos", cos);
+arg1_math_func!(TanFunction, "tan", tan);
+arg1_math_func!(AsinFunction, "asin", asin);
+arg1_math_func!(AcosFunction, "acos", acos);
+arg1_math_func!(AtanFunction, "atan", atan);
 
 function_def!(IntFunction, "int", 1);
 
@@ -319,6 +327,8 @@ mod tests {
 
     use crate::compile_expression;
 
+    const TINY: f64 = 0.00000001;
+
     #[test]
     pub fn test_max_function() {
         let expr = compile_expression(
@@ -495,7 +505,7 @@ mod tests {
         let res = expr.run([&inp]).unwrap();
         assert_eq!(1.0, res.get("res").unwrap().as_f64().unwrap());
         // Yes, this does yield 2.9999999999999996, blame computers.
-        assert!((3.0 - res.get("res2").unwrap().as_f64().unwrap()).abs() < 0.00000001);
+        assert!((3.0 - res.get("res2").unwrap().as_f64().unwrap()).abs() < TINY);
     }
 
     #[test]
@@ -540,5 +550,85 @@ mod tests {
         assert_eq!(-1234.0, res.get("res2").unwrap().as_f64().unwrap());
         assert_eq!(-1234.123, res.get("res3").unwrap().as_f64().unwrap());
         assert_eq!(1234.1234, res.get("res4").unwrap().as_f64().unwrap());
+    }
+
+    #[test]
+    pub fn test_sqrt_function() {
+        let expr = compile_expression(
+            r#"{
+            "res": sqrt(4),
+            "res2": sqrt(input.val1)
+        }"#,
+            &["input"],
+        )
+        .unwrap();
+
+        let inp = json!({
+            "val1": 100
+        });
+        let res = expr.run([&inp]).unwrap();
+        assert!((2.0 - res.get("res").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((10.0 - res.get("res2").unwrap().as_f64().unwrap()).abs() < TINY);
+
+        assert!(compile_expression(r#"{"res": sqrt(-1)}"#, &[],).is_err()); // sqrt(-1) is undefined, should yield an error
+    }
+
+    #[test]
+    pub fn test_exp_function() {
+        let expr = compile_expression(
+            r#"{
+            "res": exp(1),
+            "res2": exp(input.val1)
+        }"#,
+            &["input"],
+        )
+        .unwrap();
+
+        let inp = json!({
+            "val1": 2
+        });
+        let res = expr.run([&inp]).unwrap();
+        assert!((std::f64::consts::E - res.get("res").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!(
+            (std::f64::consts::E.powi(2) - res.get("res2").unwrap().as_f64().unwrap()).abs() < TINY
+        );
+    }
+
+    #[test]
+    pub fn test_trig_functions() {
+        let expr = compile_expression(
+            r#"{
+            "res0": sin(0),
+            "res1": sin(input),
+            "res2": cos(0),
+            "res3": cos(input),
+            "res4": tan(0),
+            "res5": asin(0),
+            "res6": asin(input),
+            "res7": acos(0),
+            "res8": acos(input),
+            "res9": atan(0),
+            "res10": atan(input)
+        }"#,
+            &["input"],
+        )
+        .unwrap();
+
+        let inp = json!(0.5);
+        let res = expr.run([&inp]).unwrap();
+        assert!((0.0 - res.get("res0").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((0.479425538604203 - res.get("res1").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((1.0 - res.get("res2").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((0.8775825618903726 - res.get("res3").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((0.0 - res.get("res4").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((0.0 - res.get("res5").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((0.5235987755982989 - res.get("res6").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((1.5707963267948966 - res.get("res7").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((1.0471975511965979 - res.get("res8").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((0.0 - res.get("res9").unwrap().as_f64().unwrap()).abs() < TINY);
+        assert!((0.4636476090008061 - res.get("res10").unwrap().as_f64().unwrap()).abs() < TINY);
+
+        assert!(compile_expression(r#"{"res": asin(2)}"#, &[],).is_err()); // asin(2) is undefined, should yield an error
+        assert!(compile_expression(r#"{"res": acos(2)}"#, &[],).is_err()); // acos(2) is undefined, should yield an error
     }
 }
