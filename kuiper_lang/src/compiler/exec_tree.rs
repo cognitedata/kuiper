@@ -275,10 +275,11 @@ impl BuilderInner {
         ast: Expression,
         depth: usize,
     ) -> Result<ExpressionType, BuildError> {
-        if depth > 500 {
+        // Setting this too high might result in a stack overflow.
+        if depth > 200 {
             return Err(BuildError::other(
                 Span { start: 0, end: 0 },
-                "Recursion depth exceeded during compilation",
+                "Recursion depth limit exceeded during compilation",
             ));
         }
         match ast {
