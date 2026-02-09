@@ -5,6 +5,7 @@ edition = "2021"
 license = "Apache-2.0"
 description = "A CLI for the Kuiper JSON mapping language"
 homepage = "htttps://github.com/cognitedata/kuiper"
+default-run = "kuiper"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
