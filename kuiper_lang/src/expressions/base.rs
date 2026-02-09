@@ -280,6 +280,14 @@ pub enum FunctionType {
     Lower(LowerFunction),
     Upper(UpperFunction),
     Translate(TranslateFunction),
+    SqrtFunction(SqrtFunction),
+    ExpFunction(ExpFunction),
+    SinFunction(SinFunction),
+    CosFunction(CosFunction),
+    TanFunction(TanFunction),
+    AsinFunction(AsinFunction),
+    AcosFunction(AcosFunction),
+    AtanFunction(AtanFunction),
 }
 
 struct FunctionBuilder {
@@ -364,6 +372,14 @@ pub fn get_function_expression(
         "lower" => FunctionType::Lower(b.mk()?),
         "upper" => FunctionType::Upper(b.mk()?),
         "translate" => FunctionType::Translate(b.mk()?),
+        "sqrt" => FunctionType::SqrtFunction(b.mk()?),
+        "exp" => FunctionType::ExpFunction(b.mk()?),
+        "sin" => FunctionType::SinFunction(b.mk()?),
+        "cos" => FunctionType::CosFunction(b.mk()?),
+        "tan" => FunctionType::TanFunction(b.mk()?),
+        "asin" => FunctionType::AsinFunction(b.mk()?),
+        "acos" => FunctionType::AcosFunction(b.mk()?),
+        "atan" => FunctionType::AtanFunction(b.mk()?),
         _ => return Err(BuildError::unrecognized_function(b.pos, name)),
     };
     Ok(ExpressionType::Function(expr))
