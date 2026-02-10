@@ -632,3 +632,58 @@ functions:
     description: "Replace characters in the string `x` found in the string `from` with the corresponding character in the string `to`. If `to` and `from` are of different lengths, the expression will fail."
     examples:
       - '"hello world".translate("he", "HE") -> "HEllo world"'
+
+  - name: sqrt
+    signature: "`sqrt(x)`"
+    description: Return the square root of `x`.
+    examples:
+      - sqrt(16) -> 4.0
+
+  - name: exp
+    signature: "`exp(x)`"
+    description: Return e to the power of `x`.
+    examples:
+      - exp(1) -> 2.718281828459045
+      - exp(10) -> 22026.465794806718
+
+  - name: sin
+    signature: "`sin(x)`"
+    description: Return the sine of `x`, where `x` is in radians.
+    examples:
+      - sin(0) -> 0.0
+      - sin(3.141592653589793 / 2) -> 1.0
+
+  - name: cos
+    signature: "`cos(x)`"
+    description: Return the cosine of `x`, where `x` is in radians.
+    examples:
+      - cos(0) -> 1.0
+      - cos(3.141592653589793 / 2) -> 0.0
+
+  - name: tan
+    signature: "`tan(x)`"
+    description: Return the tangent of `x`, where `x` is in radians.
+    examples:
+      - tan(0) -> 0.0
+      - tan(3.141592653589793 / 4) -> 1.0
+
+  - name: asin
+    signature: "`asin(x)`"
+    description: Return the inverse sine of `x` in radians between -pi/2 and pi/2.
+    examples:
+      - asin(0) -> 0.0
+      - asin(1) -> 1.5707963267948966
+
+  - name: acos
+    signature: "`acos(x)`"
+    description: Return the inverse cosine of `x` in radians between 0 and pi.
+    examples:
+      - acos(0) -> 1.5707963267948966
+      - acos(1) -> 0.0
+
+  - name: atan
+    signature: "`atan(x)`"
+    description: Return the inverse tangent of `x` in radians between -pi/2 and pi/2.
+    examples:
+      - atan(0) -> 0.0
+      - atan(1) -> 0.7853981633974483

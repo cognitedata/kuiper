@@ -14,6 +14,7 @@ use macros::Macro;
 use regex::Regex;
 use rustyline::error::ReadlineError;
 use rustyline::{CompletionType, Config, Editor};
+use serde_json::Value;
 
 use crate::repl::magic::apply_magic_function;
 
@@ -41,8 +42,10 @@ pub fn repl(verbose_log: bool) {
     println!("Type /help for a list of available commands. Press ctrl-D to exit.");
     println!();
 
+    let prompt = "kuiper> ".blue().bold().to_string();
+
     'repl: loop {
-        let line = readlines.readline("kuiper> ");
+        let line = readlines.readline(&prompt);
 
         match line {
             Ok(mut expression) => {
@@ -93,7 +96,7 @@ pub fn repl(verbose_log: bool) {
                     .fold("".to_string(), |acc, e| format!("{e} {acc}"));
                 expression = format!("{formatted_macro_defs}{expression}");
 
-                let chunk_id = format!("var{index}");
+                let chunk_id = format!("out{index}");
                 let compile_start = Instant::now();
                 let res = compile_expression(
                     &expression,
@@ -126,9 +129,21 @@ pub fn repl(verbose_log: bool) {
 
                 match res {
                     Ok(x) => {
-                        println!("{chunk_id} = {}", &*x);
+                        let value = x.into_owned();
+                        let line = match &value {
+                            Value::Object(_) | Value::Array(_) => {
+                                let compact = value.to_string();
+                                if compact.len() > 50 {
+                                    serde_json::to_string_pretty(&value).unwrap_or(compact)
+                                } else {
+                                    compact
+                                }
+                            }
+                            _ => value.to_string(),
+                        };
+                        println!("{} {}", format!("{chunk_id}:").green(), &line);
                         inputs.push(chunk_id);
-                        data.push(x.into_owned());
+                        data.push(value);
                     }
                     Err(e) => {
                         print_transform_error(&expression, &e);

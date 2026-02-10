@@ -42,6 +42,18 @@ class Cargo(FileType):
         )
 
 
+class CargoMacroDep(FileType):
+    def get_version(self, file: TextIOWrapper) -> str:
+        return toml.load(file)["dependencies"]["kuiper_lang_macros"]["version"]
+
+    def set_version(self, file_name: str, version: str) -> None:
+        replace_in_file(
+            file_name,
+            r'\[dependencies.kuiper_lang_macros\]\nversion = "[0-9\.]+"',
+            f'[dependencies.kuiper_lang_macros]\nversion = "{version}"',
+        )
+
+
 class PyProject(FileType):
     def get_version(self, file: TextIOWrapper) -> str:
         return toml.load(file)["project"]["version"]
@@ -79,17 +91,21 @@ class Csproj(FileType):
         )
 
 
-FILES: dict[Path, FileType] = {
-    Path(__file__).resolve().parent / "kuiper_cli" / "Cargo.toml": Cargo(),
-    Path(__file__).resolve().parent / "kuiper_lang" / "Cargo.toml": Cargo(),
-    Path(__file__).resolve().parent / "kuiper_python" / "Cargo.toml": Cargo(),
-    Path(__file__).resolve().parent / "kuiper_python" / "pyproject.toml": PyProject(),
-    Path(__file__).resolve().parent / "kuiper_lezer" / "package.json": JsPackage(),
-    Path(__file__).resolve().parent / "kuiper_js" / "Cargo.toml": Cargo(),
-    Path(__file__).resolve().parent / "kuiper_lang_macros" / "Cargo.toml": Cargo(),
-    Path(__file__).resolve().parent / "KuiperNet" / "KuiperNet.csproj": Csproj(),
-    Path(__file__).resolve().parent / "kuiper_interop" / "Cargo.toml": Cargo(),
-}
+FILES: list[tuple[Path, FileType]] = [
+    (Path(__file__).resolve().parent / "kuiper_cli" / "Cargo.toml", Cargo()),
+    (Path(__file__).resolve().parent / "kuiper_lang" / "Cargo.toml", Cargo()),
+    (Path(__file__).resolve().parent / "kuiper_python" / "Cargo.toml", Cargo()),
+    (Path(__file__).resolve().parent / "kuiper_python" / "pyproject.toml", PyProject()),
+    (Path(__file__).resolve().parent / "kuiper_lezer" / "package.json", JsPackage()),
+    (Path(__file__).resolve().parent / "kuiper_js" / "Cargo.toml", Cargo()),
+    (Path(__file__).resolve().parent / "kuiper_lang_macros" / "Cargo.toml", Cargo()),
+    (Path(__file__).resolve().parent / "KuiperNet" / "KuiperNet.csproj", Csproj()),
+    (Path(__file__).resolve().parent / "kuiper_interop" / "Cargo.toml", Cargo()),
+    (
+        Path(__file__).resolve().parent / "kuiper_lang" / "Cargo.toml",
+        CargoMacroDep(),
+    ),
+]
 
 
 def main() -> None:
@@ -99,12 +115,12 @@ def main() -> None:
         print(f"Setting version to {sys.argv[1]}")
         version = sys.argv[1]
 
-        for file in FILES:
-            FILES[file].set_version(file, version)
+        for file, ty in FILES:
+            ty.set_version(file, version)
     else:
-        for file in FILES:
+        for file, ty in FILES:
             with open(file, "r") as f:
-                version = FILES[file].get_version(f)
+                version = ty.get_version(f)
                 print(f"{file}: {version}")
                 versions.add(version)
         print()

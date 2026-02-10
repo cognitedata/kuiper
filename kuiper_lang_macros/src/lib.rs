@@ -1,3 +1,7 @@
+//! Macro crate for the kuiper language. This contains the `PassThrough` derive macro, which is used
+//! internally for enum-dispatch, and the `SourceData` derive macro, which is used to easily let custom
+//! structs be used as input sources for kuiper expressions.
+
 use std::collections::HashMap;
 
 use proc_macro::TokenStream;
