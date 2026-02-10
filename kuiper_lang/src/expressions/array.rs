@@ -86,7 +86,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ArrayExpression {
 
     fn resolve_types(
         &'a self,
-        _state: &mut crate::types::TypeExecutionState<'c, '_>,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let mut types = vec![];
         let mut end_dynamic: Option<Type> = None;
@@ -97,13 +97,13 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ArrayExpression {
             match item {
                 ArrayElement::Expression(x) => {
                     if let Some(dynamic) = end_dynamic {
-                        end_dynamic = Some(dynamic.union_with(x.resolve_types(_state)?));
+                        end_dynamic = Some(dynamic.union_with(x.resolve_types(state)?));
                     } else {
-                        types.push(x.resolve_types(_state)?);
+                        types.push(x.resolve_types(state)?);
                     }
                 }
                 ArrayElement::Concat(x) => {
-                    let ty = x.resolve_types(_state)?;
+                    let ty = x.resolve_types(state)?;
                     // If this is valid, it must be a sequence type.
                     let seq = ty.try_as_array(&self.span)?;
                     // Just chain the elements of the sequence.
