@@ -1,4 +1,7 @@
-use crate::expressions::{Expression, ExpressionExecutionState, ResolveResult};
+use crate::{
+    expressions::{Expression, ExpressionExecutionState, ResolveResult},
+    types::Type,
+};
 
 function_def!(CoalesceFunction, "coalesce", 2, None);
 
@@ -15,11 +18,33 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for CoalesceFunction {
         }
         Ok(ResolveResult::Owned(serde_json::Value::Null))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let mut final_type = Type::never();
+        let mut final_found = false;
+        for arg in &self.args {
+            let t = arg.resolve_types(state)?;
+            if !t.is_null() && !final_found {
+                final_type = final_type.union_with(t.clone());
+            }
+            if !t.is_assignable_to(&Type::null()) {
+                final_found = true;
+            }
+        }
+        if final_type.is_never() {
+            Ok(crate::types::Type::null())
+        } else {
+            Ok(final_type)
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::compile_expression;
+    use crate::{compile_expression, types::Type};
 
     #[test]
     pub fn test_coalesce() {
@@ -28,5 +53,35 @@ mod tests {
 
         let v = res.as_str().unwrap();
         assert_eq!(v, "a");
+    }
+
+    #[test]
+    pub fn test_coalesce_types() {
+        let expr = compile_expression(
+            r#"coalesce(input1, input2, input3)"#,
+            &["input1", "input2", "input3"],
+        )
+        .unwrap();
+        let t = expr
+            .run_types([Type::null(), Type::Integer, Type::String])
+            .unwrap();
+        assert_eq!(t, Type::Integer);
+        let t = expr
+            .run_types([Type::null(), Type::null(), Type::String])
+            .unwrap();
+        assert_eq!(t, Type::String);
+        let t = expr
+            .run_types([Type::null(), Type::null(), Type::null()])
+            .unwrap();
+        assert_eq!(t, Type::null());
+
+        let t = expr
+            .run_types([
+                Type::null(),
+                Type::Integer.nullable(),
+                Type::String.nullable(),
+            ])
+            .unwrap();
+        assert_eq!(t, Type::Integer.nullable().union_with(Type::String));
     }
 }

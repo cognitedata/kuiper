@@ -29,6 +29,18 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ParseJsonFunction {
             _ => Ok(source),
         }
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let source = self.args[0].resolve_types(state)?;
+        if source.is_assignable_to(&crate::types::Type::String) {
+            Ok(crate::types::Type::Any)
+        } else {
+            Ok(source)
+        }
+    }
 }
 
 #[cfg(test)]
@@ -105,5 +117,21 @@ mod tests {
                 "foo": "bar"
             })
         );
+    }
+
+    #[test]
+    fn test_json_types() {
+        let expr = compile_expression(
+            r#"
+            parse_json(input)
+            "#,
+            &["input"],
+        )
+        .unwrap();
+        let t = expr.run_types([crate::types::Type::String]).unwrap();
+        assert_eq!(t, crate::types::Type::Any);
+
+        let t = expr.run_types([crate::types::Type::Integer]).unwrap();
+        assert_eq!(t, crate::types::Type::Integer);
     }
 }

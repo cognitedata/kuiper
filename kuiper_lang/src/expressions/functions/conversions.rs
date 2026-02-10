@@ -1,5 +1,6 @@
 use crate::expressions::numbers::JsonNumber;
 use crate::expressions::{Expression, ExpressionExecutionState, ResolveResult};
+use crate::types::Type;
 use crate::TransformError;
 use serde_json::Value;
 
@@ -52,6 +53,18 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryFloatFunction {
             },
         )
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let a1 = self.args[0].resolve_types(state)?;
+        let a2 = self.args[1].resolve_types(state)?;
+        if !a1.is_assignable_to(&Type::number().union_with(Type::String)) {
+            return Ok(a2);
+        }
+        Ok(Type::Float.union_with(a2))
+    }
 }
 
 function_def!(TryIntFunction, "try_int", 2);
@@ -78,6 +91,18 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryIntFunction {
             },
         )
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let a1 = self.args[0].resolve_types(state)?;
+        let a2 = self.args[1].resolve_types(state)?;
+        if !a1.is_assignable_to(&Type::number().union_with(Type::String)) {
+            return Ok(a2);
+        }
+        Ok(Type::Integer.union_with(a2))
+    }
 }
 
 function_def!(TryBoolFunction, "try_bool", 2);
@@ -97,11 +122,23 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryBoolFunction {
         };
         Ok(ResolveResult::Owned(Value::from(r)))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let a1 = self.args[0].resolve_types(state)?;
+        let a2 = self.args[1].resolve_types(state)?;
+        if !a1.is_assignable_to(&Type::Boolean.union_with(Type::String)) {
+            return Ok(a2);
+        }
+        Ok(Type::Boolean.union_with(a2))
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::compile_expression;
+    use crate::{compile_expression, types::Type};
     use serde_json::json;
 
     #[test]
@@ -210,5 +247,35 @@ mod tests {
             "also not a bool",
             result.get("test8").unwrap().as_str().unwrap()
         );
+    }
+
+    #[test]
+    fn test_try_float_types() {
+        let exp = compile_expression(r#"try_float(input, "default")"#, &["input"]).unwrap();
+        let t = exp.run_types([Type::String]).unwrap();
+        assert_eq!(t, Type::Float.union_with(Type::from_const("default")));
+
+        let t = exp.run_types([Type::null()]).unwrap();
+        assert_eq!(t, Type::from_const("default"));
+    }
+
+    #[test]
+    fn test_try_int_types() {
+        let exp = compile_expression(r#"try_int(input, "default")"#, &["input"]).unwrap();
+        let t = exp.run_types([Type::String]).unwrap();
+        assert_eq!(t, Type::Integer.union_with(Type::from_const("default")));
+
+        let t = exp.run_types([Type::null()]).unwrap();
+        assert_eq!(t, Type::from_const("default"));
+    }
+
+    #[test]
+    fn test_try_bool_types() {
+        let exp = compile_expression(r#"try_bool(input, "default")"#, &["input"]).unwrap();
+        let t = exp.run_types([Type::String]).unwrap();
+        assert_eq!(t, Type::Boolean.union_with(Type::from_const("default")));
+
+        let t = exp.run_types([Type::null()]).unwrap();
+        assert_eq!(t, Type::from_const("default"));
     }
 }
