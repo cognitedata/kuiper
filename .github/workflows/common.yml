@@ -27,7 +27,7 @@ jobs:
           fetch-depth: 0
       - name: Install jq
         run: sudo apt-get install -y jq
-      
+
       - name: Get branch name
         id: branch
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> "$GITHUB_OUTPUT"
@@ -38,12 +38,12 @@ jobs:
           echo "version=$(cargo metadata --format-version 1 | jq --raw-output '.packages[] | select(.name == "kuiper_lang") | .version')" >> "$GITHUB_OUTPUT"
 
       - name: Test that all versions are the same
-        run: python check_version_numbers.py
-    
+        run: pip install toml && python check_version_numbers.py
+
       - name: Check if release should occur
         id: should-release
         run: echo "test=$(git tag --list 'v${{ steps.get-version.outputs.version }}' | wc -l | sed s/\ //g)" >> $GITHUB_OUTPUT
-      
+
       - name: Message about build
         uses: actions/github-script@v8
         with:
