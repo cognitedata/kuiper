@@ -56,6 +56,16 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for DigestFunction {
         let base64_out = base64::engine::general_purpose::STANDARD.encode(val);
         Ok(ResolveResult::Owned(Value::String(base64_out)))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        for arg in &self.args {
+            arg.resolve_types(state)?;
+        }
+        Ok(crate::types::Type::String)
+    }
 }
 
 #[cfg(test)]
@@ -95,5 +105,24 @@ mod tests {
         let res = expr.run([]).unwrap();
         let val = res.as_bool();
         assert!(val);
+    }
+
+    #[test]
+    fn test_digest_types() {
+        let expr = compile_expression(
+            r#"
+            digest(input1, input2, input3)
+        "#,
+            &["input1", "input2", "input3"],
+        )
+        .unwrap();
+        let t = expr
+            .run_types([
+                crate::types::Type::String,
+                crate::types::Type::Integer,
+                crate::types::Type::Float,
+            ])
+            .unwrap();
+        assert_eq!(t, crate::types::Type::String);
     }
 }
