@@ -21,27 +21,8 @@ There are several ways of using Kuiper. It can be used both as a standalone prog
 
 ### Using the CLI
 
-The easiest way to start using Kuiper is to use the standalone CLI. The CLI will operate on an input JSON file, and
-either an inline expression (with the `-e` argument) or an expression file (with the `-f` argument):
-
-``` commandline
-$ cat input.json
-[1, 2, 3, 4]
-$ kuiper -e "input.sum()" input.json
-10
-```
-
-You can also use Kuiper with pipes:
-
-``` commandline
-$ cat input.json | kuiper -e "input.sum()"
-10
-```
-
-Run `kuiper --help` for a full list of possible arguments.
-
-The CLI also contains a REPL, which you can launch by just running `kuiper`.
-
+The easiest way to start using Kuiper is to use the standalone CLI. See the [kuiper CLI README](./kuiper_cli/README.md)
+for more info on the CLI.
 
 ### As a rust library
 
