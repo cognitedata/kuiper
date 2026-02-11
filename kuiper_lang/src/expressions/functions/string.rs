@@ -3,7 +3,10 @@ use std::{borrow::Cow, collections::HashMap};
 use itertools::Itertools;
 use serde_json::Value;
 
-use crate::expressions::{Expression, ResolveResult};
+use crate::{
+    expressions::{Expression, ResolveResult},
+    types::Type,
+};
 
 // Example function definition
 
@@ -40,6 +43,20 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ConcatFunction {
         // to a previous result (which itself might be a reference to input data!), we could have returned a reference here instead.
         Ok(ResolveResult::Owned(Value::String(res)))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        // First, check that all arguments can be stringified using try_into_string
+        for arg in &self.args {
+            let res = arg.resolve_types(state)?;
+            res.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        }
+
+        // The result of concat is always a string, so we can just return that.
+        Ok(crate::types::Type::String)
+    }
 }
 
 // other functions follow... This function converts the input to a string.
@@ -51,30 +68,23 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for StringFunction {
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
         let dat = self.args[0].resolve(state)?;
-        // let val = dat.as_ref();
-        let res = match dat {
-            ResolveResult::Owned(Value::Null) | ResolveResult::Borrowed(Value::Null) => {
-                "".to_string()
-            }
-            ResolveResult::Owned(Value::Bool(ref x))
-            | ResolveResult::Borrowed(Value::Bool(ref x)) => {
-                if *x {
-                    "true".to_string()
-                } else {
-                    "false".to_string()
-                }
-            }
-            ResolveResult::Owned(Value::Number(ref x))
-            | ResolveResult::Borrowed(Value::Number(ref x)) => x.to_string(),
-            ResolveResult::Owned(Value::String(s)) => s,
-            ResolveResult::Borrowed(Value::String(s)) => s.to_owned(),
-            x => x.as_ref().to_string(),
-        };
-        Ok(ResolveResult::Owned(Value::String(res)))
+        Ok(ResolveResult::Owned(
+            dat.try_into_string("string", &self.span)?
+                .into_owned()
+                .into(),
+        ))
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let res = self.args[0].resolve_types(state)?;
+        res.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        Ok(Type::String)
     }
 }
 
-// other functions follow... This function converts the input to a string.
 function_def!(ReplaceFunction, "replace", 3);
 
 impl<'a: 'c, 'c> Expression<'a, 'c> for ReplaceFunction {
@@ -93,6 +103,17 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ReplaceFunction {
             .try_into_string("replace", &self.span)?;
         let replaced = res.replace(from.as_ref(), to.as_ref());
         Ok(ResolveResult::Owned(Value::String(replaced)))
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        for arg in &self.args {
+            let res = arg.resolve_types(state)?;
+            res.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        }
+        Ok(Type::String)
     }
 }
 
@@ -149,6 +170,23 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SubstringFunction {
             )))
         }
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let input = self.args[0].resolve_types(state)?;
+        input.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        let start = self.args[1].resolve_types(state)?;
+        start.assert_assignable_to(&Type::number(), &self.span)?;
+
+        if let Some(end) = self.args.get(2) {
+            let end = end.resolve_types(state)?;
+            end.assert_assignable_to(&Type::number(), &self.span)?;
+        }
+
+        Ok(Type::String)
+    }
 }
 fn get_byte_index(str: &str, idx: i64) -> Option<usize> {
     if idx < 0 {
@@ -183,6 +221,18 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SplitFunction {
                 .collect(),
         )))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        for arg in &self.args {
+            let res = arg.resolve_types(state)?;
+            res.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        }
+
+        Ok(Type::array_of_type(Type::String))
+    }
 }
 
 function_def!(TrimWhitespace, "trim_whitespace", 1);
@@ -197,6 +247,15 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TrimWhitespace {
             .try_into_string("trim_whitespace", &self.span)?;
 
         Ok(ResolveResult::Owned(inp_string.trim().to_string().into()))
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let input = self.args[0].resolve_types(state)?;
+        input.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        Ok(Type::String)
     }
 }
 
@@ -216,6 +275,15 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for CharsFunction {
             .map(|c| Value::String(c.to_string()))
             .collect();
         Ok(ResolveResult::Owned(res))
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let input = self.args[0].resolve_types(state)?;
+        input.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        Ok(Type::array_of_type(Type::String))
     }
 }
 
@@ -253,6 +321,21 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for StringJoinFunction {
             )),
         }
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let input = self.args[0].resolve_types(state)?;
+        input.assert_assignable_to(&Type::array_of_type(Type::stringifyable()), &self.span)?;
+
+        if let Some(sep) = self.args.get(1) {
+            let sep = sep.resolve_types(state)?;
+            sep.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        }
+
+        Ok(Type::String)
+    }
 }
 
 function_def!(StartsWithFunction, "starts_with", 2);
@@ -269,6 +352,17 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for StartsWithFunction {
 
         Ok(lh.starts_with(rh.as_ref()).into())
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        for arg in &self.args {
+            let res = arg.resolve_types(state)?;
+            res.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        }
+        Ok(Type::Boolean)
+    }
 }
 
 function_def!(EndsWithFunction, "ends_with", 2);
@@ -284,6 +378,17 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for EndsWithFunction {
         let rh = rh.try_as_string("ends_with", &self.span)?;
 
         Ok(lh.ends_with(rh.as_ref()).into())
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        for arg in &self.args {
+            let res = arg.resolve_types(state)?;
+            res.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        }
+        Ok(Type::Boolean)
     }
 }
 
@@ -302,6 +407,15 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for LowerFunction {
             inp_string.to_lowercase(),
         )))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let input = self.args[0].resolve_types(state)?;
+        input.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        Ok(Type::String)
+    }
 }
 
 function_def!(UpperFunction, "upper", 1);
@@ -318,6 +432,15 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for UpperFunction {
         Ok(ResolveResult::Owned(Value::String(
             inp_string.to_uppercase(),
         )))
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let input = self.args[0].resolve_types(state)?;
+        input.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        Ok(Type::String)
     }
 }
 
@@ -360,6 +483,17 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TranslateFunction {
 
         Ok(ResolveResult::Owned(Value::String(result)))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        for arg in &self.args {
+            let res = arg.resolve_types(state)?;
+            res.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        }
+        Ok(Type::String)
+    }
 }
 
 // Once the function is defined it should be added to the main function enum in expressions/base.rs, and to the get_function_expression function.
@@ -368,7 +502,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TranslateFunction {
 mod tests {
     use serde_json::{json, Value};
 
-    use crate::compile_expression;
+    use crate::{compile_expression, types::Type};
 
     #[test]
     pub fn test_concat() {
@@ -688,5 +822,121 @@ mod tests {
         assert_eq!(res.get("t2").unwrap().as_str().unwrap(), "HELLO WORLd");
         assert_eq!(res.get("t3").unwrap().as_str().unwrap(), "haooaa");
         assert_eq!(res.get("t4").unwrap().as_str().unwrap(), "hillo");
+    }
+
+    #[test]
+    fn test_concat_types() {
+        let expr = compile_expression("concat(input1, input2)", &["input1", "input2"]).unwrap();
+        let ty = expr.run_types([Type::Integer, Type::String]).unwrap();
+        assert_eq!(ty, Type::String);
+
+        assert!(expr
+            .run_types([Type::String, Type::array_of_type(Type::Boolean)])
+            .is_err());
+    }
+
+    #[test]
+    fn test_string_types() {
+        let expr = compile_expression("string(input)", &["input"]).unwrap();
+        let ty = expr.run_types([Type::Integer]).unwrap();
+        assert_eq!(ty, Type::String);
+
+        let ty = expr.run_types([Type::null()]).unwrap();
+        assert_eq!(ty, Type::String);
+
+        let ty = expr.run_types([Type::Boolean]).unwrap();
+        assert_eq!(ty, Type::String);
+
+        assert!(expr
+            .run_types([Type::array_of_type(Type::Boolean)])
+            .is_err());
+    }
+
+    #[test]
+    fn test_replace_types() {
+        let expr = compile_expression("replace(input, 'a', 'b')", &["input"]).unwrap();
+        let ty = expr.run_types([Type::Integer]).unwrap();
+        assert_eq!(ty, Type::String);
+
+        assert!(expr
+            .run_types([Type::array_of_type(Type::Boolean)])
+            .is_err());
+    }
+
+    #[test]
+    fn test_substring_types() {
+        let expr = compile_expression(
+            "substring(input, inpu2, input3)",
+            &["input", "inpu2", "input3"],
+        )
+        .unwrap();
+        let ty = expr
+            .run_types([Type::Integer, Type::Integer, Type::Integer])
+            .unwrap();
+        assert_eq!(ty, Type::String);
+
+        assert!(expr
+            .run_types([
+                Type::array_of_type(Type::Boolean),
+                Type::Integer,
+                Type::Integer
+            ])
+            .is_err());
+        assert!(expr
+            .run_types([Type::String, Type::String, Type::Integer])
+            .is_err());
+    }
+
+    #[test]
+    fn test_split_types() {
+        let expr = compile_expression("split(input, ' ')", &["input"]).unwrap();
+        let ty = expr.run_types([Type::String]).unwrap();
+        assert_eq!(ty, Type::array_of_type(Type::String));
+    }
+
+    #[test]
+    fn test_trim_whitespace_types() {
+        let expr = compile_expression("trim_whitespace(input)", &["input"]).unwrap();
+        let ty = expr.run_types([Type::String]).unwrap();
+        assert_eq!(ty, Type::String);
+    }
+
+    #[test]
+    fn test_chars_types() {
+        let expr = compile_expression("chars(input)", &["input"]).unwrap();
+        let ty = expr.run_types([Type::String]).unwrap();
+        assert_eq!(ty, Type::array_of_type(Type::String));
+    }
+
+    #[test]
+    fn test_string_join_types() {
+        let expr = compile_expression("string_join(input, ' ')", &["input"]).unwrap();
+        let ty = expr.run_types([Type::array_of_type(Type::String)]).unwrap();
+        assert_eq!(ty, Type::String);
+    }
+
+    #[test]
+    fn test_starts_ends_with_types() {
+        for func in ["starts_with", "ends_with"] {
+            let expr = compile_expression(&format!("{}(input, 'test')", func), &["input"]).unwrap();
+            let ty = expr.run_types([Type::String]).unwrap();
+            assert_eq!(ty, Type::Boolean);
+        }
+    }
+
+    #[test]
+    fn test_lower_upper_types() {
+        for func in ["lower", "upper"] {
+            let expr = compile_expression(&format!("{}(input)", func), &["input"]).unwrap();
+            let ty = expr.run_types([Type::String]).unwrap();
+            assert_eq!(ty, Type::String);
+        }
+    }
+
+    #[test]
+    fn test_translate_types() {
+        let expr = compile_expression("translate(input, 'abc', 'def')", &["input"]).unwrap();
+        let ty = expr.run_types([Type::String]).unwrap();
+        assert_eq!(ty, Type::String);
     }
 }
