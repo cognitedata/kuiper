@@ -3,7 +3,10 @@ use std::fmt::Display;
 use logos::Span;
 use serde_json::Value;
 
-use crate::compiler::BuildError;
+use crate::{
+    compiler::BuildError,
+    types::{Truthy, Type},
+};
 
 use super::{
     base::{Expression, ExpressionExecutionState, ExpressionMeta, ExpressionType},
@@ -135,6 +138,79 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
                 ),
                 &self.span,
             ))
+        }
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let lh = self.elements[0].resolve_types(state)?;
+        let rh = self.elements[1].resolve_types(state)?;
+        match self.operator {
+            Operator::Plus | Operator::Minus | Operator::Multiply | Operator::Modulo => {
+                lh.assert_assignable_to(&Type::number(), &self.span)?;
+                rh.assert_assignable_to(&Type::number(), &self.span)?;
+
+                if lh.is_integer() && rh.is_integer() {
+                    Ok(Type::Integer)
+                } else if lh.is_float() || rh.is_float() {
+                    Ok(Type::Float)
+                } else {
+                    Ok(Type::number())
+                }
+            }
+            Operator::Divide => {
+                lh.assert_assignable_to(&Type::number(), &self.span)?;
+                rh.assert_assignable_to(&Type::number(), &self.span)?;
+
+                Ok(Type::Float)
+            }
+            Operator::And => {
+                let lh = lh.truthyness();
+                let rh = rh.truthyness();
+                match (lh, rh) {
+                    (Truthy::Always, Truthy::Always) => Ok(Type::from_const(true)),
+                    (Truthy::Never, _) | (_, Truthy::Never) => Ok(Type::from_const(false)),
+                    _ => Ok(Type::Boolean),
+                }
+            }
+            Operator::Or => {
+                let lh = lh.truthyness();
+                let rh = rh.truthyness();
+                match (lh, rh) {
+                    (Truthy::Always, _) | (_, Truthy::Always) => Ok(Type::from_const(true)),
+                    (Truthy::Never, Truthy::Never) => Ok(Type::from_const(false)),
+                    _ => Ok(Type::Boolean),
+                }
+            }
+            Operator::Equals => {
+                if !lh.is_assignable_to(&rh) && (!lh.is_numeric() || !rh.is_numeric()) {
+                    return Ok(Type::from_const(false));
+                }
+                if let Some(v) = lh.const_equality(&rh) {
+                    return Ok(Type::from_const(v));
+                }
+                Ok(Type::Boolean)
+            }
+            Operator::NotEquals => {
+                if !lh.is_assignable_to(&rh) && (!lh.is_numeric() || !rh.is_numeric()) {
+                    return Ok(Type::from_const(true));
+                }
+                if let Some(v) = lh.const_equality(&rh) {
+                    return Ok(Type::from_const(!v));
+                }
+                Ok(Type::Boolean)
+            }
+            Operator::GreaterThan
+            | Operator::LessThan
+            | Operator::GreaterThanEquals
+            | Operator::LessThanEquals => {
+                lh.assert_assignable_to(&Type::number(), &self.span)?;
+                rh.assert_assignable_to(&Type::number(), &self.span)?;
+                Ok(Type::Boolean)
+            }
+            Operator::Is => Ok(Type::Boolean),
         }
     }
 }
@@ -310,6 +386,36 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for UnaryOpExpression {
             }
         }
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let rhs = self.element.resolve_types(state)?;
+        match self.operator {
+            UnaryOperator::Negate => {
+                let rhs = rhs.truthyness();
+                match rhs {
+                    Truthy::Always => Ok(Type::from_const(false)),
+                    Truthy::Never => Ok(Type::from_const(true)),
+                    Truthy::Maybe => Ok(Type::Boolean),
+                }
+            }
+            UnaryOperator::Minus => {
+                rhs.assert_assignable_to(&Type::number(), &self.span)?;
+                let is_float = rhs.is_assignable_to(&Type::Float);
+                let is_int = rhs.is_assignable_to(&Type::Integer);
+
+                if is_float && is_int {
+                    Ok(Type::number())
+                } else if is_float {
+                    Ok(Type::Float)
+                } else {
+                    Ok(Type::Integer)
+                }
+            }
+        }
+    }
 }
 
 impl ExpressionMeta for UnaryOpExpression {
@@ -327,5 +433,171 @@ impl UnaryOpExpression {
             element: Box::new(el),
             span,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{compile_expression, types::Type};
+
+    #[test]
+    fn test_arith_expr_types() {
+        let expr = compile_expression("1 + input", &["input"]).unwrap();
+        assert_eq!(expr.run_types([Type::Integer]).unwrap(), Type::Integer);
+        assert_eq!(expr.run_types([Type::Float]).unwrap(), Type::Float);
+        assert_eq!(expr.run_types([Type::number()]).unwrap(), Type::number());
+        assert_eq!(
+            expr.run_types([Type::from_const(15)]).unwrap(),
+            Type::Integer
+        );
+        assert_eq!(expr.run_types([Type::Any]).unwrap(), Type::number());
+
+        let err = expr.run_types([Type::String]).unwrap_err();
+        assert_eq!(
+            "Expected Union<Integer, Float> but got String",
+            err.to_string()
+        );
+    }
+
+    #[test]
+    fn test_div_expr_types() {
+        let expr = compile_expression("1 / input", &["input"]).unwrap();
+        assert_eq!(expr.run_types([Type::Integer]).unwrap(), Type::Float);
+        assert_eq!(expr.run_types([Type::Float]).unwrap(), Type::Float);
+        assert_eq!(expr.run_types([Type::number()]).unwrap(), Type::Float);
+        assert_eq!(expr.run_types([Type::from_const(15)]).unwrap(), Type::Float);
+        assert_eq!(expr.run_types([Type::Any]).unwrap(), Type::Float);
+
+        let err = expr.run_types([Type::String]).unwrap_err();
+        assert_eq!(
+            "Expected Union<Integer, Float> but got String",
+            err.to_string()
+        );
+    }
+
+    #[test]
+    fn test_and_expr_types() {
+        let expr = compile_expression("input1 && input2", &["input1", "input2"]).unwrap();
+        assert_eq!(
+            expr.run_types([Type::from_const(true), Type::from_const(true)])
+                .unwrap(),
+            Type::from_const(true)
+        );
+        assert_eq!(
+            expr.run_types([Type::from_const(true), Type::from_const(false)])
+                .unwrap(),
+            Type::from_const(false)
+        );
+        assert_eq!(
+            expr.run_types([Type::from_const(false), Type::from_const(false)])
+                .unwrap(),
+            Type::from_const(false)
+        );
+        assert_eq!(
+            expr.run_types([Type::Boolean, Type::Boolean]).unwrap(),
+            Type::Boolean
+        );
+        assert_eq!(
+            expr.run_types([Type::Integer, Type::Integer]).unwrap(),
+            Type::from_const(true)
+        );
+        assert_eq!(
+            expr.run_types([Type::null(), Type::Boolean]).unwrap(),
+            Type::from_const(false)
+        );
+    }
+
+    #[test]
+    fn test_or_expr_types() {
+        let expr = compile_expression("input1 || input2", &["input1", "input2"]).unwrap();
+        assert_eq!(
+            expr.run_types([Type::from_const(true), Type::from_const(true)])
+                .unwrap(),
+            Type::from_const(true)
+        );
+        assert_eq!(
+            expr.run_types([Type::from_const(true), Type::from_const(false)])
+                .unwrap(),
+            Type::from_const(true)
+        );
+        assert_eq!(
+            expr.run_types([Type::from_const(false), Type::from_const(false)])
+                .unwrap(),
+            Type::from_const(false)
+        );
+        assert_eq!(
+            expr.run_types([Type::Boolean, Type::Boolean]).unwrap(),
+            Type::Boolean
+        );
+        assert_eq!(
+            expr.run_types([Type::Integer, Type::Integer]).unwrap(),
+            Type::from_const(true)
+        );
+        assert_eq!(
+            expr.run_types([Type::null(), Type::Boolean]).unwrap(),
+            Type::Boolean
+        );
+    }
+
+    #[test]
+    fn test_equality_expr_types() {
+        let expr = compile_expression("input1 == input2", &["input1", "input2"]).unwrap();
+        assert_eq!(
+            expr.run_types([Type::from_const(5), Type::from_const(5)])
+                .unwrap(),
+            Type::from_const(true)
+        );
+        assert_eq!(
+            expr.run_types([Type::from_const(5), Type::from_const(6)])
+                .unwrap(),
+            Type::from_const(false)
+        );
+        assert_eq!(
+            expr.run_types([Type::Integer, Type::Integer]).unwrap(),
+            Type::Boolean
+        );
+        assert_eq!(
+            expr.run_types([Type::Integer, Type::Float]).unwrap(),
+            Type::Boolean
+        );
+        assert_eq!(
+            expr.run_types([Type::String, Type::Integer]).unwrap(),
+            Type::from_const(false)
+        );
+    }
+
+    #[test]
+    fn test_negate_expr_types() {
+        let expr = compile_expression("!input", &["input"]).unwrap();
+        assert_eq!(
+            expr.run_types([Type::from_const(true)]).unwrap(),
+            Type::from_const(false)
+        );
+        assert_eq!(
+            expr.run_types([Type::from_const(false)]).unwrap(),
+            Type::from_const(true)
+        );
+        assert_eq!(expr.run_types([Type::Boolean]).unwrap(), Type::Boolean);
+        assert_eq!(
+            expr.run_types([Type::Integer]).unwrap(),
+            Type::from_const(false)
+        );
+    }
+
+    #[test]
+    fn test_minus_expr_types() {
+        let expr = compile_expression("-input", &["input"]).unwrap();
+        assert_eq!(
+            expr.run_types([Type::from_const(5)]).unwrap(),
+            Type::Integer
+        );
+        assert_eq!(
+            expr.run_types([Type::from_const(-3.5)]).unwrap(),
+            Type::Float
+        );
+        assert_eq!(expr.run_types([Type::Integer]).unwrap(), Type::Integer);
+        assert_eq!(expr.run_types([Type::Float]).unwrap(), Type::Float);
+        assert_eq!(expr.run_types([Type::number()]).unwrap(), Type::number());
+        assert_eq!(expr.run_types([Type::Any]).unwrap(), Type::number());
     }
 }
