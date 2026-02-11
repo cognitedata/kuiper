@@ -60,6 +60,9 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryFloatFunction {
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let a1 = self.args[0].resolve_types(state)?;
         let a2 = self.args[1].resolve_types(state)?;
+        if a1.is_float() {
+            return Ok(a1);
+        }
         if !a1.is_assignable_to(&Type::number().union_with(Type::String)) {
             return Ok(a2);
         }
@@ -98,6 +101,9 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryIntFunction {
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let a1 = self.args[0].resolve_types(state)?;
         let a2 = self.args[1].resolve_types(state)?;
+        if a1.is_integer() {
+            return Ok(a1);
+        }
         if !a1.is_assignable_to(&Type::number().union_with(Type::String)) {
             return Ok(a2);
         }
@@ -129,6 +135,9 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryBoolFunction {
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let a1 = self.args[0].resolve_types(state)?;
         let a2 = self.args[1].resolve_types(state)?;
+        if a1.is_boolean() {
+            return Ok(a1);
+        }
         if !a1.is_assignable_to(&Type::Boolean.union_with(Type::String)) {
             return Ok(a2);
         }
@@ -255,6 +264,9 @@ mod tests {
         let t = exp.run_types([Type::String]).unwrap();
         assert_eq!(t, Type::Float.union_with(Type::from_const("default")));
 
+        let t = exp.run_types([Type::from_const(5.5)]).unwrap();
+        assert_eq!(t, Type::from_const(5.5));
+
         let t = exp.run_types([Type::null()]).unwrap();
         assert_eq!(t, Type::from_const("default"));
     }
@@ -265,6 +277,9 @@ mod tests {
         let t = exp.run_types([Type::String]).unwrap();
         assert_eq!(t, Type::Integer.union_with(Type::from_const("default")));
 
+        let t = exp.run_types([Type::from_const(5)]).unwrap();
+        assert_eq!(t, Type::from_const(5));
+
         let t = exp.run_types([Type::null()]).unwrap();
         assert_eq!(t, Type::from_const("default"));
     }
@@ -274,6 +289,9 @@ mod tests {
         let exp = compile_expression(r#"try_bool(input, "default")"#, &["input"]).unwrap();
         let t = exp.run_types([Type::String]).unwrap();
         assert_eq!(t, Type::Boolean.union_with(Type::from_const("default")));
+
+        let t = exp.run_types([Type::from_const(true)]).unwrap();
+        assert_eq!(t, Type::from_const(true));
 
         let t = exp.run_types([Type::null()]).unwrap();
         assert_eq!(t, Type::from_const("default"));

@@ -28,11 +28,14 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for CoalesceFunction {
         for arg in &self.args {
             let t = arg.resolve_types(state)?;
             if !t.is_null() && !final_found {
-                final_type = final_type.union_with(t.clone());
+                final_type = final_type.union_with(t.clone().except_null());
             }
             if !t.is_assignable_to(&Type::null()) {
                 final_found = true;
             }
+        }
+        if !final_found {
+            final_type = final_type.nullable();
         }
         if final_type.is_never() {
             Ok(crate::types::Type::null())
@@ -82,6 +85,6 @@ mod tests {
                 Type::String.nullable(),
             ])
             .unwrap();
-        assert_eq!(t, Type::Integer.nullable().union_with(Type::String));
+        assert_eq!(t, Type::Integer.union_with(Type::String).nullable());
     }
 }
