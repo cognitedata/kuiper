@@ -357,9 +357,8 @@ fn flatten_type_args<'a: 'c, 'c>(
 ) -> Result<Vec<Type>, TypeError> {
     if args.len() == 1 {
         let ty = args[0].resolve_types(state)?;
-        if let Ok(arr) = ty.try_as_array(span) {
-            return Ok(arr.all_elements().cloned().collect());
-        }
+        let arr = ty.try_as_array(span)?;
+        return Ok(arr.all_elements().cloned().collect());
     }
     args.iter().map(|x| x.resolve_types(state)).collect()
 }
@@ -836,19 +835,27 @@ mod tests {
                 .unwrap();
             assert_eq!(Type::number(), ty);
 
-            let ty = expr.run_types([Type::number()]).unwrap();
-            assert_eq!(Type::number(), ty);
-
             let ty = expr.run_types([Type::Any]).unwrap();
             assert_eq!(Type::number(), ty);
 
-            assert!(expr.run_types([Type::String]).is_err());
             assert!(expr
                 .run_types([Type::Array(Array {
                     elements: vec![Type::number(), Type::number()],
                     end_dynamic: Some(Box::new(Type::String)),
                 })])
                 .is_err());
+
+            let expr =
+                compile_expression(&format!("{}(input1, input2)", func), &["input1", "input2"])
+                    .unwrap();
+
+            let ty = expr.run_types([Type::number(), Type::number()]).unwrap();
+            assert_eq!(Type::number(), ty);
+
+            let ty = expr.run_types([Type::Any, Type::Any]).unwrap();
+            assert_eq!(Type::number(), ty);
+
+            assert!(expr.run_types([Type::String, Type::number()]).is_err());
         }
     }
 }
