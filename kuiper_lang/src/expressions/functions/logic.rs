@@ -105,7 +105,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for CaseFunction {
 
         // If there's a default case, fall back on it.
         // If not, fall back on null, since that's what the runtime does.
-        if self.args.len() % 2 == 0 {
+        if self.args.len().is_multiple_of(2) {
             Ok(r.union_with(self.args[self.args.len() - 1].resolve_types(state)?))
         } else {
             Ok(r.union_with(Type::null()))

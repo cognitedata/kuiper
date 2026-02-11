@@ -357,11 +357,11 @@ fn flatten_type_args<'a: 'c, 'c>(
 ) -> Result<Vec<Type>, TypeError> {
     if args.len() == 1 {
         let ty = args[0].resolve_types(state)?;
-        if let Ok(arr) = ty.try_as_array(&span) {
-            return Ok(arr.all_elements().map(|x| x.clone()).collect());
+        if let Ok(arr) = ty.try_as_array(span) {
+            return Ok(arr.all_elements().cloned().collect());
         }
     }
-    return args.iter().map(|x| x.resolve_types(state)).collect();
+    args.iter().map(|x| x.resolve_types(state)).collect()
 }
 
 function_def!(MinFunction, "min", 1, None);
