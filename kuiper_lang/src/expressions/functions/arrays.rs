@@ -98,7 +98,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ChunkFunction {
         let source = self.args[0].resolve_types(state)?;
         let chunk_size = self.args[1].resolve_types(state)?;
         chunk_size.assert_assignable_to(&Type::Integer, &self.span)?;
-        let mut source_arr = source.try_as_array(&self.span)?;
+        let source_arr = source.try_as_array(&self.span)?;
         // If the chunk size is a constant, we can be more precise about the return type.
         // This is likely pretty common, a dynamic chunk size would be more unusual.
         if let Type::Constant(Value::Number(n)) = chunk_size.clone() {
@@ -121,19 +121,15 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ChunkFunction {
                 } else {
                     res_arr.push(Type::Array(Array {
                         elements: chunk.to_owned(),
-                        end_dynamic: source_arr.end_dynamic.take(),
+                        end_dynamic: source_arr.end_dynamic.clone(),
                     }));
                 }
             }
-            if let Some(end_dynamic) = source_arr.end_dynamic.take() {
-                res_arr.push(Type::Array(Array {
-                    elements: vec![],
-                    end_dynamic: Some(end_dynamic),
-                }));
-            }
             Ok(Type::Array(Array {
                 elements: res_arr,
-                end_dynamic: None,
+                end_dynamic: source_arr
+                    .end_dynamic
+                    .map(|v| Box::new(Type::array_of_type(*v))),
             }))
         } else {
             Ok(Type::Array(Array {
@@ -216,12 +212,15 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TailFunction {
                         ));
                     };
                     if n == 0 {
-                        Ok(Type::null())
+                        Ok(Type::Array(Array {
+                            elements: vec![],
+                            end_dynamic: None,
+                        }))
                     } else if n == 1 {
                         Ok(source_arr.index_from_end(0).unwrap_or_else(Type::null))
-                    } else if let Some(end_dynamic) = source_arr.end_dynamic {
+                    } else if source_arr.end_dynamic.is_some() {
                         Ok(Type::Array(Array {
-                            end_dynamic: Some(end_dynamic),
+                            end_dynamic: Some(Box::new(source_arr.element_union())),
                             elements: vec![],
                         }))
                     } else {
@@ -400,7 +399,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SumFunction {
             let ty = it;
             if ty.is_float() && return_type.is_integer() {
                 return_type = Type::Float;
-            } else if !ty.is_integer() {
+            } else if !ty.is_integer() && !ty.is_float() {
                 ty.assert_assignable_to(&Type::number(), &self.span)?;
                 return_type = Type::number();
             }
@@ -452,7 +451,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ContainsFunction {
         let check = self.args[1].resolve_types(state)?;
         arr.assert_assignable_to(&Type::any_array().union_with(Type::String), &self.span)?;
 
-        if matches!(arr, Type::String) {
+        if arr.is_assignable_to(&Type::String) && !arr.is_assignable_to(&Type::any_array()) {
             check.assert_assignable_to(&Type::String, &self.span)?;
         }
 
