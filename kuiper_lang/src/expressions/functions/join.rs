@@ -2,6 +2,7 @@ use serde_json::Value;
 
 use crate::{
     expressions::{Expression, ResolveResult},
+    types::Type,
     TransformError,
 };
 
@@ -59,13 +60,93 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for JoinFunction {
             )),
         }
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let source = self.args[0].resolve_types(state)?;
+        let mut res_type = Type::never();
+
+        let args = self
+            .args
+            .iter()
+            .skip(1)
+            .map(|a| a.resolve_types(state))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Could this be an object? If so, we merge all the fields together.
+        if source.is_assignable_to(&Type::any_object())
+            && args.iter().all(|a| a.is_assignable_to(&Type::any_object()))
+        {
+            let obj = source.try_as_object(&self.span)?;
+            let mut res_fields = obj.fields;
+            for arg in &args {
+                let res_inner_obj = arg.try_as_object(&self.span)?;
+                for (k, v) in res_inner_obj.fields {
+                    match k {
+                        crate::types::ObjectField::Constant(r) => {
+                            res_fields.insert(crate::types::ObjectField::Constant(r), v);
+                        }
+                        crate::types::ObjectField::Generic => {
+                            if let Some(old) =
+                                res_fields.remove(&crate::types::ObjectField::Generic)
+                            {
+                                res_fields
+                                    .insert(crate::types::ObjectField::Generic, old.union_with(v));
+                            } else {
+                                res_fields.insert(crate::types::ObjectField::Generic, v);
+                            }
+                        }
+                    }
+                }
+            }
+            res_type =
+                res_type.union_with(Type::Object(crate::types::Object { fields: res_fields }));
+        }
+
+        // Same for arrays, we merge the element types together.
+        if source.is_assignable_to(&Type::any_array())
+            && args.iter().all(|a| a.is_assignable_to(&Type::any_array()))
+        {
+            let arr = source.try_as_array(&self.span)?;
+            let mut res_elements = arr.elements;
+            let mut res_end_dynamic = arr.end_dynamic.map(|e| *e);
+            for arg in &args {
+                let res_inner_arr = arg.try_as_array(&self.span)?;
+                if let Some(end_dynamic) = res_end_dynamic {
+                    let mut dynamic = end_dynamic;
+                    for elem in res_inner_arr.elements {
+                        dynamic = dynamic.union_with(elem);
+                    }
+                    if let Some(res_inner_dynamic) = res_inner_arr.end_dynamic {
+                        dynamic = dynamic.union_with(*res_inner_dynamic);
+                    }
+                    res_end_dynamic = Some(dynamic);
+                } else {
+                    res_elements.extend(res_inner_arr.elements);
+                    res_end_dynamic = res_inner_arr.end_dynamic.map(|e| *e);
+                }
+            }
+            res_type = res_type.union_with(Type::Array(crate::types::Array {
+                elements: res_elements,
+                end_dynamic: res_end_dynamic.map(Box::new),
+            }));
+        }
+
+        Ok(res_type)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use logos::Span;
 
-    use crate::{compile_expression, CompileError, TransformError};
+    use crate::{
+        compile_expression,
+        types::{Object, ObjectField, Type},
+        CompileError, TransformError,
+    };
 
     #[test]
     fn test_join() {
@@ -133,5 +214,34 @@ mod tests {
         for (i, item) in val.iter().enumerate() {
             assert_eq!(item.as_u64().unwrap(), (i + 1) as u64);
         }
+    }
+
+    #[test]
+    fn test_join_types() {
+        let expr = compile_expression(r#"join(input1, input2)"#, &["input1", "input2"]).unwrap();
+
+        let t = expr
+            .run_types([
+                Type::Object(Object {
+                    fields: vec![(ObjectField::Constant("a".to_string()), Type::Integer)]
+                        .into_iter()
+                        .collect(),
+                }),
+                Type::Object(Object {
+                    fields: vec![(ObjectField::Constant("b".to_string()), Type::String)]
+                        .into_iter()
+                        .collect(),
+                }),
+            ])
+            .unwrap();
+        let expected = Type::Object(Object {
+            fields: vec![
+                (ObjectField::Constant("a".to_string()), Type::Integer),
+                (ObjectField::Constant("b".to_string()), Type::String),
+            ]
+            .into_iter()
+            .collect(),
+        });
+        assert_eq!(t, expected);
     }
 }

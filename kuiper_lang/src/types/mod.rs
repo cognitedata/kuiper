@@ -512,6 +512,21 @@ impl Type {
             index: 0,
         }
     }
+
+    /// Return a type representing the same as this type, except not nullable.
+    pub fn except_null(self) -> Type {
+        match self {
+            Type::Union(types) => {
+                let mut res = Type::never();
+                for t in types {
+                    res = res.union_with(t.except_null());
+                }
+                res
+            }
+            Type::Constant(Value::Null) => Type::never(),
+            _ => self,
+        }
+    }
 }
 
 impl Display for Type {
