@@ -121,6 +121,11 @@ impl Type {
         matches!(self, Type::Constant(Value::Null))
     }
 
+    /// Check whether the type is always a string.
+    pub fn is_string(&self) -> bool {
+        matches!(self, Type::String | Type::Constant(Value::String(_)))
+    }
+
     /// Check whether the is a boolean.
     pub fn is_boolean(&self) -> bool {
         matches!(self, Type::Boolean | Type::Constant(Value::Bool(_)))
@@ -133,6 +138,11 @@ impl Type {
             Type::Constant(Value::Number(n)) => n.is_u64() || n.is_u64(),
             _ => false,
         }
+    }
+
+    /// Check whether the type is always an array
+    pub fn is_array(&self) -> bool {
+        matches!(self, Type::Array(_) | Type::Constant(Value::Array(_)))
     }
 
     /// Check whether the type is a floating point number.
@@ -524,6 +534,22 @@ impl Type {
                 res
             }
             Type::Constant(Value::Null) => Type::never(),
+            _ => self,
+        }
+    }
+
+    /// Return a type representing the same as this type, except never an array.
+    pub fn except_array(self) -> Type {
+        match self {
+            Type::Union(types) => {
+                let mut res = Type::never();
+                for t in types {
+                    res = res.union_with(t.except_array());
+                }
+                res
+            }
+            Type::Array(_) => Type::never(),
+            Type::Constant(Value::Array(_)) => Type::never(),
             _ => self,
         }
     }

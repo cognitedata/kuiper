@@ -80,6 +80,10 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for StringFunction {
         state: &mut crate::types::TypeExecutionState<'c, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let res = self.args[0].resolve_types(state)?;
+        if res.is_string() {
+            return Ok(res);
+        }
+
         res.assert_assignable_to(&Type::stringifyable(), &self.span)?;
         Ok(Type::String)
     }
