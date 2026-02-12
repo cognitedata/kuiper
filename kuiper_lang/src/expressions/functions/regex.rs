@@ -1,7 +1,10 @@
+use std::collections::BTreeMap;
+
 use serde_json::{Map, Value};
 
 use crate::expressions::functions::FunctionExpression;
 use crate::expressions::{Expression, ResolveResult};
+use crate::types::{Object, Type};
 use crate::NULL_CONST;
 
 macro_rules! regex_function {
@@ -98,6 +101,15 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexIsMatchFunction {
         let arg = arg.try_as_string(Self::INFO.name, &self.span)?;
         Ok(ResolveResult::Owned(self.re.is_match(arg.as_ref()).into()))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let item = self.args[0].resolve_types(state)?;
+        item.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        Ok(Type::Boolean)
+    }
 }
 
 regex_function!(RegexFirstMatchFunction, "regex_first_match", 1);
@@ -115,6 +127,15 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexFirstMatchFunction {
             None => Value::Null,
         }))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let item = self.args[0].resolve_types(state)?;
+        item.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        Ok(Type::String.nullable())
+    }
 }
 
 regex_function!(RegexAllMatchesFunction, "regex_all_matches", 1);
@@ -130,6 +151,15 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexAllMatchesFunction {
         Ok(ResolveResult::Owned(Value::Array(
             m.map(|m| Value::String(m.as_str().to_owned())).collect(),
         )))
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let item = self.args[0].resolve_types(state)?;
+        item.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        Ok(Type::array_of_type(Type::String))
     }
 }
 
@@ -161,6 +191,20 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexFirstCapturesFunction {
             })
             .collect();
         Ok(ResolveResult::Owned(Value::Object(v)))
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let item = self.args[0].resolve_types(state)?;
+        item.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        let mut obj_result = BTreeMap::new();
+        for (idx, cap) in self.re.capture_names().enumerate() {
+            let name = cap.map(|n| n.to_owned()).unwrap_or_else(|| idx.to_string());
+            obj_result.insert(crate::types::ObjectField::Constant(name), Type::String);
+        }
+        Ok(Type::Object(Object { fields: obj_result }))
     }
 }
 
@@ -197,6 +241,22 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexAllCapturesFunction {
 
         Ok(ResolveResult::Owned(Value::Array(res)))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let item = self.args[0].resolve_types(state)?;
+        item.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        let mut obj_result = BTreeMap::new();
+        for (idx, cap) in self.re.capture_names().enumerate() {
+            let name = cap.map(|n| n.to_owned()).unwrap_or_else(|| idx.to_string());
+            obj_result.insert(crate::types::ObjectField::Constant(name), Type::String);
+        }
+        Ok(Type::array_of_type(Type::Object(Object {
+            fields: obj_result,
+        })))
+    }
 }
 
 regex_function!(RegexReplaceFunction, "regex_replace", 2);
@@ -213,6 +273,17 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexReplaceFunction {
 
         let r = self.re.replace(arg.as_ref(), repl.as_ref()).into_owned();
         Ok(ResolveResult::Owned(Value::String(r)))
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        for arg in &self.args {
+            let item = arg.resolve_types(state)?;
+            item.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        }
+        Ok(Type::String)
     }
 }
 
@@ -234,13 +305,28 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexReplaceAllFunction {
             .into_owned();
         Ok(ResolveResult::Owned(Value::String(r)))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        for arg in &self.args {
+            let item = arg.resolve_types(state)?;
+            item.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        }
+        Ok(Type::String)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use serde_json::{json, Value};
 
-    use crate::{compile_expression, BuildError, CompileError};
+    use crate::{
+        compile_expression,
+        types::{Object, ObjectField, Type},
+        BuildError, CompileError,
+    };
 
     #[test]
     pub fn test_regex_is_match() {
@@ -503,5 +589,94 @@ mod tests {
             }
             r => panic!("Unexpected error {r}"),
         }
+    }
+
+    #[test]
+    fn test_regex_is_match_types() {
+        let expr = compile_expression(r#"regex_is_match(input, ".*")"#, &["input"]).unwrap();
+        let ty = expr.run_types([Type::String]).unwrap();
+        assert_eq!(ty, Type::Boolean);
+
+        assert!(expr
+            .run_types([Type::array_of_type(Type::Integer)])
+            .is_err());
+    }
+
+    #[test]
+    fn test_regex_first_match_types() {
+        let expr = compile_expression(r#"regex_first_match(input, ".*")"#, &["input"]).unwrap();
+        let ty = expr.run_types([Type::String]).unwrap();
+        assert_eq!(ty, Type::String.nullable());
+
+        assert!(expr
+            .run_types([Type::array_of_type(Type::Integer)])
+            .is_err());
+    }
+
+    #[test]
+    fn test_regex_all_matches_types() {
+        let expr = compile_expression(r#"regex_all_matches(input, ".*")"#, &["input"]).unwrap();
+        let ty = expr.run_types([Type::String]).unwrap();
+        assert_eq!(ty, Type::array_of_type(Type::String));
+
+        assert!(expr
+            .run_types([Type::array_of_type(Type::Integer)])
+            .is_err());
+    }
+
+    #[test]
+    fn test_regex_first_captures_types() {
+        let expr = compile_expression(
+            r#"regex_first_captures(input, "(?<foo>[a-z]+)(?<bar>[0-9]*)(a-z)")"#,
+            &["input"],
+        )
+        .unwrap();
+        let ty = expr.run_types([Type::String]).unwrap();
+        assert_eq!(
+            ty,
+            Type::Object(Object {
+                fields: [
+                    // The full capture, the two named captures, and the third unnamed capture.
+                    (ObjectField::Constant("0".to_string()), Type::String),
+                    (ObjectField::Constant("foo".to_string()), Type::String),
+                    (ObjectField::Constant("bar".to_string()), Type::String),
+                    (ObjectField::Constant("3".to_string()), Type::String),
+                ]
+                .into_iter()
+                .collect(),
+            })
+        );
+
+        assert!(expr
+            .run_types([Type::array_of_type(Type::Integer)])
+            .is_err());
+    }
+
+    #[test]
+    fn test_regex_all_captures_types() {
+        let expr = compile_expression(
+            r#"regex_all_captures(input, "(?<foo>[a-z]+)(?<bar>[0-9]*)(a-z)")"#,
+            &["input"],
+        )
+        .unwrap();
+        let ty = expr.run_types([Type::String]).unwrap();
+        assert_eq!(
+            ty,
+            Type::array_of_type(Type::Object(Object {
+                fields: [
+                    // The full capture, the two named captures, and the third unnamed capture.
+                    (ObjectField::Constant("0".to_string()), Type::String),
+                    (ObjectField::Constant("foo".to_string()), Type::String),
+                    (ObjectField::Constant("bar".to_string()), Type::String),
+                    (ObjectField::Constant("3".to_string()), Type::String),
+                ]
+                .into_iter()
+                .collect(),
+            }))
+        );
+
+        assert!(expr
+            .run_types([Type::array_of_type(Type::Integer)])
+            .is_err());
     }
 }

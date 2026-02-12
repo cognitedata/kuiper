@@ -448,8 +448,8 @@ impl SelectorExpression {
                 }
             }
             Type::Any => match &select_from {
-                Type::Object(o) => o.element_union(),
-                Type::Array(s) => s.element_union(),
+                Type::Object(o) => o.element_union().union_with(Type::null()),
+                Type::Array(s) => s.element_union().union_with(Type::null()),
                 Type::Union(u) => {
                     let mut typ = Type::null();
                     for t in u {
@@ -667,12 +667,14 @@ mod tests {
                 end_dynamic: Some(Box::new(Type::Float)),
             })])
             .unwrap();
-        // We have no idea what the selector is, the result is any element in the array.
+        // We have no idea what the selector is, the result is any element in the array,
+        // or outside the array (null).
         assert_eq!(
             r,
             Type::Integer
                 .union_with(Type::Boolean)
                 .union_with(Type::Float)
+                .union_with(Type::null())
         );
     }
 
@@ -765,6 +767,7 @@ mod tests {
             Type::Integer
                 .union_with(Type::Float)
                 .union_with(Type::Boolean)
+                .union_with(Type::null())
         );
     }
 }
