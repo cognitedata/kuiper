@@ -61,9 +61,10 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for MapFunction {
             .ok()
             .map(|o| self.resolve_types_as_object(state, o));
 
-        let arr_res = source.try_as_array(&self.span).ok().map(|a| {
-            self.resolve_types_as_array(state, a, obj_res.as_ref().is_some_and(|r| r.is_ok()))
-        });
+        let arr_res = source
+            .try_as_array(&self.span)
+            .ok()
+            .map(|a| self.resolve_types_as_array(state, a));
 
         // If the input can be _both_ an array and an object, we can't fail eagerly on either one, since
         // there may be runtime assumptions that make the expression valid only for one of the types,
@@ -108,35 +109,16 @@ impl MapFunction {
         &'a self,
         state: &mut crate::types::TypeExecutionState<'a, '_>,
         item_arr: crate::types::Array,
-        allows_object: bool,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let mut elements = Vec::new();
-        for item in item_arr.elements {
-            let res = self.args[1].call_types(
-                state,
-                &[
-                    &item,
-                    &if allows_object {
-                        Type::String
-                    } else {
-                        Type::null()
-                    },
-                ],
-            )?;
+        for (idx, item) in item_arr.elements.into_iter().enumerate() {
+            let res = self.args[1].call_types(state, &[&item, &Type::from_const(idx)])?;
             elements.push(res);
         }
         let end_dynamic = if let Some(arr_end_dynamic) = item_arr.end_dynamic {
-            Some(Box::new(self.args[1].call_types(
-                state,
-                &[
-                    &*arr_end_dynamic,
-                    &if allows_object {
-                        Type::String
-                    } else {
-                        Type::null()
-                    },
-                ],
-            )?))
+            Some(Box::new(
+                self.args[1].call_types(state, &[&*arr_end_dynamic, &Type::Integer])?,
+            ))
         } else {
             None
         };
@@ -289,5 +271,20 @@ mod tests {
             Type::object_of_type(Type::String).union_with(Type::array_of_type(Type::String)),
             res.unwrap()
         );
+    }
+
+    #[test]
+    fn test_map_only_array_is_valid() {
+        // The lambda produces an error if `it` is an integer, but not if it's an array,
+        // so the result should only contain the array case, since the object case would always fail.
+        // In general, type checking should do two things:
+        //   - If we can prove that the expression _must_ fail, we should report that as an error.
+        //   - If not, return the possible types of the expression if it passes.
+        let expr = compile_expression("map(input, it => it.flatmap(a => a))", &["input"]).unwrap();
+        let res = expr
+            .run_types([Type::array_of_type(Type::array_of_type(Type::Integer))
+                .union_with(Type::object_of_type(Type::Integer))])
+            .unwrap();
+        assert_eq!(Type::array_of_type(Type::array_of_type(Type::Integer)), res);
     }
 }
