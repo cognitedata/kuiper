@@ -2,6 +2,7 @@ use serde_json::Value;
 
 use crate::{
     expressions::{functions::LambdaAcceptFunction, Expression, ResolveResult},
+    types::{Object, ObjectField, Truthy, Type},
     BuildError, TransformError,
 };
 
@@ -67,6 +68,57 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ExceptFunction {
             )),
         }
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let item = self.args[0].resolve_types(state)?;
+        let mut item_obj = item.try_as_object(&self.span)?;
+        match &self.args[1].as_ref() {
+            crate::ExpressionType::Lambda(lambda) => {
+                let mut res_obj = Object::default();
+                for (k, v) in item_obj.fields {
+                    let key_arg = match &k {
+                        ObjectField::Constant(v) => Type::from_const(v.clone()),
+                        ObjectField::Generic => Type::String,
+                    };
+                    let should_remove = lambda.call_types(state, &[&v, &key_arg])?;
+                    match should_remove.truthyness() {
+                        Truthy::Always => (),
+                        Truthy::Maybe => {
+                            // Known fields are only for fields we're confident are present,
+                            // so maybe needs to be treated as generic.
+                            res_obj.push_field(ObjectField::Generic, v);
+                        }
+                        Truthy::Never => {
+                            res_obj.push_field(k, v);
+                        }
+                    }
+                }
+                Ok(Type::Object(res_obj))
+            }
+            expr => {
+                let arr = expr.resolve_types(state)?;
+                let arr = arr.try_as_array(&self.span)?;
+                let mut all_constant = true;
+                for elem in arr.all_elements() {
+                    if let Type::Constant(Value::String(s)) = elem {
+                        item_obj.fields.remove(&ObjectField::Constant(s.clone()));
+                    } else {
+                        all_constant = false;
+                        elem.assert_assignable_to(&Type::String, &self.span)?;
+                    }
+                }
+                if all_constant {
+                    Ok(Type::Object(item_obj))
+                } else {
+                    // Some dynamic keys, so we have to treat the rest as generic.
+                    Ok(Type::object_of_type(item_obj.element_union()))
+                }
+            }
+        }
+    }
 }
 
 impl LambdaAcceptFunction for ExceptFunction {
@@ -93,7 +145,11 @@ impl LambdaAcceptFunction for ExceptFunction {
 mod tests {
     use logos::Span;
 
-    use crate::{compile_expression, CompileError, TransformError};
+    use crate::{
+        compile_expression,
+        types::{Object, Type},
+        CompileError, TransformError,
+    };
 
     #[test]
     fn test_except() {
@@ -139,5 +195,55 @@ mod tests {
                 _ => panic!("Should be an optimizer error"),
             },
         }
+    }
+
+    #[test]
+    fn test_except_lambda_types() {
+        let r = compile_expression("input.except(a => a is float)", &["input"]).unwrap();
+        let t = r.run_types([Type::object_of_type(Type::Integer)]).unwrap();
+        assert_eq!(t, Type::object_of_type(Type::Integer));
+
+        let t = r
+            .run_types([Type::Object(
+                Object::default()
+                    .with_field("k1", Type::String)
+                    .with_field("k2", Type::from_const(3))
+                    .with_field("k3", Type::from_const(1.5))
+                    .with_generic_field(Type::from_const(5)),
+            )])
+            .unwrap();
+
+        assert_eq!(
+            t,
+            Type::Object(
+                Object::default()
+                    .with_field("k1", Type::String)
+                    .with_field("k2", Type::from_const(3))
+                    .with_generic_field(Type::from_const(5))
+            )
+        );
+    }
+
+    #[test]
+    fn test_except_array_types() {
+        let r = compile_expression("input.except(['k2', 'k3'])", &["input"]).unwrap();
+        let t = r
+            .run_types([Type::Object(
+                Object::default()
+                    .with_field("k1", Type::String)
+                    .with_field("k2", Type::from_const(3))
+                    .with_field("k3", Type::from_const(1.5))
+                    .with_generic_field(Type::from_const(5)),
+            )])
+            .unwrap();
+
+        assert_eq!(
+            t,
+            Type::Object(
+                Object::default()
+                    .with_field("k1", Type::String)
+                    .with_generic_field(Type::from_const(5))
+            )
+        );
     }
 }

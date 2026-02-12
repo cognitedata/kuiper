@@ -142,6 +142,20 @@ impl Object {
         self
     }
 
+    /// Push a field into this object type, unioning it with any existing field with the same name.
+    pub fn push_field(&mut self, field: ObjectField, ty: Type) {
+        match self.fields.entry(field) {
+            std::collections::btree_map::Entry::Vacant(vacant) => {
+                vacant.insert(ty);
+            }
+            std::collections::btree_map::Entry::Occupied(occupied) => {
+                let (k, v) = occupied.remove_entry();
+                let new_type = v.union_with(ty);
+                self.fields.insert(k, new_type);
+            }
+        }
+    }
+
     /// Check whether this object type accepts a field with the given key and type,
     /// i.e. whether a field with the given key and type can be assigned to this object type
     /// without changing it.
