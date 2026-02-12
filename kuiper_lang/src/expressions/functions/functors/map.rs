@@ -235,6 +235,25 @@ mod tests {
                 end_dynamic: None
             })
         );
+
+        let expr = compile_expression("map(input, (it, idx) => idx)", &["input"]).unwrap();
+        let res = expr
+            .run_types([Type::Array(Array {
+                elements: vec![Type::String, Type::Float, Type::from_const(3)],
+                end_dynamic: None,
+            })])
+            .unwrap();
+        assert_eq!(
+            res,
+            Type::Array(Array {
+                elements: vec![
+                    Type::from_const(0),
+                    Type::from_const(1),
+                    Type::from_const(2)
+                ],
+                end_dynamic: None
+            })
+        );
     }
 
     #[test]
