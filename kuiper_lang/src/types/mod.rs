@@ -107,6 +107,15 @@ impl Type {
         Type::Constant(Value::Null)
     }
 
+    /// Return a type that can be converted to a string using `try_as_string`
+    /// at runtime. Either a string, a boolean, a number, or null.
+    pub fn stringifyable() -> Self {
+        Type::String
+            .union_with(Type::Boolean)
+            .union_with(Type::number())
+            .nullable()
+    }
+
     /// Check whether the type is equal to the null type.
     pub fn is_null(&self) -> bool {
         matches!(self, Type::Constant(Value::Null))
