@@ -3,7 +3,8 @@ use serde_json::{Number, Value};
 
 use crate::{
     expressions::{numbers::JsonNumber, Expression, ResolveResult},
-    TransformError,
+    types::{Type, TypeError},
+    ExpressionType, TransformError,
 };
 
 /// Macro that creates a math function of the type `my_float.func(arg)`, which becomes `func(my_float, arg)`
@@ -44,6 +45,18 @@ macro_rules! arg2_math_func {
                     )?),
                 ))
             }
+
+            fn resolve_types(
+                &'a self,
+                state: &mut $crate::types::TypeExecutionState<'c, '_>,
+            ) -> Result<$crate::types::Type, $crate::types::TypeError> {
+                for arg in &self.args {
+                    let arg = arg.resolve_types(state)?;
+                    arg.assert_assignable_to(&$crate::types::Type::number(), &self.span)?;
+                }
+
+                Ok($crate::types::Type::Float)
+            }
         }
     };
 }
@@ -81,6 +94,17 @@ macro_rules! arg1_math_func {
                         )
                     })?),
                 ))
+            }
+
+            fn resolve_types(
+                &'a self,
+                state: &mut $crate::types::TypeExecutionState<'c, '_>,
+            ) -> Result<$crate::types::Type, $crate::types::TypeError> {
+                let arg = self.args[0].resolve_types(state)?;
+                arg.assert_assignable_to(
+                    &$crate::types::Type::number(), &self.span
+                )?;
+                Ok($crate::types::Type::Float)
             }
         }
     };
@@ -170,6 +194,20 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IntFunction {
         };
         Ok(ResolveResult::Owned(res))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let arg = self.args[0].resolve_types(state)?;
+        arg.assert_assignable_to(
+            &Type::number()
+                .union_with(Type::String)
+                .union_with(Type::Boolean),
+            &self.span,
+        )?;
+        Ok(Type::Integer)
+    }
 }
 
 function_def!(FloatFunction, "float", 1);
@@ -215,6 +253,20 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FloatFunction {
         Ok(ResolveResult::Owned(Value::Number(
             Number::from_f64(res).unwrap_or_else(|| Number::from_f64(0.0).unwrap()),
         )))
+    }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let arg = self.args[0].resolve_types(state)?;
+        arg.assert_assignable_to(
+            &Type::number()
+                .union_with(Type::String)
+                .union_with(Type::Boolean),
+            &self.span,
+        )?;
+        Ok(Type::Float)
     }
 }
 
@@ -283,6 +335,32 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for MaxFunction {
             },
         )?))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let args = flatten_type_args(&self.args, state, &self.span)?;
+
+        for arg in args {
+            arg.assert_assignable_to(&Type::number(), &self.span)?;
+        }
+
+        Ok(Type::number())
+    }
+}
+
+fn flatten_type_args<'a: 'c, 'c>(
+    args: &'a [ExpressionType],
+    state: &mut crate::types::TypeExecutionState<'c, '_>,
+    span: &'a Span,
+) -> Result<Vec<Type>, TypeError> {
+    if args.len() == 1 {
+        let ty = args[0].resolve_types(state)?;
+        let arr = ty.try_as_array(span)?;
+        return Ok(arr.all_elements().cloned().collect());
+    }
+    args.iter().map(|x| x.resolve_types(state)).collect()
 }
 
 function_def!(MinFunction, "min", 1, None);
@@ -319,13 +397,29 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for MinFunction {
             },
         )?))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<Type, crate::types::TypeError> {
+        let args = flatten_type_args(&self.args, state, &self.span)?;
+
+        for arg in args {
+            arg.assert_assignable_to(&Type::number(), &self.span)?;
+        }
+
+        Ok(Type::number())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use serde_json::json;
 
-    use crate::compile_expression;
+    use crate::{
+        compile_expression,
+        types::{Array, Type},
+    };
 
     const TINY: f64 = 0.00000001;
 
@@ -630,5 +724,138 @@ mod tests {
 
         assert!(compile_expression(r#"{"res": asin(2)}"#, &[],).is_err()); // asin(2) is undefined, should yield an error
         assert!(compile_expression(r#"{"res": acos(2)}"#, &[],).is_err()); // acos(2) is undefined, should yield an error
+    }
+
+    #[test]
+    fn test_one_arg_math_function_types() {
+        for func in [
+            "floor", "ceil", "round", "sqrt", "exp", "sin", "cos", "tan", "asin", "acos", "atan",
+        ] {
+            let expr = compile_expression(&format!("{}(input)", func), &["input"]).unwrap();
+
+            // The argument can be either an integer or a float, and the result should be a float.
+            let ty = expr.run_types([Type::Integer]).unwrap();
+            assert_eq!(Type::Float, ty);
+
+            let ty = expr.run_types([Type::Float]).unwrap();
+            assert_eq!(Type::Float, ty);
+
+            let ty = expr.run_types([Type::Any]).unwrap();
+            assert_eq!(Type::Float, ty);
+
+            assert!(expr.run_types([Type::String]).is_err());
+        }
+    }
+
+    #[test]
+    fn test_two_arg_math_function_types() {
+        for func in ["pow", "log", "atan2"] {
+            let expr =
+                compile_expression(&format!("{}(input1, input2)", func), &["input1", "input2"])
+                    .unwrap();
+
+            // The arguments can be either integers or floats, and the result should be a float.
+            let ty = expr.run_types([Type::Integer, Type::Integer]).unwrap();
+            assert_eq!(Type::Float, ty);
+
+            let ty = expr.run_types([Type::Float, Type::Float]).unwrap();
+            assert_eq!(Type::Float, ty);
+
+            let ty = expr.run_types([Type::Integer, Type::Float]).unwrap();
+            assert_eq!(Type::Float, ty);
+
+            let ty = expr.run_types([Type::Float, Type::Integer]).unwrap();
+            assert_eq!(Type::Float, ty);
+
+            let ty = expr.run_types([Type::Any, Type::Any]).unwrap();
+            assert_eq!(Type::Float, ty);
+
+            assert!(expr.run_types([Type::String, Type::Float]).is_err());
+            assert!(expr.run_types([Type::Float, Type::String]).is_err());
+        }
+    }
+
+    #[test]
+    fn test_int_function_types() {
+        let expr = compile_expression("int(input)", &["input"]).unwrap();
+
+        // The argument can be a number, string, or boolean, and the result should be an integer.
+        let ty = expr.run_types([Type::Integer]).unwrap();
+        assert_eq!(Type::Integer, ty);
+
+        let ty = expr.run_types([Type::Float]).unwrap();
+        assert_eq!(Type::Integer, ty);
+
+        let ty = expr.run_types([Type::String]).unwrap();
+        assert_eq!(Type::Integer, ty);
+
+        let ty = expr.run_types([Type::Boolean]).unwrap();
+        assert_eq!(Type::Integer, ty);
+
+        let ty = expr.run_types([Type::Any]).unwrap();
+        assert_eq!(Type::Integer, ty);
+
+        assert!(expr.run_types([Type::null()]).is_err());
+    }
+
+    #[test]
+    fn test_float_function_types() {
+        let expr = compile_expression("float(input)", &["input"]).unwrap();
+
+        // The argument can be a number, string, or boolean, and the result should be a float.
+        let ty = expr.run_types([Type::Integer]).unwrap();
+        assert_eq!(Type::Float, ty);
+
+        let ty = expr.run_types([Type::Float]).unwrap();
+        assert_eq!(Type::Float, ty);
+
+        let ty = expr.run_types([Type::String]).unwrap();
+        assert_eq!(Type::Float, ty);
+
+        let ty = expr.run_types([Type::Boolean]).unwrap();
+        assert_eq!(Type::Float, ty);
+
+        let ty = expr.run_types([Type::Any]).unwrap();
+        assert_eq!(Type::Float, ty);
+
+        assert!(expr.run_types([Type::null()]).is_err());
+    }
+
+    #[test]
+    fn test_min_max_function_types() {
+        for func in ["min", "max"] {
+            let expr = compile_expression(&format!("{}(input)", func), &["input"]).unwrap();
+
+            // The argument can be either an array of numbers, or many numbers as distinct args. The result should be a number.
+            let ty = expr
+                .run_types([Type::Array(Array {
+                    elements: vec![Type::number(), Type::number(), Type::number()],
+                    end_dynamic: Some(Box::new(Type::number())),
+                })])
+                .unwrap();
+            assert_eq!(Type::number(), ty);
+
+            let ty = expr.run_types([Type::Any]).unwrap();
+            assert_eq!(Type::number(), ty);
+
+            assert!(expr
+                .run_types([Type::Array(Array {
+                    elements: vec![Type::number(), Type::number()],
+                    end_dynamic: Some(Box::new(Type::String)),
+                })])
+                .is_err());
+
+            let expr =
+                compile_expression(&format!("{}(input1, input2)", func), &["input1", "input2"])
+                    .unwrap();
+
+            let ty = expr.run_types([Type::number(), Type::number()]).unwrap();
+            assert_eq!(Type::number(), ty);
+
+            let ty = expr.run_types([Type::Any, Type::Any]).unwrap();
+            assert_eq!(Type::number(), ty);
+
+            assert!(expr.run_types([Type::String, Type::number()]).is_err());
+        }
     }
 }
