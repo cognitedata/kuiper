@@ -114,7 +114,7 @@ impl DistinctByFunction {
         item_arr: &crate::types::Array,
         allows_object: bool,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
-        for item in &item_arr.elements {
+        for item in item_arr.all_elements() {
             self.args[1].call_types(
                 state,
                 &[
