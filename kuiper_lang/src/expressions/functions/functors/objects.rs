@@ -2,6 +2,7 @@ use serde_json::{Map, Value};
 
 use crate::{
     expressions::{functions::LambdaAcceptFunction, Expression, ResolveResult},
+    types::{Object, Type},
     BuildError, TransformError,
 };
 
@@ -38,6 +39,31 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ToObjectFunction {
 
         Ok(ResolveResult::Owned(Value::Object(res)))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let source = self.args[0].resolve_types(state)?;
+        let source_arr = source.try_as_array(&self.span)?;
+        let mut res_obj = Object::default();
+        for elem in source_arr.all_elements() {
+            let key = self.args[1].call_types(state, &[elem])?;
+            let value = if let Some(value_lambda) = self.args.get(2) {
+                value_lambda.call_types(state, &[elem])?
+            } else {
+                elem.clone()
+            };
+
+            if let Type::Constant(Value::String(s)) = &key {
+                res_obj.push_field(crate::types::ObjectField::Constant(s.to_owned()), value);
+            } else {
+                key.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+                res_obj.push_field(crate::types::ObjectField::Generic, value);
+            }
+        }
+        Ok(Type::Object(res_obj))
+    }
 }
 
 impl LambdaAcceptFunction for ToObjectFunction {
@@ -62,7 +88,10 @@ impl LambdaAcceptFunction for ToObjectFunction {
 
 #[cfg(test)]
 mod tests {
-    use crate::compile_expression;
+    use crate::{
+        compile_expression,
+        types::{Array, Object, Type},
+    };
 
     #[test]
     pub fn test_to_object_implicit_value() {
@@ -108,5 +137,45 @@ mod tests {
         assert_eq!(2, val_obj.len());
         assert_eq!(1, val_obj["v1"].as_i64().unwrap());
         assert_eq!(2, val_obj["v2"].as_i64().unwrap());
+    }
+
+    #[test]
+    fn test_to_object_types() {
+        let expr = compile_expression("to_object(input, v => v)", &["input"]).unwrap();
+        let res = expr.run_types([Type::array_of_type(Type::String)]).unwrap();
+        assert_eq!(res, Type::object_of_type(Type::String));
+
+        let res = expr
+            .run_types([Type::Array(Array {
+                elements: vec![
+                    Type::from_const("foo"),
+                    Type::from_const("bar"),
+                    Type::String,
+                ],
+                end_dynamic: Some(Box::new(Type::from_const("baz"))),
+            })])
+            .unwrap();
+        assert_eq!(
+            res,
+            Type::Object(
+                Object::default()
+                    .with_field("foo", Type::from_const("foo"))
+                    .with_field("bar", Type::from_const("bar"))
+                    .with_field("baz", Type::from_const("baz"))
+                    .with_generic_field(Type::String)
+            )
+        );
+
+        assert!(expr
+            .run_types([Type::array_of_type(Type::array_of_type(Type::String))])
+            .is_err(),);
+        assert!(expr.run_types([Type::Integer]).is_err());
+    }
+
+    #[test]
+    fn test_to_object_types_value() {
+        let expr = compile_expression("to_object(input, v => v, v => int(v))", &["input"]).unwrap();
+        let res = expr.run_types([Type::array_of_type(Type::String)]).unwrap();
+        assert_eq!(res, Type::object_of_type(Type::Integer));
     }
 }
