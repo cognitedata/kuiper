@@ -3,6 +3,7 @@ use serde_json::Value;
 use crate::{
     compiler::BuildError,
     expressions::{functions::LambdaAcceptFunction, Expression, ResolveResult},
+    types::{Array, Truthy, Type},
     TransformError,
 };
 
@@ -35,6 +36,54 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FilterFunction {
             )),
         }
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let source = self.args[0].resolve_types(state)?;
+        let arr = source.try_as_array(&self.span)?;
+
+        // We can only add elements to the final array if we are sure that every
+        // previous element has been added or excluded. If there's uncertainty, we can
+        // only add every possible element to the dynamic end of the array.
+
+        let mut end_dynamic = Type::never();
+        let mut all_known = true;
+        let mut final_elements = Vec::new();
+        for item in arr.elements {
+            let should_add = self.args[1].call_types(state, &[&item])?.truthyness();
+            match should_add {
+                Truthy::Never => (),
+                Truthy::Always if all_known => {
+                    final_elements.push(item);
+                }
+                _ => {
+                    all_known = false;
+                    end_dynamic = end_dynamic.union_with(item);
+                }
+            }
+        }
+        if let Some(old_end_dynamic) = arr.end_dynamic {
+            match self.args[1]
+                .call_types(state, &[&*old_end_dynamic])?
+                .truthyness()
+            {
+                Truthy::Never => (),
+                _ => {
+                    end_dynamic = end_dynamic.union_with(*old_end_dynamic);
+                }
+            }
+        }
+        Ok(Type::Array(Array {
+            elements: final_elements,
+            end_dynamic: if end_dynamic.is_never() {
+                None
+            } else {
+                Some(Box::new(end_dynamic))
+            },
+        }))
+    }
 }
 
 impl LambdaAcceptFunction for FilterFunction {
@@ -59,7 +108,10 @@ impl LambdaAcceptFunction for FilterFunction {
 
 #[cfg(test)]
 mod tests {
-    use crate::compile_expression;
+    use crate::{
+        compile_expression,
+        types::{Array, Type},
+    };
 
     #[test]
     pub fn test_simple_filter() {
@@ -72,5 +124,36 @@ mod tests {
         assert_eq!(val_arr.first().unwrap().as_u64().unwrap(), 4);
         assert_eq!(val_arr.get(1).unwrap().as_u64().unwrap(), 5);
         assert_eq!(val_arr.get(2).unwrap().as_u64().unwrap(), 6);
+    }
+
+    #[test]
+    fn test_filter_types() {
+        let expr = compile_expression("input.filter(i => i == 'foo')", &["input"]).unwrap();
+        let res = expr
+            .run_types([Type::Array(Array {
+                elements: vec![Type::String],
+                end_dynamic: None,
+            })])
+            .unwrap();
+        assert_eq!(res, Type::array_of_type(Type::String));
+
+        let res = expr
+            .run_types([Type::Array(Array {
+                elements: vec![
+                    Type::from_const("foo"),
+                    Type::Integer,
+                    Type::from_const("bar"),
+                    Type::String,
+                ],
+                end_dynamic: Some(Box::new(Type::Float)),
+            })])
+            .unwrap();
+        assert_eq!(
+            res,
+            Type::Array(Array {
+                elements: vec![Type::from_const("foo")],
+                end_dynamic: Some(Box::new(Type::String))
+            })
+        );
     }
 }
