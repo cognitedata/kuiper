@@ -36,6 +36,9 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: cognitedata/kuiper
 
+      - name: Test interop library
+        run: kuiper_interop/test/compile_and_run.sh
+
   build_python_bindings:
     strategy:
       matrix:
@@ -66,7 +69,6 @@ jobs:
         run: |
           pip install target/wheels/cognite_kuiper-*.whl
           pytest
-
 
   build_js_modules:
     runs-on: ubuntu-latest
