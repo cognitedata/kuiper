@@ -7,6 +7,7 @@ int test_simple_expression() {
 
     if (compile_result->error.is_error) {
         fprintf(stderr, "Error compiling expression: %s\n", compile_result->error.error);
+        destroy_compile_result(compile_result);
         return 1;
     }
 
@@ -14,22 +15,26 @@ int test_simple_expression() {
 
     TransformResult *transform_result = run_expression((const char *[]){"1", "2"}, 2, expr);
 
+    int error = 0;
+
     if (transform_result->error.is_error) {
         fprintf(stderr, "Error running expression: %s\n", transform_result->error.error);
-        return 1;
+        error = 1;
+        goto cleanup;
     }
 
     if (strcmp(transform_result->result, "3") != 0) {
         fprintf(stderr, "Expected result '3', got '%s'\n", transform_result->result);
-        return 1;
+        error = 1;
+        goto cleanup;
     } else {
         printf("Test passed: 'a + b' with a=1 and b=2 gives %s\n", transform_result->result);
     }
 
+cleanup:
     destroy_transform_result(transform_result);
     destroy_expression(expr);
-
-    return 0;
+    return error;
 }
 
 int main() {
