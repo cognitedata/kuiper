@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use serde_json::{Map, Value};
 
 use crate::{
@@ -58,7 +60,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for PairsFunction {
         } else {
             // Since we use a BTreeMap in both cases, the order of the fields will be the same.
             let mut entries = Vec::new();
-            for (field, elem) in item_obj.fields {
+            let fields: BTreeMap<_, _> = item_obj.fields;
+            for (field, elem) in fields {
                 let ObjectField::Constant(key) = field else {
                     // Should be unreachable.
                     continue;
