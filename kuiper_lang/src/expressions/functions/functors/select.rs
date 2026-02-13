@@ -85,8 +85,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SelectFunction {
                         ObjectField::Constant(v) => Type::from_const(v.clone()),
                         ObjectField::Generic => Type::String,
                     };
-                    let should_remove = lambda.call_types(state, &[&v, &key_arg])?;
-                    match should_remove.truthyness() {
+                    let should_keep = lambda.call_types(state, &[&v, &key_arg])?;
+                    match should_keep.truthyness() {
                         Truthy::Always => {
                             res_obj.push_field(k, v);
                         }
