@@ -45,7 +45,6 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FlatMapFunction {
         state: &mut crate::types::TypeExecutionState<'c, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let source = self.args[0].resolve_types(state)?;
-        println!("{source:?}");
         let arr = source.try_as_array(&self.span)?;
 
         let mut all_known = true;
