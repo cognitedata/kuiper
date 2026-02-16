@@ -13,11 +13,11 @@ macro_rules! arg2_math_func {
     ($typ:ident, $name:expr, $rname:ident) => {
         function_def!($typ, $name, 2);
 
-        impl<'a: 'c, 'c> $crate::expressions::base::Expression<'a, 'c> for $typ {
-            fn resolve(
+        impl $crate::expressions::base::Expression for $typ {
+            fn resolve<'a>(
                 &'a self,
-                state: &mut $crate::expressions::base::ExpressionExecutionState<'c, '_>,
-            ) -> Result<$crate::expressions::ResolveResult<'c>, $crate::expressions::transform_error::TransformError> {
+                state: &mut $crate::expressions::base::ExpressionExecutionState<'a, '_>,
+            ) -> Result<$crate::expressions::ResolveResult<'a>, $crate::expressions::transform_error::TransformError> {
                 let lhs = self.args[0].resolve(state)?.try_as_number(
                     &<Self as $crate::expressions::functions::FunctionExpression>::INFO.name,
                     &self.span,
@@ -47,8 +47,8 @@ macro_rules! arg2_math_func {
             }
 
             fn resolve_types(
-                &'a self,
-                state: &mut $crate::types::TypeExecutionState<'c, '_>,
+                &self,
+                state: &mut $crate::types::TypeExecutionState<'_, '_>,
             ) -> Result<$crate::types::Type, $crate::types::TypeError> {
                 for arg in &self.args {
                     let arg = arg.resolve_types(state)?;
@@ -67,12 +67,12 @@ macro_rules! arg1_math_func {
     ($typ:ident, $name:expr, $rname:ident) => {
         function_def!($typ, $name, 1);
 
-        impl<'a: 'c, 'c> $crate::expressions::base::Expression<'a, 'c> for $typ {
-            fn resolve(
+        impl $crate::expressions::base::Expression for $typ {
+            fn resolve<'a>(
                 &'a self,
-                state: &mut $crate::expressions::base::ExpressionExecutionState<'c, '_>,
+                state: &mut $crate::expressions::base::ExpressionExecutionState<'a, '_>,
             ) -> Result<
-                $crate::expressions::ResolveResult<'c>,
+                $crate::expressions::ResolveResult<'a>,
                 $crate::expressions::transform_error::TransformError,
             > {
                 let arg = self.args[0].resolve(state)?.try_as_number(
@@ -97,8 +97,8 @@ macro_rules! arg1_math_func {
             }
 
             fn resolve_types(
-                &'a self,
-                state: &mut $crate::types::TypeExecutionState<'c, '_>,
+                &self,
+                state: &mut $crate::types::TypeExecutionState<'_, '_>,
             ) -> Result<$crate::types::Type, $crate::types::TypeError> {
                 let arg = self.args[0].resolve_types(state)?;
                 arg.assert_assignable_to(
@@ -130,11 +130,11 @@ function_def!(IntFunction, "int", 1);
 // Cast and math functions tend to get a bit involved, the reason is that
 // we want to be able to handle fairly large numbers, since those will be involved in timestamps. If we just cast to float, we might not be able to handle
 // (timestamp - timestamp) that well, for example, which is important. So we have to carefully track the type of number, and do conversions where possible.
-impl<'a: 'c, 'c> Expression<'a, 'c> for IntFunction {
-    fn resolve(
+impl Expression for IntFunction {
+    fn resolve<'a>(
         &'a self,
-        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
-    ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
+        state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
+    ) -> Result<crate::expressions::ResolveResult<'a>, crate::TransformError> {
         let dat = self.args[0].resolve(state)?;
         let val = dat.as_ref();
         let res = match val {
@@ -196,8 +196,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IntFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let arg = self.args[0].resolve_types(state)?;
         arg.assert_assignable_to(
@@ -212,11 +212,11 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IntFunction {
 
 function_def!(FloatFunction, "float", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for FloatFunction {
-    fn resolve(
+impl Expression for FloatFunction {
+    fn resolve<'a>(
         &'a self,
-        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
-    ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
+        state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
+    ) -> Result<crate::expressions::ResolveResult<'a>, crate::TransformError> {
         let dat = self.args[0].resolve(state)?;
         let val = dat.as_ref();
         let res = match val {
@@ -256,8 +256,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FloatFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let arg = self.args[0].resolve_types(state)?;
         arg.assert_assignable_to(
@@ -303,11 +303,11 @@ fn flatten_args<'a>(
 
 function_def!(MaxFunction, "max", 1, None);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for MaxFunction {
-    fn resolve(
+impl Expression for MaxFunction {
+    fn resolve<'a>(
         &'a self,
-        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
-    ) -> Result<ResolveResult<'c>, TransformError> {
+        state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
+    ) -> Result<ResolveResult<'a>, TransformError> {
         let args = self
             .args
             .iter()
@@ -337,8 +337,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for MaxFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let args = flatten_type_args(&self.args, state, &self.span)?;
 
@@ -350,10 +350,10 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for MaxFunction {
     }
 }
 
-fn flatten_type_args<'a: 'c, 'c>(
-    args: &'a [ExpressionType],
-    state: &mut crate::types::TypeExecutionState<'c, '_>,
-    span: &'a Span,
+fn flatten_type_args(
+    args: &[ExpressionType],
+    state: &mut crate::types::TypeExecutionState<'_, '_>,
+    span: &Span,
 ) -> Result<Vec<Type>, TypeError> {
     if args.len() == 1 {
         let ty = args[0].resolve_types(state)?;
@@ -365,11 +365,11 @@ fn flatten_type_args<'a: 'c, 'c>(
 
 function_def!(MinFunction, "min", 1, None);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for MinFunction {
-    fn resolve(
+impl Expression for MinFunction {
+    fn resolve<'a>(
         &'a self,
-        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
-    ) -> Result<ResolveResult<'c>, TransformError> {
+        state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
+    ) -> Result<ResolveResult<'a>, TransformError> {
         let args = self
             .args
             .iter()
@@ -399,8 +399,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for MinFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let args = flatten_type_args(&self.args, state, &self.span)?;
 

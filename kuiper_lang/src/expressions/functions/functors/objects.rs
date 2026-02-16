@@ -7,11 +7,11 @@ use crate::{
 
 function_def!(ToObjectFunction, "to_object", 2, Some(3), lambda);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for ToObjectFunction {
-    fn resolve(
+impl Expression for ToObjectFunction {
+    fn resolve<'a>(
         &'a self,
-        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
-    ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
+        state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
+    ) -> Result<crate::expressions::ResolveResult<'a>, crate::TransformError> {
         let source = self.args[0].resolve(state)?;
 
         let Value::Array(arr) = source.as_ref() else {

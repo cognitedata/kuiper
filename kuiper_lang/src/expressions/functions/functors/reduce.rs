@@ -5,11 +5,11 @@ use serde_json::Value;
 
 function_def!(ReduceFunction, "reduce", 3, lambda);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for ReduceFunction {
-    fn resolve(
+impl Expression for ReduceFunction {
+    fn resolve<'a>(
         &'a self,
-        state: &mut ExpressionExecutionState<'c, '_>,
-    ) -> Result<ResolveResult<'c>, TransformError> {
+        state: &mut ExpressionExecutionState<'a, '_>,
+    ) -> Result<ResolveResult<'a>, TransformError> {
         let source = self.args[0].resolve(state)?;
 
         match source.as_ref() {

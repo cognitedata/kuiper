@@ -45,11 +45,11 @@ impl Display for ArrayExpression {
     }
 }
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for ArrayExpression {
-    fn resolve(
+impl Expression for ArrayExpression {
+    fn resolve<'a>(
         &'a self,
-        state: &mut ExpressionExecutionState<'c, '_>,
-    ) -> Result<ResolveResult<'c>, TransformError> {
+        state: &mut ExpressionExecutionState<'a, '_>,
+    ) -> Result<ResolveResult<'a>, TransformError> {
         state.inc_op()?;
 
         let mut arr = vec![];
@@ -85,8 +85,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ArrayExpression {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let mut types = vec![];
         let mut end_dynamic: Option<Type> = None;

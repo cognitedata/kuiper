@@ -68,11 +68,11 @@ impl Display for SelectorExpression {
     }
 }
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for SelectorExpression {
-    fn resolve(
+impl Expression for SelectorExpression {
+    fn resolve<'a>(
         &'a self,
-        state: &mut ExpressionExecutionState<'c, '_>,
-    ) -> Result<ResolveResult<'c>, TransformError> {
+        state: &mut ExpressionExecutionState<'a, '_>,
+    ) -> Result<ResolveResult<'a>, TransformError> {
         match &self.source {
             SourceElement::CompiledInput(i) => {
                 let source_ref = match state.get_value(*i) {
@@ -97,8 +97,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SelectorExpression {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let ty = match &self.source {
             SourceElement::CompiledInput(i) => state.get_type(*i).cloned().unwrap_or(Type::null()),

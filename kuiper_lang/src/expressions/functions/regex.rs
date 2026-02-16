@@ -92,19 +92,19 @@ macro_rules! regex_function {
 
 regex_function!(RegexIsMatchFunction, "regex_is_match", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for RegexIsMatchFunction {
-    fn resolve(
+impl Expression for RegexIsMatchFunction {
+    fn resolve<'a>(
         &'a self,
-        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
-    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
+    ) -> Result<ResolveResult<'a>, crate::TransformError> {
         let arg = self.args[0].resolve(state)?;
         let arg = arg.try_as_string(Self::INFO.name, &self.span)?;
         Ok(ResolveResult::Owned(self.re.is_match(arg.as_ref()).into()))
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let item = self.args[0].resolve_types(state)?;
         item.assert_assignable_to(&Type::stringifyable(), &self.span)?;
@@ -114,11 +114,11 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexIsMatchFunction {
 
 regex_function!(RegexFirstMatchFunction, "regex_first_match", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for RegexFirstMatchFunction {
-    fn resolve(
+impl Expression for RegexFirstMatchFunction {
+    fn resolve<'a>(
         &'a self,
-        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
-    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
+    ) -> Result<ResolveResult<'a>, crate::TransformError> {
         let arg = self.args[0].resolve(state)?;
         let arg = arg.try_as_string(Self::INFO.name, &self.span)?;
         let m = self.re.find(arg.as_ref());
@@ -129,8 +129,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexFirstMatchFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let item = self.args[0].resolve_types(state)?;
         item.assert_assignable_to(&Type::stringifyable(), &self.span)?;
@@ -140,11 +140,11 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexFirstMatchFunction {
 
 regex_function!(RegexAllMatchesFunction, "regex_all_matches", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for RegexAllMatchesFunction {
-    fn resolve(
+impl Expression for RegexAllMatchesFunction {
+    fn resolve<'a>(
         &'a self,
-        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
-    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
+    ) -> Result<ResolveResult<'a>, crate::TransformError> {
         let arg = self.args[0].resolve(state)?;
         let arg = arg.try_as_string(Self::INFO.name, &self.span)?;
         let m = self.re.find_iter(arg.as_ref());
@@ -154,8 +154,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexAllMatchesFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let item = self.args[0].resolve_types(state)?;
         item.assert_assignable_to(&Type::stringifyable(), &self.span)?;
@@ -165,11 +165,11 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexAllMatchesFunction {
 
 regex_function!(RegexFirstCapturesFunction, "regex_first_captures", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for RegexFirstCapturesFunction {
-    fn resolve(
+impl Expression for RegexFirstCapturesFunction {
+    fn resolve<'a>(
         &'a self,
-        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
-    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
+    ) -> Result<ResolveResult<'a>, crate::TransformError> {
         let arg = self.args[0].resolve(state)?;
         let arg = arg.try_as_string(Self::INFO.name, &self.span)?;
         let m = self.re.captures(arg.as_ref());
@@ -194,8 +194,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexFirstCapturesFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let item = self.args[0].resolve_types(state)?;
         item.assert_assignable_to(&Type::stringifyable(), &self.span)?;
@@ -210,11 +210,11 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexFirstCapturesFunction {
 
 regex_function!(RegexAllCapturesFunction, "regex_all_captures", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for RegexAllCapturesFunction {
-    fn resolve(
+impl Expression for RegexAllCapturesFunction {
+    fn resolve<'a>(
         &'a self,
-        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
-    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
+    ) -> Result<ResolveResult<'a>, crate::TransformError> {
         let arg = self.args[0].resolve(state)?;
         let arg = arg.try_as_string(Self::INFO.name, &self.span)?;
 
@@ -243,8 +243,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexAllCapturesFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let item = self.args[0].resolve_types(state)?;
         item.assert_assignable_to(&Type::stringifyable(), &self.span)?;
@@ -261,11 +261,11 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexAllCapturesFunction {
 
 regex_function!(RegexReplaceFunction, "regex_replace", 2);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for RegexReplaceFunction {
-    fn resolve(
+impl Expression for RegexReplaceFunction {
+    fn resolve<'a>(
         &'a self,
-        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
-    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
+    ) -> Result<ResolveResult<'a>, crate::TransformError> {
         let arg = self.args[0].resolve(state)?;
         let arg = arg.try_as_string(Self::INFO.name, &self.span)?;
         let repl = self.args[1].resolve(state)?;
@@ -276,8 +276,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexReplaceFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         for arg in &self.args {
             let item = arg.resolve_types(state)?;
@@ -289,11 +289,11 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexReplaceFunction {
 
 regex_function!(RegexReplaceAllFunction, "regex_replace_all", 2);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for RegexReplaceAllFunction {
-    fn resolve(
+impl Expression for RegexReplaceAllFunction {
+    fn resolve<'a>(
         &'a self,
-        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
-    ) -> Result<ResolveResult<'c>, crate::TransformError> {
+        state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
+    ) -> Result<ResolveResult<'a>, crate::TransformError> {
         let arg = self.args[0].resolve(state)?;
         let arg = arg.try_as_string(Self::INFO.name, &self.span)?;
         let repl = self.args[1].resolve(state)?;
@@ -307,8 +307,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexReplaceAllFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         for arg in &self.args {
             let item = arg.resolve_types(state)?;

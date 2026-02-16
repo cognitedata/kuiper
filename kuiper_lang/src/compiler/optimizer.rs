@@ -4,7 +4,7 @@ use crate::{
 };
 
 fn is_deterministic(expr: &mut ExpressionType) -> bool {
-    if !expr.get_is_deterministic() {
+    if !expr.is_deterministic() {
         return false;
     }
 

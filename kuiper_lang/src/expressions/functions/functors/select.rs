@@ -7,11 +7,11 @@ use crate::{
 
 function_def!(SelectFunction, "select", 2, lambda);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for SelectFunction {
-    fn resolve(
+impl Expression for SelectFunction {
+    fn resolve<'a>(
         &'a self,
-        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
-    ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
+        state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
+    ) -> Result<crate::expressions::ResolveResult<'a>, crate::TransformError> {
         let source = self.args[0].resolve(state)?;
         match source.into_owned() {
             Value::Object(x) => {
