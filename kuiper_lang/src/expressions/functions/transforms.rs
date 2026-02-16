@@ -10,8 +10,8 @@ use crate::{
 
 function_def!(PairsFunction, "pairs", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for PairsFunction {
-    fn resolve(
+impl Expression for PairsFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
@@ -38,8 +38,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for PairsFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let item = self.args[0].resolve_types(state)?;
         let item_obj = item.try_as_object(&self.span)?;

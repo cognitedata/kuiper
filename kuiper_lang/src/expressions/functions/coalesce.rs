@@ -5,8 +5,8 @@ use crate::{
 
 function_def!(CoalesceFunction, "coalesce", 2, None);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for CoalesceFunction {
-    fn resolve(
+impl Expression for CoalesceFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -20,8 +20,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for CoalesceFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let mut final_type = Type::never();
         let mut final_found = false;

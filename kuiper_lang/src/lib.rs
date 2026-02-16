@@ -141,10 +141,19 @@ pub use compiler::{
 #[cfg(feature = "completions")]
 pub use expressions::Completions;
 pub use expressions::{
-    ExpressionRunBuilder, ExpressionType, ResolveResult, TransformError, TransformErrorData,
+    ExpressionExecutionState, ExpressionMeta, ExpressionRunBuilder, ExpressionType, ResolveResult,
+    TransformError, TransformErrorData,
 };
 pub use lexer::ParseError;
 pub use logos::Span;
+
+/// Utilities for defining custom functions.
+pub mod functions {
+    pub use super::expressions::{
+        function_def, make_function, DynamicFunction, DynamicFunctionBuilder, FunctionExpression,
+        FunctionInfo, LambdaAcceptFunction,
+    };
+}
 
 /// Module for utilties for working with input data as a stream of tokens,
 /// rather than a string.

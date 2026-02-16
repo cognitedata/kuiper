@@ -32,3 +32,11 @@ pub use run_builder::ExpressionRunBuilder;
 pub use selector::{SelectorElement, SelectorExpression, SourceElement};
 pub use source::{LazySourceData, LazySourceDataJson, SourceData};
 pub use transform_error::{TransformError, TransformErrorData};
+
+pub use functions::{
+    function_def, make_function, DynamicFunction, DynamicFunctionBuilder, DynamicFunctionSource,
+    FunctionExpression, FunctionInfo, LambdaAcceptFunction,
+};
+
+pub(crate) use base::FunctionType;
+pub(crate) use functions::EmptyFunctionSource;

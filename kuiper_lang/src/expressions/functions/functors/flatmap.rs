@@ -7,8 +7,8 @@ use crate::{
 
 function_def!(FlatMapFunction, "flatmap", 2, lambda);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for FlatMapFunction {
-    fn resolve(
+impl Expression for FlatMapFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {

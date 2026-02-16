@@ -10,8 +10,8 @@ use crate::{
 
 function_def!(DistinctByFunction, "distinct_by", 2, lambda);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for DistinctByFunction {
-    fn resolve(
+impl Expression for DistinctByFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
@@ -50,8 +50,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for DistinctByFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let item = self.args[0].resolve_types(state)?;
 
@@ -108,9 +108,9 @@ impl LambdaAcceptFunction for DistinctByFunction {
 }
 
 impl DistinctByFunction {
-    fn resolve_types_as_array<'a>(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'a, '_>,
+    fn resolve_types_as_array(
+        &'_ self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
         item_arr: &crate::types::Array,
         allows_object: bool,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
@@ -130,9 +130,9 @@ impl DistinctByFunction {
         Ok(Type::array_of_type(item_arr.element_union()))
     }
 
-    fn resolve_types_as_object<'a>(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'a, '_>,
+    fn resolve_types_as_object(
+        &'_ self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
         item_obj: &crate::types::Object,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         for (k, v) in &item_obj.fields {

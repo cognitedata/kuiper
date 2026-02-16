@@ -56,7 +56,7 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
         self.completions = Some(completions);
     }
 
-    pub fn new(
+    pub(crate) fn new(
         data: &'exec Vec<Option<&'data dyn SourceData>>,
         opcount: &'exec mut i64,
         max_opcount: i64,
@@ -70,7 +70,7 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
         }
     }
 
-    pub fn get_temporary_clone<'inner>(
+    pub(crate) fn get_temporary_clone<'inner>(
         &'inner mut self,
         extra_values: impl Iterator<Item = &'inner dyn SourceData>,
         num_values: usize,
@@ -102,6 +102,8 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
         }
     }
 
+    /// Increment the operation count, and check if it exceeds the maximum.
+    /// If it does, return an error.
     pub fn inc_op(&mut self) -> Result<(), TransformError> {
         *self.opcount += 1;
         if *self.opcount > self.max_opcount && self.max_opcount > 0 {
@@ -112,6 +114,7 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
     }
 
     #[cfg(feature = "completions")]
+    /// Add completion entries for the given span.
     pub fn add_completion_entries<I: Iterator<Item = impl Into<String>>, F: Fn() -> I>(
         &mut self,
         it: F,
@@ -167,19 +170,19 @@ impl<'data> InternalExpressionExecutionState<'data, '_> {
 ///
 ///                 'b
 /// ````
-pub trait Expression<'a: 'c, 'c>: Display {
-    const IS_DETERMINISTIC: bool = true;
+pub trait Expression: Display {
+    /// Check if the expression is deterministic.
+    fn is_deterministic(&self) -> bool {
+        true
+    }
+
     /// Resolve an expression.
-    fn resolve(
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError>;
 
-    fn get_is_deterministic(&self) -> bool {
-        Self::IS_DETERMINISTIC
-    }
-
-    fn call(
+    fn call<'a: 'c, 'c>(
         &'a self,
         state: &mut ExpressionExecutionState<'c, '_>,
         _values: &[&Value],
@@ -188,16 +191,15 @@ pub trait Expression<'a: 'c, 'c>: Display {
     }
 
     fn resolve_types(
-        &'a self,
-        _state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        _state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         Ok(Type::Any)
     }
 
-    #[allow(unused)]
     fn call_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
         _arguments: &[&Type],
     ) -> Result<Type, crate::types::TypeError> {
         self.resolve_types(state)
@@ -206,18 +208,19 @@ pub trait Expression<'a: 'c, 'c>: Display {
 
 /// Additional trait for expressions, separate from Expression to make it easier to implement in macros
 pub trait ExpressionMeta {
+    /// Get mutable references to the child expressions of this expression, for use in expression rewriting.
     fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_>;
 }
 
 /// A function expression, new functions must be added here.
-#[derive(PassThrough, Debug, Clone)]
+#[derive(PassThrough, Debug)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
-#[pass_through(fn resolve(&'a self, state: &mut ExpressionExecutionState<'c, '_>) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
-#[pass_through(fn call(&'a self, state: &mut ExpressionExecutionState<'c, '_>, _values: &[&Value]) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
-#[pass_through(fn get_is_deterministic(&self) -> bool, "", Expression<'a, 'c>, where 'a: 'c)]
+#[pass_through(fn resolve<'a: 'c, 'c>(&'a self, state: &mut ExpressionExecutionState<'c, '_>) -> Result<ResolveResult<'c>, TransformError>, "", Expression)]
+#[pass_through(fn call<'a: 'c, 'c>(&'a self, state: &mut ExpressionExecutionState<'c, '_>, _values: &[&Value]) -> Result<ResolveResult<'c>, TransformError>, "", Expression)]
+#[pass_through(fn is_deterministic(&self) -> bool, "", Expression)]
 #[pass_through(fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_>, "", ExpressionMeta)]
-#[pass_through(fn resolve_types(&'a self, state: &mut crate::types::TypeExecutionState<'c, '_>) -> Result<Type, crate::types::TypeError>, "", Expression<'a, 'c>, where 'a: 'c)]
-#[pass_through(fn call_types(&'a self, state: &mut crate::types::TypeExecutionState<'c, '_>, _arguments: &[&Type]) -> Result<Type, crate::types::TypeError>, "", Expression<'a, 'c>, where 'a: 'c)]
+#[pass_through(fn resolve_types(&self, state: &mut crate::types::TypeExecutionState<'_, '_>) -> Result<Type, crate::types::TypeError>, "", Expression)]
+#[pass_through(fn call_types(&self, state: &mut crate::types::TypeExecutionState<'_, '_>, _arguments: &[&Type]) -> Result<Type, crate::types::TypeError>, "", Expression)]
 pub enum FunctionType {
     Pow(PowFunction),
     Log(LogFunction),
@@ -288,6 +291,7 @@ pub enum FunctionType {
     AsinFunction(AsinFunction),
     AcosFunction(AcosFunction),
     AtanFunction(AtanFunction),
+    CustomFunction(Box<dyn DynamicFunction>),
 }
 
 struct FunctionBuilder {
@@ -387,14 +391,14 @@ pub fn get_function_expression(
 
 /// An executable node in the expression tree.
 /// This type can be executed with the `run` function, to yield a transformed Value.
-#[derive(PassThrough, Debug, Clone)]
+#[derive(PassThrough, Debug)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
-#[pass_through(fn resolve(&'a self, state: &mut ExpressionExecutionState<'c, '_>) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
-#[pass_through(fn get_is_deterministic(&self) -> bool, "", Expression<'a, 'c>, where 'a: 'c)]
-#[pass_through(fn call(&'a self, state: &mut ExpressionExecutionState<'c, '_>, _values: &[&Value]) -> Result<ResolveResult<'c>, TransformError>, "", Expression<'a, 'c>, where 'a: 'c)]
+#[pass_through(fn resolve<'a: 'c, 'c>(&'a self, state: &mut ExpressionExecutionState<'c, '_>) -> Result<ResolveResult<'c>, TransformError>, "", Expression)]
+#[pass_through(fn is_deterministic(&self) -> bool, "", Expression)]
+#[pass_through(fn call<'a: 'c, 'c>(&'a self, state: &mut ExpressionExecutionState<'c, '_>, _values: &[&Value]) -> Result<ResolveResult<'c>, TransformError>, "", Expression)]
 #[pass_through(fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_>, "", ExpressionMeta)]
-#[pass_through(fn resolve_types(&'a self, state: &mut crate::types::TypeExecutionState<'c, '_>) -> Result<Type, crate::types::TypeError>, "", Expression<'a, 'c>, where 'a: 'c)]
-#[pass_through(fn call_types(&'a self, state: &mut crate::types::TypeExecutionState<'c, '_>, _arguments: &[&Type]) -> Result<Type, crate::types::TypeError>, "", Expression<'a, 'c>, where 'a: 'c)]
+#[pass_through(fn resolve_types(&self, state: &mut crate::types::TypeExecutionState<'_, '_>) -> Result<Type, crate::types::TypeError>, "", Expression)]
+#[pass_through(fn call_types(&self, state: &mut crate::types::TypeExecutionState<'_, '_>, _arguments: &[&Type]) -> Result<Type, crate::types::TypeError>, "", Expression)]
 pub enum ExpressionType {
     /// A constant value expression.
     Constant(Constant),
@@ -513,8 +517,8 @@ impl Display for Constant {
     }
 }
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for Constant {
-    fn resolve(
+impl Expression for Constant {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
@@ -523,8 +527,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for Constant {
     }
 
     fn resolve_types(
-        &'a self,
-        _state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        _state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         Ok(Type::from_const(self.value().clone()))
     }

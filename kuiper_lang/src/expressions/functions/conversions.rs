@@ -36,8 +36,8 @@ fn replace_for_parse(mut inp: String) -> Option<String> {
     Some(inp)
 }
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for TryFloatFunction {
-    fn resolve(
+impl Expression for TryFloatFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
@@ -55,8 +55,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryFloatFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let a1 = self.args[0].resolve_types(state)?;
         let a2 = self.args[1].resolve_types(state)?;
@@ -72,8 +72,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryFloatFunction {
 
 function_def!(TryIntFunction, "try_int", 2);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for TryIntFunction {
-    fn resolve(
+impl Expression for TryIntFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
@@ -96,8 +96,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryIntFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let a1 = self.args[0].resolve_types(state)?;
         let a2 = self.args[1].resolve_types(state)?;
@@ -113,8 +113,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryIntFunction {
 
 function_def!(TryBoolFunction, "try_bool", 2);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for TryBoolFunction {
-    fn resolve(
+impl Expression for TryBoolFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
@@ -130,8 +130,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TryBoolFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let a1 = self.args[0].resolve_types(state)?;
         let a2 = self.args[1].resolve_types(state)?;

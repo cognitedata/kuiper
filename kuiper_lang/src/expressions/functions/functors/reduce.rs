@@ -5,8 +5,8 @@ use serde_json::Value;
 
 function_def!(ReduceFunction, "reduce", 3, lambda);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for ReduceFunction {
-    fn resolve(
+impl Expression for ReduceFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {

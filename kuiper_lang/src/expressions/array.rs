@@ -14,7 +14,7 @@ use super::{
     ExpressionType, ResolveResult,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum ArrayElement {
     Expression(ExpressionType),
     Concat(ExpressionType),
@@ -29,7 +29,7 @@ impl Display for ArrayElement {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 /// Array expression. This contains a list of expressions and returns an array.
 pub struct ArrayExpression {
     items: Vec<ArrayElement>,
@@ -45,8 +45,8 @@ impl Display for ArrayExpression {
     }
 }
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for ArrayExpression {
-    fn resolve(
+impl Expression for ArrayExpression {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
@@ -85,8 +85,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ArrayExpression {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let mut types = vec![];
         let mut end_dynamic: Option<Type> = None;

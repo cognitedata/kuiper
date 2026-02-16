@@ -7,8 +7,8 @@ use crate::{
 
 function_def!(ToObjectFunction, "to_object", 2, Some(3), lambda);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for ToObjectFunction {
-    fn resolve(
+impl Expression for ToObjectFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {

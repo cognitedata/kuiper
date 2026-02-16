@@ -86,7 +86,7 @@ impl Display for UnaryOperator {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 /// Expression for an operator. Consists of two expressions, and an operator.
 pub struct OpExpression {
     operator: Operator,
@@ -105,8 +105,8 @@ impl Display for OpExpression {
     }
 }
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
-    fn resolve(
+impl Expression for OpExpression {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
@@ -142,8 +142,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let lh = self.elements[0].resolve_types(state)?;
         let rh = self.elements[1].resolve_types(state)?;
@@ -355,7 +355,7 @@ impl OpExpression {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct UnaryOpExpression {
     operator: UnaryOperator,
     descriptor: String,
@@ -369,8 +369,8 @@ impl Display for UnaryOpExpression {
     }
 }
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for UnaryOpExpression {
-    fn resolve(
+impl Expression for UnaryOpExpression {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
@@ -388,8 +388,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for UnaryOpExpression {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let rhs = self.element.resolve_types(state)?;
         match self.operator {

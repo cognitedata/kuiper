@@ -8,8 +8,8 @@ use crate::{
 
 function_def!(IfFunction, "if", 2, Some(3));
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for IfFunction {
-    fn resolve(
+impl Expression for IfFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
@@ -25,8 +25,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IfFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let cond = self.args[0].resolve_types(state)?;
         let r1 = self.args[1].resolve_types(state)?;
@@ -52,8 +52,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IfFunction {
 
 function_def!(CaseFunction, "case", 3, None);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for CaseFunction {
-    fn resolve(
+impl Expression for CaseFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -80,8 +80,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for CaseFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let lhs = self.args[0].resolve_types(state)?;
         let mut r = Type::never();
@@ -115,8 +115,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for CaseFunction {
 
 function_def!(AnyFunction, "any", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for AnyFunction {
-    fn resolve(
+impl Expression for AnyFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
@@ -150,8 +150,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for AnyFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let arg = self.args[0].resolve_types(state)?;
         arg.assert_assignable_to(
@@ -164,8 +164,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for AnyFunction {
 
 function_def!(AllFunction, "all", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for AllFunction {
-    fn resolve(
+impl Expression for AllFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
@@ -199,8 +199,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for AllFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let arg = self.args[0].resolve_types(state)?;
         arg.assert_assignable_to(

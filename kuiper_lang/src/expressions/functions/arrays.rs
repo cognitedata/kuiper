@@ -9,8 +9,8 @@ use crate::{
 
 function_def!(LengthFunction, "length", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for LengthFunction {
-    fn resolve(
+impl Expression for LengthFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
@@ -34,8 +34,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for LengthFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, TypeError> {
         let source = self.args[0].resolve_types(state)?;
         source.assert_assignable_to(
@@ -48,8 +48,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for LengthFunction {
 
 function_def!(ChunkFunction, "chunk", 2);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for ChunkFunction {
-    fn resolve(
+impl Expression for ChunkFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
@@ -92,8 +92,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ChunkFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, TypeError> {
         let source = self.args[0].resolve_types(state)?;
         let chunk_size = self.args[1].resolve_types(state)?;
@@ -145,8 +145,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ChunkFunction {
 
 function_def!(TailFunction, "tail", 1, Some(2));
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for TailFunction {
-    fn resolve(
+impl Expression for TailFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
@@ -191,8 +191,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TailFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, TypeError> {
         let source = self.args[0].resolve_types(state)?;
         let source_arr = source.try_as_array(&self.span)?;
@@ -253,8 +253,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TailFunction {
 
 function_def!(SliceFunction, "slice", 2, Some(3));
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for SliceFunction {
-    fn resolve(
+impl Expression for SliceFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -301,8 +301,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SliceFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, TypeError> {
         let inp_value = self.args[0].resolve_types(state)?;
         let inp_array = inp_value.try_as_array(&self.span)?;
@@ -343,8 +343,8 @@ fn get_array_index(arr: &[Value], idx: i64) -> usize {
 
 function_def!(SumFunction, "sum", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for SumFunction {
-    fn resolve(
+impl Expression for SumFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -388,8 +388,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SumFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, TypeError> {
         let arr = self.args[0].resolve_types(state)?;
         let arr = arr.try_as_array(&self.span)?;
@@ -410,8 +410,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SumFunction {
 
 function_def!(ContainsFunction, "contains", 2);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for ContainsFunction {
-    fn resolve(
+impl Expression for ContainsFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, TransformError> {
@@ -444,8 +444,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ContainsFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, TypeError> {
         let arr = self.args[0].resolve_types(state)?;
         let check = self.args[1].resolve_types(state)?;

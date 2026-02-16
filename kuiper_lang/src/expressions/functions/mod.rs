@@ -4,6 +4,7 @@ mod arrays;
 mod coalesce;
 mod conversions;
 mod digest;
+mod dynamic;
 mod functors;
 mod join;
 mod json;
@@ -29,6 +30,11 @@ pub use string::*;
 pub use time::*;
 pub use transforms::*;
 
+pub use dynamic::{make_function, DynamicFunction, DynamicFunctionBuilder, DynamicFunctionSource};
+pub use macros::function_def;
+
+pub(crate) use dynamic::EmptyFunctionSource;
+
 use super::{base::ExpressionType, LambdaExpression};
 
 use logos::Span;
@@ -44,6 +50,7 @@ pub struct FunctionInfo {
 }
 
 impl FunctionInfo {
+    /// Validate that the number of arguments passed to this function is valid.
     pub fn validate(&self, num_args: usize) -> bool {
         if num_args < self.minargs {
             return false;
@@ -51,6 +58,7 @@ impl FunctionInfo {
         !matches!(self.maxargs, Some(x) if num_args > x)
     }
 
+    /// Get a human-readable description of the number of arguments this function takes, for use in error messages.
     pub fn num_args_desc(&self) -> String {
         match self.maxargs {
             Some(x) => {
@@ -83,7 +91,11 @@ where
     fn new(args: Vec<ExpressionType>, span: Span) -> Result<Self, BuildError>;
 }
 
+/// A trait for functions that can accept lambdas as arguments.
+/// The default implementation rejects all lambdas.
 pub trait LambdaAcceptFunction {
+    /// Validate that a lambda passed as an argument is valid for this function. `idx` is the index of the argument the lambda was passed as, and `num_args` is the number of arguments
+    /// in the lambda itself.
     fn validate_lambda(
         _idx: usize,
         lambda: &LambdaExpression,

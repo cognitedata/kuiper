@@ -8,8 +8,8 @@ use crate::{
 
 function_def!(FilterFunction, "filter", 2, lambda);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for FilterFunction {
-    fn resolve(
+impl Expression for FilterFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, TransformError> {

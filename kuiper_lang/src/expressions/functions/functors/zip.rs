@@ -10,8 +10,8 @@ use crate::{
 
 function_def!(ZipFunction, "zip", 3, None, lambda);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for ZipFunction {
-    fn resolve(
+impl Expression for ZipFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {

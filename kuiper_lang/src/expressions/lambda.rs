@@ -6,7 +6,7 @@ use crate::{compiler::BuildError, expressions::source::SourceData, write_list};
 
 use super::{base::ExpressionMeta, Expression, ExpressionType, ResolveResult};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct LambdaExpression {
     pub input_names: Vec<String>,
     expr: Box<ExpressionType>,
@@ -38,8 +38,8 @@ impl LambdaExpression {
     }
 }
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for LambdaExpression {
-    fn resolve(
+impl Expression for LambdaExpression {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut super::ExpressionExecutionState<'c, '_>,
     ) -> Result<super::ResolveResult<'c>, crate::TransformError> {
@@ -47,7 +47,7 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for LambdaExpression {
         self.expr.resolve(state)
     }
 
-    fn call<'d>(
+    fn call<'a: 'c, 'c, 'd>(
         &'a self,
         state: &mut super::ExpressionExecutionState<'c, '_>,
         values: &[&'d serde_json::Value],
@@ -63,15 +63,15 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for LambdaExpression {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         self.expr.resolve_types(state)
     }
 
     fn call_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
         values: &[&crate::types::Type],
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let mut inner = state.get_temporary_clone(values.iter().copied(), self.input_names.len());

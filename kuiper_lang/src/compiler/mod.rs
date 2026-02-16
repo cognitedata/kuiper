@@ -1,14 +1,18 @@
 mod exec_tree;
 mod optimizer;
 
-use std::fmt::Display;
+use std::{fmt::Display, sync::Arc};
 
 pub use exec_tree::BuildError;
 use logos::Span;
 pub use optimizer::optimize;
 
 use crate::{
-    expressions::ExpressionType, lex::Token, lexer::Lexer, parse::ProgramParser, types::Type,
+    expressions::{DynamicFunctionSource, EmptyFunctionSource, ExpressionType},
+    lex::Token,
+    lexer::Lexer,
+    parse::ProgramParser,
+    types::Type,
     CompileError,
 };
 
@@ -26,12 +30,22 @@ pub enum TypeCheckerMode {
     Off,
 }
 
-#[derive(Debug)]
 /// Configuration for the compiler.
 pub struct CompilerConfig {
     pub(crate) optimizer_operation_limit: i64,
     pub(crate) max_macro_expansions: i32,
     pub(crate) type_checker: TypeCheckerMode,
+    pub(crate) custom_function_source: Arc<dyn DynamicFunctionSource>,
+}
+
+impl std::fmt::Debug for CompilerConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CompilerConfig")
+            .field("optimizer_operation_limit", &self.optimizer_operation_limit)
+            .field("max_macro_expansions", &self.max_macro_expansions)
+            .field("type_checker", &self.type_checker)
+            .finish()
+    }
 }
 
 impl CompilerConfig {
@@ -58,6 +72,18 @@ impl CompilerConfig {
         self.type_checker = mode;
         self
     }
+
+    /// Set the source for dynamic functions. Defaults to an empty source, which means that no dynamic functions are available.
+    pub fn custom_function_source_ref(mut self, source: Arc<dyn DynamicFunctionSource>) -> Self {
+        self.custom_function_source = source;
+        self
+    }
+
+    /// Set the source for dynamic functions. Defaults to an empty source, which means that no dynamic functions are available.
+    pub fn custom_function_source(mut self, source: impl DynamicFunctionSource + 'static) -> Self {
+        self.custom_function_source = Arc::new(source);
+        self
+    }
 }
 
 impl Default for CompilerConfig {
@@ -66,6 +92,7 @@ impl Default for CompilerConfig {
             optimizer_operation_limit: 100_000,
             max_macro_expansions: 20,
             type_checker: TypeCheckerMode::Off,
+            custom_function_source: Arc::new(EmptyFunctionSource),
         }
     }
 }

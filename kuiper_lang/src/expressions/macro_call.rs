@@ -7,7 +7,7 @@ use crate::{write_list, BuildError};
 
 use super::{Expression, ExpressionMeta, ExpressionType, ResolveResult};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct MacroCallExpression {
     pub inner: Box<ExpressionType>,
     pub args: Vec<ExpressionType>,
@@ -39,8 +39,8 @@ impl MacroCallExpression {
     }
 }
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for MacroCallExpression {
-    fn resolve(
+impl Expression for MacroCallExpression {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut super::ExpressionExecutionState<'c, '_>,
     ) -> Result<super::ResolveResult<'c>, crate::TransformError> {

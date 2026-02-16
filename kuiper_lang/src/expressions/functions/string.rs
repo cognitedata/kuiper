@@ -23,8 +23,8 @@ function_def!(ConcatFunction, "concat", 2, None);
 // or an owned value, like we do here.
 // In theory we could have a function like `pi()`, which returns the constant PI, this could return a reference with lifetime 'a.
 // Typically returning references with lifetime 'a is used for constants, see Constant in base.rs.
-impl<'a: 'c, 'c> Expression<'a, 'c> for ConcatFunction {
-    fn resolve(
+impl Expression for ConcatFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -45,8 +45,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ConcatFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         // First, check that all arguments can be stringified using try_into_string
         for arg in &self.args {
@@ -62,8 +62,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ConcatFunction {
 // other functions follow... This function converts the input to a string.
 function_def!(StringFunction, "string", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for StringFunction {
-    fn resolve(
+impl Expression for StringFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -76,8 +76,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for StringFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let res = self.args[0].resolve_types(state)?;
         res.assert_assignable_to(&Type::stringifyable(), &self.span)?;
@@ -87,8 +87,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for StringFunction {
 
 function_def!(ReplaceFunction, "replace", 3);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for ReplaceFunction {
-    fn resolve(
+impl Expression for ReplaceFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -106,8 +106,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ReplaceFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         for arg in &self.args {
             let res = arg.resolve_types(state)?;
@@ -119,8 +119,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ReplaceFunction {
 
 function_def!(SubstringFunction, "substring", 2, Some(3));
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for SubstringFunction {
-    fn resolve(
+impl Expression for SubstringFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -172,8 +172,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SubstringFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let input = self.args[0].resolve_types(state)?;
         input.assert_assignable_to(&Type::stringifyable(), &self.span)?;
@@ -201,8 +201,8 @@ fn get_byte_index(str: &str, idx: i64) -> Option<usize> {
 
 function_def!(SplitFunction, "split", 2);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for SplitFunction {
-    fn resolve(
+impl Expression for SplitFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -223,8 +223,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SplitFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         for arg in &self.args {
             let res = arg.resolve_types(state)?;
@@ -237,8 +237,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for SplitFunction {
 
 function_def!(TrimWhitespace, "trim_whitespace", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for TrimWhitespace {
-    fn resolve(
+impl Expression for TrimWhitespace {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -250,8 +250,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TrimWhitespace {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let input = self.args[0].resolve_types(state)?;
         input.assert_assignable_to(&Type::stringifyable(), &self.span)?;
@@ -261,8 +261,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TrimWhitespace {
 
 function_def!(CharsFunction, "chars", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for CharsFunction {
-    fn resolve(
+impl Expression for CharsFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -278,8 +278,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for CharsFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let input = self.args[0].resolve_types(state)?;
         input.assert_assignable_to(&Type::stringifyable(), &self.span)?;
@@ -289,8 +289,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for CharsFunction {
 
 function_def!(StringJoinFunction, "string_join", 1, Some(2));
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for StringJoinFunction {
-    fn resolve(
+impl Expression for StringJoinFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -323,8 +323,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for StringJoinFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let input = self.args[0].resolve_types(state)?;
         input.assert_assignable_to(&Type::array_of_type(Type::stringifyable()), &self.span)?;
@@ -340,8 +340,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for StringJoinFunction {
 
 function_def!(StartsWithFunction, "starts_with", 2);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for StartsWithFunction {
-    fn resolve(
+impl Expression for StartsWithFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -354,8 +354,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for StartsWithFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         for arg in &self.args {
             let res = arg.resolve_types(state)?;
@@ -367,8 +367,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for StartsWithFunction {
 
 function_def!(EndsWithFunction, "ends_with", 2);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for EndsWithFunction {
-    fn resolve(
+impl Expression for EndsWithFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -381,8 +381,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for EndsWithFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         for arg in &self.args {
             let res = arg.resolve_types(state)?;
@@ -394,8 +394,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for EndsWithFunction {
 
 function_def!(LowerFunction, "lower", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for LowerFunction {
-    fn resolve(
+impl Expression for LowerFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -409,8 +409,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for LowerFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let input = self.args[0].resolve_types(state)?;
         input.assert_assignable_to(&Type::stringifyable(), &self.span)?;
@@ -420,8 +420,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for LowerFunction {
 
 function_def!(UpperFunction, "upper", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for UpperFunction {
-    fn resolve(
+impl Expression for UpperFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -435,8 +435,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for UpperFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let input = self.args[0].resolve_types(state)?;
         input.assert_assignable_to(&Type::stringifyable(), &self.span)?;
@@ -446,8 +446,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for UpperFunction {
 
 function_def!(TranslateFunction, "translate", 3);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for TranslateFunction {
-    fn resolve(
+impl Expression for TranslateFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -485,8 +485,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for TranslateFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         for arg in &self.args {
             let res = arg.resolve_types(state)?;

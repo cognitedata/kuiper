@@ -592,23 +592,26 @@ impl<'a> Iterator for IterUnion<'a> {
 
 // These types are WIP.
 
-#[allow(unused)]
-pub(crate) struct TypeExecutionState<'data, 'exec> {
+/// State used during type resolution.
+pub struct TypeExecutionState<'data, 'exec> {
     data: &'exec Vec<&'data Type>,
 }
 #[allow(unused)]
 static NULL_TYPE_CONST: Type = Type::Constant(Value::Null);
 
 impl<'data, 'exec> TypeExecutionState<'data, 'exec> {
-    pub fn new(data: &'exec Vec<&'data Type>) -> Self {
+    /// Create a new type execution state with the given data.
+    pub(crate) fn new(data: &'exec Vec<&'data Type>) -> Self {
         Self { data }
     }
-    #[allow(unused)]
+
+    /// Get the type at the given index, if it exists.
     pub fn get_type(&self, index: usize) -> Option<&'data Type> {
         self.data.get(index).cloned()
     }
-    #[allow(unused)]
-    pub fn get_temporary_clone<'inner>(
+
+    /// Get a temporary clone of this state, with the given extra types added to the end.
+    pub(crate) fn get_temporary_clone<'inner>(
         &'inner mut self,
         extra_types: impl Iterator<Item = &'inner Type>,
         num_values: usize,

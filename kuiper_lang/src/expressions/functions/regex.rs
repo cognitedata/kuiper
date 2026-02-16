@@ -9,7 +9,7 @@ use crate::NULL_CONST;
 
 macro_rules! regex_function {
     ($typ:ident, $name:expr, $nargs:expr) => {
-        #[derive(Debug, Clone)]
+        #[derive(Debug)]
         pub struct $typ {
             args: [Box<$crate::expressions::ExpressionType>; $nargs],
             span: logos::Span,
@@ -92,8 +92,8 @@ macro_rules! regex_function {
 
 regex_function!(RegexIsMatchFunction, "regex_is_match", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for RegexIsMatchFunction {
-    fn resolve(
+impl Expression for RegexIsMatchFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -103,8 +103,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexIsMatchFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let item = self.args[0].resolve_types(state)?;
         item.assert_assignable_to(&Type::stringifyable(), &self.span)?;
@@ -114,8 +114,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexIsMatchFunction {
 
 regex_function!(RegexFirstMatchFunction, "regex_first_match", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for RegexFirstMatchFunction {
-    fn resolve(
+impl Expression for RegexFirstMatchFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -129,8 +129,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexFirstMatchFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let item = self.args[0].resolve_types(state)?;
         item.assert_assignable_to(&Type::stringifyable(), &self.span)?;
@@ -140,8 +140,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexFirstMatchFunction {
 
 regex_function!(RegexAllMatchesFunction, "regex_all_matches", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for RegexAllMatchesFunction {
-    fn resolve(
+impl Expression for RegexAllMatchesFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -154,8 +154,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexAllMatchesFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let item = self.args[0].resolve_types(state)?;
         item.assert_assignable_to(&Type::stringifyable(), &self.span)?;
@@ -165,8 +165,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexAllMatchesFunction {
 
 regex_function!(RegexFirstCapturesFunction, "regex_first_captures", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for RegexFirstCapturesFunction {
-    fn resolve(
+impl Expression for RegexFirstCapturesFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -194,8 +194,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexFirstCapturesFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let item = self.args[0].resolve_types(state)?;
         item.assert_assignable_to(&Type::stringifyable(), &self.span)?;
@@ -210,8 +210,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexFirstCapturesFunction {
 
 regex_function!(RegexAllCapturesFunction, "regex_all_captures", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for RegexAllCapturesFunction {
-    fn resolve(
+impl Expression for RegexAllCapturesFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -243,8 +243,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexAllCapturesFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let item = self.args[0].resolve_types(state)?;
         item.assert_assignable_to(&Type::stringifyable(), &self.span)?;
@@ -261,8 +261,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexAllCapturesFunction {
 
 regex_function!(RegexReplaceFunction, "regex_replace", 2);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for RegexReplaceFunction {
-    fn resolve(
+impl Expression for RegexReplaceFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -276,8 +276,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexReplaceFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         for arg in &self.args {
             let item = arg.resolve_types(state)?;
@@ -289,8 +289,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexReplaceFunction {
 
 regex_function!(RegexReplaceAllFunction, "regex_replace_all", 2);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for RegexReplaceAllFunction {
-    fn resolve(
+impl Expression for RegexReplaceAllFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -307,8 +307,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for RegexReplaceAllFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         for arg in &self.args {
             let item = arg.resolve_types(state)?;

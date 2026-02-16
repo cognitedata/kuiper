@@ -11,8 +11,8 @@ use serde_json::{Number, Value};
 
 function_def!(ToUnixTimeFunction, "to_unix_timestamp", 2, Some(3));
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for ToUnixTimeFunction {
-    fn resolve(
+impl Expression for ToUnixTimeFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
@@ -81,8 +81,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ToUnixTimeFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let input = self.args[0].resolve_types(state)?;
         let fmt = self.args[1].resolve_types(state)?;
@@ -104,9 +104,11 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ToUnixTimeFunction {
 
 function_def!(NowFunction, "now", 0);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for NowFunction {
-    const IS_DETERMINISTIC: bool = false;
-    fn resolve(
+impl Expression for NowFunction {
+    fn is_deterministic(&self) -> bool {
+        false
+    }
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         _state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
@@ -115,8 +117,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for NowFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        _state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        _state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         Ok(crate::types::Type::Integer)
     }
@@ -124,8 +126,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for NowFunction {
 
 function_def!(FormatTimestampFunction, "format_timestamp", 2);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for FormatTimestampFunction {
-    fn resolve(
+impl Expression for FormatTimestampFunction {
+    fn resolve<'a: 'c, 'c>(
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
     ) -> Result<ResolveResult<'c>, crate::TransformError> {
@@ -157,8 +159,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FormatTimestampFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let timestamp = self.args[0].resolve_types(state)?;
         let format = self.args[1].resolve_types(state)?;
