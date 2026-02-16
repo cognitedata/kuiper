@@ -33,8 +33,8 @@ impl Expression for ReduceFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let source = self.args[0].resolve_types(state)?;
         let source_arr = source.try_as_array(&self.span)?;

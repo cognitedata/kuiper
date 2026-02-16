@@ -72,8 +72,8 @@ impl Expression for SelectFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let item = self.args[0].resolve_types(state)?;
         let mut item_obj = item.try_as_object(&self.span)?;

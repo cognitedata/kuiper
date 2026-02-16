@@ -52,8 +52,8 @@ impl Expression for ZipFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let mut sources = Vec::with_capacity(self.args.len() - 1);
         let mut known_output_len = 0;

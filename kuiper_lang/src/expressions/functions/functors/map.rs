@@ -51,8 +51,8 @@ impl Expression for MapFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let source = self.args[0].resolve_types(state)?;
 
@@ -105,9 +105,9 @@ impl LambdaAcceptFunction for MapFunction {
 }
 
 impl MapFunction {
-    fn resolve_types_as_array<'a>(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'a, '_>,
+    fn resolve_types_as_array(
+        &'_ self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
         item_arr: crate::types::Array,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let mut elements = Vec::new();
@@ -128,9 +128,9 @@ impl MapFunction {
         }))
     }
 
-    fn resolve_types_as_object<'a>(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'a, '_>,
+    fn resolve_types_as_object(
+        &'_ self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
         item_obj: crate::types::Object,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let mut fields = BTreeMap::new();
