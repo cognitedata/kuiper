@@ -2,6 +2,7 @@ use std::fmt::Write;
 
 use crate::{
     expressions::{functions::FunctionExpression, Expression, ResolveResult},
+    types::Type,
     TransformError,
 };
 
@@ -78,6 +79,27 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ToUnixTimeFunction {
             }
         }
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let input = self.args[0].resolve_types(state)?;
+        let fmt = self.args[1].resolve_types(state)?;
+        let offset = self
+            .args
+            .get(2)
+            .map(|a| a.resolve_types(state))
+            .transpose()?;
+
+        input.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        fmt.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+        if let Some(offset) = offset {
+            offset.assert_assignable_to(&Type::number(), &self.span)?;
+        }
+
+        Ok(crate::types::Type::Integer)
+    }
 }
 
 function_def!(NowFunction, "now", 0);
@@ -90,6 +112,13 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for NowFunction {
     ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
         let res = Utc::now().timestamp_millis();
         Ok(ResolveResult::Owned(Value::Number(res.into())))
+    }
+
+    fn resolve_types(
+        &'a self,
+        _state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        Ok(crate::types::Type::Integer)
     }
 }
 
@@ -126,6 +155,19 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FormatTimestampFunction {
             )),
         }
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let timestamp = self.args[0].resolve_types(state)?;
+        let format = self.args[1].resolve_types(state)?;
+
+        timestamp.assert_assignable_to(&Type::number(), &self.span)?;
+        format.assert_assignable_to(&Type::stringifyable(), &self.span)?;
+
+        Ok(crate::types::Type::String)
+    }
 }
 
 #[cfg(test)]
@@ -133,7 +175,7 @@ mod tests {
 
     use serde_json::json;
 
-    use crate::compile_expression;
+    use crate::{compile_expression, types::Type};
 
     #[test]
     pub fn test_time_conversion() {
@@ -213,7 +255,28 @@ mod tests {
         );
         assert_eq!("just a string", result.get("s5").unwrap().as_str().unwrap());
 
-        let invalid_ts = compile_expression(r#"format_timestamp("not a number", "%Y-%m-%d)"#, &[]);
+        let invalid_ts = compile_expression(r#"format_timestamp("not a number", "%Y-%m-%d")"#, &[]);
         assert!(invalid_ts.is_err());
+    }
+
+    #[test]
+    fn test_format_timestamp_types() {
+        let r = compile_expression(r#"format_timestamp(input, "%Y-%m-%d")"#, &["input"]).unwrap();
+        assert_eq!(Type::String, r.run_types([Type::Integer]).unwrap());
+        assert!(r.run_types([Type::String]).is_err())
+    }
+
+    #[test]
+    fn test_now_types() {
+        let r = compile_expression("now()", &[]).unwrap();
+        assert_eq!(Type::Integer, r.run_types([]).unwrap());
+    }
+
+    #[test]
+    fn test_to_unix_timestamp_types() {
+        let r = compile_expression(r#"to_unix_timestamp(input, "%Y-%m-%d")"#, &["input"]).unwrap();
+        assert_eq!(Type::Integer, r.run_types([Type::String]).unwrap());
+        assert_eq!(Type::Integer, r.run_types([Type::stringifyable()]).unwrap());
+        assert!(r.run_types([Type::any_array()]).is_err());
     }
 }

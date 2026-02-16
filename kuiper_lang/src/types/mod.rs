@@ -159,6 +159,11 @@ impl Type {
         self.is_integer() || self.is_float()
     }
 
+    /// Check whether the type is a constant, i.e. a specific value.
+    pub fn is_constant(&self) -> bool {
+        matches!(self, Type::Constant(_))
+    }
+
     /// Create a new never type, which is a union of no types.
     /// If the result of an expression is the never type, it means that
     /// the expression will never successfully complete.

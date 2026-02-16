@@ -6,3 +6,6 @@ interface. The Kuiper interop package forms the basis for other language binding
 
 The C interface itself is documented through the [`kuiper.h`](./kuiper.h) header file, which you can also include if
 you need to call Kuiper from C.
+
+To test the interrop library, run the `compile_and_run.sh` script in the `test` folder. This will compile a small C
+program which uses the interop library to perform a small computation.
