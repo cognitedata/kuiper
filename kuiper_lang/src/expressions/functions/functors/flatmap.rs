@@ -2,6 +2,7 @@ use serde_json::Value;
 
 use crate::{
     expressions::{functions::LambdaAcceptFunction, Expression, ResolveResult},
+    types::Type,
     BuildError, TransformError,
 };
 
@@ -38,6 +39,65 @@ impl Expression for FlatMapFunction {
             )),
         }
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let source = self.args[0].resolve_types(state)?;
+        let arr = source.try_as_array(&self.span)?;
+
+        let mut all_known = true;
+        let mut final_elements = Vec::new();
+
+        let mut end_dynamic = Type::never();
+
+        for item in arr.elements {
+            let res = self.args[1].call_types(state, &[&item])?;
+            if let Ok(r) = res.try_as_array(&self.span) {
+                // If this might _not_ be an array, we need to consider the case where
+                // a non-array value is returned. Since this is uncertain, we no longer know
+                // the sequence of elements with any certainty.
+                if !res.is_array() {
+                    all_known = false;
+                    end_dynamic = end_dynamic.union_with(res.clone().except_array());
+                }
+
+                if all_known {
+                    final_elements.extend(r.elements);
+                } else {
+                    end_dynamic = end_dynamic.union_with(r.element_union());
+                }
+                if let Some(end_dyn) = r.end_dynamic {
+                    all_known = false;
+                    end_dynamic = end_dynamic.union_with(*end_dyn);
+                }
+            } else if all_known {
+                final_elements.push(res);
+            } else {
+                end_dynamic = end_dynamic.union_with(res);
+            }
+        }
+
+        if let Some(arr_end_dynamic) = arr.end_dynamic {
+            let res = self.args[1].call_types(state, &[&*arr_end_dynamic])?;
+            if let Ok(r) = res.try_as_array(&self.span) {
+                end_dynamic = end_dynamic.union_with(r.element_union());
+            }
+            if !res.is_array() {
+                end_dynamic = end_dynamic.union_with(res.except_array());
+            }
+        }
+
+        Ok(Type::Array(crate::types::Array {
+            elements: final_elements,
+            end_dynamic: if end_dynamic.is_never() {
+                None
+            } else {
+                Some(Box::new(end_dynamic))
+            },
+        }))
+    }
 }
 
 impl LambdaAcceptFunction for FlatMapFunction {
@@ -62,7 +122,7 @@ impl LambdaAcceptFunction for FlatMapFunction {
 
 #[cfg(test)]
 mod tests {
-    use crate::compile_expression;
+    use crate::{compile_expression, types::Type};
 
     #[test]
     fn test_flatmap() {
@@ -90,5 +150,52 @@ mod tests {
         assert_eq!(val_arr.get(2).unwrap(), 3);
         assert_eq!(val_arr.get(3).unwrap(), 4);
         assert_eq!(val_arr.get(4).unwrap(), 5);
+    }
+
+    #[test]
+    fn test_flatmap_types() {
+        let expr = compile_expression("flatmap(input, it => it)", &["input"]).unwrap();
+        let res = expr
+            .run_types([Type::Array(crate::types::Array {
+                elements: vec![
+                    Type::Array(crate::types::Array {
+                        elements: vec![Type::String],
+                        end_dynamic: None,
+                    }),
+                    Type::from_const(5),
+                    Type::Array(crate::types::Array {
+                        elements: vec![
+                            Type::from_const(1),
+                            Type::from_const(2),
+                            Type::array_of_type(Type::String),
+                        ],
+                        end_dynamic: None,
+                    }),
+                    Type::array_of_type(Type::String),
+                    Type::from_const(3),
+                ],
+                end_dynamic: Some(Box::new(Type::array_of_type(Type::Float))),
+            })])
+            .unwrap();
+        assert_eq!(
+            res,
+            Type::Array(crate::types::Array {
+                elements: vec![
+                    Type::String,
+                    Type::from_const(5),
+                    Type::from_const(1),
+                    Type::from_const(2),
+                    Type::array_of_type(Type::String),
+                ],
+                end_dynamic: Some(Box::new(
+                    Type::String
+                        .union_with(Type::from_const(3))
+                        .union_with(Type::Float)
+                )),
+            })
+        );
+
+        let res = expr.run_types([Type::Any]).unwrap();
+        assert_eq!(res, Type::array_of_type(Type::Any));
     }
 }
