@@ -21,6 +21,21 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IfValueFunction {
         let res = self.args[1].call(state, &[source.as_ref()])?.into_owned();
         Ok(ResolveResult::Owned(res))
     }
+
+    fn resolve_types(
+        &'a self,
+        state: &mut crate::types::TypeExecutionState<'c, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        let source = self.args[0].resolve_types(state)?;
+
+        let res = self.args[1].call_types(state, &[&source.clone().except_null()])?;
+
+        if source.is_nullable() {
+            Ok(res.nullable())
+        } else {
+            Ok(res)
+        }
+    }
 }
 
 impl LambdaAcceptFunction for IfValueFunction {
@@ -36,7 +51,7 @@ impl LambdaAcceptFunction for IfValueFunction {
         if nargs != 1 {
             return Err(BuildError::n_function_args(
                 lambda.span.clone(),
-                "flatmap takes a function with one argument",
+                "if_value takes a function with one argument",
             ));
         }
         Ok(())
@@ -47,7 +62,7 @@ impl LambdaAcceptFunction for IfValueFunction {
 mod tests {
     use serde_json::Value;
 
-    use crate::compile_expression;
+    use crate::{compile_expression, types::Type};
 
     #[test]
     fn test_if_value() {
@@ -70,5 +85,18 @@ mod tests {
         assert_eq!(res.get("v2").unwrap(), &Value::Null);
         assert_eq!(res.get("v3").unwrap(), 124);
         assert_eq!(res.get("v4").unwrap(), 3);
+    }
+
+    #[test]
+    fn test_if_value_types() {
+        let expr = compile_expression("if_value(input, a => a)", &["input"]).unwrap();
+        let res = expr.run_types([Type::stringifyable()]).unwrap();
+        assert_eq!(res, Type::stringifyable());
+
+        let res = expr.run_types([Type::null()]).unwrap();
+        assert_eq!(res, Type::null());
+
+        let res = expr.run_types([Type::String]).unwrap();
+        assert_eq!(res, Type::String);
     }
 }
