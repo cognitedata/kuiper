@@ -47,11 +47,11 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for CoalesceFunction {
 
 #[cfg(test)]
 mod tests {
-    use crate::{compile_expression, types::Type};
+    use crate::{compile_expression_test, types::Type};
 
     #[test]
     pub fn test_coalesce() {
-        let expr = compile_expression(r#"coalesce(null, "a", "b", "c")"#, &[]).unwrap();
+        let expr = compile_expression_test(r#"coalesce(null, "a", "b", "c")"#, &[]).unwrap();
         let res = expr.run([]).unwrap();
 
         let v = res.as_str().unwrap();
@@ -60,7 +60,7 @@ mod tests {
 
     #[test]
     pub fn test_coalesce_types() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"coalesce(input1, input2, input3)"#,
             &["input1", "input2", "input3"],
         )

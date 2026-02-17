@@ -186,15 +186,27 @@ pub(crate) use write_list;
 use crate::types::TypeError;
 
 #[cfg(test)]
+fn compile_expression_test(
+    data: &str,
+    known_inputs: &[&str],
+) -> Result<ExpressionType, CompileError> {
+    compile_expression_with_config(
+        data,
+        known_inputs,
+        &CompilerConfig::new().type_checker_mode(crate::compiler::TypeCheckerMode::Early),
+    )
+}
+
+#[cfg(test)]
 pub(crate) mod tests {
     use logos::{Logos, Span};
     use serde_json::json;
     use std::path::PathBuf;
 
     use crate::{
-        compile_expression, compile_expression_with_config, compiler::BuildError,
-        format_expression, lex::Token, CompileError, CompilerConfig, ExpressionDebugInfo,
-        TransformError,
+        compile_expression, compile_expression_test, compile_expression_with_config,
+        compiler::BuildError, format_expression, lex::Token, CompileError, CompilerConfig,
+        ExpressionDebugInfo, TransformError,
     };
 
     pub(crate) fn compile_err(data: &str, inputs: &[&str]) -> CompileError {
@@ -223,7 +235,7 @@ pub(crate) mod tests {
     // Numbers
     #[test]
     pub fn test_add_different_types() {
-        let expr = compile_expression("input.val + 5.5", &["input"]).unwrap();
+        let expr = compile_expression_test("input.val + 5.5", &["input"]).unwrap();
         let inp = json!({ "val": 5 });
         let res = expr.run([&inp]).unwrap();
         assert_eq!(10.5, res.as_f64().unwrap());
@@ -231,7 +243,7 @@ pub(crate) mod tests {
 
     #[test]
     pub fn test_add_keeps_type() {
-        let expr = compile_expression("input.val + 5", &["input"]).unwrap();
+        let expr = compile_expression_test("input.val + 5", &["input"]).unwrap();
         let inp = json!({ "val": 5 });
         let res = expr.run([&inp]).unwrap();
         assert_eq!(10, res.as_u64().unwrap());
@@ -239,7 +251,7 @@ pub(crate) mod tests {
 
     #[test]
     pub fn test_negative_result() {
-        let expr = compile_expression("input.val - 10", &["input"]).unwrap();
+        let expr = compile_expression_test("input.val - 10", &["input"]).unwrap();
         let inp = json!({ "val": 5 });
         let res = expr.run([&inp]).unwrap();
         assert_eq!(-5, res.as_i64().unwrap());
@@ -247,7 +259,7 @@ pub(crate) mod tests {
 
     #[test]
     pub fn test_divide_by_zero() {
-        let expr = compile_expression("10 / input.val", &["input"]).unwrap();
+        let expr = compile_expression_test("10 / input.val", &["input"]).unwrap();
         let res = expr.run([&json!({ "val": 0 })]).unwrap_err();
         match res {
             TransformError::InvalidOperation(d) => {
@@ -260,7 +272,7 @@ pub(crate) mod tests {
 
     #[test]
     pub fn test_non_numeric_input() {
-        let expr = compile_expression("10 * input.val", &["input"]).unwrap();
+        let expr = compile_expression_test("10 * input.val", &["input"]).unwrap();
         let res = expr.run([&json!({ "val": "test" })]).unwrap_err();
         match res {
             TransformError::IncorrectTypeInField(d) => {
@@ -273,7 +285,7 @@ pub(crate) mod tests {
 
     #[test]
     pub fn test_wrong_function_input() {
-        let expr = compile_expression("pow(10, input.val)", &["input"]).unwrap();
+        let expr = compile_expression_test("pow(10, input.val)", &["input"]).unwrap();
         let res = expr.run([&json!({ "val": "test" })]).unwrap_err();
         match res {
             TransformError::IncorrectTypeInField(d) => {
@@ -310,7 +322,7 @@ pub(crate) mod tests {
 
     #[test]
     pub fn test_negate_op() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "v1": !input.v1,
             "v2": !!!input.v2
@@ -329,7 +341,7 @@ pub(crate) mod tests {
 
     #[test]
     pub fn test_compare_operators() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "gt": input.v1 > input.v2,
             "gte": input.v1 >= input.v2,
@@ -355,7 +367,7 @@ pub(crate) mod tests {
     }
     #[test]
     pub fn test_compare_operators_eq() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "gt": input.v1 > input.v2,
             "gte": input.v1 >= input.v2,
@@ -382,7 +394,7 @@ pub(crate) mod tests {
 
     #[test]
     pub fn test_equality_cross_type() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             {
                 "v1": "foo" == 123,
@@ -401,7 +413,7 @@ pub(crate) mod tests {
 
     #[test]
     pub fn test_boolean_operators() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "v1": input.v1 && input.v2 || input.v3,
             "v2": 1 && 2 && 3,
@@ -423,7 +435,7 @@ pub(crate) mod tests {
 
     #[test]
     pub fn test_multiple_inputs() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "i1": input,
             "i2": input1,
@@ -453,7 +465,7 @@ pub(crate) mod tests {
 
     #[test]
     pub fn test_object_creation() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "i1": { concat("test", "test"): 1 + 2 + 3, "val": input.val }
         }"#,
@@ -471,7 +483,7 @@ pub(crate) mod tests {
 
     #[test]
     pub fn test_object_indexing() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "i1": { concat("test", "test"): { "test": 8 }, "val": input.val }["testtest"].test
         }"#,
@@ -487,7 +499,7 @@ pub(crate) mod tests {
 
     #[test]
     pub fn test_array_indexing() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "i1": [[[1, 2, 3], [4], [5, 6], [7, [8]]]][0][3][1][0]
         }"#,
@@ -505,7 +517,7 @@ pub(crate) mod tests {
 
     #[test]
     pub fn test_object_return() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{ "key": "value", "key2": input.val, "key3": { "nested": [1, 2, 3] } }"#,
             &["input"],
         )
@@ -531,7 +543,7 @@ pub(crate) mod tests {
     }
     #[test]
     pub fn test_nested_postfix_function() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{ "test": [1, 2, 3, 4] }.test.map((a) => a * 2)[0].pow(2)"#,
             &[],
         )
@@ -542,7 +554,7 @@ pub(crate) mod tests {
     }
     #[test]
     pub fn test_modulo_operator() {
-        let expr = compile_expression("[1, 2, 3, 4].filter((a) => a % 2 == 1)", &[]).unwrap();
+        let expr = compile_expression_test("[1, 2, 3, 4].filter((a) => a % 2 == 1)", &[]).unwrap();
 
         let res = expr.run([]).unwrap();
         let val = res.as_array().unwrap();
@@ -552,14 +564,14 @@ pub(crate) mod tests {
     }
     #[test]
     pub fn test_complicated_operator_precedence() {
-        let expr = compile_expression("1 == 1 && 2 == 2 || (2 + 2) != 4", &[]).unwrap();
+        let expr = compile_expression_test("1 == 1 && 2 == 2 || (2 + 2) != 4", &[]).unwrap();
 
         let res = expr.run([]).unwrap();
         assert!(res.as_bool());
     }
     #[test]
     pub fn test_variable_ordering() {
-        let expr = compile_expression("input.map([1].map(a => a + 1))", &["input"]).unwrap();
+        let expr = compile_expression_test("input.map([1].map(a => a + 1))", &["input"]).unwrap();
 
         let inp = json!([1, 2, 3]);
         let res = expr.run([&inp]).unwrap();
@@ -573,7 +585,7 @@ pub(crate) mod tests {
     }
     #[test]
     pub fn test_is_operator() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "v1": "test" is string,
             "v2": "test" is number,
@@ -602,7 +614,7 @@ pub(crate) mod tests {
     #[cfg(feature = "completions")]
     #[test]
     pub fn test_completions() {
-        let expr = compile_expression("input.test.foo", &["input"]).unwrap();
+        let expr = compile_expression_test("input.test.foo", &["input"]).unwrap();
 
         let data = json! {{
             "test": {
@@ -624,7 +636,8 @@ pub(crate) mod tests {
 
     #[test]
     pub fn test_op_limit() {
-        let expr = compile_expression("[input, input, input, input, input]", &["input"]).unwrap();
+        let expr =
+            compile_expression_test("[input, input, input, input, input]", &["input"]).unwrap();
 
         let data = json! { 1 };
 
@@ -634,7 +647,7 @@ pub(crate) mod tests {
 
     #[test]
     pub fn test_object_concat() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
         {
             "foo": "bar",
@@ -663,7 +676,7 @@ pub(crate) mod tests {
 
     #[test]
     pub fn test_array_concat() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             [1, 2, ...[3, 4], ...[5], ...input]
         "#,
@@ -683,7 +696,7 @@ pub(crate) mod tests {
 
     #[test]
     pub fn test_comments() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
         1 + /* hello there, this is a comment */ - 5
         + 3
@@ -699,14 +712,14 @@ pub(crate) mod tests {
 
     #[test]
     pub fn test_comments_2() {
-        let expr = compile_expression(r#"/* some comment */ {}"#, &[]).unwrap();
+        let expr = compile_expression_test(r#"/* some comment */ {}"#, &[]).unwrap();
         let r = expr.run(&[]).unwrap().into_owned();
         assert_eq!(0, r.as_object().unwrap().len());
     }
 
     #[test]
     pub fn test_is_2() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
                 1: 1 is number,
                 2: 2 is not string,
@@ -738,7 +751,7 @@ pub(crate) mod tests {
 
     #[test]
     pub fn test_get_opcount() {
-        let expr = compile_expression("input.map(x => x + 1)", &["input"]).unwrap();
+        let expr = compile_expression_test("input.map(x => x + 1)", &["input"]).unwrap();
         let data = json!([1, 2, 3, 4, 5]);
         let (res, opcount) = expr.run_get_opcount([&data]).unwrap();
         assert_eq!(5, res.as_array().unwrap().len());
@@ -1020,10 +1033,11 @@ pub(crate) mod tests {
                     .unwrap_or_default();
 
                 let inputs: Vec<&str> = config.inputs.iter().map(|s| s.as_str()).collect();
-                let expression = compile_expression(&raw_expression, &inputs).expect(&format!(
-                    "Failed to compile expression in file {}",
-                    test_case.display()
-                ));
+                let expression =
+                    compile_expression_test(&raw_expression, &inputs).expect(&format!(
+                        "Failed to compile expression in file {}",
+                        test_case.display()
+                    ));
 
                 for (i, run_case) in config.cases.unwrap_or_default().iter().enumerate() {
                     let result = expression

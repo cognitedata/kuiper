@@ -512,13 +512,13 @@ mod tests {
     use serde_json::Value;
 
     use crate::{
-        compile_expression,
+        compile_expression_test,
         types::{Array, Object, Type},
     };
 
     #[test]
     fn test_constant_selector() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
                 "1": { "foo": 123 }.foo,
                 "2": { "foo": { "bar": 456 } }.foo.bar,
@@ -542,7 +542,7 @@ mod tests {
 
     #[test]
     fn test_dynamic_selector() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "1": { "foo": 123 }["foo"],
             "2": { "bar": { "foo": 456 } }["bar"]["foo"],
@@ -565,7 +565,7 @@ mod tests {
 
     #[test]
     fn test_array_selector() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "1": [1, 2, 3][1],
             "2": [1, 2, 3][-1],
@@ -596,7 +596,7 @@ mod tests {
 
     #[test]
     fn test_selector_types_array() {
-        let expr = crate::compile_expression(
+        let expr = crate::compile_expression_test(
             r#"
         input[0]
         "#,
@@ -623,7 +623,7 @@ mod tests {
 
     #[test]
     fn test_selector_types_array_neg() {
-        let expr = crate::compile_expression(
+        let expr = crate::compile_expression_test(
             r#"
         input[-1]
         "#,
@@ -654,7 +654,7 @@ mod tests {
 
     #[test]
     fn test_selector_types_array_dynamic() {
-        let expr = crate::compile_expression(
+        let expr = crate::compile_expression_test(
             r#"
             input[now()]
             "#,
@@ -680,7 +680,7 @@ mod tests {
 
     #[test]
     fn test_selector_types_object() {
-        let expr = crate::compile_expression(
+        let expr = crate::compile_expression_test(
             r#"
             input.foo
             "#,
@@ -717,7 +717,7 @@ mod tests {
 
     #[test]
     fn test_selector_types_object_const_dynamic() {
-        let expr = crate::compile_expression(
+        let expr = crate::compile_expression_test(
             r#"
             input["foo"]
             "#,
@@ -745,7 +745,7 @@ mod tests {
 
     #[test]
     fn test_selector_types_object_dynamic() {
-        let expr = crate::compile_expression(
+        let expr = crate::compile_expression_test(
             r#"
             input[string(now())]"#,
             &["input"],

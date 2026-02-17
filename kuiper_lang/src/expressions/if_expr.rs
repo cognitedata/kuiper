@@ -125,11 +125,11 @@ impl ExpressionMeta for IfExpression {
 mod tests {
     use serde_json::Value;
 
-    use crate::{compile_expression, types::Type};
+    use crate::{compile_expression_test, types::Type};
 
     #[test]
     fn test_if_expr() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             if (input > 2) {
                 15
@@ -155,7 +155,7 @@ mod tests {
 
     #[test]
     fn test_if_without_else() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             if input > 2 {
                 15
@@ -179,7 +179,7 @@ mod tests {
 
     #[test]
     fn test_if_types() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             if input > 2 {
                 15
@@ -203,7 +203,7 @@ mod tests {
 
     #[test]
     fn test_if_types_known_conditions() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             if false {
                 15
@@ -222,7 +222,7 @@ mod tests {
 
     #[test]
     fn test_if_types_no_else() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             if input == 2 {
                 15

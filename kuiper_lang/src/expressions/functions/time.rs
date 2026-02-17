@@ -175,11 +175,11 @@ mod tests {
 
     use serde_json::json;
 
-    use crate::{compile_expression, types::Type};
+    use crate::{compile_expression_test, types::Type};
 
     #[test]
     pub fn test_time_conversion() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "t1": to_unix_timestamp(input.v1, '%Y-%m-%d %H:%M:%S'),
             "t2": to_unix_timestamp(input.v2, '%Y-%m-%d %H:%M:%S %z'),
@@ -210,7 +210,7 @@ mod tests {
 
     #[test]
     pub fn test_now() {
-        let expr = compile_expression("now()", &[]).unwrap();
+        let expr = compile_expression_test("now()", &[]).unwrap();
 
         let res = expr.run([].iter()).unwrap();
         assert!(res.as_i64().unwrap() > 0);
@@ -218,13 +218,13 @@ mod tests {
 
     #[test]
     pub fn test_now_const() {
-        let r = compile_expression("now()", &[]).unwrap();
+        let r = compile_expression_test("now()", &[]).unwrap();
         assert_eq!("now()", r.to_string());
     }
 
     #[test]
     pub fn test_time_format() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
                 "s1": format_timestamp(1690873155301, "%Y-%m-%d %H:%M:%S"),
                 "s2": format_timestamp(to_unix_timestamp("2023-08-01 13:42:13", "%Y-%m-%d %H:%M:%S"), "%Y-%m-%d %H:%M:%S"),
@@ -255,26 +255,29 @@ mod tests {
         );
         assert_eq!("just a string", result.get("s5").unwrap().as_str().unwrap());
 
-        let invalid_ts = compile_expression(r#"format_timestamp("not a number", "%Y-%m-%d")"#, &[]);
+        let invalid_ts =
+            compile_expression_test(r#"format_timestamp("not a number", "%Y-%m-%d")"#, &[]);
         assert!(invalid_ts.is_err());
     }
 
     #[test]
     fn test_format_timestamp_types() {
-        let r = compile_expression(r#"format_timestamp(input, "%Y-%m-%d")"#, &["input"]).unwrap();
+        let r =
+            compile_expression_test(r#"format_timestamp(input, "%Y-%m-%d")"#, &["input"]).unwrap();
         assert_eq!(Type::String, r.run_types([Type::Integer]).unwrap());
         assert!(r.run_types([Type::String]).is_err())
     }
 
     #[test]
     fn test_now_types() {
-        let r = compile_expression("now()", &[]).unwrap();
+        let r = compile_expression_test("now()", &[]).unwrap();
         assert_eq!(Type::Integer, r.run_types([]).unwrap());
     }
 
     #[test]
     fn test_to_unix_timestamp_types() {
-        let r = compile_expression(r#"to_unix_timestamp(input, "%Y-%m-%d")"#, &["input"]).unwrap();
+        let r =
+            compile_expression_test(r#"to_unix_timestamp(input, "%Y-%m-%d")"#, &["input"]).unwrap();
         assert_eq!(Type::Integer, r.run_types([Type::String]).unwrap());
         assert_eq!(Type::Integer, r.run_types([Type::stringifyable()]).unwrap());
         assert!(r.run_types([Type::any_array()]).is_err());

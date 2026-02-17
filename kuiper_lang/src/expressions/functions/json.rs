@@ -45,11 +45,11 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ParseJsonFunction {
 
 #[cfg(test)]
 mod tests {
-    use crate::compile_expression;
+    use crate::compile_expression_test;
 
     #[test]
     fn test_parse_json() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
         parse_json('{"foo": "bar"}')
         "#,
@@ -67,7 +67,7 @@ mod tests {
 
     #[test]
     fn test_parse_json_misc() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
         {
             "v1": parse_json(1),
@@ -103,7 +103,7 @@ mod tests {
     fn test_parse_json_wrong_keys() {
         // This is the original motivating example for this function.
 
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             parse_json("{'foo': 'bar'}".replace('\'', '"'))
             "#,
@@ -121,7 +121,7 @@ mod tests {
 
     #[test]
     fn test_json_types() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             parse_json(input)
             "#,

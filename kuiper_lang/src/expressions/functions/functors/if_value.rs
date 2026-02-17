@@ -2,6 +2,7 @@ use serde_json::Value;
 
 use crate::{
     expressions::{functions::LambdaAcceptFunction, Expression, ResolveResult},
+    types::Type,
     BuildError,
 };
 
@@ -27,6 +28,10 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IfValueFunction {
         state: &mut crate::types::TypeExecutionState<'c, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let source = self.args[0].resolve_types(state)?;
+
+        if source.is_null() {
+            return Ok(Type::null());
+        }
 
         let res = self.args[1].call_types(state, &[&source.clone().except_null()])?;
 
@@ -62,11 +67,11 @@ impl LambdaAcceptFunction for IfValueFunction {
 mod tests {
     use serde_json::Value;
 
-    use crate::{compile_expression, types::Type};
+    use crate::{compile_expression_test, types::Type};
 
     #[test]
     fn test_if_value() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             {
                 "v1": "hello".if_value(a => concat(a, " world")),
@@ -89,7 +94,7 @@ mod tests {
 
     #[test]
     fn test_if_value_types() {
-        let expr = compile_expression("if_value(input, a => a)", &["input"]).unwrap();
+        let expr = compile_expression_test("if_value(input, a => a)", &["input"]).unwrap();
         let res = expr.run_types([Type::stringifyable()]).unwrap();
         assert_eq!(res, Type::stringifyable());
 
