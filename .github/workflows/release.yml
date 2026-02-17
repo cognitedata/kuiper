@@ -167,7 +167,7 @@ jobs:
           path: artifacts-lib/
           retention-days: 1
       - name: Build CLI
-        run: cargo build --release --package kuiper-cli
+        run: cargo build --release --package kuiper_cli
       - run: mkdir artifacts-bin
       - if: ${{ matrix.os == 'windows-latest' }}
         run: mv target/release/kuiper.exe artifacts-bin/

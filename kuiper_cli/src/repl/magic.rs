@@ -1,6 +1,7 @@
 use std::{cmp::max, collections::HashMap, vec};
 
 use colored::Colorize;
+use kuiper_lang::types::Type;
 use serde_json::Value;
 
 use crate::builtins::{BUILT_INS, HELP};
@@ -52,6 +53,10 @@ fn help(command: Option<&str>) {
                 ),
                 ("/store <name>", "Store the last result as a named variable"),
                 ("/macros", "List all stored macros and their definitions"),
+                (
+                    "/type <expression>",
+                    "Determine the resulting type of an expression",
+                ),
                 ("/exit", "Quit the REPL"),
             ]
             .into_iter()
@@ -128,6 +133,33 @@ pub fn apply_magic_function(
 
                 ReplResult::Continue
             }
+        }
+
+        Some(&"/type") => {
+            let raw_expression = line.trim_start_matches("/type").trim();
+
+            if raw_expression.is_empty() {
+                printerr!("Missing expression to determine type of", "");
+                return ReplResult::Continue;
+            }
+
+            let expression = match kuiper_lang::compile_expression(
+                raw_expression,
+                &inputs.iter().map(String::as_str).collect::<Vec<_>>(),
+            ) {
+                Ok(expr) => expr,
+                Err(e) => {
+                    printerr!(format!("{e}"), "");
+                    return ReplResult::Continue;
+                }
+            };
+
+            match expression.run_types((0..data.len()).map(|_| Type::Any)) {
+                Ok(ty) => println!("{}", ty),
+                Err(e) => printerr!(format!("Error determining type: {e}"), ""),
+            }
+
+            ReplResult::Continue
         }
 
         Some(&"/exit") => ReplResult::Stop,

@@ -27,7 +27,7 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Test
-        run: cargo llvm-cov --workspace --exclude kuiper-cli --codecov --output-path codecov.json --locked
+        run: cargo llvm-cov --workspace --exclude kuiper_cli --codecov --output-path codecov.json --locked
 
       - name: Upload coverage to codecov.io
         uses: codecov/codecov-action@v5
