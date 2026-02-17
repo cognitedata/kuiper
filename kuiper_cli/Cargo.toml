@@ -1,6 +1,6 @@
 [package]
-name = "kuiper-cli"
-version = "0.18.1"
+name = "kuiper_cli"
+version = "0.18.2"
 edition = "2021"
 license = "Apache-2.0"
 description = "A CLI for the Kuiper JSON mapping language"
@@ -17,10 +17,13 @@ name = "kuiper"
 
 [dependencies]
 serde_json = "1.0.116"
-kuiper_lang = { path = "../kuiper_lang" }
 clap = { version = "4.5.4", features = ["derive"] }
 rustyline = { version = "17.0.0", features = ["derive"] }
 colored = "3.0.0"
 dirs = "6.0.0"
 lazy_static = "1.4.0"
 regex = { workspace = true }
+
+[dependencies.kuiper_lang]
+version = "0.18.2"
+path = "../kuiper_lang"

@@ -1,6 +1,6 @@
 [package]
 name = "kuiper_lang"
-version = "0.18.1"
+version = "0.18.2"
 edition = "2021"
 license = "Apache-2.0"
 description = "The Kuiper JSON mapping language"
@@ -30,7 +30,7 @@ sha2 = "0.10.8"
 base64 = "0.22.1"
 
 [dependencies.kuiper_lang_macros]
-version = "0.18.1"
+version = "0.18.2"
 path = "../kuiper_lang_macros"
 
 [dev-dependencies]

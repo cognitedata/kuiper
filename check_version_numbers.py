@@ -54,6 +54,18 @@ class CargoMacroDep(FileType):
         )
 
 
+class CargoLangDep(FileType):
+    def get_version(self, file: TextIOWrapper) -> str:
+        return toml.load(file)["dependencies"]["kuiper_lang"]["version"]
+
+    def set_version(self, file_name: str, version: str) -> None:
+        replace_in_file(
+            file_name,
+            r'\[dependencies.kuiper_lang\]\nversion = "[0-9\.]+"',
+            f'[dependencies.kuiper_lang]\nversion = "{version}"',
+        )
+
+
 class PyProject(FileType):
     def get_version(self, file: TextIOWrapper) -> str:
         return toml.load(file)["project"]["version"]
@@ -104,6 +116,10 @@ FILES: list[tuple[Path, FileType]] = [
     (
         Path(__file__).resolve().parent / "kuiper_lang" / "Cargo.toml",
         CargoMacroDep(),
+    ),
+    (
+        Path(__file__).resolve().parent / "kuiper_cli" / "Cargo.toml",
+        CargoLangDep(),
     ),
 ]
 
