@@ -153,7 +153,7 @@ mod tests {
 
     #[test]
     fn test_is_expr_types() {
-        let expr = crate::compile_expression(
+        let expr = crate::compile_expression_test(
             r#"
             input is int
         "#,
