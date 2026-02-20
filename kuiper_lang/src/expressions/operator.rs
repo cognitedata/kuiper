@@ -105,11 +105,11 @@ impl Display for OpExpression {
     }
 }
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
-    fn resolve(
+impl Expression for OpExpression {
+    fn resolve<'a>(
         &'a self,
-        state: &mut ExpressionExecutionState<'c, '_>,
-    ) -> Result<ResolveResult<'c>, TransformError> {
+        state: &mut ExpressionExecutionState<'a, '_>,
+    ) -> Result<ResolveResult<'a>, TransformError> {
         state.inc_op()?;
         let lhs = self.elements[0].resolve(state)?;
 
@@ -142,8 +142,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let lh = self.elements[0].resolve_types(state)?;
         let rh = self.elements[1].resolve_types(state)?;
@@ -369,11 +369,11 @@ impl Display for UnaryOpExpression {
     }
 }
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for UnaryOpExpression {
-    fn resolve(
+impl Expression for UnaryOpExpression {
+    fn resolve<'a>(
         &'a self,
-        state: &mut ExpressionExecutionState<'c, '_>,
-    ) -> Result<ResolveResult<'c>, TransformError> {
+        state: &mut ExpressionExecutionState<'a, '_>,
+    ) -> Result<ResolveResult<'a>, TransformError> {
         let rhs = self.element.resolve(state)?;
         match self.operator {
             UnaryOperator::Negate => Ok(ResolveResult::Owned(Value::Bool(!rhs.as_bool()))),
@@ -388,8 +388,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for UnaryOpExpression {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let rhs = self.element.resolve_types(state)?;
         match self.operator {

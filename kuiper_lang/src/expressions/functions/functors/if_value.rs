@@ -7,11 +7,11 @@ use crate::{
 
 function_def!(IfValueFunction, "if_value", 2, lambda);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for IfValueFunction {
-    fn resolve(
+impl Expression for IfValueFunction {
+    fn resolve<'a>(
         &'a self,
-        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
-    ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
+        state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
+    ) -> Result<crate::expressions::ResolveResult<'a>, crate::TransformError> {
         let source = self.args[0].resolve(state)?;
 
         if source.is_null() {
@@ -23,8 +23,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IfValueFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let source = self.args[0].resolve_types(state)?;
 

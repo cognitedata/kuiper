@@ -8,11 +8,11 @@ use crate::{
 
 function_def!(JoinFunction, "join", 2, None);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for JoinFunction {
-    fn resolve(
+impl Expression for JoinFunction {
+    fn resolve<'a>(
         &'a self,
-        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
-    ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
+        state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
+    ) -> Result<crate::expressions::ResolveResult<'a>, crate::TransformError> {
         let source = self.args[0].resolve(state)?;
 
         match source.into_owned() {
@@ -62,8 +62,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for JoinFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let source = self.args[0].resolve_types(state)?;
         let mut res_type = Type::never();

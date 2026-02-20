@@ -9,11 +9,11 @@ use crate::{
 
 function_def!(FilterFunction, "filter", 2, lambda);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for FilterFunction {
-    fn resolve(
+impl Expression for FilterFunction {
+    fn resolve<'a>(
         &'a self,
-        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
-    ) -> Result<crate::expressions::ResolveResult<'c>, TransformError> {
+        state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
+    ) -> Result<crate::expressions::ResolveResult<'a>, TransformError> {
         let source = self.args[0].resolve(state)?;
 
         match source.into_owned() {
@@ -38,8 +38,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for FilterFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let source = self.args[0].resolve_types(state)?;
         let arr = source.try_as_array(&self.span)?;

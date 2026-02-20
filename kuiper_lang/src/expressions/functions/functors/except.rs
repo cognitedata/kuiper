@@ -8,11 +8,11 @@ use crate::{
 
 function_def!(ExceptFunction, "except", 2, lambda);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for ExceptFunction {
-    fn resolve(
+impl Expression for ExceptFunction {
+    fn resolve<'a>(
         &'a self,
-        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
-    ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
+        state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
+    ) -> Result<crate::expressions::ResolveResult<'a>, crate::TransformError> {
         let source = self.args[0].resolve(state)?;
         let source = source.into_owned();
         match source {
@@ -70,8 +70,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ExceptFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let item = self.args[0].resolve_types(state)?;
         let mut item_obj = item.try_as_object(&self.span)?;
