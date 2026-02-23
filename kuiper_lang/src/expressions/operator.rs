@@ -381,7 +381,7 @@ impl Expression for UnaryOpExpression {
                 let val = rhs.try_as_number(&self.descriptor, &self.span)?;
                 Ok(ResolveResult::Owned(
                     // This being option shouldn't be possible. We should never be able to get a NaN here.
-                    val.neg().try_into_json().unwrap_or_default(),
+                    (-val).try_into_json().unwrap_or_default(),
                 ))
             }
         }

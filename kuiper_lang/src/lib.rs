@@ -149,7 +149,7 @@ pub use logos::Span;
 
 /// Utilities for defining custom functions.
 /// To create a custom function, define it using `kuiper::functions::function_def!`,
-/// then implement `Expression` for the resulting struct, and finally create a builder function that returns an instance of the struct.
+/// then implement `Expression` for the resulting struct.
 ///
 /// # Example
 ///

@@ -1,3 +1,5 @@
+use std::ops::Neg;
+
 use logos::Span;
 use serde_json::{Number, Value};
 
@@ -381,7 +383,7 @@ impl JsonNumber {
 
     /// Negate the number. This will never fail, but can create a floating point number if
     /// the result is too large to fit in an integer.
-    pub fn neg(self) -> JsonNumber {
+    pub fn neg_impl(self) -> JsonNumber {
         match self {
             JsonNumber::NegInteger(x) => {
                 if x < 0 {
@@ -399,6 +401,14 @@ impl JsonNumber {
             }
             JsonNumber::Float(x) => JsonNumber::Float(-x),
         }
+    }
+}
+
+impl Neg for JsonNumber {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        self.neg_impl()
     }
 }
 
