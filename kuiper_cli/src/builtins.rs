@@ -5,7 +5,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-pub const BUILT_INS: [&str; 69] = [
+pub const BUILT_INS: [&str; 70] = [
     "acos(",
     "all(",
     "any(",
@@ -44,6 +44,7 @@ pub const BUILT_INS: [&str; 69] = [
     "pairs(",
     "parse_json(",
     "pow(",
+    "random(",
     "reduce(",
     "regex_all_captures(",
     "regex_all_matches(",
@@ -363,6 +364,13 @@ If the value is `null`, the lambda is ignored and `map` returns `null`.",
             FunctionDef {
                 signature: "pow(x, y)",
                 description: "Return `x` to the power of `y`",
+            }
+        ),
+        (
+            "random",
+            FunctionDef {
+                signature: "random()",
+                description: "Return a random floating-point number between 0.0 (inclusive) and 1.0 (exclusive).",
             }
         ),
         (
