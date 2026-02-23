@@ -21,10 +21,13 @@ pub use base::{
     get_function_expression, Constant, Expression, ExpressionExecutionState, ExpressionMeta,
     ExpressionType,
 };
+pub use functions::dynamic::DynamicFunction;
+pub use functions::{function_def, FunctionExpression, FunctionInfo, LambdaAcceptFunction};
 pub use if_expr::IfExpression;
 pub use is_operator::{IsExpression, TypeLiteral};
 pub use lambda::LambdaExpression;
 pub use macro_call::MacroCallExpression;
+pub use numbers::JsonNumber;
 pub use object::{ObjectElement, ObjectExpression};
 pub use operator::{OpExpression, Operator, UnaryOpExpression, UnaryOperator};
 pub use result::*;
@@ -32,3 +35,6 @@ pub use run_builder::ExpressionRunBuilder;
 pub use selector::{SelectorElement, SelectorExpression, SourceElement};
 pub use source::{LazySourceData, LazySourceDataJson, SourceData};
 pub use transform_error::{TransformError, TransformErrorData};
+
+pub(crate) use base::FunctionType;
+pub(crate) use functions::dynamic::DynamicFunctionSource;

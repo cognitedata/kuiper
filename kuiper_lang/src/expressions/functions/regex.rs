@@ -9,7 +9,7 @@ use crate::NULL_CONST;
 
 macro_rules! regex_function {
     ($typ:ident, $name:expr, $nargs:expr) => {
-        #[derive(Debug, Clone)]
+        #[derive(Debug)]
         pub struct $typ {
             args: [Box<$crate::expressions::ExpressionType>; $nargs],
             span: logos::Span,

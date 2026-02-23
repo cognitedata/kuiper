@@ -86,7 +86,7 @@ impl Display for UnaryOperator {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 /// Expression for an operator. Consists of two expressions, and an operator.
 pub struct OpExpression {
     operator: Operator,
@@ -355,7 +355,7 @@ impl OpExpression {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct UnaryOpExpression {
     operator: UnaryOperator,
     descriptor: String,

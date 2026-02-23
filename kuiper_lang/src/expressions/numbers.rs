@@ -7,9 +7,13 @@ use super::Operator;
 
 /// Our representation of a number in JSON. Contains methods for doing arithmatic safely, which is somewhat complicated.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) enum JsonNumber {
+pub enum JsonNumber {
+    /// A negative integer, stored as an i64.
+    /// This can in some cases be positive, and code should not assume it is always negative.
     NegInteger(i64),
+    /// A strictly positive integer.
     PosInteger(u64),
+    /// A floating point number.
     Float(f64),
 }
 
@@ -76,7 +80,6 @@ impl JsonNumber {
 
     /// Try to convert the number to an unsigned integer. This will fail if the number
     /// is negative, if it's not a whole number, or if it is larger than u64::MAX.
-    #[allow(dead_code)]
     pub fn try_as_u64(self, span: &Span) -> Result<u64, TransformError> {
         match self {
             Self::NegInteger(x) => x.try_into().map_err(|e| {
@@ -350,6 +353,7 @@ impl JsonNumber {
         }
     }
 
+    /// Try to compute the modulus of self by rhs, this will fail if rhs is zero, or if the result cannot be represented as a JsonNumber.
     pub fn try_mod(self, rhs: JsonNumber, span: &Span) -> Result<JsonNumber, TransformError> {
         if rhs.as_f64() == 0.0f64 {
             return Err(TransformError::new_invalid_operation(
@@ -375,6 +379,8 @@ impl JsonNumber {
         }
     }
 
+    /// Negate the number. This will never fail, but can create a floating point number if
+    /// the result is too large to fit in an integer.
     pub fn neg(self) -> JsonNumber {
         match self {
             JsonNumber::NegInteger(x) => {

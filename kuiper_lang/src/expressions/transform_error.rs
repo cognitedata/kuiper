@@ -43,12 +43,11 @@ pub enum TransformError {
 }
 
 impl TransformError {
-    pub(crate) fn new_incorrect_type(
-        desc: &str,
-        expected: &str,
-        actual: &str,
-        span: &Span,
-    ) -> Self {
+    /// Create a new TransformError for an incorrect type in a field.
+    /// `desc` should be a description of the field and the error, e.g. "Field 'x' must be a string".
+    /// `expected` and `actual` should be human-readable descriptions of the expected and actual
+    /// types, e.g. "string" and "number".
+    pub fn new_incorrect_type(desc: &str, expected: &str, actual: &str, span: &Span) -> Self {
         Self::IncorrectTypeInField(TransformErrorData {
             desc: format!("{desc}. Got {actual}, expected {expected}"),
             span: span.clone(),
@@ -62,14 +61,18 @@ impl TransformError {
         })
     }
 
-    pub(crate) fn new_conversion_failed(desc: impl Into<String>, span: &Span) -> Self {
+    /// Create a new TransformError for a failed conversion.
+    /// `desc` should be a description of where this happened, e.g. "my_function".
+    pub fn new_conversion_failed(desc: impl Into<String>, span: &Span) -> Self {
         Self::ConversionFailed(TransformErrorData {
             desc: desc.into(),
             span: span.clone(),
         })
     }
 
-    pub(crate) fn new_invalid_operation(desc: String, span: &Span) -> Self {
+    /// Create a new TransformError for an invalid operation.
+    /// `desc` should be a description of the operation, e.g. "Cannot add a string and a number".
+    pub fn new_invalid_operation(desc: String, span: &Span) -> Self {
         Self::InvalidOperation(TransformErrorData {
             desc,
             span: span.clone(),
@@ -83,7 +86,8 @@ impl TransformError {
         })
     }
 
-    pub(crate) fn value_desc(val: &Value) -> &str {
+    /// Utility function to get a human-readable description of a serde_json::Value, for error messages.
+    pub fn value_desc(val: &Value) -> &str {
         match val {
             Value::Null => "null",
             Value::Bool(_) => "boolean",
