@@ -412,6 +412,36 @@ impl Expression for MinFunction {
     }
 }
 
+function_def!(RandomFunction, "random", 0);
+
+impl Expression for RandomFunction {
+    fn is_deterministic(&self) -> bool {
+        false
+    }
+
+    fn resolve<'a>(
+        &'a self,
+        _state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
+    ) -> Result<crate::expressions::ResolveResult<'a>, crate::TransformError> {
+        let res: f64 = rand::random();
+        Ok(ResolveResult::Owned(Value::Number(
+            Number::from_f64(res).ok_or_else(|| {
+                TransformError::new_conversion_failed(
+                    "Failed to convert random result to number",
+                    &self.span,
+                )
+            })?,
+        )))
+    }
+
+    fn resolve_types(
+        &self,
+        _state: &mut crate::types::TypeExecutionState<'_, '_>,
+    ) -> Result<crate::types::Type, crate::types::TypeError> {
+        Ok(Type::Float)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
@@ -857,5 +887,25 @@ mod tests {
 
             assert!(expr.run_types([Type::String, Type::number()]).is_err());
         }
+    }
+
+    #[test]
+    fn test_random() {
+        let expr = compile_expression("random()", &[]).unwrap();
+        for _ in 0..10 {
+            let result = expr.run(std::iter::empty::<&serde_json::Value>()).unwrap();
+            let val = result.as_f64().expect("random() should return a float");
+            assert!(
+                val >= 0.0 && val < 1.0,
+                "random() returned {val}, expected [0.0, 1.0)"
+            );
+        }
+    }
+
+    #[test]
+    fn test_random_function_types() {
+        let expr = compile_expression("random()", &[]).unwrap();
+        let ty = expr.run_types(std::iter::empty::<Type>()).unwrap();
+        assert_eq!(Type::Float, ty);
     }
 }

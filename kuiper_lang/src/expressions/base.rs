@@ -271,6 +271,7 @@ pub enum FunctionType {
     AsinFunction(AsinFunction),
     AcosFunction(AcosFunction),
     AtanFunction(AtanFunction),
+    Random(RandomFunction),
 }
 
 struct FunctionBuilder {
@@ -363,6 +364,7 @@ pub fn get_function_expression(
         "asin" => FunctionType::AsinFunction(b.mk()?),
         "acos" => FunctionType::AcosFunction(b.mk()?),
         "atan" => FunctionType::AtanFunction(b.mk()?),
+        "random" => FunctionType::Random(b.mk()?),
         _ => return Err(BuildError::unrecognized_function(b.pos, name)),
     };
     Ok(ExpressionType::Function(expr))
