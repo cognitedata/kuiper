@@ -7,7 +7,7 @@ use crate::{write_list, BuildError};
 
 use super::{Expression, ExpressionMeta, ExpressionType, ResolveResult};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct MacroCallExpression {
     pub inner: Box<ExpressionType>,
     pub args: Vec<ExpressionType>,

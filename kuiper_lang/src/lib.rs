@@ -141,10 +141,47 @@ pub use compiler::{
 #[cfg(feature = "completions")]
 pub use expressions::Completions;
 pub use expressions::{
-    ExpressionRunBuilder, ExpressionType, ResolveResult, TransformError, TransformErrorData,
+    Expression, ExpressionExecutionState, ExpressionMeta, ExpressionRunBuilder, ExpressionType,
+    JsonNumber, ResolveResult, TransformError, TransformErrorData,
 };
 pub use lexer::ParseError;
 pub use logos::Span;
+
+/// Utilities for defining custom functions.
+/// To create a custom function, define it using `kuiper::functions::function_def!`,
+/// then implement `Expression` for the resulting struct.
+///
+/// # Example
+///
+/// ```
+/// // Create a function that takes one argument.
+/// use kuiper_lang::functions::function_def;
+/// function_def!(MyCustomFunction, "test_func", 1);
+///
+/// impl kuiper_lang::Expression for MyCustomFunction {
+///     fn resolve<'a>(
+///         &'a self,
+///         state: &mut kuiper_lang::ExpressionExecutionState<'a, '_>,
+///     ) -> Result<kuiper_lang::ResolveResult<'a>, kuiper_lang::TransformError> {
+///         // When setting the number of arguments to exactly 1 there will be an
+///         // [ExpressionType; 1] array in the built function struct.
+///         let raw = self.args[0].resolve(state)?;
+///         let value = raw.try_as_string("test_func", &self.span)?.into_owned();
+///         Ok(kuiper_lang::ResolveResult::Owned(value.into()))
+///     }
+/// }
+///
+/// let expr = kuiper_lang::compile_expression_with_config(
+///     "test_func('foo')",
+///     &[],
+///     &kuiper_lang::CompilerConfig::new().with_custom_function::<MyCustomFunction>("test_func")
+/// ).unwrap();
+/// ```
+pub mod functions {
+    pub use super::expressions::{
+        function_def, DynamicFunction, FunctionExpression, FunctionInfo, LambdaAcceptFunction,
+    };
+}
 
 /// Module for utilties for working with input data as a stream of tokens,
 /// rather than a string.

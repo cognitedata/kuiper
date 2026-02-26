@@ -14,7 +14,7 @@ use super::{
     ExpressionType, ResolveResult,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum ArrayElement {
     Expression(ExpressionType),
     Concat(ExpressionType),
@@ -29,7 +29,7 @@ impl Display for ArrayElement {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 /// Array expression. This contains a list of expressions and returns an array.
 pub struct ArrayExpression {
     items: Vec<ArrayElement>,

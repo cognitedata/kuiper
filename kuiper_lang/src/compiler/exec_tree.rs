@@ -5,9 +5,10 @@ use thiserror::Error;
 
 use crate::{
     expressions::{
-        get_function_expression, ArrayElement, ArrayExpression, ExpressionType, IfExpression,
-        IsExpression, LambdaExpression, MacroCallExpression, ObjectElement, ObjectExpression,
-        OpExpression, SelectorElement, SelectorExpression, SourceElement, UnaryOpExpression,
+        get_function_expression, ArrayElement, ArrayExpression, DynamicFunctionSource,
+        ExpressionType, FunctionType, IfExpression, IsExpression, LambdaExpression,
+        MacroCallExpression, ObjectElement, ObjectExpression, OpExpression, SelectorElement,
+        SelectorExpression, SourceElement, UnaryOpExpression,
     },
     parse::{Expression, FunctionParameter, Lambda, Macro, Program, Selector},
 };
@@ -55,7 +56,8 @@ pub enum BuildError {
 }
 
 impl BuildError {
-    pub(crate) fn n_function_args(position: Span, detail: &str) -> Self {
+    /// Create a new BuildError for an incorrect number of function arguments.
+    pub fn n_function_args(position: Span, detail: &str) -> Self {
         Self::NFunctionArgs(CompileErrorData {
             position,
             detail: format!("Incorrect number of function args: {detail}"),
@@ -85,7 +87,8 @@ impl BuildError {
             detail: var.to_string(),
         })
     }
-    pub(crate) fn other(position: Span, err: &str) -> Self {
+    /// Create a new BuildError for some other error.
+    pub fn other(position: Span, err: &str) -> Self {
         Self::Other(CompileErrorData {
             position,
             detail: err.to_string(),
@@ -131,6 +134,7 @@ struct BuilderInner {
     macros: HashMap<String, Macro>,
     macro_counter: MacroCounter,
     macro_stack: Vec<String>,
+    custom_functions: DynamicFunctionSource,
 }
 
 impl ExecTreeBuilder {
@@ -156,6 +160,7 @@ impl ExecTreeBuilder {
                 macros,
                 macro_counter: MacroCounter::new(compiler_config.max_macro_expansions),
                 macro_stack: Vec::new(),
+                custom_functions: compiler_config.custom_function_source.clone(),
             },
             expression: program.expression,
         })
@@ -344,13 +349,17 @@ impl BuilderInner {
                 if let Some(m) = self.macros.get(&name).cloned() {
                     self.build_macro_call(m, args, loc, depth + 1)
                 } else {
-                    get_function_expression(
-                        loc,
-                        &name,
-                        args.into_iter()
-                            .map(|e| self.build_function_param(e, depth + 1))
-                            .collect::<Result<Vec<_>, _>>()?,
-                    )
+                    let args = args
+                        .into_iter()
+                        .map(|e| self.build_function_param(e, depth + 1))
+                        .collect::<Result<Vec<_>, _>>()?;
+                    if let Some(b) = self.custom_functions.get(&name) {
+                        Ok(ExpressionType::Function(FunctionType::CustomFunction(
+                            b.make_function(args, loc)?,
+                        )))
+                    } else {
+                        get_function_expression(loc, &name, args)
+                    }
                 }
             }
             Expression::Variable(v, span) => Ok(ExpressionType::Selector(SelectorExpression::new(

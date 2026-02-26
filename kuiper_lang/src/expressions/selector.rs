@@ -17,7 +17,7 @@ use super::{
 };
 
 use logos::Span;
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 /// Selector expression, used to get a field from an input.
 pub struct SelectorExpression {
     source: SourceElement,
@@ -25,13 +25,13 @@ pub struct SelectorExpression {
     span: Span,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum SourceElement {
     CompiledInput(usize),
     Expression(Box<ExpressionType>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum SelectorElement {
     Constant(String, Span),
     Expression(Box<ExpressionType>),

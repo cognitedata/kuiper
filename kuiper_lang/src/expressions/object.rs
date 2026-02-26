@@ -11,7 +11,7 @@ use crate::{
 
 use super::{base::ExpressionMeta, Expression, ExpressionType, ResolveResult};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum ObjectElement {
     Pair(ExpressionType, ExpressionType),
     Concat(ExpressionType),
@@ -26,7 +26,7 @@ impl Display for ObjectElement {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ObjectExpression {
     items: Vec<ObjectElement>,
     span: Span,

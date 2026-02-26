@@ -45,7 +45,7 @@ impl Display for TypeLiteral {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct IsExpression {
     lhs: Box<ExpressionType>,
     rhs: TypeLiteral,

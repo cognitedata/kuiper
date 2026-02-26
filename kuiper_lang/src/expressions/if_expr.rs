@@ -10,7 +10,7 @@ use crate::{
 
 use super::{Expression, ExpressionMeta};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct IfExpression {
     args: Vec<ExpressionType>,
     #[allow(unused)]

@@ -6,7 +6,7 @@ use crate::{compiler::BuildError, expressions::source::SourceData, write_list};
 
 use super::{base::ExpressionMeta, Expression, ExpressionType, ResolveResult};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct LambdaExpression {
     pub input_names: Vec<String>,
     expr: Box<ExpressionType>,

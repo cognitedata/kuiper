@@ -4,6 +4,7 @@ mod arrays;
 mod coalesce;
 mod conversions;
 mod digest;
+pub(super) mod dynamic;
 mod functors;
 mod join;
 mod json;
@@ -23,6 +24,7 @@ pub use functors::*;
 pub use join::*;
 pub use json::*;
 pub use logic::*;
+pub use macros::function_def;
 pub use math::*;
 pub use regex::*;
 pub use string::*;
@@ -44,6 +46,7 @@ pub struct FunctionInfo {
 }
 
 impl FunctionInfo {
+    /// Validate the number of arguments for this function.
     pub fn validate(&self, num_args: usize) -> bool {
         if num_args < self.minargs {
             return false;
@@ -51,6 +54,7 @@ impl FunctionInfo {
         !matches!(self.maxargs, Some(x) if num_args > x)
     }
 
+    /// Get a human-readable description of the number of arguments this function takes, for error messages.
     pub fn num_args_desc(&self) -> String {
         match self.maxargs {
             Some(x) => {
@@ -83,7 +87,14 @@ where
     fn new(args: Vec<ExpressionType>, span: Span) -> Result<Self, BuildError>;
 }
 
+/// Trait for validating lambdas passed to functions.
+/// This is used for functions that accept lambdas as arguments,
+/// to validate the number of arguments in the lambda and which arguments are lambdas.
 pub trait LambdaAcceptFunction {
+    /// Validate that the argument at the given index is allowed to
+    /// be a lambda, and that the lambda itself is valid.
+    /// This also includes the number of arguments in the function itself,
+    /// if that is relevant.
     fn validate_lambda(
         _idx: usize,
         lambda: &LambdaExpression,

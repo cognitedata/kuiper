@@ -6,6 +6,7 @@ use std::fmt::Display;
 use crate::{
     compiler::BuildError,
     expressions::{run_builder::ExpressionRunBuilder, source::SourceData},
+    functions::DynamicFunction,
     types::{Type, TypeError, TypeExecutionState},
     NULL_CONST,
 };
@@ -56,7 +57,7 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
         self.completions = Some(completions);
     }
 
-    pub fn new(
+    pub(crate) fn new(
         data: &'exec Vec<Option<&'data dyn SourceData>>,
         opcount: &'exec mut i64,
         max_opcount: i64,
@@ -70,7 +71,7 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
         }
     }
 
-    pub fn get_temporary_clone<'inner>(
+    pub(crate) fn get_temporary_clone<'inner>(
         &'inner mut self,
         extra_values: impl Iterator<Item = &'inner dyn SourceData>,
         num_values: usize,
@@ -102,6 +103,8 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
         }
     }
 
+    /// Increment the operation count, and check if it exceeds the maximum.
+    /// If it does, return an error.
     pub fn inc_op(&mut self) -> Result<(), TransformError> {
         *self.opcount += 1;
         if *self.opcount > self.max_opcount && self.max_opcount > 0 {
@@ -112,7 +115,7 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
     }
 
     #[cfg(feature = "completions")]
-    pub fn add_completion_entries<I: Iterator<Item = impl Into<String>>, F: Fn() -> I>(
+    pub(crate) fn add_completion_entries<I: Iterator<Item = impl Into<String>>, F: Fn() -> I>(
         &mut self,
         it: F,
         span: Span,
@@ -162,6 +165,7 @@ pub trait Expression: Display {
         true
     }
 
+    /// Call the expression as a lambda function, with given arguments.
     fn call<'a>(
         &'a self,
         state: &mut ExpressionExecutionState<'a, '_>,
@@ -170,6 +174,7 @@ pub trait Expression: Display {
         self.resolve(state)
     }
 
+    /// Resolve the expression in type-space, returning the result type given input types.
     fn resolve_types(
         &self,
         _state: &mut crate::types::TypeExecutionState<'_, '_>,
@@ -177,7 +182,7 @@ pub trait Expression: Display {
         Ok(Type::Any)
     }
 
-    #[allow(unused)]
+    /// Call the expression as a lambda function in type-space, with given argument types.
     fn call_types(
         &self,
         state: &mut crate::types::TypeExecutionState<'_, '_>,
@@ -189,11 +194,12 @@ pub trait Expression: Display {
 
 /// Additional trait for expressions, separate from Expression to make it easier to implement in macros
 pub trait ExpressionMeta {
+    /// Get mutable references to the children of this expression, for use in optimizations.
     fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_>;
 }
 
 /// A function expression, new functions must be added here.
-#[derive(PassThrough, Debug, Clone)]
+#[derive(PassThrough, Debug)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
 #[pass_through(fn resolve<'a>(&'a self, state: &mut ExpressionExecutionState<'a, '_>) -> Result<ResolveResult<'a>, TransformError>, "", Expression)]
 #[pass_through(fn call<'a>(&'a self, state: &mut ExpressionExecutionState<'a, '_>, _values: &[&Value]) -> Result<ResolveResult<'a>, TransformError>, "", Expression)]
@@ -272,6 +278,7 @@ pub enum FunctionType {
     AcosFunction(AcosFunction),
     AtanFunction(AtanFunction),
     Random(RandomFunction),
+    CustomFunction(Box<dyn DynamicFunction>),
 }
 
 struct FunctionBuilder {
@@ -372,7 +379,7 @@ pub fn get_function_expression(
 
 /// An executable node in the expression tree.
 /// This type can be executed with the `run` function, to yield a transformed Value.
-#[derive(PassThrough, Debug, Clone)]
+#[derive(PassThrough, Debug)]
 #[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
 #[pass_through(fn resolve<'a>(&'a self, state: &mut ExpressionExecutionState<'a, '_>) -> Result<ResolveResult<'a>, TransformError>, "", Expression)]
 #[pass_through(fn is_deterministic(&self) -> bool, "", Expression)]
@@ -483,7 +490,7 @@ impl ExpressionType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 /// A constant expression. This always resolves to a reference to its value.
 pub struct Constant {
     val: Value,
