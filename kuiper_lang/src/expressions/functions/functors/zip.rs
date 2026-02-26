@@ -11,11 +11,11 @@ use crate::{
 
 function_def!(ZipFunction, "zip", 3, None, lambda);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for ZipFunction {
-    fn resolve(
+impl Expression for ZipFunction {
+    fn resolve<'a>(
         &'a self,
-        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
-    ) -> Result<crate::expressions::ResolveResult<'c>, crate::TransformError> {
+        state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
+    ) -> Result<crate::expressions::ResolveResult<'a>, crate::TransformError> {
         let mut sources = Vec::with_capacity(self.args.len() - 1);
         let mut output_len = 0;
         for source in self.args.iter().take(self.args.len() - 1) {
@@ -52,8 +52,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ZipFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let mut sources = Vec::with_capacity(self.args.len() - 1);
         let mut known_output_len = 0;

@@ -62,7 +62,8 @@ impl TypeError {
         }
     }
 
-    pub(crate) fn expected_type(expected: Type, got: Type, span: Span) -> Self {
+    /// Create a new TypeError for an expected type error, where the provided type is incompatible with the expected type.
+    pub fn expected_type(expected: Type, got: Type, span: Span) -> Self {
         TypeError::ExpectedType(Box::new(expected), Box::new(got), span)
     }
 }
@@ -618,23 +619,23 @@ impl<'a> Iterator for IterUnion<'a> {
 
 // These types are WIP.
 
-#[allow(unused)]
-pub(crate) struct TypeExecutionState<'data, 'exec> {
+/// State used during type resolution.
+pub struct TypeExecutionState<'data, 'exec> {
     data: &'exec Vec<&'data Type>,
 }
-#[allow(unused)]
 static NULL_TYPE_CONST: Type = Type::Constant(Value::Null);
 
 impl<'data, 'exec> TypeExecutionState<'data, 'exec> {
-    pub fn new(data: &'exec Vec<&'data Type>) -> Self {
+    pub(crate) fn new(data: &'exec Vec<&'data Type>) -> Self {
         Self { data }
     }
-    #[allow(unused)]
+
+    /// Get the type at the given index, if it exists.
     pub fn get_type(&self, index: usize) -> Option<&'data Type> {
         self.data.get(index).cloned()
     }
-    #[allow(unused)]
-    pub fn get_temporary_clone<'inner>(
+
+    pub(crate) fn get_temporary_clone<'inner>(
         &'inner mut self,
         extra_types: impl Iterator<Item = &'inner Type>,
         num_values: usize,

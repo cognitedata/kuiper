@@ -8,7 +8,12 @@ use logos::Span;
 pub use optimizer::optimize;
 
 use crate::{
-    expressions::ExpressionType, lex::Token, lexer::Lexer, parse::ProgramParser, types::Type,
+    expressions::{DynamicFunctionSource, ExpressionType},
+    functions::{DynamicFunction, FunctionExpression},
+    lex::Token,
+    lexer::Lexer,
+    parse::ProgramParser,
+    types::Type,
     CompileError,
 };
 
@@ -26,12 +31,22 @@ pub enum TypeCheckerMode {
     Off,
 }
 
-#[derive(Debug)]
 /// Configuration for the compiler.
 pub struct CompilerConfig {
     pub(crate) optimizer_operation_limit: i64,
     pub(crate) max_macro_expansions: i32,
     pub(crate) type_checker: TypeCheckerMode,
+    pub(crate) custom_function_source: DynamicFunctionSource,
+}
+
+impl std::fmt::Debug for CompilerConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CompilerConfig")
+            .field("optimizer_operation_limit", &self.optimizer_operation_limit)
+            .field("max_macro_expansions", &self.max_macro_expansions)
+            .field("type_checker", &self.type_checker)
+            .finish()
+    }
 }
 
 impl CompilerConfig {
@@ -58,6 +73,18 @@ impl CompilerConfig {
         self.type_checker = mode;
         self
     }
+
+    /// Add a custom function to the compiler.
+    /// This allows you to define custom functions in Rust and use them in your expressions.
+    /// The function should implement the `DynamicFunction` and `FunctionExpression` traits,
+    /// which you get automatically if you implement `Expression` and use the `function_def` macro.
+    pub fn with_custom_function<T: DynamicFunction + FunctionExpression + 'static>(
+        mut self,
+        name: impl Into<String>,
+    ) -> Self {
+        self.custom_function_source.with_function::<T>(name);
+        self
+    }
 }
 
 impl Default for CompilerConfig {
@@ -66,6 +93,7 @@ impl Default for CompilerConfig {
             optimizer_operation_limit: 100_000,
             max_macro_expansions: 20,
             type_checker: TypeCheckerMode::Off,
+            custom_function_source: DynamicFunctionSource::default(),
         }
     }
 }

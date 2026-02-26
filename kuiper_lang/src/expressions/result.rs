@@ -36,11 +36,9 @@ impl<'a> ResolveResult<'a> {
         !matches!(self.deref(), Value::Null | Value::Bool(false))
     }
 
-    pub(crate) fn try_as_number(
-        &self,
-        desc: &str,
-        span: &Span,
-    ) -> Result<JsonNumber, TransformError> {
+    /// Try to convert the resolve result into a JsonNumber,
+    /// our internal representation of numbers in JSON.
+    pub fn try_as_number(&self, desc: &str, span: &Span) -> Result<JsonNumber, TransformError> {
         get_number_from_value(desc, self, span)
     }
 

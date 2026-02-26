@@ -86,7 +86,7 @@ impl Display for UnaryOperator {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 /// Expression for an operator. Consists of two expressions, and an operator.
 pub struct OpExpression {
     operator: Operator,
@@ -105,11 +105,11 @@ impl Display for OpExpression {
     }
 }
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
-    fn resolve(
+impl Expression for OpExpression {
+    fn resolve<'a>(
         &'a self,
-        state: &mut ExpressionExecutionState<'c, '_>,
-    ) -> Result<ResolveResult<'c>, TransformError> {
+        state: &mut ExpressionExecutionState<'a, '_>,
+    ) -> Result<ResolveResult<'a>, TransformError> {
         state.inc_op()?;
         let lhs = self.elements[0].resolve(state)?;
 
@@ -142,8 +142,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for OpExpression {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let lh = self.elements[0].resolve_types(state)?;
         let rh = self.elements[1].resolve_types(state)?;
@@ -355,7 +355,7 @@ impl OpExpression {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct UnaryOpExpression {
     operator: UnaryOperator,
     descriptor: String,
@@ -369,11 +369,11 @@ impl Display for UnaryOpExpression {
     }
 }
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for UnaryOpExpression {
-    fn resolve(
+impl Expression for UnaryOpExpression {
+    fn resolve<'a>(
         &'a self,
-        state: &mut ExpressionExecutionState<'c, '_>,
-    ) -> Result<ResolveResult<'c>, TransformError> {
+        state: &mut ExpressionExecutionState<'a, '_>,
+    ) -> Result<ResolveResult<'a>, TransformError> {
         let rhs = self.element.resolve(state)?;
         match self.operator {
             UnaryOperator::Negate => Ok(ResolveResult::Owned(Value::Bool(!rhs.as_bool()))),
@@ -381,15 +381,15 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for UnaryOpExpression {
                 let val = rhs.try_as_number(&self.descriptor, &self.span)?;
                 Ok(ResolveResult::Owned(
                     // This being option shouldn't be possible. We should never be able to get a NaN here.
-                    val.neg().try_into_json().unwrap_or_default(),
+                    (-val).try_into_json().unwrap_or_default(),
                 ))
             }
         }
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let rhs = self.element.resolve_types(state)?;
         match self.operator {

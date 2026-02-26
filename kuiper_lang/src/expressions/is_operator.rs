@@ -45,7 +45,7 @@ impl Display for TypeLiteral {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct IsExpression {
     lhs: Box<ExpressionType>,
     rhs: TypeLiteral,
@@ -62,11 +62,11 @@ impl Display for IsExpression {
     }
 }
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for IsExpression {
-    fn resolve(
+impl Expression for IsExpression {
+    fn resolve<'a>(
         &'a self,
-        state: &mut ExpressionExecutionState<'c, '_>,
-    ) -> Result<ResolveResult<'c>, TransformError> {
+        state: &mut ExpressionExecutionState<'a, '_>,
+    ) -> Result<ResolveResult<'a>, TransformError> {
         state.inc_op()?;
         let lhs = self.lhs.resolve(state)?;
         let res = match self.rhs {
@@ -87,8 +87,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IsExpression {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let lhs = self.lhs.resolve_types(state)?;
         match Self::matches_type(self.rhs, &lhs) {

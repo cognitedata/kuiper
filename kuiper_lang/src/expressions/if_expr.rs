@@ -10,7 +10,7 @@ use crate::{
 
 use super::{Expression, ExpressionMeta};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct IfExpression {
     args: Vec<ExpressionType>,
     #[allow(unused)]
@@ -38,11 +38,11 @@ impl Display for IfExpression {
     }
 }
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for IfExpression {
-    fn resolve(
+impl Expression for IfExpression {
+    fn resolve<'a>(
         &'a self,
-        state: &mut super::ExpressionExecutionState<'c, '_>,
-    ) -> Result<super::ResolveResult<'c>, crate::TransformError> {
+        state: &mut super::ExpressionExecutionState<'a, '_>,
+    ) -> Result<super::ResolveResult<'a>, crate::TransformError> {
         state.inc_op()?;
         let mut iter = self.args.iter();
 
@@ -68,8 +68,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for IfExpression {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
         let mut final_type = Type::never();
 

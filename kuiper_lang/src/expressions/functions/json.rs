@@ -7,11 +7,11 @@ use crate::{
 
 function_def!(ParseJsonFunction, "parse_json", 1);
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for ParseJsonFunction {
-    fn resolve(
+impl Expression for ParseJsonFunction {
+    fn resolve<'a>(
         &'a self,
-        state: &mut crate::expressions::ExpressionExecutionState<'c, '_>,
-    ) -> Result<ResolveResult<'c>, TransformError> {
+        state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
+    ) -> Result<ResolveResult<'a>, TransformError> {
         let source = self.args[0].resolve(state)?;
 
         match source.as_ref() {
@@ -31,8 +31,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ParseJsonFunction {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let source = self.args[0].resolve_types(state)?;
         if source.is_assignable_to(&crate::types::Type::String) {

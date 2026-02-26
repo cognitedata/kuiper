@@ -602,6 +602,17 @@ Return `x` to the power of `y`
 pow(5, 3) -> 125.0
 ```
 
+## random
+
+`random()`
+
+Return a random floating-point number between 0.0 (inclusive) and 1.0 (exclusive).
+
+**Code example**
+```
+random() -> 0.123456789
+```
+
 ## reduce
 
 `reduce(x, (acc, val) => ..., init)`

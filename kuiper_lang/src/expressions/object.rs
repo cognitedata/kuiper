@@ -11,7 +11,7 @@ use crate::{
 
 use super::{base::ExpressionMeta, Expression, ExpressionType, ResolveResult};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum ObjectElement {
     Pair(ExpressionType, ExpressionType),
     Concat(ExpressionType),
@@ -26,7 +26,7 @@ impl Display for ObjectElement {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ObjectExpression {
     items: Vec<ObjectElement>,
     span: Span,
@@ -41,11 +41,11 @@ impl Display for ObjectExpression {
     }
 }
 
-impl<'a: 'c, 'c> Expression<'a, 'c> for ObjectExpression {
-    fn resolve(
+impl Expression for ObjectExpression {
+    fn resolve<'a>(
         &'a self,
-        state: &mut super::ExpressionExecutionState<'c, '_>,
-    ) -> Result<super::ResolveResult<'c>, crate::TransformError> {
+        state: &mut super::ExpressionExecutionState<'a, '_>,
+    ) -> Result<super::ResolveResult<'a>, crate::TransformError> {
         state.inc_op()?;
         let mut output = Map::with_capacity(self.items.len());
         for k in self.items.iter() {
@@ -84,8 +84,8 @@ impl<'a: 'c, 'c> Expression<'a, 'c> for ObjectExpression {
     }
 
     fn resolve_types(
-        &'a self,
-        state: &mut crate::types::TypeExecutionState<'c, '_>,
+        &self,
+        state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
         let mut output = BTreeMap::new();
         for k in self.items.iter() {
