@@ -87,12 +87,13 @@ impl LambdaAcceptFunction for ReduceFunction {
 
 #[cfg(test)]
 mod tests {
-    use crate::{compile_expression, types::Type};
+    use crate::{compile_expression_test, types::Type};
 
     #[test]
     pub fn test_reduce_strings() {
-        let expr = compile_expression(r#"['a', 'b', 'c'].reduce((a, b) => concat(a, b), '')"#, &[])
-            .unwrap();
+        let expr =
+            compile_expression_test(r#"['a', 'b', 'c'].reduce((a, b) => concat(a, b), '')"#, &[])
+                .unwrap();
 
         let res = expr.run([]).unwrap();
 
@@ -102,7 +103,8 @@ mod tests {
 
     #[test]
     pub fn test_reduce_numbers() {
-        let expr = compile_expression(r#"[1, 2, 3, 4].reduce((a, b) => a+b, 0)"#, &[]).unwrap();
+        let expr =
+            compile_expression_test(r#"[1, 2, 3, 4].reduce((a, b) => a+b, 0)"#, &[]).unwrap();
 
         let res = expr.run([]).unwrap();
 
@@ -112,7 +114,8 @@ mod tests {
 
     #[test]
     fn test_reduce_types() {
-        let expr = compile_expression("input.reduce((acc, v) => acc + v, 0)", &["input"]).unwrap();
+        let expr =
+            compile_expression_test("input.reduce((acc, v) => acc + v, 0)", &["input"]).unwrap();
         let res = expr
             .run_types([Type::array_of_type(Type::Integer)])
             .unwrap();

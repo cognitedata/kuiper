@@ -91,13 +91,13 @@ mod tests {
     use serde_json::json;
 
     use crate::{
-        compile_expression,
+        compile_expression_test,
         types::{Object, ObjectField, Type},
     };
 
     #[test]
     pub fn test_pairs() {
-        let expr = compile_expression("pairs(input)", &["input"]).unwrap();
+        let expr = compile_expression_test("pairs(input)", &["input"]).unwrap();
 
         let inp = json!({
             "k1": "v1",
@@ -123,7 +123,7 @@ mod tests {
 
     #[test]
     fn test_pairs_types() {
-        let expr = compile_expression("pairs(input)", &["input"]).unwrap();
+        let expr = compile_expression_test("pairs(input)", &["input"]).unwrap();
         let ty = expr
             .run_types([Type::Object(Object {
                 fields: [

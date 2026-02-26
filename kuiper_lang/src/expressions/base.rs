@@ -537,18 +537,18 @@ impl Constant {
 
 #[cfg(test)]
 mod tests {
-    use crate::compile_expression;
+    use crate::compile_expression_test;
 
     #[test]
     fn test_constant_type_resolution() {
-        let expr = compile_expression("15", &[]).unwrap();
+        let expr = compile_expression_test("15", &[]).unwrap();
         let r = expr.run_types([]).unwrap();
         assert_eq!(r, crate::types::Type::from_const(15));
     }
 
     #[test]
     fn test_optimized_type_resolution() {
-        let expr = compile_expression(r#""test".concat("hello")"#, &[]).unwrap();
+        let expr = compile_expression_test(r#""test".concat("hello")"#, &[]).unwrap();
         let r = expr.run_types([]).unwrap();
         assert_eq!(r, crate::types::Type::from_const("testhello".to_string()));
     }

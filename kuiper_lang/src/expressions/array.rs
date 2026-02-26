@@ -151,7 +151,7 @@ impl ArrayExpression {
 #[cfg(test)]
 mod tests {
     use crate::{
-        compile_expression,
+        compile_expression_test,
         tests::compile_err,
         types::{Array, Type},
     };
@@ -167,7 +167,7 @@ mod tests {
 
     #[test]
     fn test_array_types_known() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             "[1, 'a', ...[true, false], ...[1, 2, 3], input]",
             &["input"],
         )
@@ -194,7 +194,8 @@ mod tests {
 
     #[test]
     fn test_array_types_dynamic() {
-        let expr = compile_expression("[1, ...input, ...context]", &["input", "context"]).unwrap();
+        let expr =
+            compile_expression_test("[1, ...input, ...context]", &["input", "context"]).unwrap();
         let ty = expr
             .run_types([
                 Type::Array(Array {
