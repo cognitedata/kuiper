@@ -46,6 +46,7 @@ export const builtIns: KuiperInput[] = [
     { label: "pairs", description: "`pairs(x)`: Convert the object `x` into a list of key/value pairs." },
     { label: "parse_json", description: "`parse_json(string)`: Parse a string as a JSON object, which can be used in further transformations. If the passed value isn't a string, it's returned as-is." },
     { label: "pow", description: "`pow(x, y)`: Return `x` to the power of `y`" },
+    { label: "random", description: "`random()`: Return a random floating-point number between 0.0 (inclusive) and 1.0 (exclusive)." },
     { label: "reduce", description: "`reduce(x, (acc, val) => ..., init)`: Return the value obtained by reducing the list `x`. The lambda function is called once for each element in the list `val`, and the returned value is passed as `acc` in the next iteration. The `init` will be given as the initial `acc` for the first call to the lambda function." },
     { label: "regex_all_captures", description: "`regex_all_captures(haystack, regex)`: Return an array of objects containing all capture groups from each match of the regex in the haystack. Unnamed capture groups are named after their index, so the match itself is always included as capture group `0`. If no match is found, this returns an empty array." },
     { label: "regex_all_matches", description: "`regex_all_matches(haystack, regex)`: Return an array of all the substrings that match the regex. If no match is found, this returns an empty array. If you only need the first match, use [regex_first_match](#regex_first_match)." },

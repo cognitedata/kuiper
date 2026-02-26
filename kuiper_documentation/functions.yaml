@@ -254,6 +254,12 @@ functions:
     examples:
       - pow(5, 3) -> 125.0
 
+  - name: random
+    signature: "`random()`"
+    description: Return a random floating-point number between 0.0 (inclusive) and 1.0 (exclusive).
+    examples:
+      - random() -> 0.123456789
+
   - name: reduce
     signature: "`reduce(x, (acc, val) => ..., init)`"
     description: Return the value obtained by reducing the list `x`. The lambda function is called once for each element in the list `val`, and the returned value is passed as `acc` in the next iteration. The `init` will be given as the initial `acc` for the first call to the lambda function.
