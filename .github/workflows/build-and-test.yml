@@ -53,22 +53,18 @@ jobs:
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dev deps
-        run: pip install pre-commit toml pyyaml pytest
+      - name: Install dev deps and build package
+        run: |
+          pip install uv
+          uv sync
       - name: Check style
         run: pre-commit run --all
       - name: Check that docs are up to date
         run: |
           python kuiper_documentation/codegen.py
           git diff --quiet
-      - uses: PyO3/maturin-action@b1bd829e37fef14c63f19162034228a2f3dc1021 # v1
-        with:
-          command: build
-          working-directory: ./kuiper_python
       - name: Run tests
-        run: |
-          pip install target/wheels/cognite_kuiper-*.whl
-          pytest
+        run: uv run pytest
 
   build_js_modules:
     runs-on: ubuntu-latest

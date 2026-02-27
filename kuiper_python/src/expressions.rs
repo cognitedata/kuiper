@@ -3,7 +3,7 @@ use kuiper_lang::ExpressionType;
 use pyo3::{pyclass, pymethods, PyResult};
 use serde_json::{from_str, Value};
 
-#[pyclass]
+#[pyclass(module = "kuiper")]
 pub struct KuiperExpression {
     expression: ExpressionType,
 }
@@ -80,6 +80,10 @@ impl KuiperExpression {
     }
 
     fn __str__(&self) -> String {
+        self.expression.to_string()
+    }
+
+    fn __repr__(&self) -> String {
         self.expression.to_string()
     }
 }
