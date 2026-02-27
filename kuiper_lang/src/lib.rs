@@ -29,6 +29,7 @@
 //! assert_eq!(result.as_ref(), &json!(8));
 //! ```
 
+#![cfg_attr(not(feature = "std"), no_std)]
 #![warn(missing_docs)]
 
 mod compiler;
@@ -37,6 +38,13 @@ mod lexer;
 mod parse;
 mod pretty;
 pub mod types;
+
+pub extern crate alloc;
+
+use alloc::format;
+use alloc::string::String;
+use alloc::vec::Vec;
+use alloc::{boxed::Box, string::ToString};
 
 pub use pretty::{format_expression, PrettyError};
 
@@ -197,7 +205,10 @@ pub mod lex {
 /// Module containing the SourceData trait and related types,
 /// used for creating custom input data sources for expressions.
 pub mod source {
-    pub use super::expressions::{LazySourceData, LazySourceDataJson, SourceData};
+    #[cfg(feature = "std")]
+    pub use super::expressions::{LazySourceData, LazySourceDataJson};
+
+    pub use super::expressions::SourceData;
     #[doc(inline)]
     pub use kuiper_lang_macros::SourceData;
 }
@@ -822,7 +833,7 @@ pub(crate) mod tests {
     #[test]
     fn test_compile_from_tokens() {
         use crate::lex::compile_from_tokens;
-        let tokens = vec![
+        let tokens = alloc::vec![
             Token::Integer(2),
             Token::Operator(crate::lex::Operator::Plus),
             Token::Integer(1),
@@ -999,7 +1010,7 @@ pub(crate) mod tests {
     #[derive(Debug, serde::Deserialize)]
     struct TestRunConfig {
         /// List of input parameters for this test run
-        inputs: Vec<serde_json::Value>,
+        inputs: crate::Vec<serde_json::Value>,
         /// The expected output
         expected: serde_json::Value,
     }
@@ -1007,9 +1018,9 @@ pub(crate) mod tests {
     #[derive(Debug, serde::Deserialize, Default)]
     struct TestCaseConfig {
         /// List of input variable names
-        pub inputs: Vec<String>,
+        pub inputs: crate::Vec<String>,
         /// List of input/output pairs to test with
-        pub cases: Option<Vec<TestRunConfig>>,
+        pub cases: Option<crate::Vec<TestRunConfig>>,
     }
 
     #[test]
@@ -1056,7 +1067,7 @@ pub(crate) mod tests {
                     })
                     .unwrap_or_default();
 
-                let inputs: Vec<&str> = config.inputs.iter().map(|s| s.as_str()).collect();
+                let inputs: crate::Vec<&str> = config.inputs.iter().map(|s| s.as_str()).collect();
                 let expression = compile_expression(&raw_expression, &inputs).expect(&format!(
                     "Failed to compile expression in file {}",
                     test_case.display()

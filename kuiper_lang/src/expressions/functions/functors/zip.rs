@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use alloc::borrow::Cow;
 
 use serde_json::Value;
 
@@ -16,7 +16,7 @@ impl Expression for ZipFunction {
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
     ) -> Result<crate::expressions::ResolveResult<'a>, crate::TransformError> {
-        let mut sources = Vec::with_capacity(self.args.len() - 1);
+        let mut sources = crate::Vec::with_capacity(self.args.len() - 1);
         let mut output_len = 0;
         for source in self.args.iter().take(self.args.len() - 1) {
             let r = source.resolve(state)?;
@@ -38,9 +38,9 @@ impl Expression for ZipFunction {
 
         let func = self.args.last().unwrap();
 
-        let mut res = Vec::with_capacity(output_len);
+        let mut res = crate::Vec::with_capacity(output_len);
         for idx in 0..output_len {
-            let mut chunk = Vec::with_capacity(self.args.len() - 1);
+            let mut chunk = crate::Vec::with_capacity(self.args.len() - 1);
             for s in &sources {
                 let v = s.as_ref().and_then(|v| v.get(idx)).unwrap_or(&NULL_CONST);
                 chunk.push(v);
@@ -55,7 +55,7 @@ impl Expression for ZipFunction {
         &self,
         state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
-        let mut sources = Vec::with_capacity(self.args.len() - 1);
+        let mut sources = crate::Vec::with_capacity(self.args.len() - 1);
         let mut known_output_len = 0;
         let mut num_end_dynamic = 0;
         for source in self.args.iter().take(self.args.len() - 1) {
@@ -75,9 +75,9 @@ impl Expression for ZipFunction {
 
         let func = self.args.last().unwrap();
 
-        let mut res_types = Vec::with_capacity(known_output_len);
+        let mut res_types = crate::Vec::with_capacity(known_output_len);
         for idx in 0..known_output_len {
-            let mut chunk = Vec::with_capacity(self.args.len() - 1);
+            let mut chunk = crate::Vec::with_capacity(self.args.len() - 1);
             for s in &sources {
                 if let Some(arr) = s {
                     chunk.push(
@@ -89,13 +89,13 @@ impl Expression for ZipFunction {
                     chunk.push(Type::null());
                 }
             }
-            let chunk_ref = chunk.iter().collect::<Vec<&Type>>();
+            let chunk_ref = chunk.iter().collect::<crate::Vec<&Type>>();
             let elem = func.call_types(state, &chunk_ref)?;
             res_types.push(elem);
         }
 
         if num_end_dynamic > 0 {
-            let mut chunk = Vec::with_capacity(self.args.len() - 1);
+            let mut chunk = crate::Vec::with_capacity(self.args.len() - 1);
             for s in &sources {
                 if let Some(arr) = s {
                     let ty = arr
@@ -114,11 +114,11 @@ impl Expression for ZipFunction {
                     chunk.push(Type::null());
                 }
             }
-            let chunk_ref = chunk.iter().collect::<Vec<&Type>>();
+            let chunk_ref = chunk.iter().collect::<crate::Vec<&Type>>();
             let end_dynamic = func.call_types(state, &chunk_ref)?;
             Ok(Type::Array(Array {
                 elements: res_types,
-                end_dynamic: Some(Box::new(end_dynamic)),
+                end_dynamic: Some(alloc::boxed::Box::new(end_dynamic)),
             }))
         } else {
             Ok(Type::Array(Array {
@@ -207,11 +207,11 @@ mod tests {
         let res = expr
             .run_types([
                 Type::Array(Array {
-                    elements: vec![Type::from_const(1), Type::from_const(2)],
+                    elements: alloc::vec![Type::from_const(1), Type::from_const(2)],
                     end_dynamic: Some(Box::new(Type::from_const(3))),
                 }),
                 Type::Array(Array {
-                    elements: vec![Type::from_const(4)],
+                    elements: alloc::vec![Type::from_const(4)],
                     end_dynamic: None,
                 }),
             ])
@@ -219,7 +219,7 @@ mod tests {
         assert_eq!(
             res,
             Type::Array(Array {
-                elements: vec![
+                elements: alloc::vec![
                     Type::Object(
                         Object::default()
                             .with_field("v1", Type::from_const(1))

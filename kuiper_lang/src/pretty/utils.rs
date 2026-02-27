@@ -1,3 +1,5 @@
+use alloc::borrow::ToOwned;
+use alloc::string::ToString;
 use logos::Span;
 
 use crate::lex::{LexerError, Token};
@@ -44,7 +46,7 @@ pub(super) fn to_indent_token(tok: &Token) -> Option<IndentNodeKind> {
 }
 
 pub(super) fn check_closing_token(
-    stack: &mut Vec<IndentNode>,
+    stack: &mut crate::Vec<IndentNode>,
     tok: &Token,
     span: &Span,
 ) -> Result<Option<IndentNode>, PrettyError> {
@@ -61,7 +63,7 @@ pub(super) fn check_closing_token(
             | (IndentNodeKind::Bracket, Token::CloseBracket)
             | (IndentNodeKind::Brace, Token::CloseBrace) => Ok(Some(node)),
             _ => Err(PrettyError::Pretty(
-                format!("Expected closing token for {:?}", node.kind),
+                alloc::format!("Expected closing token for {:?}", node.kind),
                 span.clone(),
             )),
         }
@@ -81,7 +83,7 @@ pub enum PrettyError {
     Parser(#[from] ParseError),
     /// Some other pretty printing error.
     #[error("Pretty printing failed: {0}")]
-    Pretty(String, Span),
+    Pretty(crate::String, Span),
     /// Sanity check failed, indicating a bug in the pretty printer.
     #[error(
         "Pretty printing resulted in a different semantic output than the original, this is a bug!"
@@ -99,7 +101,7 @@ pub(super) fn trim_inter_token_whitespace(
     ws: &str,
     last_token: Option<&Token>,
     current_token: Option<&Token>,
-) -> String {
+) -> crate::String {
     // If there are newlines, just strip any other whitespace, keeping just the newlines.
     // A newline is always a valid separator. We do not fold, so we never remove any newlines.
     if ws.contains('\n') {
@@ -145,18 +147,18 @@ pub(super) fn trim_inter_token_whitespace(
 
 /// Make sure a comment has a single space before // or /* and after */
 /// Also, if the comment is multiline, remove any trailing whitespace.
-pub(super) fn prettify_comment(comment: &str) -> String {
+pub(super) fn prettify_comment(comment: &str) -> crate::String {
     if let Some(stripped) = comment.strip_prefix("//") {
-        format!("// {}", stripped.trim_start())
+        alloc::format!("// {}", stripped.trim_start())
             .trim_end()
             .to_owned()
     } else {
-        let mut output = String::new();
+        let mut output = crate::String::new();
         for line in comment.lines() {
             let has_newline = !line.ends_with("*/");
             let mut line = line.trim_end().to_owned();
             if line.starts_with("/*") {
-                line = format!("/* {}", &line[2..].trim_start())
+                line = alloc::format!("/* {}", &line[2..].trim_start())
                     .trim_end()
                     .to_owned();
             }
@@ -166,7 +168,7 @@ pub(super) fn prettify_comment(comment: &str) -> String {
                 if inner.is_empty() {
                     line = "*/".to_owned();
                 } else {
-                    line = format!("{inner} */").to_owned();
+                    line = alloc::format!("{inner} */");
                 }
             }
 
@@ -192,7 +194,7 @@ mod tests {
     #[test]
     fn test_iter_line_spans() {
         let input = "line1\nline2  \n  line3";
-        let spans: Vec<Span> = iter_line_spans(input).collect();
+        let spans: crate::Vec<Span> = iter_line_spans(input).collect();
         assert_eq!(spans.len(), 3);
         assert_eq!(spans[0], Span { start: 0, end: 6 });
         assert_eq!(spans[1], Span { start: 6, end: 14 });
@@ -202,16 +204,19 @@ mod tests {
     #[test]
     fn test_get_raw_tokens() {
         let input = "x + 5 - input.test";
-        let raw_tokens: Vec<_> = tokens(input)
+        let raw_tokens: crate::Vec<_> = tokens(input)
             .map(|(_tok, span)| raw_token(input, span))
             .collect();
-        assert_eq!(raw_tokens, vec!["x", "+", "5", "-", "input", ".", "test"]);
+        assert_eq!(
+            raw_tokens,
+            alloc::vec!["x", "+", "5", "-", "input", ".", "test"]
+        );
     }
 
     #[test]
     fn test_inter_token_whitespace() {
         fn token_test(input: &str, expected: &str) {
-            let mut output = String::new();
+            let mut output = alloc::string::String::new();
             let mut last_token: Option<Token> = None;
             let mut last_end = 0;
             for (token, span) in tokens(input) {
@@ -262,8 +267,8 @@ b - 1
     #[test]
     fn test_indent_tokens() {
         let tokens = tokens(r#"input.foo(a, { "b": [1, 2, 3] })"#);
-        let mut stack = Vec::new();
-        let mut removed = Vec::new();
+        let mut stack = crate::Vec::new();
+        let mut removed = crate::Vec::new();
         for (tok, span) in tokens {
             let tok = tok.unwrap();
             if let Some(kind) = to_indent_token(&tok) {

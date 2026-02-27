@@ -10,8 +10,9 @@ members = [
     "fuzz",
 ]
 resolver = "2"
+exclude = ["kuiper_lang_no_std_test"]
 
 [workspace.dependencies]
-regex = "1.10.4"
-serde = { version = "1.0.193", features = ["derive"] }
-serde_json = "1.0.116"
+regex = { version = "1.10.4" }
+serde = { version = "1.0.193", default-features = false, features = ["derive"] }
+serde_json = { version = "1.0.116", default-features = false }

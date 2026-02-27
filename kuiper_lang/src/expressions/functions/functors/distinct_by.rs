@@ -1,5 +1,4 @@
-use std::collections::HashSet;
-
+use alloc::{borrow::ToOwned, collections::btree_set::BTreeSet, string::ToString};
 use serde_json::{Map, Value};
 
 use crate::{
@@ -19,8 +18,8 @@ impl Expression for DistinctByFunction {
 
         match source.as_ref() {
             Value::Array(x) => {
-                let mut res: Vec<Value> = Vec::new();
-                let mut found: HashSet<String> = HashSet::new();
+                let mut res: crate::Vec<Value> = crate::Vec::new();
+                let mut found: BTreeSet<alloc::string::String> = BTreeSet::new();
                 for val in x {
                     let res_inner = self.args[1].call(state, &[val])?;
                     if found.insert(res_inner.to_string()) {
@@ -30,8 +29,8 @@ impl Expression for DistinctByFunction {
                 Ok(ResolveResult::Owned(Value::Array(res)))
             }
             Value::Object(x) => {
-                let mut res: Map<String, Value> = Map::new();
-                let mut found: HashSet<String> = HashSet::new();
+                let mut res: Map<alloc::string::String, Value> = Map::new();
+                let mut found: BTreeSet<alloc::string::String> = BTreeSet::new();
                 for (k, v) in x {
                     let res_inner = self.args[1].call(state, &[v, &Value::String(k.to_owned())])?;
                     if found.insert(res_inner.to_string()) {
@@ -207,7 +206,7 @@ mod tests {
         let r = compile_expression(r#"distinct_by(input, (a) => a)"#, &["input"]).unwrap();
         let t = r
             .run_types([Type::Array(Array {
-                elements: vec![Type::Integer, Type::String],
+                elements: alloc::vec![Type::Integer, Type::String],
                 end_dynamic: Some(Box::new(Type::Boolean)),
             })])
             .unwrap();
@@ -252,7 +251,7 @@ mod tests {
         let r = compile_expression("distinct_by(input, a => a + 1)", &["input"]).unwrap();
         let err = r
             .run_types([Type::Array(Array {
-                elements: vec![Type::String],
+                elements: alloc::vec![Type::String],
                 end_dynamic: None,
             })])
             .unwrap_err();

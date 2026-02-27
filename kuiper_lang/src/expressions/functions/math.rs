@@ -1,3 +1,4 @@
+use alloc::string::ToString;
 use logos::Span;
 use serde_json::{Number, Value};
 
@@ -35,7 +36,7 @@ macro_rules! arg2_math_func {
                     serde_json::Value::Number(serde_json::Number::from_f64(res).ok_or_else(
                         || {
                             $crate::expressions::transform_error::TransformError::new_conversion_failed(
-                                format!(
+                                alloc::format!(
                                     "Failed to convert result of operator {} to number at {}",
                                     $name, self.span.start
                                 ),
@@ -86,7 +87,7 @@ macro_rules! arg1_math_func {
                 Ok($crate::expressions::ResolveResult::Owned(
                     serde_json::Value::Number(serde_json::Number::from_f64(res).ok_or_else(|| {
                         $crate::expressions::transform_error::TransformError::new_conversion_failed(
-                            format!(
+                            alloc::format!(
                                 "Failed to convert result of operator {} to number at {}",
                                 $name, self.span.start
                             ),
@@ -109,20 +110,33 @@ macro_rules! arg1_math_func {
         }
     };
 }
-
+#[cfg(feature = "std")]
 arg2_math_func!(PowFunction, "pow", powf);
+#[cfg(feature = "std")]
 arg2_math_func!(LogFunction, "log", log);
+#[cfg(feature = "std")]
 arg2_math_func!(Atan2Function, "atan2", atan2);
+#[cfg(feature = "std")]
 arg1_math_func!(FloorFunction, "floor", floor);
+#[cfg(feature = "std")]
 arg1_math_func!(CeilFunction, "ceil", ceil);
+#[cfg(feature = "std")]
 arg1_math_func!(RoundFunction, "round", round);
+#[cfg(feature = "std")]
 arg1_math_func!(SqrtFunction, "sqrt", sqrt);
+#[cfg(feature = "std")]
 arg1_math_func!(ExpFunction, "exp", exp);
+#[cfg(feature = "std")]
 arg1_math_func!(SinFunction, "sin", sin);
+#[cfg(feature = "std")]
 arg1_math_func!(CosFunction, "cos", cos);
+#[cfg(feature = "std")]
 arg1_math_func!(TanFunction, "tan", tan);
+#[cfg(feature = "std")]
 arg1_math_func!(AsinFunction, "asin", asin);
+#[cfg(feature = "std")]
 arg1_math_func!(AcosFunction, "acos", acos);
+#[cfg(feature = "std")]
 arg1_math_func!(AtanFunction, "atan", atan);
 
 function_def!(IntFunction, "int", 1);
@@ -156,7 +170,7 @@ impl Expression for IntFunction {
                 .try_into_json()
                 .ok_or_else(|| {
                     TransformError::new_conversion_failed(
-                        format!(
+                        alloc::format!(
                             "Failed to convert result of int() to number at {}",
                             self.span.start
                         ),
@@ -167,7 +181,7 @@ impl Expression for IntFunction {
                 if s.starts_with('-') {
                     let res: i64 = s.parse().map_err(|e| {
                         TransformError::new_conversion_failed(
-                            format!("Failed to convert string {s} to integer: {e}"),
+                            alloc::format!("Failed to convert string {s} to integer: {e}"),
                             &self.span,
                         )
                     })?;
@@ -175,7 +189,7 @@ impl Expression for IntFunction {
                 } else {
                     let res: u64 = s.parse().map_err(|e| {
                         TransformError::new_conversion_failed(
-                            format!("Failed to convert string {s} to integer: {e}"),
+                            alloc::format!("Failed to convert string {s} to integer: {e}"),
                             &self.span,
                         )
                     })?;
@@ -184,7 +198,7 @@ impl Expression for IntFunction {
             }
             Value::Array(_) | Value::Object(_) => {
                 return Err(TransformError::new_invalid_operation(
-                    format!(
+                    alloc::format!(
                         "Cannot to convert {} to integer",
                         TransformError::value_desc(val)
                     ),
@@ -236,13 +250,13 @@ impl Expression for FloatFunction {
             Value::Number(n) => JsonNumber::from(n).as_f64(),
             Value::String(s) => s.parse().map_err(|e| {
                 TransformError::new_conversion_failed(
-                    format!("Failed to convert string {s} to float: {e}"),
+                    alloc::format!("Failed to convert string {s} to float: {e}"),
                     &self.span,
                 )
             })?,
             Value::Array(_) | Value::Object(_) => {
                 return Err(TransformError::new_invalid_operation(
-                    format!(
+                    alloc::format!(
                         "Cannot to convert {} to float",
                         TransformError::value_desc(val)
                     ),
@@ -271,33 +285,37 @@ impl Expression for FloatFunction {
 }
 
 fn flatten_args<'a>(
-    args: &'a Vec<ResolveResult<'a>>,
+    args: &'a crate::Vec<ResolveResult<'a>>,
     desc: &'a str,
     span: &'a Span,
-) -> Box<dyn Iterator<Item = Result<JsonNumber, TransformError>> + 'a> {
+) -> crate::Box<dyn Iterator<Item = Result<JsonNumber, TransformError>> + 'a> {
     match args.len() {
-        0 => Box::new(std::iter::once(Err(TransformError::new_invalid_operation(
-            format!("{desc} function requires at least one argument"),
-            span,
-        )))),
+        0 => crate::Box::new(core::iter::once(Err(
+            TransformError::new_invalid_operation(
+                alloc::format!("{desc} function requires at least one argument"),
+                span,
+            ),
+        ))),
         1 => {
             if let Some(array) = args[0].as_array() {
                 if array.is_empty() {
-                    Box::new(std::iter::once(Err(TransformError::new_invalid_operation(
-                        format!("{desc} of an empty array is undefined"),
-                        span,
-                    ))))
+                    crate::Box::new(core::iter::once(Err(
+                        TransformError::new_invalid_operation(
+                            alloc::format!("{desc} of an empty array is undefined"),
+                            span,
+                        ),
+                    )))
                 } else {
-                    Box::new(array.iter().map(|x| JsonNumber::try_from(x, desc, span)))
+                    crate::Box::new(array.iter().map(|x| JsonNumber::try_from(x, desc, span)))
                 }
             } else {
-                Box::new(std::iter::once(Err(TransformError::new_invalid_operation(
-                        format!("If only one argument is supplied to the {desc} function, it must be an array of numbers"),
+                crate::Box::new(core::iter::once(Err(TransformError::new_invalid_operation(
+                        alloc::format!("If only one argument is supplied to the {desc} function, it must be an array of numbers"),
                         span,
                     ))))
             }
         }
-        _ => Box::new(args.iter().map(|x| x.try_as_number(desc, span))),
+        _ => crate::Box::new(args.iter().map(|x| x.try_as_number(desc, span))),
     }
 }
 
@@ -312,7 +330,7 @@ impl Expression for MaxFunction {
             .args
             .iter()
             .map(|x| x.resolve(state))
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<crate::Vec<_>, _>>()?;
 
         // Max either accepts many numbers as distinct args, or a single arg which is an array of numbers.
         // Flatten it to a single iterator of numbers.
@@ -354,7 +372,7 @@ fn flatten_type_args(
     args: &[ExpressionType],
     state: &mut crate::types::TypeExecutionState<'_, '_>,
     span: &Span,
-) -> Result<Vec<Type>, TypeError> {
+) -> Result<crate::Vec<Type>, TypeError> {
     if args.len() == 1 {
         let ty = args[0].resolve_types(state)?;
         let arr = ty.try_as_array(span)?;
@@ -374,7 +392,7 @@ impl Expression for MinFunction {
             .args
             .iter()
             .map(|x| x.resolve(state))
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<crate::Vec<_>, _>>()?;
 
         // Min either accepts many numbers as distinct args, or a single arg which is an array of numbers.
         // Flatten it to a single iterator of numbers.
@@ -412,8 +430,10 @@ impl Expression for MinFunction {
     }
 }
 
+#[cfg(feature = "std")]
 function_def!(RandomFunction, "random", 0);
 
+#[cfg(feature = "std")]
 impl Expression for RandomFunction {
     fn is_deterministic(&self) -> bool {
         false
@@ -859,7 +879,7 @@ mod tests {
             // The argument can be either an array of numbers, or many numbers as distinct args. The result should be a number.
             let ty = expr
                 .run_types([Type::Array(Array {
-                    elements: vec![Type::number(), Type::number(), Type::number()],
+                    elements: alloc::vec![Type::number(), Type::number(), Type::number()],
                     end_dynamic: Some(Box::new(Type::number())),
                 })])
                 .unwrap();
@@ -870,7 +890,7 @@ mod tests {
 
             assert!(expr
                 .run_types([Type::Array(Array {
-                    elements: vec![Type::number(), Type::number()],
+                    elements: alloc::vec![Type::number(), Type::number()],
                     end_dynamic: Some(Box::new(Type::String)),
                 })])
                 .is_err());

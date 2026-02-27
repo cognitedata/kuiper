@@ -1,5 +1,6 @@
-use std::{collections::BTreeMap, fmt::Display};
+use crate::alloc::{collections::BTreeMap, fmt::Display};
 
+use alloc::{borrow::ToOwned, string::ToString};
 use serde::Serialize;
 use serde_json::Value;
 
@@ -9,7 +10,7 @@ use crate::types::Type;
 /// A field in a JSON object, either a constant field name, or a generic field.
 pub enum ObjectField {
     /// A constant, known field name.
-    Constant(String),
+    Constant(crate::String),
     /// Any other fields. This represents _all_ unknown fields in an object.
     Generic,
 }
@@ -83,13 +84,13 @@ impl Object {
         // generic field if it exists.
         for (key, mut value) in other.fields.into_iter() {
             match res.entry(key) {
-                std::collections::btree_map::Entry::Vacant(e) => {
+                crate::alloc::collections::btree_map::Entry::Vacant(e) => {
                     if let Some(left_union) = &left_union {
                         value = value.union_with(left_union.clone());
                     }
                     e.insert(value)
                 }
-                std::collections::btree_map::Entry::Occupied(mut e) => {
+                crate::alloc::collections::btree_map::Entry::Occupied(mut e) => {
                     let mut val = e.get().clone();
                     val = val.union_with(value);
                     e.insert(val);
@@ -112,7 +113,7 @@ impl Object {
     }
 
     /// Produce an object type from a constant JSON value.
-    pub fn from_const(value: serde_json::Map<String, Value>) -> Self {
+    pub fn from_const(value: serde_json::Map<crate::String, Value>) -> Self {
         let fields = value
             .into_iter()
             .map(|(k, v)| (ObjectField::Constant(k), Type::from_const(v)))
@@ -145,10 +146,10 @@ impl Object {
     /// Push a field into this object type, unioning it with any existing field with the same name.
     pub fn push_field(&mut self, field: ObjectField, ty: Type) {
         match self.fields.entry(field) {
-            std::collections::btree_map::Entry::Vacant(vacant) => {
+            crate::alloc::collections::btree_map::Entry::Vacant(vacant) => {
                 vacant.insert(ty);
             }
-            std::collections::btree_map::Entry::Occupied(occupied) => {
+            crate::alloc::collections::btree_map::Entry::Occupied(occupied) => {
                 let (k, v) = occupied.remove_entry();
                 let new_type = v.union_with(ty);
                 self.fields.insert(k, new_type);
@@ -239,7 +240,7 @@ impl Object {
 }
 
 impl Display for Object {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{{")?;
         let mut needs_comma = false;
         for (key, value) in &self.fields {

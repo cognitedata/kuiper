@@ -1,5 +1,6 @@
-use std::{collections::HashMap, fmt::Debug, sync::Arc};
+use alloc::{fmt::Debug, rc::Rc};
 
+use alloc::collections::btree_map::BTreeMap;
 use logos::Span;
 
 use crate::{
@@ -17,10 +18,10 @@ impl<T> DynamicFunction for T where T: ExpressionMeta + Expression + Debug + Sen
 /// Utility function for creating a DynamicFunction from a type that implements FunctionExpression.
 /// This method implements `DynamicFunctionBuilder` for any type that implements `FunctionExpression`.
 pub(crate) fn make_function<T: FunctionExpression + DynamicFunction + 'static>(
-    args: Vec<ExpressionType>,
+    args: alloc::vec::Vec<ExpressionType>,
     span: Span,
-) -> Result<Box<dyn DynamicFunction>, crate::compiler::BuildError> {
-    Ok(Box::new(T::new(args, span)?))
+) -> Result<alloc::boxed::Box<dyn DynamicFunction>, crate::compiler::BuildError> {
+    Ok(alloc::boxed::Box::new(T::new(args, span)?))
 }
 
 /// Trait for constructing dynamic functions.
@@ -36,41 +37,41 @@ pub(crate) trait DynamicFunctionBuilder: Send + Sync {
     /// Create a new dynamic function with the given arguments and span.
     fn make_function(
         &self,
-        args: Vec<ExpressionType>,
+        args: alloc::vec::Vec<ExpressionType>,
         span: Span,
-    ) -> Result<Box<dyn DynamicFunction>, crate::compiler::BuildError>;
+    ) -> Result<alloc::boxed::Box<dyn DynamicFunction>, crate::compiler::BuildError>;
 }
 
 impl<T> DynamicFunctionBuilder for T
 where
     T: Fn(
-            Vec<ExpressionType>,
+            alloc::vec::Vec<ExpressionType>,
             Span,
-        ) -> Result<Box<dyn DynamicFunction>, crate::compiler::BuildError>
+        ) -> Result<alloc::boxed::Box<dyn DynamicFunction>, crate::compiler::BuildError>
         + Send
         + Sync,
 {
     fn make_function(
         &self,
-        args: Vec<ExpressionType>,
+        args: alloc::vec::Vec<ExpressionType>,
         span: Span,
-    ) -> Result<Box<dyn DynamicFunction>, crate::compiler::BuildError> {
+    ) -> Result<alloc::boxed::Box<dyn DynamicFunction>, crate::compiler::BuildError> {
         self(args, span)
     }
 }
 
 #[derive(Default, Clone)]
 pub(crate) struct DynamicFunctionSource {
-    functions: HashMap<String, Arc<dyn DynamicFunctionBuilder>>,
+    functions: BTreeMap<alloc::string::String, Rc<dyn DynamicFunctionBuilder>>,
 }
 
 impl DynamicFunctionSource {
     pub fn with_function<T: DynamicFunction + FunctionExpression + 'static>(
         &mut self,
-        name: impl Into<String>,
+        name: impl Into<alloc::string::String>,
     ) {
         self.functions
-            .insert(name.into(), Arc::new(make_function::<T>));
+            .insert(name.into(), Rc::new(make_function::<T>));
     }
 
     pub fn get(&self, name: &str) -> Option<&dyn DynamicFunctionBuilder> {

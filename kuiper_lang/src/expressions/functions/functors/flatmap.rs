@@ -17,7 +17,7 @@ impl Expression for FlatMapFunction {
 
         match source.as_ref() {
             Value::Array(x) => {
-                let mut res = Vec::with_capacity(x.len());
+                let mut res = crate::Vec::with_capacity(x.len());
                 for val in x {
                     let res_inner = self.args[1].call(state, &[val])?.into_owned();
                     match res_inner {
@@ -48,7 +48,7 @@ impl Expression for FlatMapFunction {
         let arr = source.try_as_array(&self.span)?;
 
         let mut all_known = true;
-        let mut final_elements = Vec::new();
+        let mut final_elements = crate::Vec::new();
 
         let mut end_dynamic = Type::never();
 
@@ -94,7 +94,7 @@ impl Expression for FlatMapFunction {
             end_dynamic: if end_dynamic.is_never() {
                 None
             } else {
-                Some(Box::new(end_dynamic))
+                Some(alloc::boxed::Box::new(end_dynamic))
             },
         }))
     }
@@ -157,14 +157,14 @@ mod tests {
         let expr = compile_expression("flatmap(input, it => it)", &["input"]).unwrap();
         let res = expr
             .run_types([Type::Array(crate::types::Array {
-                elements: vec![
+                elements: alloc::vec![
                     Type::Array(crate::types::Array {
-                        elements: vec![Type::String],
+                        elements: alloc::vec![Type::String],
                         end_dynamic: None,
                     }),
                     Type::from_const(5),
                     Type::Array(crate::types::Array {
-                        elements: vec![
+                        elements: alloc::vec![
                             Type::from_const(1),
                             Type::from_const(2),
                             Type::array_of_type(Type::String),
@@ -180,7 +180,7 @@ mod tests {
         assert_eq!(
             res,
             Type::Array(crate::types::Array {
-                elements: vec![
+                elements: alloc::vec![
                     Type::String,
                     Type::from_const(5),
                     Type::from_const(1),

@@ -81,7 +81,7 @@ mod tests {
             ParseError::UnrecognizedToken { token, expected } => {
                 assert_eq!((7, Token::Operator(Operator::Plus), 8), token);
                 assert_eq!(
-                    vec![
+                    alloc::vec![
                         r#""if""#.to_string(),
                         r#""var""#.to_string(),
                         r#""type""#.to_string()
@@ -100,7 +100,7 @@ mod tests {
             ParseError::UnrecognizedToken { token, expected } => {
                 assert_eq!((7, Token::Period, 8), token);
                 assert_eq!(
-                    vec![
+                    alloc::vec![
                         r#""if""#.to_string(),
                         r#""var""#.to_string(),
                         r#""type""#.to_string()
@@ -119,7 +119,7 @@ mod tests {
             ParseError::UnrecognizedToken { token, expected } => {
                 assert_eq!((7, Token::OpenBracket, 8), token);
                 assert_eq!(
-                    vec![
+                    alloc::vec![
                         r#""if""#.to_string(),
                         r#""var""#.to_string(),
                         r#""type""#.to_string()

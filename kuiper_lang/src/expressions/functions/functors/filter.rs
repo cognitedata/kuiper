@@ -18,7 +18,7 @@ impl Expression for FilterFunction {
 
         match source.into_owned() {
             Value::Array(x) => {
-                let mut res = Vec::with_capacity(x.len());
+                let mut res = crate::Vec::with_capacity(x.len());
                 for item in x {
                     let should_add = self.args[1].call(state, &[&item])?.as_bool();
 
@@ -50,7 +50,7 @@ impl Expression for FilterFunction {
 
         let mut end_dynamic = Type::never();
         let mut all_known = true;
-        let mut final_elements = Vec::new();
+        let mut final_elements = crate::Vec::new();
         for item in arr.elements {
             let should_add = self.args[1].call_types(state, &[&item])?.truthyness();
             match should_add {
@@ -80,7 +80,7 @@ impl Expression for FilterFunction {
             end_dynamic: if end_dynamic.is_never() {
                 None
             } else {
-                Some(Box::new(end_dynamic))
+                Some(alloc::boxed::Box::new(end_dynamic))
             },
         }))
     }
@@ -131,7 +131,7 @@ mod tests {
         let expr = compile_expression("input.filter(i => i == 'foo')", &["input"]).unwrap();
         let res = expr
             .run_types([Type::Array(Array {
-                elements: vec![Type::String],
+                elements: alloc::vec![Type::String],
                 end_dynamic: None,
             })])
             .unwrap();
@@ -139,7 +139,7 @@ mod tests {
 
         let res = expr
             .run_types([Type::Array(Array {
-                elements: vec![
+                elements: alloc::vec![
                     Type::from_const("foo"),
                     Type::Integer,
                     Type::from_const("bar"),
@@ -151,7 +151,7 @@ mod tests {
         assert_eq!(
             res,
             Type::Array(Array {
-                elements: vec![Type::from_const("foo")],
+                elements: alloc::vec![Type::from_const("foo")],
                 end_dynamic: Some(Box::new(Type::String))
             })
         );

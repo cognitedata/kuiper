@@ -1,8 +1,9 @@
 mod exec_tree;
 mod optimizer;
 
-use std::fmt::Display;
+use core::fmt::Display;
 
+use alloc::string::ToString;
 pub use exec_tree::BuildError;
 use logos::Span;
 pub use optimizer::optimize;
@@ -39,8 +40,8 @@ pub struct CompilerConfig {
     pub(crate) custom_function_source: DynamicFunctionSource,
 }
 
-impl std::fmt::Debug for CompilerConfig {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for CompilerConfig {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("CompilerConfig")
             .field("optimizer_operation_limit", &self.optimizer_operation_limit)
             .field("max_macro_expansions", &self.max_macro_expansions)
@@ -80,7 +81,7 @@ impl CompilerConfig {
     /// which you get automatically if you implement `Expression` and use the `function_def` macro.
     pub fn with_custom_function<T: DynamicFunction + FunctionExpression + 'static>(
         mut self,
-        name: impl Into<String>,
+        name: impl Into<crate::String>,
     ) -> Self {
         self.custom_function_source.with_function::<T>(name);
         self
@@ -180,12 +181,12 @@ pub fn compile_from_tokens(
 #[derive(Debug)]
 pub struct DebugInfo {
     #[allow(dead_code)]
-    debug: String,
-    clean: String,
+    debug: crate::String,
+    clean: crate::String,
 }
 
 impl Display for DebugInfo {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.clean)
     }
 }
@@ -205,7 +206,7 @@ pub struct ExpressionDebugInfo {
 }
 
 impl Display for ExpressionDebugInfo {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         writeln!(f, "{{")?;
         writeln!(f, "    lexer: {}", self.lexer)?;
         writeln!(f, "    ast: {}", self.ast)?;
@@ -228,25 +229,25 @@ impl ExpressionDebugInfo {
         config: &CompilerConfig,
     ) -> Result<Self, CompileError> {
         let lexer = Lexer::new(data);
-        let tokens: Result<Vec<_>, _> = lexer.map(|data| data.map(|(_, t, _)| t)).collect();
+        let tokens: Result<crate::Vec<_>, _> = lexer.map(|data| data.map(|(_, t, _)| t)).collect();
         let token_info = DebugInfo {
-            debug: format!("{tokens:?}"),
+            debug: alloc::format!("{tokens:?}"),
             clean: tokens
                 .map(|d| d.into_iter().map(|t| t.to_string()).collect())
-                .unwrap_or_else(|e| format!("{e:?}")),
+                .unwrap_or_else(|e| alloc::format!("{e:?}")),
         };
 
         let lexer = Lexer::new(data);
         let parser = ProgramParser::new();
         let ast = parser.parse(lexer)?;
         let ast_info = DebugInfo {
-            debug: format!("{ast:?}"),
+            debug: alloc::format!("{ast:?}"),
             clean: ast.to_string(),
         };
 
         let exec_tree = ExecTreeBuilder::new(ast, known_inputs, config)?.build()?;
         let exec_tree_info = DebugInfo {
-            debug: format!("{exec_tree:?}"),
+            debug: alloc::format!("{exec_tree:?}"),
             clean: exec_tree.to_string(),
         };
 
@@ -256,7 +257,7 @@ impl ExpressionDebugInfo {
             config.optimizer_operation_limit,
         )?;
         let optimized_info = DebugInfo {
-            debug: format!("{optimized:?}"),
+            debug: alloc::format!("{optimized:?}"),
             clean: optimized.to_string(),
         };
 

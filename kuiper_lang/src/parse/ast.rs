@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use core::fmt::Display;
 
 use logos::Span;
 use serde_json::{Number, Value};
@@ -10,12 +10,12 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub enum Selector {
-    Expression(Box<Expression>),
-    String(String, Span),
+    Expression(crate::Box<Expression>),
+    String(crate::String, Span),
 }
 
 impl Display for Selector {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Selector::Expression(x) => write!(f, "[{x}]"),
             Selector::String(x, _) => write!(f, ".{x}"),
@@ -25,7 +25,7 @@ impl Display for Selector {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Constant {
-    String(String),
+    String(crate::String),
     Integer(u64),
     Float(f64),
     Bool(bool),
@@ -33,7 +33,7 @@ pub enum Constant {
 }
 
 impl Display for Constant {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Constant::String(x) => write!(f, r#""{x}""#),
             Constant::Integer(x) => write!(f, "{x}"),
@@ -60,13 +60,13 @@ impl From<Constant> for Value {
 
 #[derive(Debug, Clone)]
 pub struct Lambda {
-    pub args: Vec<String>,
+    pub args: crate::Vec<crate::String>,
     pub inner: Expression,
     pub loc: Span,
 }
 
 impl Display for Lambda {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let Lambda { args, inner, .. } = &self;
         write!(f, "(")?;
         write_list!(f, args);
@@ -82,7 +82,7 @@ pub enum FunctionParameter {
 }
 
 impl Display for FunctionParameter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             FunctionParameter::Expression(x) => write!(f, "{x}"),
             FunctionParameter::Lambda(x) => write!(f, "{x}"),
@@ -92,14 +92,14 @@ impl Display for FunctionParameter {
 
 #[derive(Debug, Clone)]
 pub struct OpExpression {
-    pub lhs: Box<Expression>,
+    pub lhs: crate::Box<Expression>,
     pub operator: Operator,
-    pub rhs: Box<Expression>,
+    pub rhs: crate::Box<Expression>,
 }
 
 #[derive(Debug, Clone)]
 pub struct IsExpression {
-    pub lhs: Box<Expression>,
+    pub lhs: crate::Box<Expression>,
     pub rhs: TypeLiteral,
     pub not: bool,
 }
@@ -118,13 +118,13 @@ pub enum ObjectElementAst {
 
 #[derive(Debug, Clone)]
 pub struct Macro {
-    pub name: String,
+    pub name: crate::String,
     pub body: Lambda,
 }
 
 #[derive(Debug, Clone)]
 pub struct Program {
-    pub macros: Vec<Macro>,
+    pub macros: crate::Vec<Macro>,
     pub expression: Expression,
 }
 
@@ -134,31 +134,31 @@ pub enum Expression {
     Is(IsExpression),
     UnaryOperation {
         operator: UnaryOperator,
-        rhs: Box<Expression>,
+        rhs: crate::Box<Expression>,
         loc: Span,
     },
-    Array(Vec<ArrayElementAst>, Span),
-    Object(Vec<ObjectElementAst>, Span),
+    Array(crate::Vec<ArrayElementAst>, Span),
+    Object(crate::Vec<ObjectElementAst>, Span),
     Selector {
-        lhs: Box<Expression>,
+        lhs: crate::Box<Expression>,
         sel: Selector,
         loc: Span,
     },
     Constant(Constant, Span),
     Function {
-        name: String,
-        args: Vec<FunctionParameter>,
+        name: crate::String,
+        args: crate::Vec<FunctionParameter>,
         loc: Span,
     },
-    Variable(String, Span),
+    Variable(crate::String, Span),
     If {
-        args: Vec<Expression>,
+        args: crate::Vec<Expression>,
         loc: Span,
     },
 }
 
 impl Display for Program {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         for m in &self.macros {
             write!(f, "{} := {};", m.name, m.body)?;
         }
@@ -167,7 +167,7 @@ impl Display for Program {
 }
 
 impl Display for ArrayElementAst {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::Expression(x) => write!(f, "{x}"),
             Self::Concat(x) => write!(f, "..{x}"),
@@ -176,7 +176,7 @@ impl Display for ArrayElementAst {
 }
 
 impl Display for ObjectElementAst {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::Pair(lh, rh) => write!(f, "{lh}: {rh}"),
             Self::Concat(x) => write!(f, "..{x}"),
@@ -185,7 +185,7 @@ impl Display for ObjectElementAst {
 }
 
 impl Display for Expression {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Expression::BinaryOperation(OpExpression { lhs, operator, rhs }, _) => {
                 write!(f, "({lhs} {operator} {rhs})")

@@ -1,5 +1,6 @@
-use std::ops::Neg;
+use core::ops::Neg;
 
+use alloc::string::ToString;
 use logos::Span;
 use serde_json::{Number, Value};
 
@@ -86,24 +87,35 @@ impl JsonNumber {
         match self {
             Self::NegInteger(x) => x.try_into().map_err(|e| {
                 TransformError::new_conversion_failed(
-                    format!("Failed to convert negative integer {x} to unsigned: {e}"),
+                    alloc::format!("Failed to convert negative integer {x} to unsigned: {e}"),
                     span,
                 )
             }),
             Self::PosInteger(x) => Ok(x),
             Self::Float(x) => {
-                if x.fract() != 0.0f64 {
+                if Self::fract(x) != 0.0f64 {
                     Err(TransformError::new_conversion_failed(
-                        format!("Failed to convert floating point number {x} to integer: not a whole number"),
+                        alloc::format!("Failed to convert floating point number {x} to integer: not a whole number"),
                         span,
                     ))
                 } else if x <= u64::MAX as f64 && x >= u64::MIN as f64 {
                     Ok(x as u64)
                 } else {
                     Err(TransformError::new_conversion_failed(
-                        format!("Failed to convert floating point number {x} to positive integer: number does not fit within (0, 18446744073709551615)"), span))
+                        alloc::format!("Failed to convert floating point number {x} to positive integer: number does not fit within (0, 18446744073709551615)"), span))
                 }
             }
+        }
+    }
+
+    fn fract(v: f64) -> f64 {
+        #[cfg(feature = "std")]
+        {
+            v.fract()
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            v - (v as i64) as f64
         }
     }
 
@@ -113,22 +125,22 @@ impl JsonNumber {
         match self {
             Self::PosInteger(x) => x.try_into().map_err(|e| {
                 TransformError::new_conversion_failed(
-                    format!("Failed to convert positive integer {x} to signed integer: {e}"),
+                    alloc::format!("Failed to convert positive integer {x} to signed integer: {e}"),
                     span,
                 )
             }),
             Self::NegInteger(x) => Ok(x),
             Self::Float(x) => {
-                if x.fract() != 0.0f64 {
+                if Self::fract(x) != 0.0f64 {
                     Err(TransformError::new_conversion_failed(
-                        format!("Failed to convert floating point number {x} to integer: not a whole number"),
+                        alloc::format!("Failed to convert floating point number {x} to integer: not a whole number"),
                         span,
                     ))
                 } else if x <= i64::MAX as f64 && x >= i64::MIN as f64 {
                     Ok(x as i64)
                 } else {
                     Err(TransformError::new_conversion_failed(
-                        format!("Failed to convert floating point number {x} to integer: number does not fit within (-9223372036854775808, 9223372036854775807)"), span))
+                        alloc::format!("Failed to convert floating point number {x} to integer: number does not fit within (-9223372036854775808, 9223372036854775807)"), span))
                 }
             }
         }
@@ -154,7 +166,7 @@ impl JsonNumber {
                     Ok(JsonNumber::NegInteger(x as i64))
                 } else {
                     Err(TransformError::new_conversion_failed(
-                        format!(
+                        alloc::format!(
                             "Failed to convert floating point number {x} to integer, too large."
                         ),
                         span,

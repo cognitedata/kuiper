@@ -28,7 +28,7 @@ fn resolve_constants(
         return Ok(None);
     }
 
-    let data = vec![None; num_inputs];
+    let data = alloc::vec![None; num_inputs];
     let mut state = ExpressionExecutionState::new(&data, opcount, max_opcount);
 
     let res = match root.resolve(&mut state).map(|r| r.into_owned()) {

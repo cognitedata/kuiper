@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use core::fmt::Display;
 
 use logos::Span;
 use serde_json::Value;
@@ -48,7 +48,7 @@ pub enum Operator {
 }
 
 impl Display for Operator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Operator::Plus => write!(f, "+"),
             Operator::Minus => write!(f, "-"),
@@ -78,7 +78,7 @@ pub enum UnaryOperator {
 }
 
 impl Display for UnaryOperator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::Negate => write!(f, "!"),
             Self::Minus => write!(f, "-"),
@@ -90,13 +90,13 @@ impl Display for UnaryOperator {
 /// Expression for an operator. Consists of two expressions, and an operator.
 pub struct OpExpression {
     operator: Operator,
-    descriptor: String,
-    elements: [Box<ExpressionType>; 2],
+    descriptor: crate::String,
+    elements: [crate::Box<ExpressionType>; 2],
     span: Span,
 }
 
 impl Display for OpExpression {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
             "({} {} {})",
@@ -130,7 +130,7 @@ impl Expression for OpExpression {
             let rhs = self.elements[1].resolve(state)?;
             let rhs_ref = rhs.as_ref();
             Err(TransformError::new_invalid_operation(
-                format!(
+                alloc::format!(
                     "Operator {} not applicable to {} and {}",
                     &self.operator,
                     TransformError::value_desc(&lhs),
@@ -216,8 +216,8 @@ impl Expression for OpExpression {
 }
 
 impl ExpressionMeta for OpExpression {
-    fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
-        Box::new(self.elements.iter_mut().map(|m| m.as_mut()))
+    fn iter_children_mut(&mut self) -> crate::Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+        crate::Box::new(self.elements.iter_mut().map(|m| m.as_mut()))
     }
 }
 
@@ -232,8 +232,8 @@ impl OpExpression {
         rhs.fail_if_lambda()?;
         Ok(Self {
             operator: op,
-            descriptor: format!("'{}'", &op),
-            elements: [Box::new(lhs), Box::new(rhs)],
+            descriptor: alloc::format!("'{}'", &op),
+            elements: [crate::Box::new(lhs), crate::Box::new(rhs)],
             span,
         })
     }
@@ -273,7 +273,7 @@ impl OpExpression {
             Operator::Or => lhs || rhs,
             _ => {
                 return Err(TransformError::new_invalid_operation(
-                    format!("Operator {} not applicable to booleans", &self.operator),
+                    alloc::format!("Operator {} not applicable to booleans", &self.operator),
                     &self.span,
                 ))
             }
@@ -300,7 +300,7 @@ impl OpExpression {
             Operator::LessThanEquals => lhs <= rhs,
             _ => {
                 return Err(TransformError::new_invalid_operation(
-                    format!("Operator {} not applicable to strings", &self.operator),
+                    alloc::format!("Operator {} not applicable to strings", &self.operator),
                     &self.span,
                 ))
             }
@@ -336,7 +336,7 @@ impl OpExpression {
             Operator::Modulo => lhs.try_mod(rhs, &self.span)?,
             _ => {
                 return Err(TransformError::new_invalid_operation(
-                    format!("Operator {} not applicable to numbers", &self.operator),
+                    alloc::format!("Operator {} not applicable to numbers", &self.operator),
                     &self.span,
                 ))
             }
@@ -344,9 +344,9 @@ impl OpExpression {
         Ok(ResolveResult::Owned(res.try_into_json().ok_or_else(
             || {
                 TransformError::new_conversion_failed(
-                    format!(
+                    alloc::format!(
                         "Failed to convert result of operator {} to number",
-                        &self.descriptor
+                        &self.descriptor,
                     ),
                     &self.span,
                 )
@@ -358,13 +358,13 @@ impl OpExpression {
 #[derive(Debug)]
 pub struct UnaryOpExpression {
     operator: UnaryOperator,
-    descriptor: String,
-    element: Box<ExpressionType>,
+    descriptor: crate::String,
+    element: crate::Box<ExpressionType>,
     span: Span,
 }
 
 impl Display for UnaryOpExpression {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}{}", self.operator, self.element)
     }
 }
@@ -419,8 +419,8 @@ impl Expression for UnaryOpExpression {
 }
 
 impl ExpressionMeta for UnaryOpExpression {
-    fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
-        Box::new([self.element.as_mut()].into_iter())
+    fn iter_children_mut(&mut self) -> crate::Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+        crate::Box::new([self.element.as_mut()].into_iter())
     }
 }
 
@@ -429,8 +429,8 @@ impl UnaryOpExpression {
         el.fail_if_lambda()?;
         Ok(Self {
             operator: op,
-            descriptor: format!("'{}'", &op),
-            element: Box::new(el),
+            descriptor: alloc::format!("'{}'", &op),
+            element: crate::Box::new(el),
             span,
         })
     }

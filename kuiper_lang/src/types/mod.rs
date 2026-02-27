@@ -2,9 +2,8 @@
 //! in the Kuiper language. Note that this feature is unstable and
 //! incomplete.
 
-use std::fmt::Display;
+use core::fmt::Display;
 
-use itertools::Itertools;
 use logos::Span;
 use serde::Serialize;
 use serde_json::Value;
@@ -39,8 +38,8 @@ pub enum Type {
     Boolean,
     /// A union of multiple types. If constructed using
     /// methods on `Type`, this will not contain unions or duplicates.
-    /// `Union(Vec::new())` represents the never type.
-    Union(Vec<Type>),
+    /// `Union(crate::Vec::new())` represents the never type.
+    Union(crate::Vec<Type>),
     /// Any type, technically the same as a union of all possible types.
     Any,
 }
@@ -51,7 +50,7 @@ pub enum TypeError {
     /// The intersection of the provided type (1) and the expected type (0)
     /// is empty, meaning that the types are guaranteed to be incompatible.
     #[error("Expected {0} but got {1}")]
-    ExpectedType(Box<Type>, Box<Type>, Span),
+    ExpectedType(crate::Box<Type>, crate::Box<Type>, Span),
 }
 
 impl TypeError {
@@ -64,7 +63,7 @@ impl TypeError {
 
     /// Create a new TypeError for an expected type error, where the provided type is incompatible with the expected type.
     pub fn expected_type(expected: Type, got: Type, span: Span) -> Self {
-        TypeError::ExpectedType(Box::new(expected), Box::new(got), span)
+        TypeError::ExpectedType(crate::Box::new(expected), crate::Box::new(got), span)
     }
 }
 
@@ -100,7 +99,7 @@ impl Type {
 
     /// Create a new type that can be either number, i.e. either integer or float.
     pub fn number() -> Self {
-        Type::Union(vec![Type::Integer, Type::Float])
+        Type::Union(alloc::vec![Type::Integer, Type::Float])
     }
 
     /// Create a new null type, this is a constant type with the null value.
@@ -169,7 +168,7 @@ impl Type {
     /// If the result of an expression is the never type, it means that
     /// the expression will never successfully complete.
     pub fn never() -> Self {
-        Type::Union(Vec::new())
+        Type::Union(crate::Vec::new())
     }
 
     /// Check whether the type is the never type.
@@ -222,8 +221,8 @@ impl Type {
     /// Return a type representing an array where all elements are of the given type.
     pub fn array_of_type(field_type: Type) -> Self {
         Type::Array(Array {
-            elements: Vec::new(),
-            end_dynamic: Some(Box::new(field_type)),
+            elements: crate::Vec::new(),
+            end_dynamic: Some(crate::Box::new(field_type)),
         })
     }
 
@@ -354,8 +353,8 @@ impl Type {
             }
             Type::Constant(Value::Array(arr)) => Ok(Array::from_const(arr.clone())),
             Type::Any => Ok(Array {
-                end_dynamic: Some(Box::new(Type::Any)),
-                elements: vec![],
+                end_dynamic: Some(crate::Box::new(Type::Any)),
+                elements: alloc::vec![],
             }),
             _ => Err(TypeError::expected_type(
                 Type::any_array(),
@@ -365,17 +364,20 @@ impl Type {
         }
     }
 
-    fn simplify_union(union: Vec<Type>) -> Type {
-        let res = union.into_iter().unique().collect::<Vec<_>>();
-        if res.len() == 1 {
-            res.into_iter().next().unwrap()
+    fn simplify_union(union: crate::Vec<Type>) -> Type {
+        #[cfg(feature = "std")]
+        // Probably would want to fix this if we were ever serious about no-std
+        let union = itertools::Itertools::unique(union.into_iter()).collect::<crate::Vec<_>>();
+
+        if union.len() == 1 {
+            union.into_iter().next().unwrap()
         } else {
-            Type::Union(res)
+            Type::Union(union)
         }
     }
 
-    fn merge_into_union(union: Vec<Type>, value: Type) -> Type {
-        let mut res = Vec::with_capacity(union.len());
+    fn merge_into_union(union: crate::Vec<Type>, value: Type) -> Type {
+        let mut res = crate::Vec::with_capacity(union.len());
 
         // Merge the type into each field of the union, then deduplicate at the end.
         // This means that Union(123, 234) with Integer, will become just Union(integer)
@@ -447,7 +449,7 @@ impl Type {
                 Type::Integer
             }
 
-            (self_type, other_type) => Type::Union(vec![self_type, other_type]),
+            (self_type, other_type) => Type::Union(alloc::vec![self_type, other_type]),
         }
     }
 
@@ -562,7 +564,7 @@ impl Type {
 }
 
 impl Display for Type {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Type::Constant(value) => write!(f, "{}", value),
             Type::Object(o) => write!(f, "{o}"),
@@ -621,12 +623,12 @@ impl<'a> Iterator for IterUnion<'a> {
 
 /// State used during type resolution.
 pub struct TypeExecutionState<'data, 'exec> {
-    data: &'exec Vec<&'data Type>,
+    data: &'exec crate::Vec<&'data Type>,
 }
 static NULL_TYPE_CONST: Type = Type::Constant(Value::Null);
 
 impl<'data, 'exec> TypeExecutionState<'data, 'exec> {
-    pub(crate) fn new(data: &'exec Vec<&'data Type>) -> Self {
+    pub(crate) fn new(data: &'exec crate::Vec<&'data Type>) -> Self {
         Self { data }
     }
 
@@ -643,7 +645,7 @@ impl<'data, 'exec> TypeExecutionState<'data, 'exec> {
     where
         'data: 'inner,
     {
-        let mut data = Vec::with_capacity(self.data.len() + num_values);
+        let mut data = crate::Vec::with_capacity(self.data.len() + num_values);
         for elem in self.data.iter() {
             data.push(*elem);
         }
@@ -663,7 +665,7 @@ impl<'data, 'exec> TypeExecutionState<'data, 'exec> {
 }
 #[allow(unused)]
 pub(crate) struct InternalTypeExecutionState<'data> {
-    data: Vec<&'data Type>,
+    data: crate::Vec<&'data Type>,
 }
 
 #[allow(unused)]
@@ -783,8 +785,8 @@ mod tests {
             .collect(),
         });
         let t12 = Type::Array(Array {
-            elements: vec![Type::String, Type::Integer],
-            end_dynamic: Some(Box::new(Type::Float)),
+            elements: alloc::vec![Type::String, Type::Integer],
+            end_dynamic: Some(crate::Box::new(Type::Float)),
         });
         assert_eq!(t1.to_string(), "42");
         assert_eq!(t2.to_string(), "String");
@@ -806,14 +808,14 @@ mod tests {
         let t2 = Type::Float;
         let t3 = Type::String;
 
-        let types = vec![&t1, &t2];
+        let types = alloc::vec![&t1, &t2];
         let mut state = TypeExecutionState::new(&types);
 
         assert_eq!(state.get_type(0), Some(&Type::Integer));
         assert_eq!(state.get_type(1), Some(&Type::Float));
         assert_eq!(state.get_type(2), None);
 
-        let extra_types = vec![&t3];
+        let extra_types = alloc::vec![&t3];
         let mut internal_state = state.get_temporary_clone(extra_types.into_iter(), 2);
         let temp_state = internal_state.get_temp_state();
 
@@ -888,7 +890,7 @@ mod tests {
             TypeError::ExpectedType(expected, got, _) => {
                 assert_eq!(
                     expected,
-                    Box::new(Type::Object(Object {
+                    crate::Box::new(Type::Object(Object {
                         fields: [(ObjectField::Generic, Type::Any)].into_iter().collect(),
                     }))
                 );
@@ -907,7 +909,7 @@ mod tests {
             TypeError::ExpectedType(expected, got, _) => {
                 assert_eq!(
                     expected,
-                    Box::new(Type::Object(Object {
+                    crate::Box::new(Type::Object(Object {
                         fields: [(ObjectField::Generic, Type::Any)].into_iter().collect(),
                     }))
                 );
@@ -919,12 +921,12 @@ mod tests {
     #[test]
     fn test_try_as_array() {
         let arr_type = Type::Array(Array {
-            elements: vec![Type::String, Type::Integer],
-            end_dynamic: Some(Box::new(Type::Float)),
+            elements: alloc::vec![Type::String, Type::Integer],
+            end_dynamic: Some(crate::Box::new(Type::Float)),
         });
         let union_type = Type::Union(vec![
             Type::Array(Array {
-                elements: vec![Type::Boolean],
+                elements: alloc::vec![Type::Boolean],
                 end_dynamic: None,
             }),
             Type::String,
@@ -967,9 +969,9 @@ mod tests {
             TypeError::ExpectedType(expected, got, _) => {
                 assert_eq!(
                     expected,
-                    Box::new(Type::Array(Array {
-                        elements: vec![],
-                        end_dynamic: Some(Box::new(Type::Any)),
+                    crate::Box::new(Type::Array(Array {
+                        elements: alloc::vec![],
+                        end_dynamic: Some(crate::Box::new(Type::Any)),
                     }))
                 );
                 assert_eq!(*got, Type::Integer);
@@ -986,9 +988,9 @@ mod tests {
             TypeError::ExpectedType(expected, got, _) => {
                 assert_eq!(
                     expected,
-                    Box::new(Type::Array(Array {
-                        elements: vec![],
-                        end_dynamic: Some(Box::new(Type::Any)),
+                    crate::Box::new(Type::Array(Array {
+                        elements: alloc::vec![],
+                        end_dynamic: Some(crate::Box::new(Type::Any)),
                     }))
                 );
                 assert_eq!(*got, union_type);
@@ -1082,8 +1084,8 @@ mod tests {
     #[test]
     fn test_assignable_array() {
         let arr_type = Type::Array(Array {
-            elements: vec![Type::String, Type::Integer],
-            end_dynamic: Some(Box::new(Type::Float)),
+            elements: alloc::vec![Type::String, Type::Integer],
+            end_dynamic: Some(crate::Box::new(Type::Float)),
         });
         let const_arr_type = Type::from_const(json!(["hello", 42, 3.14]));
 

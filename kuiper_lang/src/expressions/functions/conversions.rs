@@ -8,13 +8,13 @@ function_def!(TryFloatFunction, "try_float", 2);
 
 /// Replaces ',' with '.' and trims any ' ' and '_' in the string.
 /// Returns None if the string is not ASCII.
-fn replace_for_parse(mut inp: String) -> Option<String> {
+fn replace_for_parse(mut inp: alloc::string::String) -> Option<alloc::string::String> {
     // SAFETY: We terminate early if we encounter a non-ascii byte,
     // meaning that we never create invalid UTF-8
     let inner = unsafe { inp.as_mut_vec() };
     let mut offset = 0;
     // Efficiently replace characters in string for replace
-    // Normal replace allocates a new vector, which is generally necessary when
+    // Normal replace allocates a new crate::Vector, which is generally necessary when
     // replacing in strings, since the string might grow.
     // We know that the string cannot grow, it can only shrink,
     // so we can replace-in-place, by just shifting characters backwards for

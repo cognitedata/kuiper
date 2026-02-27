@@ -1,5 +1,6 @@
-use std::{collections::HashMap, fmt::Display};
+use core::fmt::Display;
 
+use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, string::ToString};
 use logos::Span;
 use thiserror::Error;
 
@@ -18,11 +19,11 @@ use super::CompilerConfig;
 #[derive(Debug, Error)]
 pub struct CompileErrorData {
     pub position: Span,
-    pub detail: String,
+    pub detail: crate::String,
 }
 
 impl Display for CompileErrorData {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
             "{} at {}..{}",
@@ -60,7 +61,7 @@ impl BuildError {
     pub fn n_function_args(position: Span, detail: &str) -> Self {
         Self::NFunctionArgs(CompileErrorData {
             position,
-            detail: format!("Incorrect number of function args: {detail}"),
+            detail: alloc::format!("Incorrect number of function args: {detail}"),
         })
     }
     pub(crate) fn unexpected_lambda(position: &Span) -> Self {
@@ -118,7 +119,7 @@ impl MacroCounter {
         if self.max_expansions >= 0 && self.max_expansions <= self.num_expansions {
             return Err(BuildError::other(
                 loc,
-                &format!(
+                &alloc::format!(
                     "Too many macro expansions, maximum is {}",
                     self.max_expansions
                 ),
@@ -130,10 +131,10 @@ impl MacroCounter {
 }
 
 struct BuilderInner {
-    known_inputs: HashMap<String, usize>,
-    macros: HashMap<String, Macro>,
+    known_inputs: BTreeMap<crate::String, usize>,
+    macros: BTreeMap<crate::String, Macro>,
     macro_counter: MacroCounter,
-    macro_stack: Vec<String>,
+    macro_stack: crate::Vec<crate::String>,
     custom_functions: DynamicFunctionSource,
 }
 
@@ -143,11 +144,11 @@ impl ExecTreeBuilder {
         known_inputs: &[&str],
         compiler_config: &CompilerConfig,
     ) -> Result<Self, BuildError> {
-        let mut inputs = HashMap::new();
+        let mut inputs = BTreeMap::new();
         for inp in known_inputs {
             inputs.insert((*inp).to_owned(), inputs.len());
         }
-        let mut macros = HashMap::new();
+        let mut macros = BTreeMap::new();
         for mc in program.macros {
             let span = mc.body.loc.clone();
             if macros.insert(mc.name.clone(), mc).is_some() {
@@ -159,7 +160,7 @@ impl ExecTreeBuilder {
                 known_inputs: inputs,
                 macros,
                 macro_counter: MacroCounter::new(compiler_config.max_macro_expansions),
-                macro_stack: Vec::new(),
+                macro_stack: crate::Vec::new(),
                 custom_functions: compiler_config.custom_function_source.clone(),
             },
             expression: program.expression,
@@ -177,10 +178,10 @@ impl BuilderInner {
         lhs: Expression,
         sel: Selector,
         depth: usize,
-    ) -> Result<Vec<SelectorElement>, BuildError> {
+    ) -> Result<crate::Vec<SelectorElement>, BuildError> {
         let x = match sel {
             Selector::Expression(x) => {
-                SelectorElement::Expression(Box::new(self.build_expression(*x, depth)?))
+                SelectorElement::Expression(crate::Box::new(self.build_expression(*x, depth)?))
             }
             Selector::String(x, s) => SelectorElement::Constant(x, s),
         };
@@ -191,9 +192,9 @@ impl BuilderInner {
                 ch.push(x);
                 Ok(ch)
             }
-            Expression::Variable(v, s) => Ok(vec![SelectorElement::Constant(v, s), x]),
-            r => Ok(vec![
-                SelectorElement::Expression(Box::new(self.build_expression(r, depth)?)),
+            Expression::Variable(v, s) => Ok(alloc::vec![SelectorElement::Constant(v, s), x]),
+            r => Ok(alloc::vec![
+                SelectorElement::Expression(crate::Box::new(self.build_expression(r, depth)?)),
                 x,
             ]),
         }
@@ -202,7 +203,7 @@ impl BuilderInner {
     fn build_lambda(&mut self, expr: Lambda, depth: usize) -> Result<ExpressionType, BuildError> {
         let Lambda { args, inner, loc } = expr;
         // Temporarily add lambda arguments as variables.
-        let mut temp_variables = vec![];
+        let mut temp_variables = alloc::vec![];
         for inp in args.iter() {
             temp_variables.push(inp.clone());
             if self
@@ -234,7 +235,7 @@ impl BuilderInner {
     fn build_macro_call(
         &mut self,
         mac: Macro,
-        args: Vec<FunctionParameter>,
+        args: crate::Vec<FunctionParameter>,
         span: Span,
         depth: usize,
     ) -> Result<ExpressionType, BuildError> {
@@ -242,7 +243,7 @@ impl BuilderInner {
         if mac.body.args.len() != args.len() {
             return Err(BuildError::n_function_args(
                 span,
-                &format!("Expected {} arguments to macro", mac.body.args.len()),
+                &alloc::format!("Expected {} arguments to macro", mac.body.args.len()),
             ));
         }
         if self.macro_stack.contains(&mac.name) {
@@ -251,7 +252,7 @@ impl BuilderInner {
                 "Recursive macro calls are not allowed",
             ));
         }
-        let mut built_args = Vec::new();
+        let mut built_args = crate::Vec::new();
         for arg in args {
             let expr = match arg {
                 FunctionParameter::Expression(e) => e,
@@ -309,7 +310,7 @@ impl BuilderInner {
                             Ok(ArrayElement::Concat(self.build_expression(x, depth + 1)?))
                         }
                     })
-                    .collect::<Result<Vec<ArrayElement>, _>>()?,
+                    .collect::<Result<crate::Vec<ArrayElement>, _>>()?,
                 span,
             )?)),
             Expression::Object(it, span) => Ok(ExpressionType::Object(ObjectExpression::new(
@@ -323,7 +324,7 @@ impl BuilderInner {
                             Ok(ObjectElement::Concat(self.build_expression(x, depth + 1)?))
                         }
                     })
-                    .collect::<Result<Vec<_>, _>>()?,
+                    .collect::<Result<crate::Vec<_>, _>>()?,
                 span,
             )?)),
             Expression::Selector { lhs, sel, loc } => {
@@ -352,7 +353,7 @@ impl BuilderInner {
                     let args = args
                         .into_iter()
                         .map(|e| self.build_function_param(e, depth + 1))
-                        .collect::<Result<Vec<_>, _>>()?;
+                        .collect::<Result<crate::Vec<_>, _>>()?;
                     if let Some(b) = self.custom_functions.get(&name) {
                         Ok(ExpressionType::Function(FunctionType::CustomFunction(
                             b.make_function(args, loc)?,
@@ -364,7 +365,7 @@ impl BuilderInner {
             }
             Expression::Variable(v, span) => Ok(ExpressionType::Selector(SelectorExpression::new(
                 self.resolve_input(&v, span.clone())?,
-                vec![],
+                alloc::vec![],
                 span,
             )?)),
             Expression::Is(i) => Ok(ExpressionType::Is(IsExpression::new(
@@ -375,7 +376,7 @@ impl BuilderInner {
             Expression::If { args, loc } => Ok(ExpressionType::If(IfExpression::new(
                 args.into_iter()
                     .map(|e| self.build_expression(e, depth + 1))
-                    .collect::<Result<Vec<_>, _>>()?,
+                    .collect::<Result<crate::Vec<_>, _>>()?,
                 loc,
             ))),
         }

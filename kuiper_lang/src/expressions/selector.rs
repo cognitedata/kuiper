@@ -1,5 +1,6 @@
-use std::fmt::Display;
+use core::fmt::Display;
 
+use alloc::string::ToString;
 use serde_json::{Map, Value};
 
 use crate::{
@@ -21,24 +22,24 @@ use logos::Span;
 /// Selector expression, used to get a field from an input.
 pub struct SelectorExpression {
     source: SourceElement,
-    path: Vec<SelectorElement>,
+    path: crate::Vec<SelectorElement>,
     span: Span,
 }
 
 #[derive(Debug)]
 pub enum SourceElement {
     CompiledInput(usize),
-    Expression(Box<ExpressionType>),
+    Expression(crate::Box<ExpressionType>),
 }
 
 #[derive(Debug)]
 pub enum SelectorElement {
-    Constant(String, Span),
-    Expression(Box<ExpressionType>),
+    Constant(crate::String, Span),
+    Expression(crate::Box<ExpressionType>),
 }
 
 impl Display for SelectorElement {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             SelectorElement::Constant(x, _) => write!(f, "{x}"),
             SelectorElement::Expression(x) => write!(f, "[{x}]"),
@@ -47,7 +48,7 @@ impl Display for SelectorElement {
 }
 
 impl Display for SourceElement {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             SourceElement::CompiledInput(s) => write!(f, "${s}"),
             SourceElement::Expression(e) => write!(f, "{e}"),
@@ -56,7 +57,7 @@ impl Display for SourceElement {
 }
 
 impl Display for SelectorExpression {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.source)?;
         for el in &self.path {
             if matches!(el, SelectorElement::Constant(_, _)) {
@@ -131,14 +132,14 @@ impl Expression for SelectorExpression {
 }
 
 impl ExpressionMeta for SelectorExpression {
-    fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+    fn iter_children_mut(&mut self) -> crate::Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
         let iter = self.path.iter_mut().filter_map(|f| match f {
             SelectorElement::Expression(e) => Some(e.as_mut()),
             _ => None,
         });
         match &mut self.source {
-            SourceElement::Expression(e) => Box::new(iter.chain([e.as_mut()])),
-            _ => Box::new(iter),
+            SourceElement::Expression(e) => crate::Box::new(iter.chain([e.as_mut()])),
+            _ => crate::Box::new(iter),
         }
     }
 }
@@ -146,7 +147,7 @@ impl ExpressionMeta for SelectorExpression {
 impl SelectorExpression {
     pub fn new(
         source: SourceElement,
-        path: Vec<SelectorElement>,
+        path: crate::Vec<SelectorElement>,
         span: Span,
     ) -> Result<Self, BuildError> {
         if let SourceElement::Expression(expr) = &source {
@@ -317,14 +318,14 @@ impl SelectorExpression {
         state.add_completion_entries(|| source.keys(), s.clone());
     }
 
-    fn as_object_owned(value: Value) -> Option<Map<String, Value>> {
+    fn as_object_owned(value: Value) -> Option<Map<crate::String, Value>> {
         match value {
             Value::Object(o) => Some(o),
             _ => None,
         }
     }
 
-    fn as_array_owned(value: Value) -> Option<Vec<Value>> {
+    fn as_array_owned(value: Value) -> Option<crate::Vec<Value>> {
         match value {
             Value::Array(o) => Some(o),
             _ => None,
@@ -477,7 +478,7 @@ impl SelectorExpression {
                 }
                 if typ.is_never() {
                     return Err(TypeError::expected_type(
-                        Type::Union(vec![Type::String, Type::Integer]),
+                        Type::Union(alloc::vec![Type::String, Type::Integer]),
                         Type::Union(u),
                         span.clone(),
                     ));
@@ -498,7 +499,7 @@ impl SelectorExpression {
             }
             _ => {
                 return Err(TypeError::expected_type(
-                    Type::Union(vec![Type::String, Type::Integer]),
+                    Type::Union(alloc::vec![Type::String, Type::Integer]),
                     selector,
                     span.clone(),
                 ))
@@ -610,7 +611,7 @@ mod tests {
         assert_eq!(r, Type::Boolean.union_with(Type::null()));
         let r = expr
             .run_types([Type::Array(Array {
-                elements: vec![Type::Integer, Type::Boolean],
+                elements: alloc::vec![Type::Integer, Type::Boolean],
                 end_dynamic: Some(Box::new(Type::Float)),
             })])
             .unwrap();
@@ -638,7 +639,7 @@ mod tests {
 
         let r = expr
             .run_types([Type::Array(Array {
-                elements: vec![Type::Integer, Type::Boolean],
+                elements: alloc::vec![Type::Integer, Type::Boolean],
                 end_dynamic: Some(Box::new(Type::Float)),
             })])
             .unwrap();
@@ -663,7 +664,7 @@ mod tests {
         .unwrap();
         let r = expr
             .run_types([Type::Array(Array {
-                elements: vec![Type::Integer, Type::Boolean],
+                elements: alloc::vec![Type::Integer, Type::Boolean],
                 end_dynamic: Some(Box::new(Type::Float)),
             })])
             .unwrap();

@@ -22,7 +22,7 @@ Macro: ast::Macro = {
     }
 }
 
-Macros: Vec<ast::Macro> = {
+Macros: crate::Vec<ast::Macro> = {
     <v:(<Macro> ";")+> => v,
 }
 
@@ -44,7 +44,7 @@ Const: ast::Constant = {
     }
 }
 
-Comma<T>: Vec<T> = {
+Comma<T>: crate::Vec<T> = {
     <mut v:(<T> ",")*> <e:T?> => match e {
         None => v,
         Some(e) => {
@@ -65,7 +65,7 @@ Lambda: ast::Lambda = {
         loc: Span { start, end }
     },
     <start:@L> <v:"var"> "=>" <e:Expr> <end:@R> => ast::Lambda {
-        args: vec![v],
+        args: alloc::vec![v],
         inner: e,
         loc: Span { start, end }
     }
@@ -90,19 +90,19 @@ ArrElem: ast::ArrayElementAst = {
 
 Selector: ast::Selector = {
     "." <start:@L> <el:"var"> <end:@R> => ast::Selector::String(el, Span { start, end }),
-    "[" <el:Expr> "]" => ast::Selector::Expression(Box::new(el))
+    "[" <el:Expr> "]" => ast::Selector::Expression(alloc::boxed::Box::new(el))
 }
 
-Literal: String = {
+Literal: alloc::string::String = {
     <fun:"var"> => fun,
-    <fun:"type"> => fun.to_string()
+    <fun:"type"> => alloc::string::ToString::to_string(&fun)
 }
 
 IfFunc: ast::Expression = {
     <e: Term> "." <start:@L> "if" "(" <mut args:Comma<FunctionArg>> ")" <end:@R> => {
         args.insert(0, ast::FunctionParameter::Expression(e));
         ast::Expression::Function {
-            name: "if".to_owned(),
+            name: alloc::borrow::ToOwned::to_owned("if"),
             args,
             loc: Span { start, end }
         }
@@ -110,16 +110,16 @@ IfFunc: ast::Expression = {
     <start: @L> "if" "(" <arg: FunctionArg> "," <mut args:Comma<FunctionArg>> ")" <end:@R> => {
         args.insert(0, arg);
         ast::Expression::Function {
-            name: "if".to_owned(),
+            name: alloc::borrow::ToOwned::to_owned("if"),
             args,
             loc: Span { start, end }
         }
     }
 }
 
-IfExprInner: Vec<ast::Expression> = {
+IfExprInner: crate::Vec<ast::Expression> = {
     "if" <cond: Expr> "{" <e: Expr> "}" => {
-        vec![cond, e]
+        alloc::vec![cond, e]
     },
     <mut lh:IfExprInner> "else" "if" <cond: Expr> "{" <e: Expr> "}" => {
         lh.push(cond);
@@ -165,7 +165,7 @@ Term: ast::Expression = {
     <e: IfFunc> => e,
     <e: IfExpr> => e,
     <e: Term> <start:@L> <sel:Selector> <end:@R> => ast::Expression::Selector {
-        lhs: Box::new(e),
+        lhs: crate::Box::new(e),
         sel,
         loc: Span { start, end }
     },
@@ -174,9 +174,9 @@ Term: ast::Expression = {
 
 Tier<Op, NextTier>: ast::Expression = {
     <lhs:Tier<Op, NextTier>> <op:Spanned<Op>> <rhs:NextTier> => ast::Expression::BinaryOperation(ast::OpExpression {
-        lhs: Box::new(lhs),
+        lhs: crate::Box::new(lhs),
         operator: op.0,
-        rhs: Box::new(rhs)
+        rhs: crate::Box::new(rhs)
     }, op.1),
     NextTier
 }
@@ -205,17 +205,17 @@ TypeLiteral: crate::expressions::TypeLiteral = {
 
 Op5Expr: ast::Expression = {
     <lhs:Op5Expr> <op:Spanned<Op5>> <rhs:Op6Expr> => ast::Expression::BinaryOperation(ast::OpExpression {
-        lhs: Box::new(lhs),
+        lhs: crate::Box::new(lhs),
         operator: op.0,
-        rhs: Box::new(rhs)
+        rhs: crate::Box::new(rhs)
     }, op.1),
     <lhs:Op5Expr> "is" <rhs:TypeLiteral> => ast::Expression::Is(ast::IsExpression {
-        lhs: Box::new(lhs),
+        lhs: crate::Box::new(lhs),
         rhs,
         not: false
     }),
     <lhs:Op5Expr> "is" "not" <rhs:TypeLiteral> => ast::Expression::Is(ast::IsExpression {
-        lhs: Box::new(lhs),
+        lhs: crate::Box::new(lhs),
         rhs,
         not: true
     }),
@@ -250,7 +250,7 @@ UnaryOp: UnaryOperator = {
 Op8Expr: ast::Expression = {
     <op:Spanned<UnaryOp>> <e:Op8Expr> => ast::Expression::UnaryOperation {
         operator: op.0,
-        rhs: Box::new(e),
+        rhs: crate::Box::new(e),
         loc: op.1
     },
     Term
@@ -269,7 +269,7 @@ extern {
         "float" => Token::Float(<f64>),
         "uint" => Token::Integer(<u64>),
         "bool" => Token::Boolean(<bool>),
-        "string" => Token::String(<String>),
+        "string" => Token::String(<alloc::string::String>),
         "+" => Token::Operator(Operator::Plus),
         "-" => Token::Operator(Operator::Minus),
         "/" => Token::Operator(Operator::Divide),
@@ -288,7 +288,7 @@ extern {
         "else" => Token::Else,
         "!" => Token::UnaryOperator(UnaryOperator::Negate),
         "null" => Token::TypeLiteral(crate::expressions::TypeLiteral::Null),
-        "var" => Token::Identifier(<String>),
+        "var" => Token::Identifier(<alloc::string::String>),
         "type" => Token::TypeLiteral(<crate::expressions::TypeLiteral>),
         "[" => Token::OpenBracket,
         "]" => Token::CloseBracket,

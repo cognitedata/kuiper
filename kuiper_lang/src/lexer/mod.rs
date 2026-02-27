@@ -1,6 +1,6 @@
 mod token;
 
-use std::{
+use core::{
     fmt::Display,
     num::{ParseFloatError, ParseIntError},
 };
@@ -32,7 +32,7 @@ pub enum LexerError {
 }
 
 impl Display for LexerError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             LexerError::UnknownToken => write!(f, "Unknown token"),
             LexerError::InvalidToken(s) => write!(f, "Unknown token at {}..{}", s.start, s.end),

@@ -19,7 +19,7 @@ impl Expression for ParseJsonFunction {
                 let parsed = serde_json::from_str(x).map_err(|e| {
                     TransformError::InvalidOperation(crate::TransformErrorData {
                         span: self.span.clone(),
-                        desc: format!("Failed to parse JSON in function parse_json: {e}"),
+                        desc: alloc::format!("Failed to parse JSON in function parse_json: {e}"),
                     })
                 })?;
                 Ok(ResolveResult::Owned(parsed))

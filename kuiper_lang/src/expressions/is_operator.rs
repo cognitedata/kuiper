@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use core::fmt::Display;
 
 use serde_json::Value;
 
@@ -31,7 +31,7 @@ pub enum TypeLiteral {
 }
 
 impl Display for TypeLiteral {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             TypeLiteral::Null => write!(f, "null"),
             TypeLiteral::Int => write!(f, "int"),
@@ -47,13 +47,13 @@ impl Display for TypeLiteral {
 
 #[derive(Debug)]
 pub struct IsExpression {
-    lhs: Box<ExpressionType>,
+    lhs: crate::Box<ExpressionType>,
     rhs: TypeLiteral,
     not: bool,
 }
 
 impl Display for IsExpression {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if self.not {
             write!(f, "{} is not {}", self.lhs, self.rhs)
         } else {
@@ -103,7 +103,7 @@ impl IsExpression {
     pub fn new(lhs: ExpressionType, rhs: TypeLiteral, not: bool) -> Result<Self, BuildError> {
         lhs.fail_if_lambda()?;
         Ok(Self {
-            lhs: Box::new(lhs),
+            lhs: crate::Box::new(lhs),
             rhs,
             not,
         })
@@ -142,8 +142,8 @@ impl IsExpression {
 }
 
 impl ExpressionMeta for IsExpression {
-    fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
-        Box::new([self.lhs.as_mut()].into_iter())
+    fn iter_children_mut(&mut self) -> crate::Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+        crate::Box::new([self.lhs.as_mut()].into_iter())
     }
 }
 
