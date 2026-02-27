@@ -54,6 +54,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dev deps and build package
+        working-directory: kuiper_python
         run: |
           pip install uv
           uv sync
@@ -64,6 +65,7 @@ jobs:
           python kuiper_documentation/codegen.py
           git diff --quiet
       - name: Run tests
+        working-directory: kuiper_python
         run: uv run pytest
 
   build_js_modules:
