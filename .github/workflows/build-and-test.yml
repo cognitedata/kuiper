@@ -56,7 +56,7 @@ jobs:
       - name: Install dev deps and build package
         working-directory: kuiper_python
         run: |
-          pip install uv
+          pip install uv pre-commit toml pyyaml
           uv sync
       - name: Check style
         run: pre-commit run --all
