@@ -1,14 +1,19 @@
-use std::fmt::Display;
+use core::fmt::Display;
 
+use alloc::string::ToString;
 use logos::{Lexer, Logos, Span};
 
 use crate::expressions::{Operator, TypeLiteral, UnaryOperator};
 
 use crate::lexer::LexerError;
 
-fn parse_string(mut raw: &str, border_char: char, start: usize) -> Result<String, LexerError> {
+fn parse_string(
+    mut raw: &str,
+    border_char: char,
+    start: usize,
+) -> Result<crate::String, LexerError> {
     raw = &raw[1..raw.len() - 1];
-    let mut res = String::with_capacity(raw.len());
+    let mut res = crate::String::with_capacity(raw.len());
 
     let mut pos = start;
     let mut escaping = false;
@@ -115,7 +120,7 @@ pub enum Token {
     /// A quoted string. We use single quotes for string literals.
     #[regex(r#"'(?:[^'\\]|\\.)*'"#, |s| parse_string(s.slice(), '\'', s.span().start))]
     #[regex(r#""(?:[^"\\]|\\.)*""#, |s| parse_string(s.slice(), '\"', s.span().start))]
-    String(String),
+    String(crate::String),
 
     /// A literal refering to a type, also includes the null literal
     #[token("null", |_| TypeLiteral::Null)]
@@ -144,7 +149,7 @@ pub enum Token {
     #[regex(r#"\p{XID_Start}\p{XID_Continue}*"#, |s| s.slice().to_string(), priority = 1)]
     #[regex(r#"[$@_a-zA-Z][_0-9a-zA-Z]*"#, |s| s.slice().to_string(), priority = 2)]
     #[regex(r#"`(?:[^`\\]|\\.)*`"#, |s| parse_string(s.slice(), '`', s.span().start))]
-    Identifier(String),
+    Identifier(crate::String),
 
     /// Start of a dynamic selector expression, (i.e. $id['some-string'])
     /// or an array.
@@ -193,7 +198,7 @@ pub enum Token {
 }
 
 impl Display for Token {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Token::Period => write!(f, "."),
             Token::OpenParenthesis => write!(f, "("),

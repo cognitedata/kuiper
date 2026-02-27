@@ -1,5 +1,6 @@
-use std::collections::BTreeMap;
+use alloc::collections::BTreeMap;
 
+use alloc::borrow::ToOwned;
 use serde_json::{Map, Value};
 
 use crate::{
@@ -20,7 +21,7 @@ impl Expression for MapFunction {
 
         match source.as_ref() {
             Value::Array(x) => {
-                let mut res = Vec::with_capacity(x.len());
+                let mut res = crate::Vec::with_capacity(x.len());
                 for (idx, val) in x.iter().enumerate() {
                     res.push(
                         self.args[1]
@@ -110,13 +111,13 @@ impl MapFunction {
         state: &mut crate::types::TypeExecutionState<'_, '_>,
         item_arr: crate::types::Array,
     ) -> Result<crate::types::Type, crate::types::TypeError> {
-        let mut elements = Vec::new();
+        let mut elements = crate::Vec::new();
         for (idx, item) in item_arr.elements.into_iter().enumerate() {
             let res = self.args[1].call_types(state, &[&item, &Type::from_const(idx)])?;
             elements.push(res);
         }
         let end_dynamic = if let Some(arr_end_dynamic) = item_arr.end_dynamic {
-            Some(Box::new(
+            Some(alloc::boxed::Box::new(
                 self.args[1].call_types(state, &[&*arr_end_dynamic, &Type::Integer])?,
             ))
         } else {
@@ -224,14 +225,14 @@ mod tests {
         let expr = compile_expression("map(input, it => string(it))", &["input"]).unwrap();
         let res = expr
             .run_types([Type::Array(Array {
-                elements: vec![Type::String, Type::Float, Type::from_const(3)],
+                elements: alloc::vec![Type::String, Type::Float, Type::from_const(3)],
                 end_dynamic: None,
             })])
             .unwrap();
         assert_eq!(
             res,
             Type::Array(Array {
-                elements: vec![Type::String, Type::String, Type::String],
+                elements: alloc::vec![Type::String, Type::String, Type::String],
                 end_dynamic: None
             })
         );
@@ -239,14 +240,14 @@ mod tests {
         let expr = compile_expression("map(input, (it, idx) => idx)", &["input"]).unwrap();
         let res = expr
             .run_types([Type::Array(Array {
-                elements: vec![Type::String, Type::Float, Type::from_const(3)],
+                elements: alloc::vec![Type::String, Type::Float, Type::from_const(3)],
                 end_dynamic: None,
             })])
             .unwrap();
         assert_eq!(
             res,
             Type::Array(Array {
-                elements: vec![
+                elements: alloc::vec![
                     Type::from_const(0),
                     Type::from_const(1),
                     Type::from_const(2)

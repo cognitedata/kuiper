@@ -1,7 +1,7 @@
+use core::fmt::Display;
 use if_value::IfValueFunction;
 use logos::Span;
 use serde_json::Value;
-use std::fmt::Display;
 
 use crate::{
     compiler::BuildError,
@@ -32,13 +32,13 @@ use kuiper_lang_macros::PassThrough;
 
 /// Type for storing completions collected during expression execution.
 #[cfg(feature = "completions")]
-pub type Completions = std::collections::HashMap<Span, std::collections::HashSet<String>>;
+pub type Completions = std::collections::HashMap<Span, std::collections::HashSet<crate::String>>;
 
 /// State for expression execution. This struct is constructed for each expression.
 /// Notably lifetime heavy. `'a` is the lifetime of the input data.
 /// `'b` is the lifetime of the transform execution, so the temporary data in the transform.
 pub struct ExpressionExecutionState<'data, 'exec> {
-    data: &'exec Vec<Option<&'data dyn SourceData>>,
+    data: &'exec crate::Vec<Option<&'data dyn SourceData>>,
     opcount: &'exec mut i64,
     max_opcount: i64,
     #[cfg(feature = "completions")]
@@ -58,7 +58,7 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
     }
 
     pub(crate) fn new(
-        data: &'exec Vec<Option<&'data dyn SourceData>>,
+        data: &'exec crate::Vec<Option<&'data dyn SourceData>>,
         opcount: &'exec mut i64,
         max_opcount: i64,
     ) -> Self {
@@ -79,7 +79,7 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
     where
         'data: 'inner,
     {
-        let mut data = Vec::with_capacity(self.data.len() + num_values);
+        let mut data = crate::Vec::with_capacity(self.data.len() + num_values);
         for elem in self.data.iter() {
             data.push(*elem);
         }
@@ -115,7 +115,10 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
     }
 
     #[cfg(feature = "completions")]
-    pub(crate) fn add_completion_entries<I: Iterator<Item = impl Into<String>>, F: Fn() -> I>(
+    pub(crate) fn add_completion_entries<
+        I: Iterator<Item = impl Into<crate::String>>,
+        F: Fn() -> I,
+    >(
         &mut self,
         it: F,
         span: Span,
@@ -128,7 +131,7 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
 
 #[derive(Debug)]
 pub struct InternalExpressionExecutionState<'data, 'exec> {
-    data: Vec<Option<&'data dyn SourceData>>,
+    data: crate::Vec<Option<&'data dyn SourceData>>,
     opcount: &'exec mut i64,
     max_opcount: i64,
     #[cfg(feature = "completions")]
@@ -195,24 +198,30 @@ pub trait Expression: Display {
 /// Additional trait for expressions, separate from Expression to make it easier to implement in macros
 pub trait ExpressionMeta {
     /// Get mutable references to the children of this expression, for use in optimizations.
-    fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_>;
+    fn iter_children_mut(&mut self) -> crate::Box<dyn Iterator<Item = &mut ExpressionType> + '_>;
 }
 
 /// A function expression, new functions must be added here.
 #[derive(PassThrough, Debug)]
-#[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
+#[pass_through(fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result, "", Display)]
 #[pass_through(fn resolve<'a>(&'a self, state: &mut ExpressionExecutionState<'a, '_>) -> Result<ResolveResult<'a>, TransformError>, "", Expression)]
 #[pass_through(fn call<'a>(&'a self, state: &mut ExpressionExecutionState<'a, '_>, _values: &[&Value]) -> Result<ResolveResult<'a>, TransformError>, "", Expression)]
 #[pass_through(fn is_deterministic(&self) -> bool, "", Expression)]
-#[pass_through(fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_>, "", ExpressionMeta)]
+#[pass_through(fn iter_children_mut(&mut self) -> crate::Box<dyn Iterator<Item = &mut ExpressionType> + '_>, "", ExpressionMeta)]
 #[pass_through(fn resolve_types(&self, state: &mut crate::types::TypeExecutionState<'_, '_>) -> Result<Type, crate::types::TypeError>, "", Expression)]
 #[pass_through(fn call_types(&self, state: &mut crate::types::TypeExecutionState<'_, '_>, _arguments: &[&Type]) -> Result<Type, crate::types::TypeError>, "", Expression)]
 pub enum FunctionType {
+    #[cfg(feature = "std")]
     Pow(PowFunction),
+    #[cfg(feature = "std")]
     Log(LogFunction),
+    #[cfg(feature = "std")]
     Atan2(Atan2Function),
+    #[cfg(feature = "std")]
     Floor(FloorFunction),
+    #[cfg(feature = "std")]
     Ceil(CeilFunction),
+    #[cfg(feature = "std")]
     Round(RoundFunction),
     Concat(ConcatFunction),
     String(StringFunction),
@@ -234,6 +243,7 @@ pub enum FunctionType {
     Zip(ZipFunction),
     Length(LengthFunction),
     Chunk(ChunkFunction),
+    #[cfg(feature = "std")]
     Now(NowFunction),
     Join(JoinFunction),
     Except(ExceptFunction),
@@ -255,12 +265,19 @@ pub enum FunctionType {
     Max(MaxFunction),
     Digest(DigestFunction),
     Coalesce(CoalesceFunction),
+    #[cfg(feature = "std")]
     RegexIsMatch(RegexIsMatchFunction),
+    #[cfg(feature = "std")]
     RegexFirstMatch(RegexFirstMatchFunction),
+    #[cfg(feature = "std")]
     RegexAllMatches(RegexAllMatchesFunction),
+    #[cfg(feature = "std")]
     RegexFirstCaptures(RegexFirstCapturesFunction),
+    #[cfg(feature = "std")]
     RegexAllCaptures(RegexAllCapturesFunction),
+    #[cfg(feature = "std")]
     RegexReplace(RegexReplaceFunction),
+    #[cfg(feature = "std")]
     RegexReplaceAll(RegexReplaceAllFunction),
     StartsWith(StartsWithFunction),
     EndsWith(EndsWithFunction),
@@ -269,20 +286,29 @@ pub enum FunctionType {
     Lower(LowerFunction),
     Upper(UpperFunction),
     Translate(TranslateFunction),
+    #[cfg(feature = "std")]
     SqrtFunction(SqrtFunction),
+    #[cfg(feature = "std")]
     ExpFunction(ExpFunction),
+    #[cfg(feature = "std")]
     SinFunction(SinFunction),
+    #[cfg(feature = "std")]
     CosFunction(CosFunction),
+    #[cfg(feature = "std")]
     TanFunction(TanFunction),
+    #[cfg(feature = "std")]
     AsinFunction(AsinFunction),
+    #[cfg(feature = "std")]
     AcosFunction(AcosFunction),
+    #[cfg(feature = "std")]
     AtanFunction(AtanFunction),
+    #[cfg(feature = "std")]
     Random(RandomFunction),
-    CustomFunction(Box<dyn DynamicFunction>),
+    CustomFunction(crate::Box<dyn DynamicFunction>),
 }
 
 struct FunctionBuilder {
-    args: Vec<ExpressionType>,
+    args: crate::Vec<ExpressionType>,
     pos: Span,
 }
 
@@ -297,16 +323,22 @@ impl FunctionBuilder {
 pub fn get_function_expression(
     pos: Span,
     name: &str,
-    args: Vec<ExpressionType>,
+    args: crate::Vec<ExpressionType>,
 ) -> Result<ExpressionType, BuildError> {
     let b = FunctionBuilder { pos, args };
 
     let expr = match name {
+        #[cfg(feature = "std")]
         "pow" => FunctionType::Pow(b.mk()?),
+        #[cfg(feature = "std")]
         "log" => FunctionType::Log(b.mk()?),
+        #[cfg(feature = "std")]
         "atan2" => FunctionType::Atan2(b.mk()?),
+        #[cfg(feature = "std")]
         "floor" => FunctionType::Floor(b.mk()?),
+        #[cfg(feature = "std")]
         "ceil" => FunctionType::Ceil(b.mk()?),
+        #[cfg(feature = "std")]
         "round" => FunctionType::Round(b.mk()?),
         "concat" => FunctionType::Concat(b.mk()?),
         "string" => FunctionType::String(b.mk()?),
@@ -327,6 +359,7 @@ pub fn get_function_expression(
         "zip" => FunctionType::Zip(b.mk()?),
         "length" => FunctionType::Length(b.mk()?),
         "chunk" => FunctionType::Chunk(b.mk()?),
+        #[cfg(feature = "std")]
         "now" => FunctionType::Now(b.mk()?),
         "join" => FunctionType::Join(b.mk()?),
         "except" => FunctionType::Except(b.mk()?),
@@ -349,12 +382,19 @@ pub fn get_function_expression(
         "max" => FunctionType::Max(b.mk()?),
         "digest" => FunctionType::Digest(b.mk()?),
         "coalesce" => FunctionType::Coalesce(b.mk()?),
+        #[cfg(feature = "std")]
         "regex_is_match" => FunctionType::RegexIsMatch(b.mk()?),
+        #[cfg(feature = "std")]
         "regex_first_match" => FunctionType::RegexFirstMatch(b.mk()?),
+        #[cfg(feature = "std")]
         "regex_all_matches" => FunctionType::RegexAllMatches(b.mk()?),
+        #[cfg(feature = "std")]
         "regex_first_captures" => FunctionType::RegexFirstCaptures(b.mk()?),
+        #[cfg(feature = "std")]
         "regex_all_captures" => FunctionType::RegexAllCaptures(b.mk()?),
+        #[cfg(feature = "std")]
         "regex_replace" => FunctionType::RegexReplace(b.mk()?),
+        #[cfg(feature = "std")]
         "regex_replace_all" => FunctionType::RegexReplaceAll(b.mk()?),
         "starts_with" => FunctionType::StartsWith(b.mk()?),
         "ends_with" => FunctionType::EndsWith(b.mk()?),
@@ -363,14 +403,23 @@ pub fn get_function_expression(
         "lower" => FunctionType::Lower(b.mk()?),
         "upper" => FunctionType::Upper(b.mk()?),
         "translate" => FunctionType::Translate(b.mk()?),
+        #[cfg(feature = "std")]
         "sqrt" => FunctionType::SqrtFunction(b.mk()?),
+        #[cfg(feature = "std")]
         "exp" => FunctionType::ExpFunction(b.mk()?),
+        #[cfg(feature = "std")]
         "sin" => FunctionType::SinFunction(b.mk()?),
+        #[cfg(feature = "std")]
         "cos" => FunctionType::CosFunction(b.mk()?),
+        #[cfg(feature = "std")]
         "tan" => FunctionType::TanFunction(b.mk()?),
+        #[cfg(feature = "std")]
         "asin" => FunctionType::AsinFunction(b.mk()?),
+        #[cfg(feature = "std")]
         "acos" => FunctionType::AcosFunction(b.mk()?),
+        #[cfg(feature = "std")]
         "atan" => FunctionType::AtanFunction(b.mk()?),
+        #[cfg(feature = "std")]
         "random" => FunctionType::Random(b.mk()?),
         _ => return Err(BuildError::unrecognized_function(b.pos, name)),
     };
@@ -380,11 +429,11 @@ pub fn get_function_expression(
 /// An executable node in the expression tree.
 /// This type can be executed with the `run` function, to yield a transformed Value.
 #[derive(PassThrough, Debug)]
-#[pass_through(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result, "", Display)]
+#[pass_through(fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result, "", Display)]
 #[pass_through(fn resolve<'a>(&'a self, state: &mut ExpressionExecutionState<'a, '_>) -> Result<ResolveResult<'a>, TransformError>, "", Expression)]
 #[pass_through(fn is_deterministic(&self) -> bool, "", Expression)]
 #[pass_through(fn call<'a>(&'a self, state: &mut ExpressionExecutionState<'a, '_>, _values: &[&Value]) -> Result<ResolveResult<'a>, TransformError>, "", Expression)]
-#[pass_through(fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_>, "", ExpressionMeta)]
+#[pass_through(fn iter_children_mut(&mut self) -> crate::Box<dyn Iterator<Item = &mut ExpressionType> + '_>, "", ExpressionMeta)]
 #[pass_through(fn resolve_types(&self, state: &mut crate::types::TypeExecutionState<'_, '_>) -> Result<Type, crate::types::TypeError>, "", Expression)]
 #[pass_through(fn call_types(&self, state: &mut crate::types::TypeExecutionState<'_, '_>, _arguments: &[&Type]) -> Result<Type, crate::types::TypeError>, "", Expression)]
 pub enum ExpressionType {
@@ -475,8 +524,8 @@ impl ExpressionType {
 
     /// Run the expression in type space with a list of types.
     pub fn run_types(&self, data: impl IntoIterator<Item = Type>) -> Result<Type, TypeError> {
-        let data_owned = data.into_iter().collect::<Vec<_>>();
-        let data = data_owned.iter().collect::<Vec<_>>();
+        let data_owned = data.into_iter().collect::<crate::Vec<_>>();
+        let data = data_owned.iter().collect::<crate::Vec<_>>();
         let mut state = TypeExecutionState::new(&data);
         self.resolve_types(&mut state)
     }
@@ -497,7 +546,7 @@ pub struct Constant {
 }
 
 impl Display for Constant {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.val)
     }
 }
@@ -520,8 +569,8 @@ impl Expression for Constant {
 }
 
 impl ExpressionMeta for Constant {
-    fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
-        Box::new([].into_iter())
+    fn iter_children_mut(&mut self) -> crate::Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+        crate::Box::new([].into_iter())
     }
 }
 

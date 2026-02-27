@@ -1,5 +1,6 @@
-use std::fmt::Display;
+use core::fmt::Display;
 
+use alloc::{borrow::ToOwned, string::ToString};
 use logos::Span;
 use serde_json::Value;
 use thiserror::Error;
@@ -10,11 +11,11 @@ pub struct TransformErrorData {
     /// The span in the source code where the error occurred.
     pub span: Span,
     /// A description of the error.
-    pub desc: String,
+    pub desc: crate::String,
 }
 
 impl Display for TransformErrorData {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{} at {}..{}", self.desc, self.span.start, self.span.end)
     }
 }
@@ -49,12 +50,12 @@ impl TransformError {
     /// types, e.g. "string" and "number".
     pub fn new_incorrect_type(desc: &str, expected: &str, actual: &str, span: &Span) -> Self {
         Self::IncorrectTypeInField(TransformErrorData {
-            desc: format!("{desc}. Got {actual}, expected {expected}"),
+            desc: alloc::format!("{desc}. Got {actual}, expected {expected}"),
             span: span.clone(),
         })
     }
 
-    pub(crate) fn new_source_missing(name: String, span: &Span) -> Self {
+    pub(crate) fn new_source_missing(name: crate::String, span: &Span) -> Self {
         Self::SourceMissingError(TransformErrorData {
             desc: name,
             span: span.clone(),
@@ -63,7 +64,7 @@ impl TransformError {
 
     /// Create a new TransformError for a failed conversion.
     /// `desc` should be a description of where this happened, e.g. "my_function".
-    pub fn new_conversion_failed(desc: impl Into<String>, span: &Span) -> Self {
+    pub fn new_conversion_failed(desc: impl Into<crate::String>, span: &Span) -> Self {
         Self::ConversionFailed(TransformErrorData {
             desc: desc.into(),
             span: span.clone(),
@@ -72,7 +73,7 @@ impl TransformError {
 
     /// Create a new TransformError for an invalid operation.
     /// `desc` should be a description of the operation, e.g. "Cannot add a string and a number".
-    pub fn new_invalid_operation(desc: String, span: &Span) -> Self {
+    pub fn new_invalid_operation(desc: crate::String, span: &Span) -> Self {
         Self::InvalidOperation(TransformErrorData {
             desc,
             span: span.clone(),
@@ -110,10 +111,10 @@ impl TransformError {
     }
 
     /// Get a human-readable message describing the error.
-    pub fn message(&self) -> String {
+    pub fn message(&self) -> crate::String {
         match self {
             TransformError::SourceMissingError(transform_error_data) => {
-                format!("Source {} does not exist", transform_error_data.desc)
+               alloc::format!("Source {} does not exist", transform_error_data.desc)
             }
             TransformError::IncorrectTypeInField(transform_error_data) => {
                 transform_error_data.desc.clone()

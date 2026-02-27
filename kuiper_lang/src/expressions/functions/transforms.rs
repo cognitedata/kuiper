@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use alloc::{borrow::ToOwned, collections::BTreeMap, string::ToString};
 
 use serde_json::{Map, Value};
 
@@ -27,7 +27,7 @@ impl Expression for PairsFunction {
                 ));
             }
         };
-        let mut res = vec![];
+        let mut res = alloc::vec![];
         for (key, val) in obj {
             let mut map = Map::new();
             map.insert("key".to_string(), Value::String(key));
@@ -59,7 +59,7 @@ impl Expression for PairsFunction {
             })))
         } else {
             // Since we use a BTreeMap in both cases, the order of the fields will be the same.
-            let mut entries = Vec::new();
+            let mut entries = crate::Vec::new();
             let fields: BTreeMap<_, _> = item_obj.fields;
             for (field, elem) in fields {
                 let ObjectField::Constant(key) = field else {
@@ -156,7 +156,7 @@ mod tests {
         assert_eq!(
             ty,
             Type::Array(crate::types::Array {
-                elements: vec![
+                elements: alloc::vec![
                     elem_obj("k1", Type::String),
                     elem_obj("k2", Type::from_const("v2")),
                     elem_obj("k3", Type::from_const(3)),

@@ -1,5 +1,7 @@
-use std::collections::BTreeMap;
+use alloc::borrow::ToOwned;
+use alloc::collections::BTreeMap;
 
+use alloc::string::ToString;
 use serde_json::{Map, Value};
 
 use crate::expressions::functions::FunctionExpression;
@@ -11,13 +13,13 @@ macro_rules! regex_function {
     ($typ:ident, $name:expr, $nargs:expr) => {
         #[derive(Debug)]
         pub struct $typ {
-            args: [Box<$crate::expressions::ExpressionType>; $nargs],
+            args: [$crate::Box<$crate::expressions::ExpressionType>; $nargs],
             span: logos::Span,
             re: regex::Regex,
         }
 
-        impl std::fmt::Display for $typ {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        impl core::fmt::Display for $typ {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 write!(
                     f,
                     "{}({}, {}",
@@ -42,7 +44,7 @@ macro_rules! regex_function {
                     name: $name,
                 };
             fn new(
-                args: Vec<$crate::expressions::ExpressionType>,
+                args: crate::Vec<$crate::expressions::ExpressionType>,
                 span: logos::Span,
             ) -> Result<Self, crate::BuildError> {
                 // Require the regex to be constant
@@ -59,11 +61,11 @@ macro_rules! regex_function {
                         <Self as $crate::expressions::functions::LambdaAcceptFunction>::validate_lambda(idx, lambda, num_args)?;
                     }
                 }
-                let mut final_args = Vec::new();
+                let mut final_args = crate::Vec::new();
                 let mut arg_iter = args.into_iter();
-                final_args.push(Box::new(arg_iter.next().unwrap()));
+                final_args.push($crate::Box::new(arg_iter.next().unwrap()));
                 let regex_arg = arg_iter.next().unwrap();
-                final_args.extend(arg_iter.map(|a| Box::new(a)));
+                final_args.extend(arg_iter.map(|a| $crate::Box::new(a)));
 
                 let $crate::expressions::ExpressionType::Constant(c) = &regex_arg else {
                     return Err($crate::BuildError::other(span.clone(), "Regex must be constant at compile time"));
@@ -72,7 +74,7 @@ macro_rules! regex_function {
                     return Err($crate::BuildError::other(span.clone(), "Regex must be constant at compile time"));
                 };
                 let re = regex::Regex::new(r.as_ref()).map_err(|e| {
-                    $crate::BuildError::other(span.clone(), &format!("Regex compilation failed: {e}"))
+                    $crate::BuildError::other(span.clone(), &alloc::format!("Regex compilation failed: {e}"))
                 })?;
                 Ok(Self {
                     span,
@@ -83,8 +85,8 @@ macro_rules! regex_function {
         }
 
         impl $crate::expressions::ExpressionMeta for $typ {
-            fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut $crate::expressions::ExpressionType> + '_> {
-                Box::new(self.args.iter_mut().map(|m| m.as_mut()))
+            fn iter_children_mut(&mut self) -> $crate::Box<dyn Iterator<Item = &mut $crate::expressions::ExpressionType> + '_> {
+                $crate::Box::new(self.args.iter_mut().map(|m| m.as_mut()))
             }
         }
     };
@@ -177,7 +179,7 @@ impl Expression for RegexFirstCapturesFunction {
             return Ok(ResolveResult::Borrowed(&NULL_CONST));
         };
         let names = self.re.capture_names();
-        let v: Map<String, Value> = m
+        let v: Map<crate::String, Value> = m
             .iter()
             .zip(names)
             .enumerate()
@@ -222,7 +224,7 @@ impl Expression for RegexAllCapturesFunction {
             .re
             .captures_iter(arg.as_ref())
             .map(|m| {
-                let v: Map<String, Value> = m
+                let v: Map<crate::String, Value> = m
                     .iter()
                     .zip(self.re.capture_names())
                     .enumerate()

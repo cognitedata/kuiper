@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use core::fmt::Display;
 
 use logos::Span;
 use serde_json::Value;
@@ -12,13 +12,13 @@ use super::{Expression, ExpressionMeta};
 
 #[derive(Debug)]
 pub struct IfExpression {
-    args: Vec<ExpressionType>,
+    args: crate::Vec<ExpressionType>,
     #[allow(unused)]
     span: Span,
 }
 
 impl Display for IfExpression {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "if ")?;
         write!(f, "{} {{ {} }}", self.args[0], self.args[1])?;
 
@@ -110,14 +110,14 @@ impl Expression for IfExpression {
 }
 
 impl IfExpression {
-    pub fn new(args: Vec<ExpressionType>, span: Span) -> Self {
+    pub fn new(args: crate::Vec<ExpressionType>, span: Span) -> Self {
         Self { args, span }
     }
 }
 
 impl ExpressionMeta for IfExpression {
-    fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
-        Box::new(self.args.iter_mut())
+    fn iter_children_mut(&mut self) -> crate::Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+        crate::Box::new(self.args.iter_mut())
     }
 }
 

@@ -1,4 +1,5 @@
-use std::{collections::BTreeMap, fmt::Display};
+use alloc::{borrow::ToOwned, collections::BTreeMap};
+use core::fmt::Display;
 
 use logos::Span;
 use serde_json::{Map, Value};
@@ -18,7 +19,7 @@ pub enum ObjectElement {
 }
 
 impl Display for ObjectElement {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::Pair(key, value) => write!(f, "{key}: {value}"),
             Self::Concat(x) => write!(f, "...{x}"),
@@ -28,12 +29,12 @@ impl Display for ObjectElement {
 
 #[derive(Debug)]
 pub struct ObjectExpression {
-    items: Vec<ObjectElement>,
+    items: crate::Vec<ObjectElement>,
     span: Span,
 }
 
 impl Display for ObjectExpression {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{{")?;
         write_list!(f, &self.items);
         write!(f, "}}")?;
@@ -134,16 +135,16 @@ impl Expression for ObjectExpression {
 }
 
 impl ExpressionMeta for ObjectExpression {
-    fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
-        Box::new(self.items.iter_mut().flat_map(|f| match f {
-            ObjectElement::Pair(x, y) => vec![x, y].into_iter(),
-            ObjectElement::Concat(x) => vec![x].into_iter(),
+    fn iter_children_mut(&mut self) -> crate::Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+        crate::Box::new(self.items.iter_mut().flat_map(|f| match f {
+            ObjectElement::Pair(x, y) => alloc::vec![x, y].into_iter(),
+            ObjectElement::Concat(x) => alloc::vec![x].into_iter(),
         }))
     }
 }
 
 impl ObjectExpression {
-    pub fn new(items: Vec<ObjectElement>, span: Span) -> Result<Self, BuildError> {
+    pub fn new(items: crate::Vec<ObjectElement>, span: Span) -> Result<Self, BuildError> {
         for k in &items {
             match k {
                 ObjectElement::Pair(key, val) => {

@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use core::fmt::Display;
 
 use logos::Span;
 
@@ -8,13 +8,13 @@ use super::{base::ExpressionMeta, Expression, ExpressionType, ResolveResult};
 
 #[derive(Debug)]
 pub struct LambdaExpression {
-    pub input_names: Vec<String>,
-    expr: Box<ExpressionType>,
+    pub input_names: crate::Vec<crate::String>,
+    expr: crate::Box<ExpressionType>,
     pub span: Span,
 }
 
 impl Display for LambdaExpression {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "(")?;
         write_list!(f, &self.input_names);
         write!(f, ")")?;
@@ -25,14 +25,14 @@ impl Display for LambdaExpression {
 
 impl LambdaExpression {
     pub fn new(
-        input_names: Vec<String>,
+        input_names: crate::Vec<crate::String>,
         inner: ExpressionType,
         span: Span,
     ) -> Result<Self, BuildError> {
         inner.fail_if_lambda()?;
         Ok(Self {
             input_names,
-            expr: Box::new(inner),
+            expr: crate::Box::new(inner),
             span,
         })
     }
@@ -81,7 +81,7 @@ impl Expression for LambdaExpression {
 }
 
 impl ExpressionMeta for LambdaExpression {
-    fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
-        Box::new([self.expr.as_mut()].into_iter())
+    fn iter_children_mut(&mut self) -> crate::Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+        crate::Box::new([self.expr.as_mut()].into_iter())
     }
 }

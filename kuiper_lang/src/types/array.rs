@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use core::fmt::Display;
 
 use serde::Serialize;
 
@@ -9,9 +9,9 @@ use crate::types::Type;
 /// and an optional type for any additional elements found at the end.
 pub struct Array {
     /// Known elements at the start of the array.
-    pub elements: Vec<Type>,
+    pub elements: crate::Vec<Type>,
     /// An optional type for any additional elements at the end of the array.
-    pub end_dynamic: Option<Box<Type>>,
+    pub end_dynamic: Option<crate::Box<Type>>,
 }
 
 impl Array {
@@ -70,7 +70,7 @@ impl Array {
 
     /// Produce a new array type that is the union of this array type and another.
     pub fn union_with(self, other: Array) -> Self {
-        let mut res = Vec::new();
+        let mut res = crate::Vec::new();
         let mut iter_1 = self.elements.into_iter().peekable();
         let mut iter_2 = other.elements.into_iter().peekable();
 
@@ -95,7 +95,7 @@ impl Array {
                 for elem in iter_1.chain(iter_2) {
                     dynamic = dynamic.union_with(elem);
                 }
-                end_dynamic = Some(Box::new(dynamic));
+                end_dynamic = Some(crate::Box::new(dynamic));
             } else {
                 // Only array 1 has dynamic end, so we can include anything left in it,
                 // and merge the rest of array 2 into the dynamic end.
@@ -104,7 +104,7 @@ impl Array {
                     dynamic = dynamic.union_with(elem);
                 }
                 res.extend(iter_1);
-                end_dynamic = Some(Box::new(dynamic));
+                end_dynamic = Some(crate::Box::new(dynamic));
             }
         } else if let Some(end_dynamic_2) = other.end_dynamic {
             // Only array 2 has dynamic end, so we can include anything left in it,
@@ -114,7 +114,7 @@ impl Array {
                 dynamic = dynamic.union_with(elem);
             }
             res.extend(iter_2);
-            end_dynamic = Some(Box::new(dynamic));
+            end_dynamic = Some(crate::Box::new(dynamic));
         } else {
             // Neither sequence has dynamic end, so we can just extend with the rest.
             // Note that one of these will be empty.
@@ -129,8 +129,11 @@ impl Array {
     }
 
     /// Produce an array type from a constant JSON value.
-    pub fn from_const(value: Vec<serde_json::Value>) -> Self {
-        let elements = value.into_iter().map(Type::from_const).collect::<Vec<_>>();
+    pub fn from_const(value: crate::Vec<serde_json::Value>) -> Self {
+        let elements = value
+            .into_iter()
+            .map(Type::from_const)
+            .collect::<crate::Vec<_>>();
         Array {
             elements,
             end_dynamic: None,
@@ -189,7 +192,7 @@ impl Array {
 }
 
 impl Display for Array {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "[")?;
         let mut needs_comma = false;
         for elem in &self.elements {
@@ -218,7 +221,7 @@ mod tests {
     #[test]
     fn test_array_indexing() {
         let arr = Array {
-            elements: vec![Type::String, Type::from_const(123)],
+            elements: alloc::vec![Type::String, Type::from_const(123)],
             end_dynamic: Some(Box::new(Type::Float)),
         };
         assert_eq!(arr.index_into(0), Some(Type::String));
@@ -237,11 +240,11 @@ mod tests {
     fn test_array_union() {
         // Shorter with dynamic end.
         let arr1 = Array {
-            elements: vec![Type::String, Type::from_const(123)],
+            elements: alloc::vec![Type::String, Type::from_const(123)],
             end_dynamic: Some(Box::new(Type::Float)),
         };
         let arr2 = Array {
-            elements: vec![
+            elements: alloc::vec![
                 Type::from_const("abc"),
                 Type::from_const(456),
                 Type::Boolean,
@@ -252,7 +255,7 @@ mod tests {
         assert_eq!(
             un,
             Array {
-                elements: vec![
+                elements: alloc::vec![
                     Type::String,
                     Type::Union(vec![Type::from_const(123), Type::from_const(456)]),
                 ],
@@ -262,18 +265,18 @@ mod tests {
 
         // Longer with dynamic end.
         let arr1 = Array {
-            elements: vec![Type::String, Type::from_const(123), Type::Boolean],
+            elements: alloc::vec![Type::String, Type::from_const(123), Type::Boolean],
             end_dynamic: Some(Box::new(Type::Float)),
         };
         let arr2 = Array {
-            elements: vec![Type::from_const("abc"), Type::from_const(456)],
+            elements: alloc::vec![Type::from_const("abc"), Type::from_const(456)],
             end_dynamic: None,
         };
         let un = arr1.union_with(arr2);
         assert_eq!(
             un,
             Array {
-                elements: vec![
+                elements: alloc::vec![
                     Type::String,
                     Type::Union(vec![Type::from_const(123), Type::from_const(456)]),
                     Type::Boolean,
@@ -284,11 +287,11 @@ mod tests {
 
         // Neither has dynamic end.
         let arr1 = Array {
-            elements: vec![Type::String, Type::from_const(123)],
+            elements: alloc::vec![Type::String, Type::from_const(123)],
             end_dynamic: None,
         };
         let arr2 = Array {
-            elements: vec![
+            elements: alloc::vec![
                 Type::from_const("abc"),
                 Type::from_const(456),
                 Type::Boolean,
@@ -299,7 +302,7 @@ mod tests {
         assert_eq!(
             un,
             Array {
-                elements: vec![
+                elements: alloc::vec![
                     Type::String,
                     Type::Union(vec![Type::from_const(123), Type::from_const(456)]),
                     Type::Boolean,

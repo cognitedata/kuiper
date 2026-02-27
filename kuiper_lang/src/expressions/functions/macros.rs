@@ -13,8 +13,8 @@
 macro_rules! function_def {
     // Base, should have defined the struct
     (_display $typ:ident) => {
-        impl std::fmt::Display for $typ {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        impl core::fmt::Display for $typ {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 write!(f, "{}(", <Self as $crate::functions::FunctionExpression>::INFO.name)?;
                 let mut is_first = true;
                 for item in &self.args {
@@ -41,7 +41,7 @@ macro_rules! function_def {
     (_fixargs $typ:ident, $name:expr, $nargs:expr) => {
         #[derive(Debug)]
         pub struct $typ {
-            args: [Box<$crate::ExpressionType>; $nargs],
+            args: [$crate::alloc::boxed::Box<$crate::ExpressionType>; $nargs],
             #[allow(dead_code)]
             span: logos::Span,
         }
@@ -55,7 +55,7 @@ macro_rules! function_def {
                 name: $name
             };
 
-            fn new(args: Vec<$crate::ExpressionType>, span: logos::Span) -> Result<Self, $crate::BuildError> {
+            fn new(args: $crate::alloc::vec::Vec<$crate::ExpressionType>, span: logos::Span) -> Result<Self, $crate::BuildError> {
                 if !Self::INFO.validate(args.len()) {
                     return Err($crate::BuildError::n_function_args(
                         span,
@@ -70,14 +70,14 @@ macro_rules! function_def {
                 }
                 Ok(Self {
                     span,
-                    args: args.into_iter().map(|a| Box::new(a)).collect::<Vec<_>>().try_into().unwrap()
+                    args: args.into_iter().map(|a| $crate::alloc::boxed::Box::new(a)).collect::<$crate::alloc::vec::Vec<_>>().try_into().unwrap()
                 })
             }
         }
 
         impl $crate::ExpressionMeta for $typ {
-            fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut $crate::ExpressionType> + '_> {
-                Box::new(self.args.iter_mut().map(|m| m.as_mut()))
+            fn iter_children_mut(&mut self) -> $crate::alloc::boxed::Box<dyn Iterator<Item = &mut $crate::ExpressionType> + '_> {
+                $crate::alloc::boxed::Box::new(self.args.iter_mut().map(|m| m.as_mut()))
             }
         }
     };
@@ -91,7 +91,7 @@ macro_rules! function_def {
     (_dynargs $typ:ident, $name:expr, $minargs:expr, $maxargs:expr) => {
         #[derive(Debug)]
         pub struct $typ {
-            args: Vec<$crate::ExpressionType>,
+            args: $crate::alloc::vec::Vec<$crate::ExpressionType>,
             #[allow(dead_code)]
             span: logos::Span
         }
@@ -105,7 +105,7 @@ macro_rules! function_def {
                 name: $name
             };
 
-            fn new(args: Vec<$crate::ExpressionType>, span: logos::Span) -> Result<Self, $crate::BuildError> {
+            fn new(args: $crate::alloc::vec::Vec<$crate::ExpressionType>, span: logos::Span) -> Result<Self, $crate::BuildError> {
                 if !Self::INFO.validate(args.len()) {
                     return Err($crate::BuildError::n_function_args(
                         span,
@@ -126,8 +126,8 @@ macro_rules! function_def {
         }
 
         impl $crate::ExpressionMeta for $typ {
-            fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut $crate::ExpressionType> + '_> {
-                Box::new(self.args.iter_mut())
+            fn iter_children_mut(&mut self) -> $crate::alloc::boxed::Box<dyn Iterator<Item = &mut $crate::ExpressionType> + '_> {
+                $crate::alloc::boxed::Box::new(self.args.iter_mut())
             }
         }
     }

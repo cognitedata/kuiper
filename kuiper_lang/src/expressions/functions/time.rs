@@ -1,4 +1,4 @@
-use std::fmt::Write;
+use core::fmt::Write;
 
 use crate::{
     expressions::{functions::FunctionExpression, Expression, ResolveResult},
@@ -26,7 +26,9 @@ impl Expression for ToUnixTimeFunction {
         if fmt_ref.contains("%z") {
             let time = DateTime::parse_from_str(val_ref, fmt_ref).map_err(|e| {
                 TransformError::new_conversion_failed(
-                    format!("Failed to convert '{val_ref}' to datetime using '{fmt_ref}': {e}"),
+                    alloc::format!(
+                        "Failed to convert '{val_ref}' to datetime using '{fmt_ref}': {e}"
+                    ),
                     &self.span,
                 )
             })?;
@@ -37,7 +39,9 @@ impl Expression for ToUnixTimeFunction {
         } else {
             let time = NaiveDateTime::parse_from_str(val_ref, fmt_ref).map_err(|e| {
                 TransformError::new_conversion_failed(
-                    format!("Failed to convert '{val_ref}' to datetime using '{fmt_ref}': {e}"),
+                    alloc::format!(
+                        "Failed to convert '{val_ref}' to datetime using '{fmt_ref}': {e}"
+                    ),
                     &self.span,
                 )
             })?;
@@ -52,14 +56,14 @@ impl Expression for ToUnixTimeFunction {
                     .try_as_i64(&self.span)?;
                 if off_val < i32::MIN as i64 || off_val > i32::MAX as i64 {
                     return Err(TransformError::new_invalid_operation(
-                        format!("Offset {off_val} out of bounds for to_unix_timestamp"),
+                        alloc::format!("Offset {off_val} out of bounds for to_unix_timestamp"),
                         &self.span,
                     ));
                 }
 
                 let offset = FixedOffset::east_opt(off_val as i32).ok_or_else(|| {
                     TransformError::new_invalid_operation(
-                        format!("Offset {off_val} out of bounds for to_unix_timestamp"),
+                        alloc::format!("Offset {off_val} out of bounds for to_unix_timestamp"),
                         &self.span,
                     )
                 })?;
@@ -68,7 +72,7 @@ impl Expression for ToUnixTimeFunction {
                         Number::from(x.timestamp_millis()),
                     ))),
                     _ => Err(TransformError::new_conversion_failed(
-                        "Failed to apply timezone offset to timestamp".to_string(),
+                        alloc::format!("Failed to apply timezone offset to timestamp"),
                         &self.span,
                     )),
                 }
@@ -102,8 +106,10 @@ impl Expression for ToUnixTimeFunction {
     }
 }
 
+#[cfg(feature = "std")]
 function_def!(NowFunction, "now", 0);
 
+#[cfg(feature = "std")]
 impl Expression for NowFunction {
     fn is_deterministic(&self) -> bool {
         false
@@ -142,18 +148,18 @@ impl Expression for FormatTimestampFunction {
 
         let datetime = Utc.timestamp_millis_opt(timestamp_num).single().ok_or(
             TransformError::new_conversion_failed(
-                format!("Failed to convert {timestamp_num} to datetime"),
+                alloc::format!("Failed to convert {timestamp_num} to datetime"),
                 &self.span,
             ),
         )?;
 
-        let mut res = String::new();
+        let mut res = crate::String::new();
         let to_format = datetime.format(&format_str);
 
         match write!(&mut res, "{to_format}") {
             Ok(_) => Ok(ResolveResult::Owned(Value::String(res))),
             Err(_) => Err(TransformError::new_conversion_failed(
-                format!("Failed to format timestamp using {format_str}"),
+                alloc::format!("Failed to format timestamp using {format_str}"),
                 &self.span,
             )),
         }

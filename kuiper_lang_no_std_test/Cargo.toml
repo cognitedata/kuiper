@@ -1,0 +1,10 @@
+[package]
+name = "kuiper_lang_no_std_test"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+kuiper_lang = { path = "../kuiper_lang", default-features = false }
+talc = { version = "4.4.3" }
+spin = { version = "^0.10" }
+linux-syscall = "1.2.0"

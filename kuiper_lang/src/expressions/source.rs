@@ -1,17 +1,10 @@
-use std::{
-    collections::BTreeMap,
-    fmt::{Debug, Formatter},
-    sync::OnceLock,
-};
-
-use serde::Serialize;
-use serde_json::Value;
+use alloc::{collections::BTreeMap, fmt::Debug};
 
 use crate::{expressions::ResolveResult, NULL_CONST};
 
 /// A trait representing a data source for an expression. This must allow returning values as JSON dynamically.
 /// It is implemented for `serde_json::Value` so that JSON data can be used directly. For convenience it is
-/// also implemented for a handful of standard library types, such as `Vec`, `Option` and `HashMap`.
+/// also implemented for a handful of standard library types, such as `crate::Vec`, `Option` and `HashMap`.
 ///
 /// When implementing this trait for custom types, it is recommended to use `NULL_CONST`
 /// as a fallback for missing keys or indices, though in practice this can be used to provide any kind
@@ -32,8 +25,8 @@ pub trait SourceData: Debug {
     }
 
     /// Get an iterator over the keys of this object, if it is an object.
-    fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
-        Box::new(std::iter::empty())
+    fn keys(&self) -> crate::Box<dyn Iterator<Item = &str> + '_> {
+        crate::Box::new(core::iter::empty())
     }
 
     /// Get the length of this array, if it is an array.
@@ -66,10 +59,10 @@ impl SourceData for serde_json::Value {
         }
     }
 
-    fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
+    fn keys(&self) -> crate::Box<dyn Iterator<Item = &str> + '_> {
         match self {
-            serde_json::Value::Object(map) => Box::new(map.keys().map(|k| k.as_str())),
-            _ => Box::new(std::iter::empty()),
+            serde_json::Value::Object(map) => crate::Box::new(map.keys().map(|k| k.as_str())),
+            _ => crate::Box::new(core::iter::empty()),
         }
     }
 
@@ -101,7 +94,7 @@ where
         (*self).get_index(index)
     }
 
-    fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
+    fn keys(&self) -> crate::Box<dyn Iterator<Item = &str> + '_> {
         (*self).keys()
     }
 
@@ -114,7 +107,7 @@ where
     }
 }
 
-impl<T> SourceData for Box<T>
+impl<T> SourceData for crate::Box<T>
 where
     T: SourceData + ?Sized,
 {
@@ -130,7 +123,7 @@ where
         (**self).get_index(index)
     }
 
-    fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
+    fn keys(&self) -> crate::Box<dyn Iterator<Item = &str> + '_> {
         (**self).keys()
     }
 
@@ -168,7 +161,7 @@ macro_rules! impl_source_data_arr {
     };
 }
 
-impl_source_data_arr!(Vec<T>);
+impl_source_data_arr!(crate::Vec<T>);
 impl_source_data_arr!(&[T]);
 
 impl<T> SourceData for Option<T>
@@ -196,10 +189,10 @@ where
         }
     }
 
-    fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
+    fn keys(&self) -> crate::Box<dyn Iterator<Item = &str> + '_> {
         match self {
             Some(v) => v.keys(),
-            None => Box::new(std::iter::empty()),
+            None => crate::Box::new(core::iter::empty()),
         }
     }
 
@@ -222,9 +215,9 @@ macro_rules! impl_source_data_map {
             T: SourceData,
         {
             fn resolve(&self) -> ResolveResult<'_> {
-                let map: serde_json::Map<String, serde_json::Value> = self
+                let map: serde_json::Map<crate::String, serde_json::Value> = self
                     .iter()
-                    .map(|(k, v)| ((*k).to_owned(), v.resolve().into_owned()))
+                    .map(|(k, v)| (alloc::string::ToString::to_string(k), v.resolve().into_owned()))
                     .collect();
                 ResolveResult::Owned(serde_json::Value::Object(map))
             }
@@ -235,17 +228,19 @@ macro_rules! impl_source_data_map {
                     .unwrap_or(&NULL_CONST)
             }
 
-            fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
-                Box::new(self.keys().$($st)*)
+            fn keys(&self) -> crate::Box<dyn Iterator<Item = &str> + '_> {
+                crate::Box::new(self.keys().$($st)*)
             }
         }
     };
 }
 
 // str-as-str is an unstable feature, so we need to disambiguate for the iterator.
-impl_source_data_map!(std::collections::HashMap<String, T>, map(|k| k.as_str()));
+#[cfg(feature = "std")]
+impl_source_data_map!(std::collections::HashMap<crate::String, T>, map(|k| k.as_str()));
+#[cfg(feature = "std")]
 impl_source_data_map!(std::collections::HashMap<&str, T>, copied());
-impl_source_data_map!(BTreeMap<String, T>, map(|k| k.as_str()));
+impl_source_data_map!(BTreeMap<crate::String, T>, map(|k| k.as_str()));
 impl_source_data_map!(BTreeMap<&str, T>, copied());
 
 impl SourceData for () {
@@ -280,96 +275,104 @@ macro_rules! impl_source_for_primitive {
 }
 
 impl_source_for_primitive!(bool, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, &str, usize);
-impl_source_for_primitive!([clone] String, serde_json::Number);
+impl_source_for_primitive!([clone] crate::String, serde_json::Number);
 
-/// A type that implements SourceData by converting the underlying data to some other
-/// type that implements SourceData lazily on first access.
-///
-/// This is useful for cases where the conversion is expensive, and you want to avoid
-/// doing it unless the data is actually accessed.
-pub struct LazySourceData<T, F, R>
-where
-    F: Fn(&T) -> R,
-{
-    data: T,
-    resolver: F,
-    resolved: OnceLock<R>,
-}
+#[cfg(feature = "std")]
+pub use lazy::{LazySourceData, LazySourceDataJson};
+#[cfg(feature = "std")]
+mod lazy {
+    use crate::{source::SourceData, ResolveResult};
 
-impl<T: Debug, F: Fn(&T) -> R, R> Debug for LazySourceData<T, F, R> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("LazySourceData")
-            .field("data", &self.data)
-            .finish()
-    }
-}
-
-impl<T, F, R> Serialize for LazySourceData<T, F, R>
-where
-    F: Fn(&T) -> R,
-    R: Serialize,
-{
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    /// A type that implements SourceData by converting the underlying data to some other
+    /// type that implements SourceData lazily on first access.
+    ///
+    /// This is useful for cases where the conversion is expensive, and you want to avoid
+    /// doing it unless the data is actually accessed.
+    pub struct LazySourceData<T, F, R>
     where
-        S: serde::Serializer,
+        F: Fn(&T) -> R,
     {
-        self.get_resolved().serialize(serializer)
+        data: T,
+        resolver: F,
+        resolved: std::sync::OnceLock<R>,
     }
-}
 
-impl<T, F: Fn(&T) -> R, R> LazySourceData<T, F, R> {
-    /// Create a new LazySourceData instance, with the given resolver.
-    pub fn new(data: T, resolver: F) -> Self {
-        Self {
-            data,
-            resolver,
-            resolved: OnceLock::new(),
+    impl<T: core::fmt::Debug, F: Fn(&T) -> R, R> core::fmt::Debug for LazySourceData<T, F, R> {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            f.debug_struct("LazySourceData")
+                .field("data", &self.data)
+                .finish()
         }
     }
 
-    /// Get the resolved data, computing it if necessary.
-    fn get_resolved(&self) -> &R {
-        self.resolved.get_or_init(|| (self.resolver)(&self.data))
-    }
-}
-
-impl<T: Debug, F: Fn(&T) -> R, R: SourceData> SourceData for LazySourceData<T, F, R> {
-    fn resolve(&self) -> ResolveResult<'_> {
-        self.get_resolved().resolve()
-    }
-
-    fn array_len(&self) -> Option<usize> {
-        self.get_resolved().array_len()
+    impl<T, F, R> serde::Serialize for LazySourceData<T, F, R>
+    where
+        F: Fn(&T) -> R,
+        R: serde::Serialize,
+    {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            self.get_resolved().serialize(serializer)
+        }
     }
 
-    fn get_index(&self, index: usize) -> &dyn SourceData {
-        self.get_resolved().get_index(index)
+    impl<T, F: Fn(&T) -> R, R> LazySourceData<T, F, R> {
+        /// Create a new LazySourceData instance, with the given resolver.
+        pub fn new(data: T, resolver: F) -> Self {
+            Self {
+                data,
+                resolver,
+                resolved: std::sync::OnceLock::new(),
+            }
+        }
+
+        /// Get the resolved data, computing it if necessary.
+        fn get_resolved(&self) -> &R {
+            self.resolved.get_or_init(|| (self.resolver)(&self.data))
+        }
     }
 
-    fn get_key(&self, key: &str) -> &dyn SourceData {
-        self.get_resolved().get_key(key)
+    impl<T: core::fmt::Debug, F: Fn(&T) -> R, R: SourceData> SourceData for LazySourceData<T, F, R> {
+        fn resolve(&self) -> ResolveResult<'_> {
+            self.get_resolved().resolve()
+        }
+
+        fn array_len(&self) -> Option<usize> {
+            self.get_resolved().array_len()
+        }
+
+        fn get_index(&self, index: usize) -> &dyn SourceData {
+            self.get_resolved().get_index(index)
+        }
+
+        fn get_key(&self, key: &str) -> &dyn SourceData {
+            self.get_resolved().get_key(key)
+        }
+
+        fn is_null(&self) -> bool {
+            self.get_resolved().is_null()
+        }
+
+        fn keys(&self) -> crate::Box<dyn Iterator<Item = &str> + '_> {
+            self.get_resolved().keys()
+        }
     }
 
-    fn is_null(&self) -> bool {
-        self.get_resolved().is_null()
+    fn resolve_json<T: serde::Serialize>(value: &T) -> serde_json::Value {
+        serde_json::to_value(value).unwrap_or(serde_json::Value::Null)
     }
 
-    fn keys(&self) -> Box<dyn Iterator<Item = &str> + '_> {
-        self.get_resolved().keys()
-    }
-}
+    /// A LazySourceData that simply serializes the underlying data to JSON on first access.
+    pub type LazySourceDataJson<T> =
+        LazySourceData<T, fn(&T) -> serde_json::Value, serde_json::Value>;
 
-fn resolve_json<T: Serialize>(value: &T) -> Value {
-    serde_json::to_value(value).unwrap_or(serde_json::Value::Null)
-}
-
-/// A LazySourceData that simply serializes the underlying data to JSON on first access.
-pub type LazySourceDataJson<T> = LazySourceData<T, fn(&T) -> serde_json::Value, serde_json::Value>;
-
-impl<T: Serialize> LazySourceDataJson<T> {
-    /// Create a new LazySourceDataJson instance.
-    pub fn new_json(value: T) -> Self {
-        Self::new(value, resolve_json as fn(&T) -> serde_json::Value)
+    impl<T: serde::Serialize> LazySourceDataJson<T> {
+        /// Create a new LazySourceDataJson instance.
+        pub fn new_json(value: T) -> Self {
+            Self::new(value, resolve_json as fn(&T) -> serde_json::Value)
+        }
     }
 }
 
@@ -385,14 +388,14 @@ mod tests {
     #[derive(Debug, Serialize, SourceData)]
     struct CustomData {
         name: String,
-        values: Vec<i32>,
+        values: crate::Vec<i32>,
     }
 
     #[test]
     fn test_custom_data() {
         let data = CustomData {
             name: "test".to_string(),
-            values: vec![1, 2, 3],
+            values: alloc::vec![1, 2, 3],
         };
         let expr = compile_expression(
             r#"
@@ -421,7 +424,7 @@ mod tests {
     fn test_lazy_source_data() {
         let data = CustomData {
             name: "test".to_string(),
-            values: vec![1, 2, 3],
+            values: alloc::vec![1, 2, 3],
         };
         let lazy_data = crate::expressions::source::LazySourceDataJson::new_json(data);
         let expr = compile_expression(
@@ -463,7 +466,7 @@ mod tests {
         let data = CustomDataGeneric {
             foo: "hello",
             bar: "world",
-            data_1: vec![1, 2, 3],
+            data_1: alloc::vec![1, 2, 3],
             data_2: serde_json::json!({"a": 1, "b": 2}),
         };
         let expr = compile_expression(

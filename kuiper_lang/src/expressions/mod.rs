@@ -33,7 +33,9 @@ pub use operator::{OpExpression, Operator, UnaryOpExpression, UnaryOperator};
 pub use result::*;
 pub use run_builder::ExpressionRunBuilder;
 pub use selector::{SelectorElement, SelectorExpression, SourceElement};
-pub use source::{LazySourceData, LazySourceDataJson, SourceData};
+pub use source::SourceData;
+#[cfg(feature = "std")]
+pub use source::{LazySourceData, LazySourceDataJson};
 pub use transform_error::{TransformError, TransformErrorData};
 
 pub(crate) use base::FunctionType;

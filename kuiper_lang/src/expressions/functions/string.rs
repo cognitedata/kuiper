@@ -1,5 +1,7 @@
-use std::{borrow::Cow, collections::HashMap};
+use alloc::borrow::ToOwned;
+use alloc::{borrow::Cow, string::ToString};
 
+use alloc::collections::btree_map::BTreeMap;
 use itertools::Itertools;
 use serde_json::Value;
 
@@ -28,15 +30,15 @@ impl Expression for ConcatFunction {
         &'a self,
         state: &mut crate::expressions::ExpressionExecutionState<'a, '_>,
     ) -> Result<ResolveResult<'a>, crate::TransformError> {
-        // Create a mutable string we can write to, in rust this is fast, a string is just Vec<u8>
-        let mut res = String::new();
+        // Create a mutable string we can write to, in rust this is fast, a string is just crate::Vec<u8>
+        let mut res = crate::String::new();
         // Iterate over the arguments to the function
         for expr in self.args.iter() {
             // Resolve each argument by passing the state, then return any errors if they occur.
             let resolved = expr.resolve(state)?;
             // Convert the value to string
             let dat = resolved.try_into_string("concat", &self.span)?;
-            // Push the resulting string to the result vector.
+            // Push the resulting string to the result crate::Vector.
             res.push_str(&dat);
         }
         // Since we own the data we want to return here, return ResolveResult::Value. If we had built a reference
@@ -145,7 +147,7 @@ impl Expression for SubstringFunction {
         });
         let end = end_value.transpose()?;
         if end.is_some_and(|v| v == start) {
-            return Ok(ResolveResult::Owned(Value::String(String::new())));
+            return Ok(ResolveResult::Owned(Value::String(crate::String::new())));
         }
 
         // Translate indices to proper byte indices
@@ -155,14 +157,14 @@ impl Expression for SubstringFunction {
                 if start < 0 {
                     0
                 } else {
-                    return Ok(ResolveResult::Owned(Value::String(String::new())));
+                    return Ok(ResolveResult::Owned(Value::String(crate::String::new())));
                 }
             }
         };
 
         if let Some(end) = end.and_then(|end| get_byte_index(input, end)) {
             if end <= start {
-                return Ok(ResolveResult::Owned(Value::String(String::new())));
+                return Ok(ResolveResult::Owned(Value::String(crate::String::new())));
             }
 
             Ok(ResolveResult::Owned(Value::String(
@@ -464,7 +466,7 @@ impl Expression for TranslateFunction {
         let to = self.args[2].resolve(state)?;
         let to = to.try_as_string("translate", &self.span)?;
 
-        let mut map = HashMap::new();
+        let mut map = BTreeMap::new();
         for pair in from.chars().zip_longest(to.chars()) {
             match pair {
                 itertools::EitherOrBoth::Both(from, to) => {
@@ -688,7 +690,7 @@ mod tests {
 
         let res = expr.run(&[]).unwrap();
 
-        let arr: Vec<_> = res
+        let arr: crate::Vec<_> = res
             .as_array()
             .unwrap()
             .iter()

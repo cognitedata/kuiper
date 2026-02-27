@@ -73,7 +73,7 @@ impl Expression for JoinFunction {
             .iter()
             .skip(1)
             .map(|a| a.resolve_types(state))
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<crate::Vec<_>, _>>()?;
 
         // Could this be an object? If so, we merge all the fields together.
         if source.is_assignable_to(&Type::any_object())
@@ -130,7 +130,7 @@ impl Expression for JoinFunction {
             }
             res_type = res_type.union_with(Type::Array(crate::types::Array {
                 elements: res_elements,
-                end_dynamic: res_end_dynamic.map(Box::new),
+                end_dynamic: res_end_dynamic.map(alloc::boxed::Box::new),
             }));
         }
 
@@ -223,19 +223,19 @@ mod tests {
         let t = expr
             .run_types([
                 Type::Object(Object {
-                    fields: vec![(ObjectField::Constant("a".to_string()), Type::Integer)]
+                    fields: alloc::vec![(ObjectField::Constant("a".to_string()), Type::Integer)]
                         .into_iter()
                         .collect(),
                 }),
                 Type::Object(Object {
-                    fields: vec![(ObjectField::Constant("b".to_string()), Type::String)]
+                    fields: alloc::vec![(ObjectField::Constant("b".to_string()), Type::String)]
                         .into_iter()
                         .collect(),
                 }),
             ])
             .unwrap();
         let expected = Type::Object(Object {
-            fields: vec![
+            fields: alloc::vec![
                 (ObjectField::Constant("a".to_string()), Type::Integer),
                 (ObjectField::Constant("b".to_string()), Type::String),
             ]

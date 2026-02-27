@@ -3,6 +3,8 @@ use utils::iter_line_spans;
 
 pub use utils::PrettyError;
 
+use alloc::string::ToString;
+
 mod formatter;
 mod utils;
 
@@ -13,7 +15,7 @@ mod utils;
 ///
 /// Note that this is just a best-effort formatter, designed to be quite conservative, but
 /// apply proper indentation and spacing to the expression.
-pub fn format_expression(input: &str) -> Result<String, PrettyError> {
+pub fn format_expression(input: &str) -> Result<crate::String, PrettyError> {
     // This is probably not the perfect way to do this, but it works well enough.
     // We do a few separate things in a single pass:
     // 1. Re-indent based on certain tokens. Parentheses, brackets, braces, and postfix selector chains.

@@ -1,5 +1,6 @@
-use std::fmt::Display;
+use core::fmt::Display;
 
+use alloc::borrow::ToOwned;
 use logos::Span;
 use serde_json::Value;
 
@@ -21,7 +22,7 @@ pub enum ArrayElement {
 }
 
 impl Display for ArrayElement {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::Expression(x) => write!(f, "{x}"),
             Self::Concat(x) => write!(f, "...{x}"),
@@ -32,12 +33,12 @@ impl Display for ArrayElement {
 #[derive(Debug)]
 /// Array expression. This contains a list of expressions and returns an array.
 pub struct ArrayExpression {
-    items: Vec<ArrayElement>,
+    items: crate::Vec<ArrayElement>,
     span: Span,
 }
 
 impl Display for ArrayExpression {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "[")?;
         write_list!(f, self.items.iter());
         write!(f, "]")?;
@@ -52,7 +53,7 @@ impl Expression for ArrayExpression {
     ) -> Result<ResolveResult<'a>, TransformError> {
         state.inc_op()?;
 
-        let mut arr = vec![];
+        let mut arr = alloc::vec![];
         for expr in self.items.iter() {
             match expr {
                 ArrayElement::Expression(x) => arr.push(x.resolve(state)?.into_owned()),
@@ -88,7 +89,7 @@ impl Expression for ArrayExpression {
         &self,
         state: &mut crate::types::TypeExecutionState<'_, '_>,
     ) -> Result<Type, crate::types::TypeError> {
-        let mut types = vec![];
+        let mut types = alloc::vec![];
         let mut end_dynamic: Option<Type> = None;
         // When adding items to an array type, we either know the exact elements of the array,
         // in which case we simply add them to the list of types, or we have a dynamic end,
@@ -121,14 +122,14 @@ impl Expression for ArrayExpression {
         }
         Ok(Type::Array(Array {
             elements: types,
-            end_dynamic: end_dynamic.map(Box::new),
+            end_dynamic: end_dynamic.map(crate::Box::new),
         }))
     }
 }
 
 impl ExpressionMeta for ArrayExpression {
-    fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
-        Box::new(self.items.iter_mut().map(|e| match e {
+    fn iter_children_mut(&mut self) -> crate::Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+        crate::Box::new(self.items.iter_mut().map(|e| match e {
             ArrayElement::Expression(x) => x,
             ArrayElement::Concat(x) => x,
         }))
@@ -136,7 +137,7 @@ impl ExpressionMeta for ArrayExpression {
 }
 
 impl ArrayExpression {
-    pub fn new(items: Vec<ArrayElement>, span: Span) -> Result<Self, BuildError> {
+    pub fn new(items: crate::Vec<ArrayElement>, span: Span) -> Result<Self, BuildError> {
         for item in &items {
             let expr = match item {
                 ArrayElement::Expression(x) => x,

@@ -1,5 +1,6 @@
-use std::iter::Peekable;
+use core::iter::Peekable;
 
+use alloc::string::ToString;
 use logos::{Logos, Span};
 
 use crate::{
@@ -14,9 +15,9 @@ pub(super) struct Formatter<'a, T: Iterator<Item = (usize, Span)>> {
     /// The raw input string to format.
     input: &'a str,
     /// The indentation node stack, which keeps track of the history of tokens that may cause indentation.
-    stack: Vec<IndentNode>,
+    stack: crate::Vec<IndentNode>,
     /// The final output.
-    output: String,
+    output: crate::String,
     /// The current indentation level, in spaces.
     indent: usize,
     /// The current indentation caused by postfix chains.
@@ -40,13 +41,13 @@ impl<'a, T: Iterator<Item = (usize, Span)>> Formatter<'a, T> {
     pub(super) fn new(input: &'a str, lines: Peekable<T>) -> Self {
         Self {
             input,
-            stack: vec![IndentNode {
+            stack: alloc::vec![IndentNode {
                 kind: IndentNodeKind::Initial,
                 line: 0,
                 caused_indent: false,
                 has_postfix_chain: false,
             }],
-            output: String::new(),
+            output: crate::String::new(),
             indent: 0,
             postfix_indent: 0,
             indent_on_line: 0,
@@ -57,7 +58,7 @@ impl<'a, T: Iterator<Item = (usize, Span)>> Formatter<'a, T> {
         }
     }
 
-    pub fn run(mut self) -> Result<String, PrettyError> {
+    pub fn run(mut self) -> Result<crate::String, PrettyError> {
         // Iterate over the tokens and process them.
         for (token, token_span) in Token::lexer(self.input).spanned() {
             let token = token?;

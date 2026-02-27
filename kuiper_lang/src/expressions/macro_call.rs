@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use core::fmt::Display;
 
 use itertools::Itertools;
 use logos::Span;
@@ -9,13 +9,13 @@ use super::{Expression, ExpressionMeta, ExpressionType, ResolveResult};
 
 #[derive(Debug)]
 pub struct MacroCallExpression {
-    pub inner: Box<ExpressionType>,
-    pub args: Vec<ExpressionType>,
+    pub inner: crate::Box<ExpressionType>,
+    pub args: crate::Vec<ExpressionType>,
     pub span: Span,
 }
 
 impl Display for MacroCallExpression {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "({})(", self.inner)?;
         write_list!(f, &self.args);
         write!(f, ")")
@@ -25,14 +25,14 @@ impl Display for MacroCallExpression {
 impl MacroCallExpression {
     pub fn new(
         inner: ExpressionType,
-        args: Vec<ExpressionType>,
+        args: crate::Vec<ExpressionType>,
         span: Span,
     ) -> Result<Self, BuildError> {
         for a in &args {
             a.fail_if_lambda()?;
         }
         Ok(Self {
-            inner: Box::new(inner),
+            inner: crate::Box::new(inner),
             args,
             span,
         })
@@ -45,7 +45,7 @@ impl Expression for MacroCallExpression {
         state: &mut super::ExpressionExecutionState<'a, '_>,
     ) -> Result<super::ResolveResult<'a>, crate::TransformError> {
         state.inc_op()?;
-        let mut args = Vec::with_capacity(self.args.len());
+        let mut args = crate::Vec::with_capacity(self.args.len());
         for a in &self.args {
             args.push(a.resolve(state)?);
         }
@@ -58,8 +58,8 @@ impl Expression for MacroCallExpression {
 }
 
 impl ExpressionMeta for MacroCallExpression {
-    fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
-        Box::new(
+    fn iter_children_mut(&mut self) -> crate::Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+        crate::Box::new(
             [self.inner.as_mut()]
                 .into_iter()
                 .chain(self.args.iter_mut()),

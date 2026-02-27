@@ -10,6 +10,7 @@ mod join;
 mod json;
 mod logic;
 mod math;
+#[cfg(feature = "std")]
 mod regex;
 mod string;
 mod time;
@@ -26,6 +27,7 @@ pub use json::*;
 pub use logic::*;
 pub use macros::function_def;
 pub use math::*;
+#[cfg(feature = "std")]
 pub use regex::*;
 pub use string::*;
 pub use time::*;
@@ -55,21 +57,24 @@ impl FunctionInfo {
     }
 
     /// Get a human-readable description of the number of arguments this function takes, for error messages.
-    pub fn num_args_desc(&self) -> String {
+    pub fn num_args_desc(&self) -> crate::String {
         match self.maxargs {
             Some(x) => {
                 if x == self.minargs {
-                    format!("function {} takes {} arguments", self.name, self.minargs)
+                    alloc::format!("function {} takes {} arguments", self.name, self.minargs)
                 } else {
-                    format!(
+                    alloc::format!(
                         "function {} takes {} to {} arguments",
-                        self.name, self.minargs, x
+                        self.name,
+                        self.minargs,
+                        x
                     )
                 }
             }
-            None => format!(
+            None => alloc::format!(
                 "function {} takes at least {} arguments",
-                self.name, self.minargs
+                self.name,
+                self.minargs
             ),
         }
     }
@@ -84,7 +89,7 @@ where
     const INFO: FunctionInfo;
 
     /// Create a new function from a list of expressions.
-    fn new(args: Vec<ExpressionType>, span: Span) -> Result<Self, BuildError>;
+    fn new(args: crate::Vec<ExpressionType>, span: Span) -> Result<Self, BuildError>;
 }
 
 /// Trait for validating lambdas passed to functions.

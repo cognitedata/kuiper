@@ -1,3 +1,4 @@
+use alloc::borrow::ToOwned;
 use serde_json::{Map, Value};
 
 use crate::{
@@ -147,7 +148,7 @@ mod tests {
 
         let res = expr
             .run_types([Type::Array(Array {
-                elements: vec![
+                elements: alloc::vec![
                     Type::from_const("foo"),
                     Type::from_const("bar"),
                     Type::String,

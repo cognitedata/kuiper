@@ -1,7 +1,5 @@
-use std::{
-    borrow::{Borrow, Cow},
-    ops::Deref,
-};
+use alloc::{borrow::Cow, string::ToString};
+use core::{borrow::Borrow, ops::Deref};
 
 use logos::Span;
 use serde_json::Value;
@@ -53,7 +51,7 @@ impl<'a> ResolveResult<'a> {
     pub(crate) fn map_clone_string<'b: 'a, 'c, T>(
         self,
         state: &'a mut ExpressionExecutionState<'b, 'c>,
-        string: impl FnOnce(String, &'a mut ExpressionExecutionState<'b, 'c>) -> T,
+        string: impl FnOnce(crate::String, &'a mut ExpressionExecutionState<'b, 'c>) -> T,
         other: impl FnOnce(&Value, &'a mut ExpressionExecutionState<'b, 'c>) -> T,
     ) -> T {
         match self {
@@ -125,8 +123,8 @@ impl From<f64> for ResolveResult<'_> {
     }
 }
 
-impl From<String> for ResolveResult<'_> {
-    fn from(value: String) -> Self {
+impl From<crate::String> for ResolveResult<'_> {
+    fn from(value: crate::String) -> Self {
         Self::Owned(Value::from(value))
     }
 }

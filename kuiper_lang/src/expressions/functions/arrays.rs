@@ -1,3 +1,4 @@
+use alloc::{borrow::ToOwned, string::ToString};
 use itertools::Itertools;
 use serde_json::{Number, Value};
 
@@ -39,7 +40,11 @@ impl Expression for LengthFunction {
     ) -> Result<Type, TypeError> {
         let source = self.args[0].resolve_types(state)?;
         source.assert_assignable_to(
-            &Type::Union(vec![Type::String, Type::any_array(), Type::any_object()]),
+            &Type::Union(alloc::vec![
+                Type::String,
+                Type::any_array(),
+                Type::any_object()
+            ]),
             &self.span,
         )?;
         Ok(Type::Integer)
@@ -81,10 +86,12 @@ impl Expression for ChunkFunction {
         }
 
         if arr.len() <= chunk_size {
-            return Ok(ResolveResult::Owned(Value::Array(vec![Value::Array(arr)])));
+            return Ok(ResolveResult::Owned(Value::Array(alloc::vec![
+                Value::Array(arr)
+            ])));
         }
 
-        let mut res = vec![];
+        let mut res = alloc::vec![];
         for chunk in arr.into_iter().chunks(chunk_size).into_iter() {
             res.push(Value::Array(chunk.collect()));
         }
@@ -104,14 +111,14 @@ impl Expression for ChunkFunction {
         if let Type::Constant(Value::Number(n)) = chunk_size.clone() {
             let Some(n) = n.as_u64() else {
                 return Err(TypeError::ExpectedType(
-                    Box::new(Type::Integer),
-                    Box::new(chunk_size),
+                    crate::Box::new(Type::Integer),
+                    crate::Box::new(chunk_size),
                     self.span.clone(),
                 ));
             };
             let n = n as usize;
             let chunks = source_arr.elements.chunks(n);
-            let mut res_arr = Vec::new();
+            let mut res_arr = crate::Vec::new();
             for chunk in chunks {
                 if chunk.len() == n {
                     res_arr.push(Type::Array(Array {
@@ -129,15 +136,15 @@ impl Expression for ChunkFunction {
                 elements: res_arr,
                 end_dynamic: source_arr
                     .end_dynamic
-                    .map(|v| Box::new(Type::array_of_type(*v))),
+                    .map(|v| alloc::boxed::Box::new(Type::array_of_type(*v))),
             }))
         } else {
             Ok(Type::Array(Array {
-                end_dynamic: Some(Box::new(Type::Array(Array {
-                    elements: Vec::new(),
-                    end_dynamic: Some(Box::new(source_arr.element_union())),
+                end_dynamic: Some(alloc::boxed::Box::new(Type::Array(Array {
+                    elements: crate::Vec::new(),
+                    end_dynamic: Some(alloc::boxed::Box::new(source_arr.element_union())),
                 }))),
-                elements: Vec::new(),
+                elements: crate::Vec::new(),
             }))
         }
     }
@@ -206,22 +213,22 @@ impl Expression for TailFunction {
                 if let Type::Constant(Value::Number(n)) = number {
                     let Some(n) = n.as_u64() else {
                         return Err(TypeError::ExpectedType(
-                            Box::new(Type::Integer),
-                            Box::new(key),
+                            crate::Box::new(Type::Integer),
+                            crate::Box::new(key),
                             self.span.clone(),
                         ));
                     };
                     if n == 0 {
                         Ok(Type::Array(Array {
-                            elements: vec![],
+                            elements: alloc::vec![],
                             end_dynamic: None,
                         }))
                     } else if n == 1 {
                         Ok(source_arr.index_from_end(0).unwrap_or_else(Type::null))
                     } else if source_arr.end_dynamic.is_some() {
                         Ok(Type::Array(Array {
-                            end_dynamic: Some(Box::new(source_arr.element_union())),
-                            elements: vec![],
+                            end_dynamic: Some(alloc::boxed::Box::new(source_arr.element_union())),
+                            elements: alloc::vec![],
                         }))
                     } else {
                         let start = source_arr.elements.len().saturating_sub(n as usize);
@@ -233,7 +240,7 @@ impl Expression for TailFunction {
                         }))
                     }
                 } else {
-                    let mut res = Type::Union(Vec::new());
+                    let mut res = Type::Union(crate::Vec::new());
                     // If the value is 0
                     res = res.union_with(Type::null());
                     // If the value is 1
@@ -241,8 +248,8 @@ impl Expression for TailFunction {
                     // If the value is greater than 1. We don't really want to return a combinatorial explosion
                     // of possible sequences.
                     res = res.union_with(Type::Array(Array {
-                        elements: vec![],
-                        end_dynamic: Some(Box::new(source_arr.element_union())),
+                        elements: alloc::vec![],
+                        end_dynamic: Some(alloc::boxed::Box::new(source_arr.element_union())),
                     }));
                     Ok(res)
                 }
@@ -280,7 +287,7 @@ impl Expression for SliceFunction {
         });
         let end = end_value.transpose()?;
         if end.is_some_and(|v| v == start) {
-            return Ok(ResolveResult::Owned(Value::Array(Vec::new())));
+            return Ok(ResolveResult::Owned(Value::Array(crate::Vec::new())));
         }
 
         let start = get_array_index(inp_array, start);
@@ -288,7 +295,7 @@ impl Expression for SliceFunction {
         if let Some(end) = end {
             let end = get_array_index(inp_array, end);
             if end <= start {
-                return Ok(ResolveResult::Owned(Value::Array(vec![])));
+                return Ok(ResolveResult::Owned(Value::Array(alloc::vec![])));
             }
             Ok(ResolveResult::Owned(Value::Array(
                 inp_array[start..end].iter().cloned().collect_vec(),
@@ -322,8 +329,8 @@ impl Expression for SliceFunction {
         // Technically we could check for constant slicing here, TODO. There's reasonably high value to that,
         // but it's a lot of work.
         Ok(Type::Array(Array {
-            elements: vec![],
-            end_dynamic: Some(Box::new(inp_array.element_union())),
+            elements: alloc::vec![],
+            end_dynamic: Some(alloc::boxed::Box::new(inp_array.element_union())),
         }))
     }
 }
@@ -647,7 +654,7 @@ mod tests {
         assert_eq!(
             Type::Array(crate::types::Array {
                 end_dynamic: Some(Box::new(Type::array_of_type(Type::Integer))),
-                elements: Vec::new(),
+                elements: crate::Vec::new(),
             }),
             ty
         );
@@ -656,7 +663,7 @@ mod tests {
         let ty = expr
             .run_types([
                 Type::Array(Array {
-                    elements: vec![
+                    elements: alloc::vec![
                         Type::from_const(1),
                         Type::from_const(2),
                         Type::from_const(3),
@@ -669,14 +676,14 @@ mod tests {
         assert_eq!(
             Type::Array(Array {
                 end_dynamic: Some(Box::new(Type::Array(Array {
-                    elements: Vec::new(),
+                    elements: crate::Vec::new(),
                     end_dynamic: Some(Box::new(
                         Type::from_const(1)
                             .union_with(Type::from_const(2))
                             .union_with(Type::from_const(3))
                     )),
                 }))),
-                elements: Vec::new(),
+                elements: crate::Vec::new(),
             }),
             ty
         );
@@ -685,7 +692,7 @@ mod tests {
         let ty = expr
             .run_types([
                 Type::Array(Array {
-                    elements: vec![
+                    elements: alloc::vec![
                         Type::from_const(1),
                         Type::from_const(2),
                         Type::from_const(3),
@@ -698,13 +705,13 @@ mod tests {
         assert_eq!(
             Type::Array(Array {
                 end_dynamic: None,
-                elements: vec![
+                elements: alloc::vec![
                     Type::Array(Array {
-                        elements: vec![Type::from_const(1), Type::from_const(2)],
+                        elements: alloc::vec![Type::from_const(1), Type::from_const(2)],
                         end_dynamic: None,
                     }),
                     Type::Array(Array {
-                        elements: vec![Type::from_const(3)],
+                        elements: alloc::vec![Type::from_const(3)],
                         end_dynamic: None,
                     }),
                 ],
@@ -732,7 +739,7 @@ mod tests {
                 Type::Integer,
                 Type::null(),
                 Type::Array(Array {
-                    elements: Vec::new(),
+                    elements: crate::Vec::new(),
                     end_dynamic: Some(Box::new(Type::Integer)),
                 })
             ]),
@@ -743,7 +750,7 @@ mod tests {
         let ty = expr
             .run_types([
                 Type::Array(Array {
-                    elements: vec![
+                    elements: alloc::vec![
                         Type::from_const(1),
                         Type::from_const(2),
                         Type::from_const(3),
@@ -755,7 +762,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             Type::Array(Array {
-                elements: vec![Type::from_const(2), Type::from_const(3)],
+                elements: alloc::vec![Type::from_const(2), Type::from_const(3)],
                 end_dynamic: None,
             }),
             ty
@@ -765,7 +772,7 @@ mod tests {
         let ty = expr
             .run_types([
                 Type::Array(Array {
-                    elements: vec![
+                    elements: alloc::vec![
                         Type::from_const(1),
                         Type::from_const(2),
                         Type::from_const(3),
@@ -780,7 +787,7 @@ mod tests {
                 Type::null(),
                 Type::from_const(3),
                 Type::Array(Array {
-                    elements: Vec::new(),
+                    elements: crate::Vec::new(),
                     end_dynamic: Some(Box::new(
                         Type::from_const(1)
                             .union_with(Type::from_const(2))
@@ -814,7 +821,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             Type::Array(Array {
-                elements: Vec::new(),
+                elements: crate::Vec::new(),
                 end_dynamic: Some(Box::new(Type::Integer)),
             }),
             ty
