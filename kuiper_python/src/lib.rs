@@ -9,28 +9,8 @@ use pyo3::types::PyModuleMethods;
 use pyo3::{pymodule, wrap_pyfunction, Bound, PyResult, Python};
 
 #[pymodule]
-fn kuiper(py: Python<'_>, module: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _core(py: Python<'_>, module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(compile_expression_py, py)?)?;
     module.add_class::<KuiperExpression>()?;
-
-    PyModule::from_code(
-        py,
-        cr#"
-class KuiperError(Exception):
-    def __init__(self, message, start, end):
-        super().__init__(message)
-        self.start = start
-        self.end = end
-
-class KuiperCompileError(KuiperError):
-    pass
-
-class KuiperRuntimeError(KuiperError):
-    pass
-"#,
-        c"kuiper_errors.py",
-        c"kuiper",
-    )?;
-
     Ok(())
 }

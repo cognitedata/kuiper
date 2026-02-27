@@ -14,4 +14,31 @@ object. The ``KuiperExpression.run(...)`` method might raise a ``KuiperRuntimeEr
 subclasses of the ``KuiperError`` base class.
 """
 
-from .kuiper import *
+from ._core import (
+    KuiperExpression,
+    compile_expression,
+)
+
+
+class KuiperError(Exception):
+    def __init__(self, message: str, start: int | None, end: int | None):
+        super().__init__(message)
+        self.start = start
+        self.end = end
+
+
+class KuiperCompileError(KuiperError):
+    pass
+
+
+class KuiperRuntimeError(KuiperError):
+    pass
+
+
+__all__ = [
+    "KuiperCompileError",
+    "KuiperError",
+    "KuiperExpression",
+    "KuiperRuntimeError",
+    "compile_expression",
+]

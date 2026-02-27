@@ -6,15 +6,11 @@ license = "Apache-2.0"
 publish = false
 
 [lib]
-# The name of the native library. This is the name which will be used in Python to import the
-# library (i.e. `import string_sum`). If you change this, you must also change the name of the
-# `#[pymodule]` in `src/mod`.
-name = "kuiper"
-
+name = "_core"
 # "cdylib" is necessary to produce a shared library for Python to import from.
 crate-type = ["cdylib"]
 
 [dependencies]
 kuiper_lang = { path = "../kuiper_lang" }
 pyo3 = { version = "0.28.2", features = ["extension-module"] }
-serde_json = { version = "1.0.116" }
+serde_json = { workspace = true }
