@@ -30,31 +30,19 @@ uv add cognite-kuiper
 
 We use [PyO3](https://pyo3.rs) to create the bindings.
 
-This project uses [maturin](https://www.maturin.rs/) to manage dependencies and
-such. To set up your local development environment, first make sure maturin is
+This project uses [uv](https://docs.astral.sh/uv/) to manage dependencies and
+such. To set up your local development environment, first make sure uv is
 installed:
 
-``` commanline
-pip install -U maturin
+``` commandline
+pip install -U uv
 ```
 
-Then, you can enter or exit a virtual environment with the `kuiper` package
-installed by sourcing the `enter.sh` or `exit.sh` scripts:
+`uv` will automatically recompile the Rust code whenever it changes and install
+it in the virual environment.
+
+To run the test suite, run
 
 ``` commandline
-source enter.sh
+uv run pytest
 ```
-
-``` commandline
-source exit.sh
-```
-
-Whenever you change the code, you need to rebuild. Instead of using `cargo`
-directly, use `maturin`:
-
-``` commandline
-maturin develop
-```
-
-This will build and install the python package into the current environment,
-which is the virtual environment created by the `enter.sh` script.

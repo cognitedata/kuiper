@@ -5,29 +5,31 @@ description = "A JSON to JSON transform and templating language from Cognite"
 readme = "README.md"
 requires-python = ">=3.10"
 keywords = ["JSON", "transformation"]
-authors = [
-  {name = "Mathias Lohne", email = "mathias.lohne@cognite.com"}
-]
-maintainers = [
-  {name = "Mathias Lohne", email = "mathias.lohne@cognite.com"}
-]
+authors = [{ name = "Mathias Lohne", email = "mathias.lohne@cognite.com" }]
+maintainers = [{ name = "Mathias Lohne", email = "mathias.lohne@cognite.com" }]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Rust",
-  "Programming Language :: Python"
+  "Programming Language :: Python",
 ]
 license = { text = "Apache-2.0" }
 
-dependencies = [
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
 ]
 
-[project.optional-dependencies]
-test = [
-  "pytest",
+[tool.uv]
+# Trigger re-compile if rust code or project config changes
+cache-keys = [
+  { file = "pyproject.toml" },
+  { file = "src/**/*.rs" },
+  { file = "Cargo.toml" },
+  { file = "Cargo.lock" },
+  { file = "../kuiper_lang/src/**/*.rs" },
 ]
-
-[package.metadata.maturin]
-python-source = "python"
 
 [project.urls]
 homepage = "https://cognite.com"
@@ -47,19 +49,16 @@ ignore = ["S104"]
 fixable = ["A", "B", "C", "D", "E", "F", "I", "UP"]
 unfixable = []
 
-exclude = [
-    ".git",
-    ".mypy_cache",
-    ".ruff_cache",
-]
+exclude = [".git", ".mypy_cache", ".ruff_cache"]
 
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 
 [tool.maturin]
-python-source = "python"
+module-name = "kuiper._core"
 python-packages = ["kuiper"]
+python-source = "src"
 
 [build-system]
 requires = ["maturin>=1.0,<2.0"]
