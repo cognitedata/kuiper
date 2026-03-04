@@ -32,7 +32,7 @@ pub(crate) fn make_function<T: FunctionExpression + DynamicFunction + 'static>(
 /// so you can just pass a function or closure of that type to the compiler.
 ///
 /// Note that these function names shadow built-in functions, but not macros.
-pub(crate) trait DynamicFunctionBuilder: Send + Sync {
+pub trait DynamicFunctionBuilder: Send + Sync {
     /// Create a new dynamic function with the given arguments and span.
     fn make_function(
         &self,
@@ -71,6 +71,14 @@ impl DynamicFunctionSource {
     ) {
         self.functions
             .insert(name.into(), Arc::new(make_function::<T>));
+    }
+
+    pub fn put(
+        &mut self,
+        name: impl Into<String>,
+        function_builder: Arc<dyn DynamicFunctionBuilder>,
+    ) {
+        self.functions.insert(name.into(), function_builder);
     }
 
     pub fn get(&self, name: &str) -> Option<&dyn DynamicFunctionBuilder> {

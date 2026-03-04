@@ -1,8 +1,9 @@
 import json
+from typing import Any
 
 import pytest
 
-from kuiper import KuiperCompileError, compile_expression
+from kuiper import KuiperCompileError, compile_expression, CustomFunction
 
 
 @pytest.mark.parametrize(
@@ -35,3 +36,26 @@ def test_compile(expression: str, should_work: bool) -> None:
 def test_run(expression: str, input: dict, expected_result: dict) -> None:
     result = compile_expression(expression, ["input"]).run(json.dumps(input))
     assert json.loads(result) == expected_result
+
+
+def simple_target():
+    return 42
+
+
+def with_args(x: Any, y: Any) -> Any:
+    #  Include some nestedness in the response to test the recursiveness of the conversions
+    return [x, y, x + y, {"a": 1, "b": {"c": [1, 2, 3]}}]
+
+
+def test_custom_function() -> None:
+    exp = compile_expression(
+        '{"simple": simple_target(), "with_args": with_args(input.num, 1)}',
+        ["input"],
+        custom_functions=[
+            CustomFunction("simple_target", simple_target),
+            CustomFunction("with_args", with_args),
+        ],
+    )
+
+    result = exp.run('{"num": 5}')
+    assert json.loads(result) == {"simple": 42, "with_args": [5, 1, 6, {"a": 1, "b": {"c": [1, 2, 3]}}]}

@@ -15,6 +15,7 @@ subclasses of the ``KuiperError`` base class.
 """
 
 from ._core import (
+    CustomFunction,
     KuiperExpression,
     compile_expression,
 )
@@ -41,4 +42,5 @@ __all__ = [
     "KuiperExpression",
     "KuiperRuntimeError",
     "compile_expression",
+    "CustomFunction",
 ]

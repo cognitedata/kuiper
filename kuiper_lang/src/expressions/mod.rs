@@ -21,7 +21,7 @@ pub use base::{
     get_function_expression, Constant, Expression, ExpressionExecutionState, ExpressionMeta,
     ExpressionType,
 };
-pub use functions::dynamic::DynamicFunction;
+pub use functions::dynamic::{DynamicFunction, DynamicFunctionBuilder};
 pub use functions::{function_def, FunctionExpression, FunctionInfo, LambdaAcceptFunction};
 pub use if_expr::IfExpression;
 pub use is_operator::{IsExpression, TypeLiteral};
