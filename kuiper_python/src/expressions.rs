@@ -10,7 +10,11 @@ use pyo3::{
 };
 use serde_json::{from_str, Value};
 
-#[pyclass(module = "kuiper")]
+/// A compiled Kuiper expression.
+///
+/// This class can not be instantiated directly, it should be created through the
+/// `compile_expression` function.
+#[pyclass(module = "kuiper", frozen)]
 pub struct KuiperExpression {
     expression: ExpressionType,
 }
@@ -44,6 +48,25 @@ impl KuiperExpression {
 
 #[pymethods]
 impl KuiperExpression {
+    /// Run the expression.
+    ///
+    /// This method evaluates the expression on the given input. It takes native python
+    /// objects as input and returns a native python object as output. The inputs must
+    /// be possible to turn into JSON, i.e., strings, integers, floats, booleans, None,
+    /// lists, or dictionaries.
+    ///
+    /// Args:
+    ///     inputs:          Inputs to the expression.
+    ///     max_operations:  Maximum number of operations allowed, useful for limiting
+    ///                      the computational resources used by an expression. If a
+    ///                      computation exceeds this limit, a KuiperRuntimeError is
+    ///                      raised.
+    ///
+    /// Returns:
+    ///     The result of evaluating the expression on the given input.
+    ///
+    /// Raises:
+    ///     KuiperRuntimeError: If the expression evaluation encounters an error.
     #[pyo3(signature = (*inputs, max_operations=None))]
     fn run(&self, inputs: Py<PyTuple>, max_operations: Option<i64>) -> PyResult<Py<PyAny>> {
         let inputs = Python::attach(|py| {
@@ -82,6 +105,23 @@ impl KuiperExpression {
         })
     }
 
+    /// Run the expression.
+    ///
+    /// This method evaluates the expression on the given input. It takes a JSON string
+    /// as input and returns a JSON string as output.
+    ///
+    /// Args:
+    ///     inputs:          Inputs to the expression as JSON strings.
+    ///     max_operations:  Maximum number of operations allowed, useful for limiting
+    ///                      the computational resources used by an expression. If a
+    ///                      computation exceeds this limit, a KuiperRuntimeError is
+    ///                      raised.
+    ///
+    /// Returns:
+    ///     The result of evaluating the expression on the given input.
+    ///
+    /// Raises:
+    ///     KuiperRuntimeError: If the expression evaluation encounters an error.
     #[pyo3(signature = (*inputs, max_operations=None))]
     fn run_json(&self, inputs: Vec<String>, max_operations: Option<i64>) -> PyResult<String> {
         let json = Self::get_expression_input(inputs.iter().map(String::as_str))?;

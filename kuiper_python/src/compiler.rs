@@ -11,8 +11,16 @@ use kuiper_lang::{
 use pyo3::{pyclass, pyfunction, pymethods, types::PyTuple, Py, PyAny, PyResult, Python};
 use std::{fmt::Display, sync::Arc};
 
+/// A custom function that can be used in Kuiper expressions.
+///
+/// Custom functions allows you to extend the Kuiper language with your own
+/// functions.
+///
+/// Args:
+///     name:    Name of the function as it will appear in Kuiper
+///     target:  Python callable that implements the function
 #[derive(Debug)]
-#[pyclass(frozen)]
+#[pyclass(module = "kuiper", frozen)]
 pub struct CustomFunction {
     name: String,
     target: Py<PyAny>,
@@ -122,6 +130,25 @@ fn build_custom_functions(
     config
 }
 
+/// Compile a Kuiper expression.
+///
+/// This function compiles a Kuiper expression into a `KuiperExpression` object.
+/// It takes the expression as a string, a list of input names, and optional
+/// configuration parameters for the compiler.
+///
+/// Args:
+///     expression:                 The Kuiper expression to compile.
+///     inputs:                     A list of input names for the expression.
+///     optimizer_operation_limit:  Maximum number of operations allowed during
+///                                 optimization.
+///     max_macro_expansions:       Maximum number of macro expansions allowed.
+///     custom_functions:           Optional list of custom functions to include.
+///
+/// Returns:
+///     A `KuiperExpression` object representing the compiled expression.
+///
+/// Raises:
+///     KuiperCompileError: If the compilation encounters an error.
 #[pyfunction]
 #[pyo3(name = "compile_expression")]
 #[pyo3(signature = (expression, inputs, optimizer_operation_limit=100_000, max_macro_expansions=20, custom_functions=None))]
