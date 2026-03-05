@@ -1,14 +1,14 @@
 mod exec_tree;
 mod optimizer;
 
-use std::fmt::Display;
+use std::{fmt::Display, sync::Arc};
 
 pub use exec_tree::BuildError;
 use logos::Span;
 pub use optimizer::optimize;
 
 use crate::{
-    expressions::{DynamicFunctionSource, ExpressionType},
+    expressions::{DynamicFunctionBuilder, DynamicFunctionSource, ExpressionType},
     functions::{DynamicFunction, FunctionExpression},
     lex::Token,
     lexer::Lexer,
@@ -83,6 +83,19 @@ impl CompilerConfig {
         name: impl Into<String>,
     ) -> Self {
         self.custom_function_source.with_function::<T>(name);
+        self
+    }
+
+    /// Add a custom dynamic function to the compiler.
+    /// This allows you to define custom functions at runtime by defining the
+    /// `DynamicFunctionBuilder` directly, sidestepping the requirement for the the
+    /// `FunctionExpression` trait.
+    pub fn with_custom_dynamic_function(
+        mut self,
+        name: impl Into<String>,
+        function_builder: Arc<dyn DynamicFunctionBuilder>,
+    ) -> Self {
+        self.custom_function_source.put(name, function_builder);
         self
     }
 }
