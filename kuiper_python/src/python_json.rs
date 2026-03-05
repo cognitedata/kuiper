@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
-use kuiper_lang::TransformError;
-use logos::Span;
+use kuiper_lang::{Span, TransformError};
 use pyo3::{
     types::{PyAnyMethods, PyBool, PyDict, PyFloat, PyInt, PyList, PyListMethods, PyString},
     FromPyObject, Py, PyAny, PyErr, PyResult, Python,

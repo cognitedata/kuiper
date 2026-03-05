@@ -6,9 +6,8 @@ use crate::{
 use kuiper_lang::{
     compile_expression_with_config, functions::DynamicFunction, CompilerConfig,
     DynamicFunctionBuilder, Expression, ExpressionExecutionState, ExpressionMeta, ExpressionType,
-    ResolveResult, TransformError,
+    ResolveResult, Span, TransformError,
 };
-use logos::Span;
 use pyo3::{pyclass, pyfunction, pymethods, types::PyTuple, Py, PyAny, PyResult, Python};
 use std::{fmt::Display, sync::Arc};
 

@@ -1055,7 +1055,6 @@ name = "kuiper_python"
 version = "0.18.2"
 dependencies = [
  "kuiper_lang",
- "logos",
  "pyo3",
  "serde_json",
 ]
