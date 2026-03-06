@@ -133,7 +133,8 @@ Is { @specialize<PlainVar, "is"> }
 @skip {} {
   String {
     "\"" doubleQuoteStringContent "\"" |
-    "'" singleQuoteStringContent "'"
+    "'" singleQuoteStringContent "'" |
+    "$\"" doubleQuoteStringContent "\""
   }
   Var {
     PlainVar |

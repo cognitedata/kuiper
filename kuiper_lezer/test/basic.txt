@@ -118,6 +118,14 @@ Program(Expression(Term(String)))
 
 Program(Expression(Term(String)), BlockComment, BlockComment)
 
+# Raw template string
+
+$"foo + {1 + 1}"
+
+==>
+
+Program(Expression(Term(String)))
+
 # Line comment
 
 'test // not a comment' // rest is a comment even when it contains math 1 + 1

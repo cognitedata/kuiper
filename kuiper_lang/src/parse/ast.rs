@@ -155,6 +155,19 @@ pub enum Expression {
         args: Vec<Expression>,
         loc: Span,
     },
+    TemplateString(TemplateString),
+}
+
+#[derive(Debug, Clone)]
+pub enum TemplateStringSegment {
+    Raw(String),
+    Expression(Expression),
+}
+
+#[derive(Debug, Clone)]
+pub struct TemplateString {
+    pub segments: Vec<TemplateStringSegment>,
+    pub loc: Span,
 }
 
 impl Display for Program {
@@ -232,6 +245,16 @@ impl Display for Expression {
                 }
 
                 Ok(())
+            }
+            Expression::TemplateString(s) => {
+                write!(f, "$\"")?;
+                for seg in &s.segments {
+                    match seg {
+                        TemplateStringSegment::Raw(s) => write!(f, "{s}")?,
+                        TemplateStringSegment::Expression(e) => write!(f, "{{{e}}}")?,
+                    }
+                }
+                write!(f, "\"")
             }
         }
     }
