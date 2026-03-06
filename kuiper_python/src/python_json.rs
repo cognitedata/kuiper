@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use kuiper_lang::{Span, TransformError};
 use pyo3::{
+    exceptions::PyTypeError,
     types::{PyAnyMethods, PyBool, PyDict, PyFloat, PyInt, PyList, PyListMethods, PyString},
     FromPyObject, Py, PyAny, PyErr, PyResult, Python,
 };
@@ -41,6 +42,13 @@ impl ConversionError {
                 TransformError::new_conversion_failed(e.to_string(), span)
             }
             ConversionError::PlainMessage(s) => TransformError::new_conversion_failed(s, span),
+        }
+    }
+
+    pub fn into_python_error(self) -> PyErr {
+        match self {
+            ConversionError::PythonError(e) => e,
+            ConversionError::PlainMessage(s) => PyErr::new::<PyTypeError, _>(s),
         }
     }
 }
