@@ -28,13 +28,25 @@ fn resolve_constants(
         return Ok(None);
     }
 
+    if !is_deterministic(root) {
+        // If the expression is not deterministic, we cannot optimize it,
+        // and we shouldn't run it, but we can still try to optimize its children.
+        for child in root.iter_children_mut() {
+            let res: Option<ExpressionType> =
+                resolve_constants(child, num_inputs, opcount, max_opcount)?;
+            if let Some(res) = res {
+                *child = res;
+            }
+        }
+        return Ok(None);
+    }
+
     let data = vec![None; num_inputs];
     let mut state = ExpressionExecutionState::new(&data, opcount, max_opcount);
 
     let res = match root.resolve(&mut state).map(|r| r.into_owned()) {
         // If resolution succeeds, we can replace this operator with a constant
-        Ok(x) if is_deterministic(root) => Ok(Some(ExpressionType::Constant(Constant::new(x)))),
-        Ok(_) => Ok(None),
+        Ok(x) => Ok(Some(ExpressionType::Constant(Constant::new(x)))),
         Err(e) => match e {
             // Any error that is not a source missing error would be a bug in this position,
             // since any execution that is variable between runs would return a source missing error before anything else.
