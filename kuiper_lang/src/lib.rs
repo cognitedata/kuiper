@@ -997,6 +997,14 @@ pub(crate) mod tests {
         );
     }
 
+    #[test]
+    fn test_template_string() {
+        let expr =
+            compile_expression(r#"$"Hello {input.foo} {\"foo\"} {{}}""#, &["input"]).unwrap();
+        let res = expr.run([&json!({"foo": "world"})]).unwrap().into_owned();
+        assert_eq!(res.as_str().unwrap(), "Hello world foo {}");
+    }
+
     #[derive(Debug, serde::Deserialize)]
     struct TestRunConfig {
         /// List of input parameters for this test run

@@ -5,7 +5,10 @@ use std::fmt::Display;
 
 use crate::{
     compiler::BuildError,
-    expressions::{run_builder::ExpressionRunBuilder, source::SourceData},
+    expressions::{
+        run_builder::ExpressionRunBuilder, source::SourceData,
+        template_string::TemplateStringExpression,
+    },
     functions::DynamicFunction,
     types::{Type, TypeError, TypeExecutionState},
     NULL_CONST,
@@ -410,6 +413,8 @@ pub enum ExpressionType {
     If(IfExpression),
     /// A macro call expression.
     MacroCallExpression(MacroCallExpression),
+    /// A template string expression.
+    TemplateString(TemplateStringExpression),
 }
 
 impl ExpressionType {

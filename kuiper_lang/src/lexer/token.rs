@@ -117,6 +117,11 @@ pub enum Token {
     #[regex(r#""(?:[^"\\]|\\.)*""#, |s| parse_string(s.slice(), '\"', s.span().start))]
     String(String),
 
+    /// A raw template string, which is expanded to multiple tokens in the next stage of the parser.
+    #[regex(r#"\$"(?:[^"\\]|\\.)*""#, |s| parse_string(&s.slice()[1..], '"', s.span().start))]
+    #[regex(r#"\$'(?:[^'\\]|\\.)*'"#, |s| parse_string(&s.slice()[1..], '\'', s.span().start))]
+    RawTemplateString(String),
+
     /// A literal refering to a type, also includes the null literal
     #[token("null", |_| TypeLiteral::Null)]
     #[token("int", |_| TypeLiteral::Int)]
@@ -141,8 +146,8 @@ pub enum Token {
     Else,
 
     /// A bare string, which is either part of a selector, or a function call.
-    #[regex(r#"\p{XID_Start}\p{XID_Continue}*"#, |s| s.slice().to_string(), priority = 1)]
-    #[regex(r#"[$@_a-zA-Z][_0-9a-zA-Z]*"#, |s| s.slice().to_string(), priority = 2)]
+    #[regex(r#"\p{XID_Start}\p{XID_Continue}*"#, |s| s.slice().to_string(), priority = 2)]
+    #[regex(r#"[$@_a-zA-Z][_0-9a-zA-Z]*"#, |s| s.slice().to_string(), priority = 3)]
     #[regex(r#"`(?:[^`\\]|\\.)*`"#, |s| parse_string(s.slice(), '`', s.span().start))]
     Identifier(String),
 
@@ -190,6 +195,13 @@ pub enum Token {
     /// A comment, the content is ignored.
     #[regex("//[^\n]*", allow_greedy = true)]
     Comment,
+
+    /// The start of a template string, expanded from a raw template string.
+    TemplateStringStart,
+    /// A static segment of a template string. This may be followed by an expression or a template string end.
+    TemplateStringSegment(String),
+    /// The end of a template string, which may be preceded by an expression or a template string segment.
+    TemplateStringEnd,
 }
 
 impl Display for Token {
@@ -222,6 +234,10 @@ impl Display for Token {
             Token::SemiColon => write!(f, ";"),
             Token::DefineEqual => write!(f, ":="),
             Token::DefineSym => write!(f, "#"),
+            Token::RawTemplateString(v) => write!(f, "$\"{v}\""),
+            Token::TemplateStringStart => write!(f, "$\"{{"),
+            Token::TemplateStringSegment(v) => write!(f, "}}{v}{{"),
+            Token::TemplateStringEnd => write!(f, "}}\""),
         }
     }
 }
@@ -465,5 +481,16 @@ mod test {
         assert_eq!(lex.next(), Some(Token::Integer(1)));
         assert_eq!(lex.next(), Some(Token::Comment));
         assert_eq!(lex.next(), None);
+    }
+
+    #[test]
+    fn test_raw_template_string() {
+        let mut lex = Token::lexer(r#"$"Hello, {name}! Today is {day}.""#).map(|t| t.unwrap());
+        assert_eq!(
+            lex.next(),
+            Some(Token::RawTemplateString(
+                "Hello, {name}! Today is {day}.".to_string()
+            ))
+        );
     }
 }
