@@ -43,7 +43,7 @@ macro_rules! function_def {
         pub struct $typ {
             args: [Box<$crate::ExpressionType>; $nargs],
             #[allow(dead_code)]
-            span: logos::Span,
+            span: $crate::Span,
         }
 
         function_def!(_display $typ);
@@ -55,7 +55,7 @@ macro_rules! function_def {
                 name: $name
             };
 
-            fn new(args: Vec<$crate::ExpressionType>, span: logos::Span) -> Result<Self, $crate::BuildError> {
+            fn new(args: Vec<$crate::ExpressionType>, span: $crate::Span) -> Result<Self, $crate::BuildError> {
                 if !Self::INFO.validate(args.len()) {
                     return Err($crate::BuildError::n_function_args(
                         span,
@@ -93,7 +93,7 @@ macro_rules! function_def {
         pub struct $typ {
             args: Vec<$crate::ExpressionType>,
             #[allow(dead_code)]
-            span: logos::Span
+            span: $crate::Span
         }
 
         function_def!(_display $typ);
@@ -105,7 +105,7 @@ macro_rules! function_def {
                 name: $name
             };
 
-            fn new(args: Vec<$crate::ExpressionType>, span: logos::Span) -> Result<Self, $crate::BuildError> {
+            fn new(args: Vec<$crate::ExpressionType>, span: $crate::Span) -> Result<Self, $crate::BuildError> {
                 if !Self::INFO.validate(args.len()) {
                     return Err($crate::BuildError::n_function_args(
                         span,

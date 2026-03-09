@@ -3,7 +3,7 @@ name = "cognite-kuiper"
 version = "0.18.2"
 description = "A JSON to JSON transform and templating language from Cognite"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 keywords = ["JSON", "transformation"]
 authors = [{ name = "Mathias Lohne", email = "mathias.lohne@cognite.com" }]
 maintainers = [{ name = "Mathias Lohne", email = "mathias.lohne@cognite.com" }]
@@ -37,7 +37,7 @@ repository = "https://github.com/cognitedata/kuiper"
 
 [tool.ruff]
 line-length = 120
-target-version = "py310"
+target-version = "py312"
 
 [tool.ruff.lint.per-file-ignores]
 "python/kuiper/__init__.py" = ["F403"]
