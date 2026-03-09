@@ -49,13 +49,16 @@ pub fn repl(verbose_log: bool) {
 
         match line {
             Ok(mut expression) => {
-                if expression.trim().is_empty() {
+                expression = expression.trim().to_string();
+                if expression.is_empty() {
                     continue;
                 }
 
                 let _ = readlines.add_history_entry(expression.as_str());
 
-                if expression.starts_with('/') {
+                if expression.starts_with('/')
+                    && !(expression.starts_with("//") || expression.starts_with("/*"))
+                {
                     match apply_magic_function(
                         expression,
                         &mut data,
