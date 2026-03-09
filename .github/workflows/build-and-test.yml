@@ -84,6 +84,12 @@ jobs:
         working-directory: ./kuiper_js
         run: wasm-pack build --weak-refs --scope cognite
 
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      - name: Test wasm package
+        working-directory: ./kuiper_js_test
+        run: yarn test
+
       # Codemirror module
       - name: Run install
         working-directory: ./kuiper_lezer
