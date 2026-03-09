@@ -1,9 +1,8 @@
 import json
-from typing import Any
 
 import pytest
 
-from kuiper import KuiperCompileError, compile_expression, CustomFunction
+from kuiper import JsonType, KuiperCompileError, compile_expression, CustomFunction
 
 
 @pytest.mark.parametrize(
@@ -26,23 +25,29 @@ def test_compile(expression: str, should_work: bool) -> None:
     assert should_work == worked
 
 
-@pytest.mark.parametrize(
-    "expression,input,expected_result",
-    [
-        ("input", {"hello": "there"}, {"hello": "there"}),
-        ("input.map(i => i + 4)", [1, 2, 3, 4], [5, 6, 7, 8]),
-    ],
-)
-def test_run(expression: str, input: dict, expected_result: dict) -> None:
-    result = compile_expression(expression, ["input"]).run(json.dumps(input))
+test_cases: list[tuple[str, JsonType, JsonType]] = [
+    ("input", {"hello": "there"}, {"hello": "there"}),
+    ("input.map(i => i + 4)", [1, 2, 3, 4], [5, 6, 7, 8]),
+]
+
+
+@pytest.mark.parametrize("expression,input,expected_result", test_cases)
+def test_run_json(expression: str, input: JsonType, expected_result: JsonType) -> None:
+    result = compile_expression(expression, ["input"]).run_json(json.dumps(input))
     assert json.loads(result) == expected_result
 
 
-def simple_target():
+@pytest.mark.parametrize("expression,input,expected_result", test_cases)
+def test_run_values(expression: str, input: JsonType, expected_result: JsonType) -> None:
+    result = compile_expression(expression, ["input"]).run(input)
+    assert result == expected_result
+
+
+def simple_target() -> int:
     return 42
 
 
-def with_args(x: Any, y: Any) -> Any:
+def with_args(x: int, y: int) -> JsonType:
     #  Include some nestedness in the response to test the recursiveness of the conversions
     return [x, y, x + y, {"a": 1, "b": {"c": [1, 2, 3]}}]
 
@@ -57,5 +62,5 @@ def test_custom_function() -> None:
         ],
     )
 
-    result = exp.run('{"num": 5}')
-    assert json.loads(result) == {"simple": 42, "with_args": [5, 1, 6, {"a": 1, "b": {"c": [1, 2, 3]}}]}
+    result = exp.run({"num": 5})
+    assert result == {"simple": 42, "with_args": [5, 1, 6, {"a": 1, "b": {"c": [1, 2, 3]}}]}

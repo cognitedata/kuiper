@@ -42,7 +42,7 @@ jobs:
   build_python_bindings:
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.12", "3.13", "3.14"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -83,6 +83,12 @@ jobs:
       - name: Build wasm package
         working-directory: ./kuiper_js
         run: wasm-pack build --weak-refs --scope cognite
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      - name: Test wasm package
+        working-directory: ./kuiper_js_test
+        run: yarn test
 
       # Codemirror module
       - name: Run install

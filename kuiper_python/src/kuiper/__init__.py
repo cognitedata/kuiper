@@ -6,7 +6,7 @@ Kuiper is a JSON to JSON transform and templating language from Cognite.
     from kuiper import compile_expression
 
     expression = compile_expression('{"theAnswer": input.numericValue + 27}', ["input"])
-    value = expression.run('{"numericValue": 15}')
+    value = expression.run({"numericValue": 15})
     print(value)
 
 The ``compile_expression`` function might raise a ``KuiperCompileError``, and otherwise returns a ``KuiperExpression``
@@ -19,6 +19,8 @@ from ._core import (
     KuiperExpression,
     compile_expression,
 )
+
+type JsonType = str | int | float | bool | None | list["JsonType"] | dict[str, "JsonType"]
 
 
 class KuiperError(Exception):
@@ -43,4 +45,5 @@ __all__ = [
     "KuiperRuntimeError",
     "compile_expression",
     "CustomFunction",
+    "JsonType",
 ]

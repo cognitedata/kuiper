@@ -28,6 +28,7 @@ uv.lock
 **/node_modules
 **/dist
 **/yarn.lock
+**/dist-test
 
 # .NET files
 **/bin
