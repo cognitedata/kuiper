@@ -144,6 +144,23 @@ IfExpr: ast::Expression = {
     }
 }
 
+
+TemplateString: ast::TemplateString = {
+    <start: @L> "t_start" <segments:(<"t_seg"> <Expr?>)*> "t_end" <end: @R> => ast::TemplateString {
+        segments: {
+            let mut res = Vec::new();
+            for (raw, expr) in segments.into_iter() {
+                res.push(ast::TemplateStringSegment::Raw(raw));
+                if let Some(expr) = expr {
+                    res.push(ast::TemplateStringSegment::Expression(expr));
+                }
+            }
+            res
+        },
+        loc: Span { start, end }
+    }
+}
+
 Term: ast::Expression = {
     <val:Spanned<Const>> => ast::Expression::Constant(val.0, val.1),
     <start:@L> <fun:Literal> "(" <args:Comma<FunctionArg>> ")" <end:@R> => ast::Expression::Function {
@@ -164,6 +181,7 @@ Term: ast::Expression = {
     },
     <e: IfFunc> => e,
     <e: IfExpr> => e,
+    <e: TemplateString> => ast::Expression::TemplateString(e),
     <e: Term> <start:@L> <sel:Selector> <end:@R> => ast::Expression::Selector {
         lhs: Box::new(e),
         sel,
@@ -302,5 +320,8 @@ extern {
         "..." => Token::DotDot,
         "not" => Token::Not,
         "def" => Token::DefineSym,
+        "t_start" => Token::TemplateStringStart,
+        "t_seg" => Token::TemplateStringSegment(<String>),
+        "t_end" => Token::TemplateStringEnd,
     }
 }

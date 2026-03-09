@@ -12,6 +12,7 @@ mod result;
 mod run_builder;
 mod selector;
 mod source;
+mod template_string;
 mod transform_error;
 
 pub use array::{ArrayElement, ArrayExpression};
@@ -34,6 +35,7 @@ pub use result::*;
 pub use run_builder::ExpressionRunBuilder;
 pub use selector::{SelectorElement, SelectorExpression, SourceElement};
 pub use source::{LazySourceData, LazySourceDataJson, SourceData};
+pub use template_string::{TemplateStringExpression, TemplateStringSegment};
 pub use transform_error::{TransformError, TransformErrorData};
 
 pub(crate) use base::FunctionType;

@@ -8,7 +8,7 @@ use crate::{
         get_function_expression, ArrayElement, ArrayExpression, DynamicFunctionSource,
         ExpressionType, FunctionType, IfExpression, IsExpression, LambdaExpression,
         MacroCallExpression, ObjectElement, ObjectExpression, OpExpression, SelectorElement,
-        SelectorExpression, SourceElement, UnaryOpExpression,
+        SelectorExpression, SourceElement, TemplateStringExpression, UnaryOpExpression,
     },
     parse::{Expression, FunctionParameter, Lambda, Macro, Program, Selector},
 };
@@ -378,6 +378,22 @@ impl BuilderInner {
                     .collect::<Result<Vec<_>, _>>()?,
                 loc,
             ))),
+            Expression::TemplateString(e) => Ok(ExpressionType::TemplateString({
+                let mut segments = Vec::new();
+                for seg in e.segments {
+                    segments.push(match seg {
+                        crate::parse::TemplateStringSegment::Raw(r) => {
+                            crate::expressions::TemplateStringSegment::Raw(r)
+                        }
+                        crate::parse::TemplateStringSegment::Expression(expression) => {
+                            crate::expressions::TemplateStringSegment::Expression(
+                                self.build_expression(expression, depth + 1)?,
+                            )
+                        }
+                    });
+                }
+                TemplateStringExpression::new(segments, e.loc)
+            })),
         }
     }
 }

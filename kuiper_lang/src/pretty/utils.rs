@@ -131,7 +131,8 @@ pub(super) fn trim_inter_token_whitespace(
                 | Token::Boolean(_)
                 | Token::Identifier(_)
                 | Token::String(_)
-                | Token::TypeLiteral(_),
+                | Token::TypeLiteral(_)
+                | Token::RawTemplateString(_),
             ),
             Some(Token::OpenBrace),
         ) => 1,

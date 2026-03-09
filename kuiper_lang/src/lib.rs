@@ -99,6 +99,7 @@ impl CompileError {
                     lexer::LexerError::ParseInt(x) => Some(x.1.clone()),
                     lexer::LexerError::ParseFloat(x) => Some(x.1.clone()),
                     lexer::LexerError::InvalidEscapeChar(x) => Some(x.1.clone()),
+                    lexer::LexerError::TemplateDepthExceeded(x) => Some(x.clone()),
                 },
             },
             CompileError::Optimizer(t) => t.span(),
@@ -995,6 +996,14 @@ pub(crate) mod tests {
         "#,
             "((a) => ($1 + 1))($0)",
         );
+    }
+
+    #[test]
+    fn test_template_string() {
+        let expr =
+            compile_expression(r#"$"Hello {input.foo} {\"foo\"} {{}}""#, &["input"]).unwrap();
+        let res = expr.run([&json!({"foo": "world"})]).unwrap().into_owned();
+        assert_eq!(res.as_str().unwrap(), "Hello world foo {}");
     }
 
     #[derive(Debug, serde::Deserialize)]
