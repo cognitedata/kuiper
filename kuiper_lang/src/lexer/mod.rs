@@ -30,6 +30,8 @@ pub enum LexerError {
     ParseFloat((ParseFloatError, Span)),
     /// An invalid escape character was encountered.
     InvalidEscapeChar((char, Span)),
+    /// The template depth exceeded the maximum allowed depth.
+    TemplateDepthExceeded(Span),
 }
 
 impl Display for LexerError {
@@ -40,6 +42,11 @@ impl Display for LexerError {
             LexerError::ParseInt(e) => write!(f, "Failed to parse string as integer: {}", e.0),
             LexerError::ParseFloat(e) => write!(f, "Failed to parse string as float: {}", e.0),
             LexerError::InvalidEscapeChar(c) => write!(f, "Invalid escape character: {}", c.0),
+            LexerError::TemplateDepthExceeded(s) => write!(
+                f,
+                "Template depth exceeded maximum of {} at {}..{}",
+                MAX_TEMPLATE_DEPTH, s.start, s.end
+            ),
         }
     }
 }
@@ -48,6 +55,7 @@ pub struct Lexer<T> {
     token_stream: T,
     inner: Option<TemplateExpansionState>,
     last: Option<Spanned<Token, usize, LexerError>>,
+    depth: usize,
 }
 
 enum TemplateIterState {
@@ -63,7 +71,7 @@ struct TemplateExpansionState {
 }
 
 impl TemplateExpansionState {
-    fn parse(raw: &str, start_offset: usize) -> Result<Self, LexerError> {
+    fn parse(raw: &str, start_offset: usize, lexer_depth: usize) -> Result<Self, LexerError> {
         enum State {
             Raw,
             Expression(usize),
@@ -95,7 +103,9 @@ impl TemplateExpansionState {
                             chars.next();
                             current.push('}');
                         } else {
-                            return Err(LexerError::InvalidToken(last_offset..next_offset));
+                            return Err(LexerError::InvalidToken(
+                                (next_offset - c.len_utf8())..next_offset,
+                            ));
                         }
                     } else {
                         current.push(c);
@@ -108,7 +118,7 @@ impl TemplateExpansionState {
                         if depth == 0 {
                             state = State::Raw;
                             segments.push_back(TemplateComponent::Expression(
-                                Lexer::new(&current)
+                                Lexer::new_inner(&current, lexer_depth + 1)
                                     .map(|v| v.map(|r| (r.0 + last_offset, r.1, r.2 + last_offset)))
                                     .collect(),
                             ));
@@ -166,23 +176,39 @@ enum TemplateComponent {
     Expression(VecDeque<Spanned<Token, usize, LexerError>>),
 }
 
+// Even just three nested templates is likely a mistake. This is to prevent infinite recursion in the lexer.
+const MAX_TEMPLATE_DEPTH: usize = 5;
+
 impl<'input> Lexer<SpannedIter<'input, Token>> {
     pub fn new(input: &'input str) -> Self {
         let stream = Token::lexer(input).spanned();
 
         Self::new_raw_tokens(stream)
     }
+
+    fn new_inner(input: &'input str, depth: usize) -> Self {
+        let stream = Token::lexer(input).spanned();
+
+        Self::new_raw_tokens_inner(stream, depth)
+    }
 }
 
 impl<T: Iterator<Item = (Result<Token, LexerError>, Span)>> Lexer<T> {
-    pub fn new_raw_tokens(mut stream: T) -> Self {
+    pub fn new_raw_tokens(stream: T) -> Self {
+        Self::new_raw_tokens_inner(stream, 0)
+    }
+
+    fn new_raw_tokens_inner(mut stream: T, depth: usize) -> Self {
         let mut inner = None;
 
         let last = loop {
             match stream.next() {
                 Some((Ok(Token::Comment), _)) => (),
                 Some((Ok(Token::RawTemplateString(s)), span)) => {
-                    match TemplateExpansionState::parse(&s, span.start + 2) {
+                    if depth >= MAX_TEMPLATE_DEPTH {
+                        break Some(Err(LexerError::InvalidToken(span)));
+                    }
+                    match TemplateExpansionState::parse(&s, span.start + 2, depth + 1) {
                         Ok(state) => {
                             inner = Some(state);
                             break inner.as_mut().unwrap().next();
@@ -200,6 +226,7 @@ impl<T: Iterator<Item = (Result<Token, LexerError>, Span)>> Lexer<T> {
             token_stream: stream,
             inner,
             last,
+            depth,
         }
     }
 
@@ -224,41 +251,47 @@ impl<T: Iterator<Item = (Result<Token, LexerError>, Span)>> Iterator for Lexer<T
     type Item = Spanned<Token, usize, LexerError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let tok = self.get_next_token();
         // Unpleasant hack to get around LR(1) and a bug in Logos.
         // Keep a token stored, and if we encounter ) =>, combine the two tokens.
 
-        match &tok {
-            Some(t) => match t {
-                // Skip comments. We can add other ignored tokens here.
-                Ok((_, Token::Comment, _)) => self.next(),
-                Ok((_, Token::Arrow, e)) => match self.last {
-                    Some(Ok((s, Token::CloseParenthesis, _))) => {
-                        self.last = self.get_next_token();
-                        Some(Ok((s, Token::CombinedArrow, *e)))
+        loop {
+            let tok = self.get_next_token();
+
+            match &tok {
+                Some(t) => match t {
+                    // Skip comments. We can add other ignored tokens here.
+                    Ok((_, Token::Comment, _)) => continue,
+                    Ok((_, Token::Arrow, e)) => match self.last {
+                        Some(Ok((s, Token::CloseParenthesis, _))) => {
+                            self.last = self.get_next_token();
+                            break Some(Ok((s, Token::CombinedArrow, *e)));
+                        }
+                        _ => {
+                            let lst = self.last.take();
+                            self.last = tok;
+                            break lst;
+                        }
+                    },
+                    Ok((_, Token::RawTemplateString(s), v)) => {
+                        if self.depth >= MAX_TEMPLATE_DEPTH {
+                            break Some(Err(LexerError::InvalidToken((*v)..(*v + 2))));
+                        }
+                        match TemplateExpansionState::parse(s, *v + 2, self.depth + 1) {
+                            Ok(state) => {
+                                self.inner = Some(state);
+                                continue;
+                            }
+                            Err(e) => break Some(Err(e)),
+                        }
                     }
                     _ => {
                         let lst = self.last.take();
                         self.last = tok;
-                        lst
+                        break lst;
                     }
                 },
-                Ok((_, Token::RawTemplateString(s), v)) => {
-                    match TemplateExpansionState::parse(s, *v + 2) {
-                        Ok(state) => {
-                            self.inner = Some(state);
-                            self.next()
-                        }
-                        Err(e) => Some(Err(e)),
-                    }
-                }
-                _ => {
-                    let lst = self.last.take();
-                    self.last = tok;
-                    lst
-                }
-            },
-            None => self.last.take(),
+                None => break self.last.take(),
+            }
         }
     }
 }

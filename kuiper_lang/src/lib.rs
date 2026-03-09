@@ -99,6 +99,7 @@ impl CompileError {
                     lexer::LexerError::ParseInt(x) => Some(x.1.clone()),
                     lexer::LexerError::ParseFloat(x) => Some(x.1.clone()),
                     lexer::LexerError::InvalidEscapeChar(x) => Some(x.1.clone()),
+                    lexer::LexerError::TemplateDepthExceeded(x) => Some(x.clone()),
                 },
             },
             CompileError::Optimizer(t) => t.span(),
