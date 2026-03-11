@@ -429,13 +429,18 @@ input.MessagePayload.SourceType, ":", input.MessagePayload.SourceName, ":", inpu
 
     #[test]
     fn test_pretty_printing_template_strings() {
-        // We don't format the insides of template strings at the moment.
-        // We might in the future. It is just a matter of running the formatter on
-        // each sub-expression inside the template string.
-        // The template strings themselves are formatted.
         test_pretty_print(
             r#"concat('A',$"Test {foo( 123 )},{bar(3,2)}")"#,
-            r#"concat('A', $"Test {foo( 123 )},{bar(3,2)}")"#,
+            r#"concat('A', $"Test {foo(123)},{bar(3, 2)}")"#,
+        );
+
+        test_pretty_print(
+            r#"$'test {concat( $"A {1+1} B","C")}'"#,
+            r#"$'test {concat($"A {1 + 1} B", "C")}'"#,
+        );
+        test_pretty_print(
+            r#"$'test {   [1, 2, 3].map((a)=>a+1 )}'"#,
+            r#"$'test {[1, 2, 3].map((a) => a + 1)}'"#,
         );
     }
 
