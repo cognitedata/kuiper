@@ -1,15 +1,20 @@
+use crate::builtins::BUILT_INS;
 use rustyline::{
-    completion::Completer, highlight::Highlighter, Context, Helper, Hinter, Validator,
+    completion::Completer, validate::MatchingBracketValidator, Context, Helper, Highlighter,
+    Hinter, Validator,
 };
 
-use crate::builtins::BUILT_INS;
-
-#[derive(Hinter, Validator, Helper)]
-pub struct KuiperHelper {}
+#[derive(Hinter, Helper, Validator, Highlighter)]
+pub struct KuiperHelper {
+    #[rustyline(Validator)]
+    validator: MatchingBracketValidator,
+}
 
 impl KuiperHelper {
     pub fn new() -> Self {
-        KuiperHelper {}
+        KuiperHelper {
+            validator: MatchingBracketValidator::new(),
+        }
     }
 }
 
@@ -52,5 +57,3 @@ impl Completer for KuiperHelper {
         Ok((low, candidates))
     }
 }
-
-impl Highlighter for KuiperHelper {}

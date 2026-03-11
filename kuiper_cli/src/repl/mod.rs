@@ -25,6 +25,9 @@ pub fn repl(verbose_log: bool) {
 
     let editor_config = Config::builder()
         .completion_type(CompletionType::List)
+        .completion_show_all_if_ambiguous(true)
+        .completion_prompt_limit(20)
+        .color_mode(rustyline::ColorMode::Enabled)
         .build();
 
     let mut readlines = Editor::with_config(editor_config).unwrap();
