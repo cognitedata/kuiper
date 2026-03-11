@@ -3,10 +3,10 @@ use std::iter::Peekable;
 use logos::{Logos, Span};
 
 use crate::{
-    lex::Token,
+    lex::{LexerError, Token},
     pretty::utils::{
-        check_closing_token, prettify_comment, raw_token, to_indent_token,
-        trim_inter_token_whitespace, IndentNode, IndentNodeKind, PrettyError,
+        check_closing_token, prettify_comment, prettify_template_string, raw_token,
+        to_indent_token, trim_inter_token_whitespace, IndentNode, IndentNodeKind, PrettyError,
     },
 };
 
@@ -57,9 +57,16 @@ impl<'a, T: Iterator<Item = (usize, Span)>> Formatter<'a, T> {
         }
     }
 
-    pub fn run(mut self) -> Result<String, PrettyError> {
-        // Iterate over the tokens and process them.
-        for (token, token_span) in Token::lexer(self.input).spanned() {
+    pub fn run(self) -> Result<String, PrettyError> {
+        let input = self.input;
+        self.run_with_tokens(Token::lexer(input).spanned())
+    }
+
+    pub fn run_with_tokens(
+        mut self,
+        tokens: impl Iterator<Item = (Result<Token, LexerError>, Span)>,
+    ) -> Result<String, PrettyError> {
+        for (token, token_span) in tokens {
             let token = token?;
             self.process_token(token, token_span)?;
         }
@@ -102,6 +109,10 @@ impl<'a, T: Iterator<Item = (usize, Span)>> Formatter<'a, T> {
             // cannot be its own token. Otherwise, comments would not be allowed to contain invalid tokens.
             self.output
                 .push_str(&prettify_comment(raw_token(self.input, token_span)));
+        } else if let Token::RawTemplateString(_) = &token {
+            self.output.push_str(&prettify_template_string(raw_token(
+                self.input, token_span,
+            ))?);
         } else {
             self.output.push_str(raw_token(self.input, token_span));
         }
