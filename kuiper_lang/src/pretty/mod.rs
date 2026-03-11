@@ -451,7 +451,7 @@ input.MessagePayload.SourceType, ":", input.MessagePayload.SourceName, ":", inpu
 [1, 2, 3].map(a=>
 #foo:=5;
 foo+ 1
-        )      
+        )
             "#,
             r#"
 [1, 2, 3].map(a =>
