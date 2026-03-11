@@ -1,5 +1,6 @@
 mod array;
 mod base;
+mod defines;
 mod functions;
 mod if_expr;
 mod is_operator;
@@ -22,6 +23,7 @@ pub use base::{
     get_function_expression, Constant, Expression, ExpressionExecutionState, ExpressionMeta,
     ExpressionType,
 };
+pub use defines::DefineExpression;
 pub use functions::dynamic::{DynamicFunction, DynamicFunctionBuilder};
 pub use functions::{function_def, FunctionExpression, FunctionInfo, LambdaAcceptFunction};
 pub use if_expr::IfExpression;

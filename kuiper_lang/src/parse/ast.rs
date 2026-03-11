@@ -61,7 +61,7 @@ impl From<Constant> for Value {
 #[derive(Debug, Clone)]
 pub struct Lambda {
     pub args: Vec<String>,
-    pub inner: Expression,
+    pub inner: InnerScope,
     pub loc: Span,
 }
 
@@ -124,8 +124,41 @@ pub struct Macro {
 
 #[derive(Debug, Clone)]
 pub struct Program {
-    pub macros: Vec<Macro>,
+    pub scope: OuterScope,
     pub expression: Expression,
+}
+
+#[derive(Debug, Clone)]
+pub struct Definition {
+    pub name: String,
+    pub loc: Span,
+    pub value: Expression,
+}
+
+#[derive(Debug, Clone)]
+pub enum OuterScopeItem {
+    Macro(Macro),
+    Definition(Definition),
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct OuterScope {
+    pub items: Vec<OuterScopeItem>,
+}
+
+#[derive(Debug, Clone)]
+pub struct InnerScope {
+    pub definitions: Vec<Definition>,
+    pub inner: Box<Expression>,
+}
+
+impl Display for InnerScope {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for def in &self.definitions {
+            write!(f, "#{} := {};", def.name, def.value)?;
+        }
+        write!(f, "{}", self.inner)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -172,8 +205,11 @@ pub struct TemplateString {
 
 impl Display for Program {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for m in &self.macros {
-            write!(f, "{} := {};", m.name, m.body)?;
+        for m in &self.scope.items {
+            match m {
+                OuterScopeItem::Macro(m) => write!(f, "#{} := {};", m.name, m.body)?,
+                OuterScopeItem::Definition(d) => write!(f, "#{} := {};", d.name, d.value)?,
+            }
         }
         write!(f, "{}", self.expression)
     }

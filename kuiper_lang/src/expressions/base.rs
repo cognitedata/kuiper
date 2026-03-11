@@ -7,7 +7,7 @@ use crate::{
     compiler::BuildError,
     expressions::{
         run_builder::ExpressionRunBuilder, source::SourceData,
-        template_string::TemplateStringExpression,
+        template_string::TemplateStringExpression, DefineExpression,
     },
     functions::DynamicFunction,
     types::{Type, TypeError, TypeExecutionState},
@@ -106,6 +106,10 @@ impl<'data, 'exec> ExpressionExecutionState<'data, 'exec> {
         }
     }
 
+    pub(crate) fn get_empty_temp_clone(&mut self) -> InternalExpressionExecutionState<'_, '_> {
+        self.get_temporary_clone(std::iter::empty(), 0)
+    }
+
     /// Increment the operation count, and check if it exceeds the maximum.
     /// If it does, return an error.
     pub fn inc_op(&mut self) -> Result<(), TransformError> {
@@ -147,6 +151,10 @@ impl<'data> InternalExpressionExecutionState<'data, '_> {
             #[cfg(feature = "completions")]
             completions: self.completions.as_deref_mut(),
         }
+    }
+
+    pub fn push_data(&mut self, data: &'data dyn SourceData) {
+        self.data.push(Some(data));
     }
 }
 
@@ -415,6 +423,8 @@ pub enum ExpressionType {
     MacroCallExpression(MacroCallExpression),
     /// A template string expression.
     TemplateString(TemplateStringExpression),
+    /// A define expression, i.e. a number of local variable definitions and an inner expression.
+    Define(DefineExpression),
 }
 
 impl ExpressionType {

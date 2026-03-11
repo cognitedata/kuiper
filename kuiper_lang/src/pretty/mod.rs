@@ -438,4 +438,22 @@ input.MessagePayload.SourceType, ":", input.MessagePayload.SourceName, ":", inpu
             r#"concat('A', $"Test {foo( 123 )},{bar(3,2)}")"#,
         );
     }
+
+    #[test]
+    fn test_pretty_printing_defines() {
+        test_pretty_print(
+            r#"
+[1, 2, 3].map(a=>
+#foo:=5;
+foo+ 1
+        )      
+            "#,
+            r#"
+[1, 2, 3].map(a =>
+    #foo := 5;
+    foo + 1
+)
+"#,
+        );
+    }
 }

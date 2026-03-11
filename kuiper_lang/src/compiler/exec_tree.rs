@@ -5,12 +5,15 @@ use thiserror::Error;
 
 use crate::{
     expressions::{
-        get_function_expression, ArrayElement, ArrayExpression, DynamicFunctionSource,
-        ExpressionType, FunctionType, IfExpression, IsExpression, LambdaExpression,
-        MacroCallExpression, ObjectElement, ObjectExpression, OpExpression, SelectorElement,
-        SelectorExpression, SourceElement, TemplateStringExpression, UnaryOpExpression,
+        get_function_expression, ArrayElement, ArrayExpression, DefineExpression,
+        DynamicFunctionSource, ExpressionType, FunctionType, IfExpression, IsExpression,
+        LambdaExpression, MacroCallExpression, ObjectElement, ObjectExpression, OpExpression,
+        SelectorElement, SelectorExpression, SourceElement, TemplateStringExpression,
+        UnaryOpExpression,
     },
-    parse::{Expression, FunctionParameter, Lambda, Macro, Program, Selector},
+    parse::{
+        Definition, Expression, FunctionParameter, Lambda, Macro, OuterScopeItem, Program, Selector,
+    },
 };
 
 use super::CompilerConfig;
@@ -99,6 +102,7 @@ impl BuildError {
 pub(crate) struct ExecTreeBuilder {
     inner: BuilderInner,
     expression: Expression,
+    outer_definitions: Vec<Definition>,
 }
 
 struct MacroCounter {
@@ -148,10 +152,18 @@ impl ExecTreeBuilder {
             inputs.insert((*inp).to_owned(), inputs.len());
         }
         let mut macros = HashMap::new();
-        for mc in program.macros {
-            let span = mc.body.loc.clone();
-            if macros.insert(mc.name.clone(), mc).is_some() {
-                return Err(BuildError::other(span, "Duplicate macro definition"));
+        let mut outer_definitions: Vec<Definition> = Vec::new();
+        for mc in program.scope.items.iter() {
+            match mc {
+                OuterScopeItem::Macro(m) => {
+                    let span = m.body.loc.clone();
+                    if macros.insert(m.name.clone(), m.clone()).is_some() {
+                        return Err(BuildError::other(span, "Duplicate macro definition"));
+                    }
+                }
+                OuterScopeItem::Definition(d) => {
+                    outer_definitions.push(d.clone());
+                }
             }
         }
         Ok(Self {
@@ -163,11 +175,34 @@ impl ExecTreeBuilder {
                 custom_functions: compiler_config.custom_function_source.clone(),
             },
             expression: program.expression,
+            outer_definitions,
         })
     }
 
     pub fn build(mut self) -> Result<ExpressionType, BuildError> {
-        self.inner.build_expression(self.expression, 0)
+        let mut defines = Vec::new();
+        for def in self.outer_definitions {
+            let value = self.inner.build_expression(def.value, 0)?;
+            if self
+                .inner
+                .known_inputs
+                .insert(def.name.clone(), self.inner.known_inputs.len())
+                .is_some()
+            {
+                return Err(BuildError::variable_conflict(def.loc, &def.name));
+            }
+            defines.push((def.name, value));
+        }
+
+        let mut inner_expr = self.inner.build_expression(self.expression, 0)?;
+        if !defines.is_empty() {
+            inner_expr = ExpressionType::Define(DefineExpression {
+                defines,
+                inner: Box::new(inner_expr),
+            });
+        }
+
+        Ok(inner_expr)
     }
 }
 
@@ -213,7 +248,30 @@ impl BuilderInner {
                 return Err(BuildError::variable_conflict(loc, inp));
             }
         }
-        let r = LambdaExpression::new(args, self.build_expression(inner, depth)?, loc)?;
+        // Resolve definitions in the lambda body, temporarily adding them as variables as well.
+        let mut defines = Vec::new();
+        for def in inner.definitions {
+            let value = self.build_expression(def.value, depth + 1)?;
+            if self
+                .known_inputs
+                .insert(def.name.clone(), self.known_inputs.len())
+                .is_some()
+            {
+                return Err(BuildError::variable_conflict(def.loc, &def.name));
+            }
+            temp_variables.push(def.name.clone());
+            defines.push((def.name, value));
+        }
+
+        let mut inner_expr = self.build_expression(*inner.inner, depth + 1)?;
+        if !defines.is_empty() {
+            inner_expr = ExpressionType::Define(DefineExpression {
+                defines,
+                inner: Box::new(inner_expr),
+            });
+        }
+
+        let r = LambdaExpression::new(args, inner_expr, loc)?;
         for var in temp_variables {
             self.known_inputs.remove(&var);
         }

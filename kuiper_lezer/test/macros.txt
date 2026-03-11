@@ -5,7 +5,7 @@ m1(1, 2)
 
 ==>
 
-Program(Macros(Macro(
+Program(OuterScope(Macro(
     FunctionName(Var(PlainVar)),
     Lambda(
         CommaSep(
@@ -36,7 +36,7 @@ m1(1, 2)
 
 ==>
 
-Program(Macros(Macro(
+Program(OuterScope(Macro(
     FunctionName(Var(PlainVar)),
     Lambda(
         CommaSep(
@@ -69,5 +69,79 @@ Expression(Term(FunctionCall(
     CommaSep(
         FunctionArg(Expression(Term(Number))),
         FunctionArg(Expression(Term(Number)))
+    )
+))))
+
+# Macros and definitions
+
+#m := (a, b) => a + b;
+#foo := x + 1;
+foo
+
+==>
+
+Program(OuterScope(Macro(
+    FunctionName(Var(PlainVar)),
+    Lambda(
+        CommaSep(
+            Variable(Var(PlainVar)),
+            Variable(Var(PlainVar))
+        ),
+        Arrow,
+        Expression(Operator(
+            Expression(Term(Variable(Var(PlainVar)))),
+            ArithOp,
+            Expression(Term(Variable(Var(PlainVar))))
+        ))
+    )
+), Definition(
+    FunctionName(Var(PlainVar)),
+    Expression(Operator(
+        Expression(Term(Variable(Var(PlainVar)))),
+        ArithOp,
+        Expression(Term(Number))
+    ))
+)),
+Expression(Term(Variable(Var(PlainVar)))))
+
+# Definitions in lambda
+
+[1].map(a =>
+    #foo := a + 1;
+    #bar := foo + 1;
+    bar
+)
+
+==>
+
+Program(Expression(Term(FunctionCall(
+    Term(Array(CommaSep(
+        ArrElem(Expression(Term(Number)))
+    ))),
+    FunctionName(Var(PlainVar)),
+    CommaSep(
+        FunctionArg(Lambda(
+            Variable(Var(PlainVar)),
+            Arrow,
+            InnerScope(
+                Definition(
+                    FunctionName(Var(PlainVar)),
+                    Expression(Operator(
+                        Expression(Term(Variable(Var(PlainVar)))),
+                        ArithOp,
+                        Expression(Term(Number))
+                    ))
+                ),
+                Definition(
+                    FunctionName(Var(PlainVar)),
+                    Expression(Operator(
+                        Expression(Term(Variable(Var(PlainVar)))),
+                        ArithOp,
+                        Expression(Term(Number))
+                    ))
+                )
+            ),
+            Expression(Term(Variable(Var(PlainVar))))
+        ))
     )
 ))))
