@@ -3,6 +3,7 @@ mod token;
 use std::{
     collections::VecDeque,
     fmt::Display,
+    iter::Peekable,
     num::{ParseFloatError, ParseIntError},
 };
 
@@ -51,11 +52,9 @@ impl Display for LexerError {
     }
 }
 
-pub struct Lexer<T> {
-    token_stream: T,
-    inner: Option<TemplateExpansionState>,
-    last: Option<Spanned<Token, usize, LexerError>>,
-    depth: usize,
+pub struct Lexer<T: Iterator<Item = (Result<Token, LexerError>, Span)>> {
+    token_stream: Peekable<T>,
+    inner: Vec<TemplateExpansionState>,
 }
 
 enum TemplateIterState {
@@ -64,14 +63,15 @@ enum TemplateIterState {
     Done,
 }
 
-struct TemplateExpansionState {
-    last_end: usize,
+pub(crate) struct TemplateExpansionState {
+    span: Span,
+    last_token_end: usize,
     segments: VecDeque<TemplateComponent>,
     state: TemplateIterState,
 }
 
 impl TemplateExpansionState {
-    fn parse(raw: &str, start_offset: usize, lexer_depth: usize) -> Result<Self, LexerError> {
+    pub(crate) fn parse(raw: &str, start_offset: usize) -> Result<Self, LexerError> {
         enum State {
             Raw,
             Expression(usize),
@@ -118,11 +118,16 @@ impl TemplateExpansionState {
                         if depth == 0 {
                             state = State::Raw;
                             segments.push_back(TemplateComponent::Expression(
-                                Lexer::new_inner(&current, lexer_depth + 1)
-                                    .map(|v| v.map(|r| (r.0 + last_offset, r.1, r.2 + last_offset)))
+                                Token::lexer(&current)
+                                    .spanned()
+                                    .map(|v| {
+                                        v.0.map(|r| {
+                                            (v.1.start + last_offset, r, v.1.end + last_offset)
+                                        })
+                                    })
                                     .collect(),
                             ));
-                            last_offset = next_offset;
+                            last_offset = next_offset - 1;
                             current = String::new();
                             continue;
                         } else {
@@ -137,23 +142,62 @@ impl TemplateExpansionState {
             segments.push_back(TemplateComponent::Raw(current, last_offset..next_offset));
         }
         Ok(Self {
-            last_end: start_offset + raw.len(),
+            span: (start_offset - 2)..(start_offset + raw.len() + 1),
+            last_token_end: start_offset - 2,
             segments,
             state: TemplateIterState::Begin,
         })
     }
 
+    fn peek(&self) -> Option<Spanned<Token, usize, LexerError>> {
+        match self.state {
+            TemplateIterState::Begin => Some(Ok((
+                self.span.start,
+                Token::TemplateStringStart,
+                self.span.start + 2,
+            ))),
+            TemplateIterState::InTemplate => self.segments.front().and_then(|seg| match seg {
+                TemplateComponent::Raw(s, span) => Some(Ok((
+                    span.start,
+                    Token::TemplateStringSegment(s.clone()),
+                    span.end,
+                ))),
+                TemplateComponent::Expression(expr) => expr.front().cloned(),
+            }),
+            TemplateIterState::Done => Some(Ok((
+                self.last_token_end,
+                Token::TemplateStringEnd,
+                self.span.end,
+            ))),
+        }
+    }
+}
+
+impl Iterator for TemplateExpansionState {
+    type Item = Spanned<Token, usize, LexerError>;
+
     fn next(&mut self) -> Option<Spanned<Token, usize, LexerError>> {
         match self.state {
             TemplateIterState::Begin => {
                 self.state = TemplateIterState::InTemplate;
-                Ok((self.last_end, Token::TemplateStringStart, self.last_end)).into()
+                self.last_token_end += 2;
+                Ok((
+                    self.last_token_end - 2,
+                    Token::TemplateStringStart,
+                    self.last_token_end,
+                ))
+                .into()
             }
             TemplateIterState::InTemplate => match self.segments.pop_front() {
                 Some(TemplateComponent::Raw(s, span)) => {
+                    self.last_token_end = span.end;
                     Some(Ok((span.start, Token::TemplateStringSegment(s), span.end)))
                 }
                 Some(TemplateComponent::Expression(mut expr)) => {
+                    self.last_token_end = expr
+                        .front()
+                        .and_then(|v| v.as_ref().ok().map(|(_, _, end)| *end))
+                        .unwrap_or(self.last_token_end);
                     let r = expr.pop_front();
                     if !expr.is_empty() {
                         self.segments
@@ -163,7 +207,7 @@ impl TemplateExpansionState {
                 }
                 None => {
                     self.state = TemplateIterState::Done;
-                    Ok((self.last_end, Token::TemplateStringEnd, self.last_end)).into()
+                    Ok((self.last_token_end, Token::TemplateStringEnd, self.span.end)).into()
                 }
             },
             TemplateIterState::Done => None,
@@ -185,57 +229,22 @@ impl<'input> Lexer<SpannedIter<'input, Token>> {
 
         Self::new_raw_tokens(stream)
     }
-
-    fn new_inner(input: &'input str, depth: usize) -> Self {
-        let stream = Token::lexer(input).spanned();
-
-        Self::new_raw_tokens_inner(stream, depth)
-    }
 }
 
 impl<T: Iterator<Item = (Result<Token, LexerError>, Span)>> Lexer<T> {
     pub fn new_raw_tokens(stream: T) -> Self {
-        Self::new_raw_tokens_inner(stream, 0)
-    }
-
-    fn new_raw_tokens_inner(mut stream: T, depth: usize) -> Self {
-        let mut inner = None;
-
-        let last = loop {
-            match stream.next() {
-                Some((Ok(Token::Comment), _)) => (),
-                Some((Ok(Token::RawTemplateString(s)), span)) => {
-                    if depth >= MAX_TEMPLATE_DEPTH {
-                        break Some(Err(LexerError::InvalidToken(span)));
-                    }
-                    match TemplateExpansionState::parse(&s, span.start + 2, depth + 1) {
-                        Ok(state) => {
-                            inner = Some(state);
-                            break inner.as_mut().unwrap().next();
-                        }
-                        Err(e) => break Some(Err(e)),
-                    }
-                }
-                Some((Ok(t), span)) => break Some(Ok((span.start, t, span.end))),
-                Some((Err(_), span)) => break Some(Err(LexerError::InvalidToken(span))),
-                None => break None,
-            }
-        };
-
         Self {
-            token_stream: stream,
-            inner,
-            last,
-            depth,
+            token_stream: stream.peekable(),
+            inner: Vec::new(),
         }
     }
 
     fn get_next_token(&mut self) -> Option<Spanned<Token, usize, LexerError>> {
-        if let Some(inner) = &mut self.inner {
+        while let Some(inner) = self.inner.last_mut() {
             if let Some(token) = inner.next() {
                 return Some(token);
             } else {
-                self.inner = None;
+                self.inner.pop();
             }
         }
 
@@ -244,6 +253,23 @@ impl<T: Iterator<Item = (Result<Token, LexerError>, Span)>> Lexer<T> {
             Err(LexerError::UnknownToken) => Err(LexerError::InvalidToken(span)),
             Err(e) => Err(e),
         })
+    }
+
+    fn peek(&mut self) -> Option<Spanned<Token, usize, LexerError>> {
+        if let Some(inner) = self.inner.last_mut() {
+            if let Some(token) = inner.peek() {
+                return Some(token);
+            }
+        }
+
+        self.token_stream
+            .peek()
+            .cloned()
+            .map(|(token, span)| match token {
+                Ok(t) => Ok((span.start, t, span.end)),
+                Err(LexerError::UnknownToken) => Err(LexerError::InvalidToken(span)),
+                Err(e) => Err(e),
+            })
     }
 }
 
@@ -261,36 +287,30 @@ impl<T: Iterator<Item = (Result<Token, LexerError>, Span)>> Iterator for Lexer<T
                 Some(t) => match t {
                     // Skip comments. We can add other ignored tokens here.
                     Ok((_, Token::Comment, _)) => continue,
-                    Ok((_, Token::Arrow, e)) => match self.last {
-                        Some(Ok((s, Token::CloseParenthesis, _))) => {
-                            self.last = self.get_next_token();
-                            break Some(Ok((s, Token::CombinedArrow, *e)));
+                    Ok((start, Token::CloseParenthesis, _)) => match self.peek() {
+                        Some(Ok((_, Token::Arrow, end))) => {
+                            self.get_next_token();
+                            break Some(Ok((*start, Token::CombinedArrow, end)));
                         }
-                        _ => {
-                            let lst = self.last.take();
-                            self.last = tok;
-                            break lst;
-                        }
+                        _ => break tok,
                     },
-                    Ok((_, Token::RawTemplateString(s), v)) => {
-                        if self.depth >= MAX_TEMPLATE_DEPTH {
-                            break Some(Err(LexerError::InvalidToken((*v)..(*v + 2))));
+                    Ok((start, Token::RawTemplateString(s), end)) => {
+                        if self.inner.len() + 1 >= MAX_TEMPLATE_DEPTH {
+                            break Some(Err(LexerError::TemplateDepthExceeded(*start..*end)));
                         }
-                        match TemplateExpansionState::parse(s, *v + 2, self.depth + 1) {
+                        match TemplateExpansionState::parse(s, *start + 2) {
                             Ok(state) => {
-                                self.inner = Some(state);
+                                self.inner.push(state);
                                 continue;
                             }
                             Err(e) => break Some(Err(e)),
                         }
                     }
                     _ => {
-                        let lst = self.last.take();
-                        self.last = tok;
-                        break lst;
+                        break tok;
                     }
                 },
-                None => break self.last.take(),
+                None => break tok,
             }
         }
     }

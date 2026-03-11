@@ -1,6 +1,8 @@
 use logos::Span;
 
 use crate::lex::{LexerError, Token};
+use crate::lexer::TemplateExpansionState;
+use crate::pretty::Formatter;
 use crate::ParseError;
 
 pub(super) fn iter_line_spans(input: &str) -> impl Iterator<Item = Span> + '_ {
@@ -178,6 +180,19 @@ pub(super) fn prettify_comment(comment: &str) -> String {
         }
         output
     }
+}
+
+pub(super) fn prettify_template_string(input: &str) -> Result<String, PrettyError> {
+    let formatter = Formatter::new(input, iter_line_spans(input).enumerate().peekable());
+    let inner = &input[2..(input.len() - 1)];
+    let inner_parser = TemplateExpansionState::parse(inner, 2)?;
+    let r = formatter.run_with_tokens(inner_parser.map(|v| match v {
+        Ok((start, token, end)) => (Ok(token), start..end),
+        // Some info is lost here, which is unfortunate, but it isn't critical for parsing, and it
+        // should never happen since we check that the template string is valid before trying to prettify it.
+        Err(err) => (Err(err), 0..0),
+    }))?;
+    Ok(r)
 }
 
 #[cfg(test)]
