@@ -122,8 +122,6 @@ jobs:
       - name: Build wasm package
         working-directory: ./kuiper_js
         run: wasm-pack build --weak-refs --scope cognite
-      - name: Copy npmrc to package dir
-        run: cp .npmrc ./kuiper_js/pkg/.npmrc
       - name: Publish wasm package
         working-directory: ./kuiper_js/pkg
         run: npm publish --registry="https://cognite.jfrog.io/artifactory/api/npm/cognite-internal-npm/" || true
