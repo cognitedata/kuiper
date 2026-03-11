@@ -443,4 +443,22 @@ input.MessagePayload.SourceType, ":", input.MessagePayload.SourceName, ":", inpu
             r#"$'test {[1, 2, 3].map((a) => a + 1)}'"#,
         );
     }
+
+    #[test]
+    fn test_pretty_printing_defines() {
+        test_pretty_print(
+            r#"
+[1, 2, 3].map(a=>
+#foo:=5;
+foo+ 1
+        )
+            "#,
+            r#"
+[1, 2, 3].map(a =>
+    #foo := 5;
+    foo + 1
+)
+"#,
+        );
+    }
 }

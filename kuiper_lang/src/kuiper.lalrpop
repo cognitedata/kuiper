@@ -9,8 +9,8 @@ use logos::Span;
 grammar;
 
 pub Program: ast::Program = {
-    <m:Macros?> <e:Expr> => ast::Program {
-        macros: m.unwrap_or_default(),
+    <s:OuterScope?> <e:Expr> => ast::Program {
+        scope: s.unwrap_or_default(),
         expression: e
     }
 }
@@ -22,9 +22,24 @@ Macro: ast::Macro = {
     }
 }
 
-Macros: Vec<ast::Macro> = {
-    <v:(<Macro> ";")+> => v,
+Definition: ast::Definition = {
+    <start:@L> "def" <v:"var"> ":=" <e:Expr> <end:@R> => ast::Definition {
+        name: v,
+        loc: Span { start, end },
+        value: e,
+    }
 }
+
+OuterScopeItem: ast::OuterScopeItem = {
+    <v:(<Macro> ";")> => ast::OuterScopeItem::Macro(v),
+    <v:(<Definition> ";")> => ast::OuterScopeItem::Definition(v),
+}
+
+OuterScope: ast::OuterScope = {
+    <v:(<OuterScopeItem>)+> => ast::OuterScope { items: v },
+}
+
+
 
 Const: ast::Constant = {
     <val:"uint"> => {
@@ -58,13 +73,26 @@ Spanned<T>: (T, Span) = {
     <start:@L> <e:T> <end:@R> => (e, Span { start, end })
 }
 
+Definitions: Vec<ast::Definition> = {
+    <v:(<Definition> ";")+> => v,
+}
+
+InnerScope: ast::InnerScope = {
+    <s:Definitions?> <e:Expr> => ast::InnerScope {
+        definitions: s.unwrap_or_default(),
+        inner: Box::new(e),
+    }
+}
+
+
+
 Lambda: ast::Lambda = {
-    <start:@L> "(" <args: Comma<"var">> ")=>" <e: Expr> <end:@R> => ast::Lambda {
+    <start:@L> "(" <args: Comma<"var">> ")=>" <e: InnerScope> <end:@R> => ast::Lambda {
         args,
         inner: e,
         loc: Span { start, end }
     },
-    <start:@L> <v:"var"> "=>" <e:Expr> <end:@R> => ast::Lambda {
+    <start:@L> <v:"var"> "=>" <e:InnerScope> <end:@R> => ast::Lambda {
         args: vec![v],
         inner: e,
         loc: Span { start, end }

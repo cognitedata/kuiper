@@ -660,6 +660,10 @@ impl<'data, 'exec> TypeExecutionState<'data, 'exec> {
 
         InternalTypeExecutionState { data }
     }
+
+    pub(crate) fn get_empty_temp_clone(&mut self) -> InternalTypeExecutionState<'_> {
+        self.get_temporary_clone(std::iter::empty(), 0)
+    }
 }
 #[allow(unused)]
 pub(crate) struct InternalTypeExecutionState<'data> {
@@ -670,6 +674,10 @@ pub(crate) struct InternalTypeExecutionState<'data> {
 impl<'data> InternalTypeExecutionState<'data> {
     pub fn get_temp_state<'slf>(&'slf mut self) -> TypeExecutionState<'data, 'slf> {
         TypeExecutionState::new(&self.data)
+    }
+
+    pub fn push_data(&mut self, data: &'data Type) {
+        self.data.push(data);
     }
 }
 

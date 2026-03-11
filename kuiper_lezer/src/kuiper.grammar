@@ -1,13 +1,16 @@
 @top Program {
-    Macros?
+    OuterScope?
     Expression
 }
 
 @skip { whitespace | BlockComment | LineComment }
 
 Macro { "#" FunctionName ":=" Lambda ";" }
+Definition { "#" FunctionName ":=" Expression ";" }
 
-Macros { (Macro)+ }
+OuterScope { (Macro | Definition)+ }
+
+InnerScope { (Definition)+ }
 
 Expression { Operator | Term }
 
@@ -18,8 +21,8 @@ Variable {
 }
 
 Lambda {
-    ("(" CommaSep<Variable> ~lambda ")" "=>" Expression) |
-    (Variable "=>" Expression)
+    ("(" CommaSep<Variable> ~lambda ")" "=>" InnerScope? Expression) |
+    (Variable "=>" InnerScope? Expression)
 }
 
 FunctionArg {
