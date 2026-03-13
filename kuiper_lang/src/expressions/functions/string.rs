@@ -506,11 +506,11 @@ impl Expression for TranslateFunction {
 mod tests {
     use serde_json::{json, Value};
 
-    use crate::{compile_expression, types::Type};
+    use crate::{compile_expression_test, types::Type};
 
     #[test]
     pub fn test_concat() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "concat2": concat('foo', 'bar'),
             "concat3": concat('foo', input.val1 + input.val2, 'bar')
@@ -530,7 +530,7 @@ mod tests {
 
     #[test]
     pub fn test_string_function() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "s1": string('foo'),
             "s2": string(123),
@@ -554,7 +554,7 @@ mod tests {
 
     #[test]
     pub fn test_substring_function() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "s1": "test".substring(2),
             "s2": "test".substring(2, 3),
@@ -593,7 +593,7 @@ mod tests {
 
     #[test]
     pub fn test_split_function() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "s1": "test some words".split(" "),
             "s2": "test".split(""),
@@ -636,7 +636,7 @@ mod tests {
 
     #[test]
     pub fn test_trim_function() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "s1": "test".trim_whitespace(),
             "s2": "   test   ".trim_whitespace(),
@@ -659,7 +659,7 @@ mod tests {
 
     #[test]
     pub fn test_replace_function() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "s1": "test_potato".replace("potato","tomato"),
             "s2": " ".replace(" ","tomato"),
@@ -678,7 +678,7 @@ mod tests {
 
     #[test]
     pub fn test_chars_function() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
         "test æøå".chars()
         "#,
@@ -700,7 +700,7 @@ mod tests {
 
     #[test]
     pub fn test_join() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
         {
             "test1": ["hello", "there"].string_join(" "),
@@ -719,7 +719,7 @@ mod tests {
 
     #[test]
     pub fn test_starts_with() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             {
                 "t1": "test".starts_with("tes"),
@@ -739,7 +739,7 @@ mod tests {
 
     #[test]
     pub fn test_ends_with() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             {
                 "t1": "test".ends_with("est"),
@@ -759,7 +759,7 @@ mod tests {
 
     #[test]
     fn test_lower() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
         {
             "t1": "TEST".lower(),
@@ -784,7 +784,7 @@ mod tests {
 
     #[test]
     fn test_upper() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
         {
             "t1": "TEST".upper(),
@@ -809,7 +809,7 @@ mod tests {
 
     #[test]
     fn test_translate() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
         {
             "t1": "hello".translate("ho","jy"),
@@ -830,7 +830,8 @@ mod tests {
 
     #[test]
     fn test_concat_types() {
-        let expr = compile_expression("concat(input1, input2)", &["input1", "input2"]).unwrap();
+        let expr =
+            compile_expression_test("concat(input1, input2)", &["input1", "input2"]).unwrap();
         let ty = expr.run_types([Type::Integer, Type::String]).unwrap();
         assert_eq!(ty, Type::String);
 
@@ -841,7 +842,7 @@ mod tests {
 
     #[test]
     fn test_string_types() {
-        let expr = compile_expression("string(input)", &["input"]).unwrap();
+        let expr = compile_expression_test("string(input)", &["input"]).unwrap();
         let ty = expr.run_types([Type::Integer]).unwrap();
         assert_eq!(ty, Type::String);
 
@@ -858,7 +859,7 @@ mod tests {
 
     #[test]
     fn test_replace_types() {
-        let expr = compile_expression("replace(input, 'a', 'b')", &["input"]).unwrap();
+        let expr = compile_expression_test("replace(input, 'a', 'b')", &["input"]).unwrap();
         let ty = expr.run_types([Type::Integer]).unwrap();
         assert_eq!(ty, Type::String);
 
@@ -869,7 +870,7 @@ mod tests {
 
     #[test]
     fn test_substring_types() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             "substring(input, inpu2, input3)",
             &["input", "inpu2", "input3"],
         )
@@ -893,28 +894,28 @@ mod tests {
 
     #[test]
     fn test_split_types() {
-        let expr = compile_expression("split(input, ' ')", &["input"]).unwrap();
+        let expr = compile_expression_test("split(input, ' ')", &["input"]).unwrap();
         let ty = expr.run_types([Type::String]).unwrap();
         assert_eq!(ty, Type::array_of_type(Type::String));
     }
 
     #[test]
     fn test_trim_whitespace_types() {
-        let expr = compile_expression("trim_whitespace(input)", &["input"]).unwrap();
+        let expr = compile_expression_test("trim_whitespace(input)", &["input"]).unwrap();
         let ty = expr.run_types([Type::String]).unwrap();
         assert_eq!(ty, Type::String);
     }
 
     #[test]
     fn test_chars_types() {
-        let expr = compile_expression("chars(input)", &["input"]).unwrap();
+        let expr = compile_expression_test("chars(input)", &["input"]).unwrap();
         let ty = expr.run_types([Type::String]).unwrap();
         assert_eq!(ty, Type::array_of_type(Type::String));
     }
 
     #[test]
     fn test_string_join_types() {
-        let expr = compile_expression("string_join(input, ' ')", &["input"]).unwrap();
+        let expr = compile_expression_test("string_join(input, ' ')", &["input"]).unwrap();
         let ty = expr.run_types([Type::array_of_type(Type::String)]).unwrap();
         assert_eq!(ty, Type::String);
     }
@@ -922,7 +923,8 @@ mod tests {
     #[test]
     fn test_starts_ends_with_types() {
         for func in ["starts_with", "ends_with"] {
-            let expr = compile_expression(&format!("{}(input, 'test')", func), &["input"]).unwrap();
+            let expr =
+                compile_expression_test(&format!("{}(input, 'test')", func), &["input"]).unwrap();
             let ty = expr.run_types([Type::String]).unwrap();
             assert_eq!(ty, Type::Boolean);
         }
@@ -931,7 +933,7 @@ mod tests {
     #[test]
     fn test_lower_upper_types() {
         for func in ["lower", "upper"] {
-            let expr = compile_expression(&format!("{}(input)", func), &["input"]).unwrap();
+            let expr = compile_expression_test(&format!("{}(input)", func), &["input"]).unwrap();
             let ty = expr.run_types([Type::String]).unwrap();
             assert_eq!(ty, Type::String);
         }
@@ -939,7 +941,7 @@ mod tests {
 
     #[test]
     fn test_translate_types() {
-        let expr = compile_expression("translate(input, 'abc', 'def')", &["input"]).unwrap();
+        let expr = compile_expression_test("translate(input, 'abc', 'def')", &["input"]).unwrap();
         let ty = expr.run_types([Type::String]).unwrap();
         assert_eq!(ty, Type::String);
     }

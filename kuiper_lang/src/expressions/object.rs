@@ -165,7 +165,7 @@ mod tests {
 
     #[test]
     fn test_object_types() {
-        let expr = crate::compile_expression(
+        let expr = crate::compile_expression_test(
             r#"
         {
             "a": 5,
@@ -193,7 +193,7 @@ mod tests {
 
     #[test]
     fn test_object_wrong_key_type() {
-        let expr = crate::compile_expression(
+        let expr = crate::compile_expression_test(
             r#"
             {
                 input: "value"

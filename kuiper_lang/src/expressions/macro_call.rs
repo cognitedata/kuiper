@@ -72,18 +72,13 @@ mod tests {
     use logos::Span;
     use serde_json::Value;
 
-    use crate::{compile_expression, BuildError, CompileError, TransformError};
-
-    fn compile_err(data: &str, inputs: &[&str]) -> CompileError {
-        match compile_expression(data, inputs) {
-            Ok(_) => panic!("Expected compilation to fail"),
-            Err(x) => x,
-        }
-    }
+    use crate::{
+        compile_expression_test, tests::compile_err, BuildError, CompileError, TransformError,
+    };
 
     #[test]
     pub fn test_simple_macro_expansion() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
         #my_macro := (a, b) => a + b;
 
@@ -124,7 +119,7 @@ mod tests {
 
     #[test]
     pub fn test_allowed_macro_nesting() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
         #m1 := (a, b) => a + b;
         #m2 := (c, d, e) => m1(c, d) + m1(d, e);
@@ -141,7 +136,7 @@ mod tests {
     #[test]
     pub fn test_macro_error_loc() {
         // Expect to get an error inside the macro expansion.
-        let expr = compile_expression(r#"#m := () => input / 0; m()"#, &["input"]).unwrap();
+        let expr = compile_expression_test(r#"#m := () => input / 0; m()"#, &["input"]).unwrap();
         let err = expr.run(&[Value::from(10)]).unwrap_err();
         match err {
             TransformError::InvalidOperation(d) => {
