@@ -1004,6 +1004,7 @@ dependencies = [
  "js-sys",
  "kuiper_lang",
  "serde_json",
+ "uuid",
  "wasm-bindgen",
  "wasm-bindgen-test",
 ]
