@@ -289,6 +289,7 @@ pub enum FunctionType {
     AcosFunction(AcosFunction),
     AtanFunction(AtanFunction),
     Random(RandomFunction),
+    Uuid4(Uuid4Function),
     CustomFunction(Box<dyn DynamicFunction>),
 }
 
@@ -383,6 +384,7 @@ pub fn get_function_expression(
         "acos" => FunctionType::AcosFunction(b.mk()?),
         "atan" => FunctionType::AtanFunction(b.mk()?),
         "random" => FunctionType::Random(b.mk()?),
+        "uuid4" => FunctionType::Uuid4(b.mk()?),
         _ => return Err(BuildError::unrecognized_function(b.pos, name)),
     };
     Ok(ExpressionType::Function(expr))
