@@ -107,7 +107,7 @@ impl KuiperExpression {
 
     /// Run the expression.
     ///
-    /// This method evaluates the expression on the given input. It takes a JSON string
+    /// This method evaluates the expression on the given input. It takes JSON strings
     /// as input and returns a JSON string as output.
     ///
     /// Args:
