@@ -33,7 +33,16 @@ mod tests {
     fn test_uuid4() {
         let expr = compile_expression("uuid4()", &[]).unwrap();
         let result = expr.run(std::iter::empty::<&serde_json::Value>()).unwrap();
-        result.as_str().expect("uuid4() should return a string");
+        let uuid_str = result.as_str().expect("uuid4() should return a string");
+
+        let parsed_uuid =
+            uuid::Uuid::parse_str(uuid_str).expect("uuid4() should return a valid UUID string");
+
+        assert_eq!(
+            parsed_uuid.get_version_num(),
+            4,
+            "uuid4() should return a version 4 UUID"
+        );
     }
 
     #[test]
@@ -43,5 +52,20 @@ mod tests {
             .run_types(std::iter::empty::<crate::types::Type>())
             .unwrap();
         assert_eq!(ty, crate::types::Type::String);
+    }
+
+    #[test]
+    fn test_uuid4_uniqueness() {
+        let expr = compile_expression("uuid4()", &[]).unwrap();
+        let result1 = expr.run(std::iter::empty::<&serde_json::Value>()).unwrap();
+        let result2 = expr.run(std::iter::empty::<&serde_json::Value>()).unwrap();
+
+        let uuid1 = result1.as_str().unwrap();
+        let uuid2 = result2.as_str().unwrap();
+
+        assert_ne!(
+            uuid1, uuid2,
+            "uuid4() should generate different UUIDs on each call"
+        );
     }
 }
