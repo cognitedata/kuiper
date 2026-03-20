@@ -223,10 +223,7 @@ pub unsafe extern "C" fn config_set_optimizer_operation_limit(
 ///
 /// `config` must be a valid, non-null pointer to a `CompilerConfig`,
 /// typically obtained from `new_compiler_config`.
-pub unsafe extern "C" fn config_set_max_macro_expansions(
-    config: *mut CompilerConfig,
-    limit: i32,
-) -> *mut CompilerConfig {
+pub unsafe extern "C" fn config_set_max_macro_expansions(config: *mut CompilerConfig, limit: i32) {
     let config = unsafe { &mut *config };
     config.inner = Some(
         config
@@ -235,7 +232,6 @@ pub unsafe extern "C" fn config_set_max_macro_expansions(
             .unwrap_or_default()
             .max_macro_expansions(limit),
     );
-    config
 }
 
 #[no_mangle]
@@ -254,8 +250,10 @@ pub unsafe extern "C" fn config_add_custom_function(
     config: *mut CompilerConfig,
     name: *const c_char,
     implementation: extern "C" fn(*const *mut c_char, usize) -> CustomFunctionResult,
-) {
-    let name = unsafe { CStr::from_ptr(name).to_str().unwrap() };
+) -> i32 {
+    let Ok(name) = (unsafe { CStr::from_ptr(name).to_str() }) else {
+        return -1;
+    };
     let config = unsafe { &mut *config };
 
     config.inner = Some(
@@ -271,6 +269,7 @@ pub unsafe extern "C" fn config_add_custom_function(
                 }),
             ),
     );
+    0
 }
 
 #[no_mangle]

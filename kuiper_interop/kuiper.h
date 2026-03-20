@@ -85,8 +85,8 @@ typedef struct CustomFunctionResult {
 // Add a custom function to a compiler configuration. The `implementation` function will be called
 // when the custom function is invoked in a kuiper expression. The `implementation` function should
 // return a `CustomFunctionResult` containing the result of the function or an error message.
-void config_add_custom_function(CompilerConfig *config, const char *name,
-                                CustomFunctionResult (*implementation)(const char **args, size_t arg_count));
+int config_add_custom_function(CompilerConfig *config, const char *name,
+                               CustomFunctionResult (*implementation)(const char **args, size_t arg_count));
 
 // Compile a kuiper expression with the given input argument names and a custom compiler configuration.
 CompileResult *compile_expression_with_config(const char *expression, const char **inputs, size_t input_count,
