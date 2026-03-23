@@ -1,19 +1,26 @@
 use std::{
-    ffi::{c_char, CStr, CString},
+    ffi::{c_char, c_void, CStr, CString},
+    fmt::Display,
     ptr::slice_from_raw_parts,
+    sync::Arc,
 };
 
-use kuiper_lang::{CompileError, ExpressionType, TransformError};
+use kuiper_lang::{
+    CompileError, DynamicFunctionBuilder, Expression, ExpressionMeta, ExpressionType, Span,
+    TransformError,
+};
 use serde_json::Value;
 use thiserror::Error;
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct CompileResult {
     pub error: KuiperError,
     pub result: *mut ExpressionType,
 }
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct KuiperError {
     pub error: *mut c_char,
     pub is_error: bool,
@@ -37,6 +44,7 @@ unsafe fn compile_expression_internal(
     data: *const c_char,
     inputs: *const *const c_char,
     len: usize,
+    config: &kuiper_lang::CompilerConfig,
 ) -> Result<ExpressionType, InteropError> {
     let data = unsafe { CStr::from_ptr(data) };
     let inputs = if len > 0 {
@@ -49,7 +57,11 @@ unsafe fn compile_expression_internal(
         Vec::new()
     };
 
-    Ok(kuiper_lang::compile_expression(data.to_str()?, &inputs)?)
+    Ok(kuiper_lang::compile_expression_with_config(
+        data.to_str()?,
+        &inputs,
+        config,
+    )?)
 }
 
 /// Destroy a compile result. Called from external code to correctly free rust allocated memory.
@@ -136,7 +148,12 @@ pub unsafe extern "C" fn compile_expression(
     inputs: *const *const c_char,
     len: usize,
 ) -> *mut CompileResult {
-    let res = match compile_expression_internal(data, inputs, len) {
+    let res = match compile_expression_internal(
+        data,
+        inputs,
+        len,
+        &kuiper_lang::CompilerConfig::default(),
+    ) {
         Ok(expr) => CompileResult {
             error: KuiperError {
                 error: std::ptr::null_mut(),
@@ -152,6 +169,257 @@ pub unsafe extern "C" fn compile_expression(
         },
     };
     Box::into_raw(Box::new(res))
+}
+
+#[derive(Default)]
+/// Opaque compiler config struct. Since the rust compiler config
+/// is by-value, we need to wrap it in an option to be able to modify it through the C API.
+pub struct CompilerConfig {
+    inner: Option<kuiper_lang::CompilerConfig>,
+}
+
+#[no_mangle]
+/// Create a new compiler configuration with default settings.
+pub extern "C" fn new_compiler_config() -> *mut CompilerConfig {
+    Box::into_raw(Box::new(CompilerConfig::default()))
+}
+
+#[no_mangle]
+/// Destroy a compiler configuration allocated by `new_compiler_config`.
+///
+/// # Safety
+///
+/// `config` must be a valid, non-null pointer to a `CompilerConfig`,
+/// typically obtained from `new_compiler_config`.
+pub unsafe extern "C" fn destroy_compiler_config(config: *mut CompilerConfig) {
+    unsafe { drop(Box::from_raw(config)) };
+}
+
+#[no_mangle]
+/// Set the optimizer operation limit for a compiler configuration.
+///
+/// # Safety
+///
+/// `config` must be a valid, non-null pointer to a `CompilerConfig`,
+/// typically obtained from `new_compiler_config`.
+pub unsafe extern "C" fn config_set_optimizer_operation_limit(
+    config: *mut CompilerConfig,
+    limit: i64,
+) {
+    let config = unsafe { &mut *config };
+    config.inner = Some(
+        config
+            .inner
+            .take()
+            .unwrap_or_default()
+            .optimizer_operation_limit(limit),
+    );
+}
+
+#[no_mangle]
+/// Set the maximum number of macro expansions for a compiler configuration.
+///
+/// # Safety
+///
+/// `config` must be a valid, non-null pointer to a `CompilerConfig`,
+/// typically obtained from `new_compiler_config`.
+pub unsafe extern "C" fn config_set_max_macro_expansions(config: *mut CompilerConfig, limit: i32) {
+    let config = unsafe { &mut *config };
+    config.inner = Some(
+        config
+            .inner
+            .take()
+            .unwrap_or_default()
+            .max_macro_expansions(limit),
+    );
+}
+
+#[no_mangle]
+/// Add a custom function to a compiler configuration. The `implementation` function will be called
+/// when the custom function is invoked in a kuiper expression. The `implementation` function should
+/// return a `CustomFunctionResult` containing the result of the function or an error message.
+///
+/// # Safety
+///
+/// `config` must be a valid, non-null pointer to a `CompilerConfig`,
+/// typically obtained from `new_compiler_config`.
+///
+/// `implementation` must be a valid function pointer that can be safely called
+/// with the provided arguments.
+pub unsafe extern "C" fn config_add_custom_function(
+    config: *mut CompilerConfig,
+    name: *const c_char,
+    implementation: extern "C" fn(*const *mut c_char, usize) -> CustomFunctionResult,
+) -> i32 {
+    let Ok(name) = (unsafe { CStr::from_ptr(name).to_str() }) else {
+        return -1;
+    };
+    let config = unsafe { &mut *config };
+
+    config.inner = Some(
+        config
+            .inner
+            .take()
+            .unwrap_or_default()
+            .with_custom_dynamic_function(
+                name,
+                Arc::new(CustomBuilder {
+                    function: Arc::new(implementation),
+                    name: name.to_string(),
+                }),
+            ),
+    );
+    0
+}
+
+#[no_mangle]
+/// Compile a kuiper expression from a string and a list of inputs, using custom compiler configuration.
+///
+/// Returns a result struct in which exactly one of `error` or `result` is non-null.
+///
+/// # Safety
+///
+/// `data` must be a valid, utf8-encoded, null terminated string. `inputs` must be an array of such strings
+/// with length `len`. If `len` is 0, `inputs` may be null.
+///
+/// `config` must be a valid compiler config instance, typically obtained from `new_compiler_config`
+/// and modified with the other config functions.
+pub unsafe extern "C" fn compile_expression_with_config(
+    data: *const c_char,
+    inputs: *const *const c_char,
+    len: usize,
+    config: *mut CompilerConfig,
+) -> *mut CompileResult {
+    let config = unsafe { &mut *config };
+    let r = match config.inner.as_ref() {
+        Some(inner) => compile_expression_internal(data, inputs, len, inner),
+        None => {
+            compile_expression_internal(data, inputs, len, &kuiper_lang::CompilerConfig::default())
+        }
+    };
+    let res = match r {
+        Ok(expr) => CompileResult {
+            error: KuiperError {
+                error: std::ptr::null_mut(),
+                is_error: false,
+                start: 0,
+                end: 0,
+            },
+            result: Box::into_raw(Box::new(expr)),
+        },
+        Err(e) => CompileResult {
+            error: e.into(),
+            result: std::ptr::null_mut(),
+        },
+    };
+    Box::into_raw(Box::new(res))
+}
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct CustomFunctionResult {
+    pub is_error: bool,
+    pub data: *mut c_char,
+    pub free_data: extern "C" fn(*mut c_void),
+}
+
+#[derive(Debug)]
+struct Custom {
+    function: Arc<unsafe extern "C" fn(*const *mut c_char, usize) -> CustomFunctionResult>,
+    args: Vec<ExpressionType>,
+    span: Span,
+    name: String,
+}
+
+impl Display for Custom {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}(", self.name)?;
+        let mut needs_comma = false;
+        for arg in &self.args {
+            if needs_comma {
+                write!(f, ", ")?;
+            }
+            write!(f, "{}", arg)?;
+            needs_comma = true;
+        }
+        write!(f, ")")
+    }
+}
+
+impl Expression for Custom {
+    fn is_deterministic(&self) -> bool {
+        false
+    }
+
+    fn resolve<'a>(
+        &'a self,
+        state: &mut kuiper_lang::ExpressionExecutionState<'a, '_>,
+    ) -> Result<kuiper_lang::ResolveResult<'a>, TransformError> {
+        let args = self
+            .args
+            .iter()
+            .map(|arg| {
+                let item = arg.resolve(state)?;
+                let item_str = serde_json::to_string(&item.as_ref()).map_err(|e| {
+                    TransformError::new_invalid_operation(e.to_string(), &self.span)
+                })?;
+                Ok::<_, TransformError>(item_str)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let c_args = args
+            .iter()
+            .map(|arg| CString::new(arg.as_str()).unwrap().into_raw())
+            .collect::<Vec<_>>();
+        let res = unsafe { (self.function)(c_args.as_ptr(), c_args.len()) };
+
+        // Clean up the C strings we allocated for the arguments
+        for arg in c_args {
+            unsafe { drop(CString::from_raw(arg)) };
+        }
+        let res_str = unsafe { CStr::from_ptr(res.data) }
+            .to_str()
+            .map(|v| v.to_string())
+            .map_err(|e| TransformError::new_invalid_operation(e.to_string(), &self.span));
+
+        // Call the provided free function to clean up the result string
+        (res.free_data)(res.data as *mut c_void);
+        let res_str = res_str?;
+
+        if res.is_error {
+            Err(TransformError::new_invalid_operation(res_str, &self.span))
+        } else {
+            let v: serde_json::Value = serde_json::from_str(&res_str)
+                .map_err(|e| TransformError::new_invalid_operation(e.to_string(), &self.span))?;
+            Ok(kuiper_lang::ResolveResult::Owned(v))
+        }
+    }
+}
+
+impl ExpressionMeta for Custom {
+    fn iter_children_mut(&mut self) -> Box<dyn Iterator<Item = &mut ExpressionType> + '_> {
+        Box::new(self.args.iter_mut())
+    }
+}
+
+struct CustomBuilder {
+    function: Arc<unsafe extern "C" fn(*const *mut c_char, usize) -> CustomFunctionResult>,
+    name: String,
+}
+
+impl DynamicFunctionBuilder for CustomBuilder {
+    fn make_function(
+        &self,
+        args: Vec<ExpressionType>,
+        span: Span,
+    ) -> Result<Box<dyn kuiper_lang::functions::DynamicFunction>, kuiper_lang::BuildError> {
+        Ok(Box::new(Custom {
+            function: self.function.clone(),
+            args,
+            span,
+            name: self.name.clone(),
+        }))
+    }
 }
 
 #[repr(C)]

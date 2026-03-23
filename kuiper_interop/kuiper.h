@@ -1,8 +1,8 @@
 #ifndef KUIPER_H
 #define KUIPER_H
 
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 // A header file documenting the kuiper interop API.
 
@@ -57,5 +57,39 @@ void destroy_expression(ExpressionType *expr);
 
 // Destroy a compile result allocated by `compile_expression`.
 void destroy_compile_result(CompileResult *result);
+
+// An opaque type representing a compiler configuration.
+typedef struct CompilerConfig CompilerConfig;
+
+// Create a new compiler configuration with default settings.
+CompilerConfig *new_compiler_config();
+
+// Destroy a compiler configuration allocated by `new_compiler_config`.
+void destroy_compiler_config(CompilerConfig *config);
+
+// Set the optimizer operation limit for a compiler configuration.
+void config_set_optimizer_operation_limit(CompilerConfig *config, long limit);
+
+// Set the maximum number of macro expansions for a compiler configuration.
+void config_set_max_macro_expansions(CompilerConfig *config, int limit);
+
+// The result of a custom function.
+// If `is_error` is true, then `data` contains an error message.
+// Otherwise, `data` contains the result of the function as a JSON string.
+typedef struct CustomFunctionResult {
+    bool is_error;
+    char *data;
+    void (*free_data)(void *);
+} CustomFunctionResult;
+
+// Add a custom function to a compiler configuration. The `implementation` function will be called
+// when the custom function is invoked in a kuiper expression. The `implementation` function should
+// return a `CustomFunctionResult` containing the result of the function or an error message.
+int config_add_custom_function(CompilerConfig *config, const char *name,
+                               CustomFunctionResult (*implementation)(const char **args, size_t arg_count));
+
+// Compile a kuiper expression with the given input argument names and a custom compiler configuration.
+CompileResult *compile_expression_with_config(const char *expression, const char **inputs, size_t input_count,
+                                              CompilerConfig *config);
 
 #endif
