@@ -41,11 +41,11 @@ cleanup:
 CustomFunctionResult custom_function(const char **args, size_t arg_count) {
     if (arg_count > 0 && strcmp(args[0], "\"hello\"") == 0) {
         char *result = strdup("\"world\"");
-        CustomFunctionResult res = {.is_error = false, .data = result, .free_data = free};
+        CustomFunctionResult res = {.is_error = false, .data = result, .free_payload = result, .free_data = free};
         return res;
     } else {
         char *result = strdup("\"unknown\"");
-        CustomFunctionResult res = {.is_error = false, .data = result, .free_data = free};
+        CustomFunctionResult res = {.is_error = false, .data = result, .free_payload = result, .free_data = free};
         return res;
     }
 }

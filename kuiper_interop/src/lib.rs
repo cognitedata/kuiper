@@ -320,6 +320,7 @@ pub unsafe extern "C" fn compile_expression_with_config(
 pub struct CustomFunctionResult {
     pub is_error: bool,
     pub data: *mut c_char,
+    pub free_payload: *mut c_void,
     pub free_data: extern "C" fn(*mut c_void),
 }
 
@@ -383,7 +384,7 @@ impl Expression for Custom {
             .map_err(|e| TransformError::new_invalid_operation(e.to_string(), &self.span));
 
         // Call the provided free function to clean up the result string
-        (res.free_data)(res.data as *mut c_void);
+        (res.free_data)(res.free_payload);
         let res_str = res_str?;
 
         if res.is_error {
