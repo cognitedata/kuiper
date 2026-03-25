@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -44,7 +46,7 @@ namespace Cognite.Kuiper
     {
 #pragma warning disable CS0649 // These fields are assigned in external code.
         public KuiperError error;
-        public IntPtr result;
+        public unsafe RawKuiperExpression* result;
 #pragma warning restore CS0649
     }
 
@@ -55,6 +57,25 @@ namespace Cognite.Kuiper
         public unsafe byte* result;
 #pragma warning restore CS0649
     }
+
+    internal struct RawKuiperExpression { }
+
+    internal struct RawCompilerConfig { }
+
+    internal struct CustomFunctionResult
+    {
+        public bool isError;
+        public unsafe byte* data;
+        public IntPtr free_payload;
+        public IntPtr freeData;
+    }
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    internal unsafe delegate void FreeDataCallback(byte* data);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    internal unsafe delegate CustomFunctionResult CustomFunctionCallback(byte** args, UIntPtr argsLen);
+
     internal static class KuiperInterop
     {
         public const string NativeLib = "kuiper_interop";
@@ -66,27 +87,59 @@ namespace Cognite.Kuiper
         public unsafe static extern void destroy_compile_result(CompileResult* data);
 
         [DllImport(NativeLib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "get_expression_from_compile_result")]
-        public unsafe static extern IntPtr get_expression_from_compile_result(CompileResult* result);
+        public unsafe static extern RawKuiperExpression* get_expression_from_compile_result(CompileResult* result);
 
         [DllImport(NativeLib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "destroy_transform_result")]
         public unsafe static extern void destroy_transform_result(TransformResult* result);
 
         [DllImport(NativeLib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "run_expression")]
-        public unsafe static extern TransformResult* run_expression(byte** data, UIntPtr len, IntPtr expression);
+        public unsafe static extern TransformResult* run_expression(byte** data, UIntPtr len, RawKuiperExpression* expression);
 
         [DllImport(NativeLib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "destroy_expression")]
-        public unsafe static extern void destroy_expression(IntPtr data);
+        public unsafe static extern void destroy_expression(RawKuiperExpression* data);
 
         [DllImport(NativeLib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "expression_to_string")]
-        public unsafe static extern byte* expression_to_string(IntPtr expression);
+        public unsafe static extern byte* expression_to_string(RawKuiperExpression* expression);
 
         [DllImport(NativeLib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "destroy_string")]
         public unsafe static extern void destroy_string(byte* data);
+
+        [DllImport(NativeLib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "new_compiler_config")]
+        public unsafe static extern RawCompilerConfig* new_compiler_config();
+
+        [DllImport(NativeLib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "destroy_compiler_config")]
+        public unsafe static extern void destroy_compiler_config(RawCompilerConfig* config);
+
+        [DllImport(NativeLib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "config_set_optimizer_operation_limit")]
+        public unsafe static extern void config_set_optimizer_operation_limit(RawCompilerConfig* config, long limit);
+
+        [DllImport(NativeLib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "config_set_max_macro_expansions")]
+        public unsafe static extern void config_set_max_macro_expansions(RawCompilerConfig* config, int limit);
+
+        [DllImport(NativeLib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "config_add_custom_function")]
+        public unsafe static extern int config_add_custom_function(RawCompilerConfig* config, byte* name, IntPtr callback);
+
+        [DllImport(NativeLib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "compile_expression_with_config")]
+        public unsafe static extern CompileResult* compile_expression_with_config(byte* expression, byte** inputs, UIntPtr inputs_len, RawCompilerConfig* config);
     }
 
-    public class KuiperExpression : IDisposable
+    internal static class Utils
     {
-        private IntPtr _expression;
+        public static unsafe string PointerToStringUTF8(byte* input)
+        {
+            int length = 0;
+            for (byte* i = input; i[length] != 0; length++) ;
+
+            return Encoding.UTF8.GetString(input, length);
+        }
+    }
+
+    public sealed class KuiperExpression : IDisposable
+    {
+        private unsafe RawKuiperExpression* _expression;
+        private static CompilerConfig defaultConfig = new CompilerConfig();
+
+        private readonly CompilerConfig _config;
 
         /// <summary>
         /// Compile a kuiper expression.
@@ -95,8 +148,13 @@ namespace Cognite.Kuiper
         /// </summary>
         /// <param name="expression">Expression code</param>
         /// <param name="inputs">A list of available input arguments</param>
-        public KuiperExpression(string expression, params string[] inputs)
+        public KuiperExpression(string expression, params string[] inputs) : this(expression, defaultConfig, inputs)
         {
+        }
+
+        public KuiperExpression(string expression, CompilerConfig config, params string[] inputs)
+        {
+            _config = config;
             unsafe
             {
                 var rawExpression = Encoding.UTF8.GetBytes(expression + char.MinValue);
@@ -119,7 +177,7 @@ namespace Cognite.Kuiper
                 {
                     fixed (byte** inputsToRust = &inputPtrs[0])
                     {
-                        exc = InitExpression(expressionPtr, inputsToRust, (nuint)rawInputs.Length);
+                        exc = InitExpression(expressionPtr, inputsToRust, (nuint)rawInputs.Length, config.GetRawConfig());
                     }
                     for (int i = 0; i < pinnedInputs.Length; i++)
                     {
@@ -129,7 +187,7 @@ namespace Cognite.Kuiper
                 }
                 else
                 {
-                    exc = InitExpression(expressionPtr, null, 0);
+                    exc = InitExpression(expressionPtr, null, 0, config.GetRawConfig());
                 }
 
                 if (exc != null) throw exc;
@@ -146,15 +204,15 @@ namespace Cognite.Kuiper
             string msg = "";
             if (((IntPtr)error.error) != IntPtr.Zero)
             {
-                msg = PointerToStringUTF8(error.error);
+                msg = Utils.PointerToStringUTF8(error.error);
             }
             return new KuiperException(msg, error.start, error.end);
         }
 
-        private unsafe KuiperException InitExpression(byte* expressionPtr, byte** inputsToRust, nuint inputsLength)
+        private unsafe KuiperException InitExpression(byte* expressionPtr, byte** inputsToRust, nuint inputsLength, RawCompilerConfig* config)
         {
             KuiperException exc = null;
-            var result = KuiperInterop.compile_expression(expressionPtr, inputsToRust, inputsLength);
+            var result = KuiperInterop.compile_expression_with_config(expressionPtr, inputsToRust, inputsLength, config);
             exc = ExceptionFromError((*result).error);
             if (exc == null)
             {
@@ -162,14 +220,6 @@ namespace Cognite.Kuiper
             }
 
             return exc;
-        }
-
-        private unsafe string PointerToStringUTF8(byte* input)
-        {
-            int length = 0;
-            for (byte* i = input; i[length] != 0; length++) ;
-
-            return Encoding.UTF8.GetString(input, length);
         }
 
         /// <summary>
@@ -210,8 +260,7 @@ namespace Cognite.Kuiper
                 {
                     exc = RunInternal(null, 0, out transformedData);
                 }
-
-                if (exc != null) throw exc;
+                if (exc != null) ExceptionDispatchInfo.Capture(exc).Throw();
                 return transformedData;
             }
         }
@@ -224,7 +273,7 @@ namespace Cognite.Kuiper
             exc = ExceptionFromError((*result).error);
             if (exc == null)
             {
-                transformedData = PointerToStringUTF8((*result).result);
+                transformedData = Utils.PointerToStringUTF8((*result).result);
                 KuiperInterop.destroy_transform_result(result);
             }
             return exc;
@@ -236,7 +285,7 @@ namespace Cognite.Kuiper
             unsafe
             {
                 var result = KuiperInterop.expression_to_string(_expression);
-                string resString = PointerToStringUTF8(result);
+                string resString = Utils.PointerToStringUTF8(result);
                 KuiperInterop.destroy_string(result);
                 return resString;
             }
@@ -246,14 +295,169 @@ namespace Cognite.Kuiper
 
         private bool disposedValue;
 
-        protected virtual void Dispose(bool disposing)
+        private void Dispose(bool disposing)
         {
             if (!disposedValue)
             {
-                if (_expression != IntPtr.Zero)
+                unsafe
                 {
-                    KuiperInterop.destroy_expression(_expression);
-                    _expression = IntPtr.Zero;
+                    if (_expression != null)
+                    {
+                        KuiperInterop.destroy_expression(_expression);
+                        _expression = null;
+                    }
+                }
+
+
+                disposedValue = true;
+            }
+        }
+
+        /// <inheritdoc />
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+    }
+
+    /// <summary>
+    /// Optional configuration for kuiper expressions.
+    /// </summary>
+    public sealed class CompilerConfig : IDisposable
+    {
+        private unsafe RawCompilerConfig* _config;
+
+        /// <summary>
+        /// Note: This appears unused, but _must_ be kept alive since the custom functions
+        /// may be called from native code at any time.
+        /// </summary>
+        private readonly List<CustomFunctionCallback> _customFunctionCallbacks = new List<CustomFunctionCallback>();
+
+        /// <summary>
+        /// Construct a new empty compiler config.
+        /// </summary>
+        public CompilerConfig()
+        {
+            unsafe
+            {
+                _config = KuiperInterop.new_compiler_config();
+            }
+        }
+
+        /// <summary>
+        /// Set a limit on the number of operations the optimizer will perform when optimizing an expression.
+        /// </summary>
+        /// <param name="limit">The maximum number of operations.</param>
+        public CompilerConfig SetOptimizerOperationLimit(long limit)
+        {
+            unsafe
+            {
+                KuiperInterop.config_set_optimizer_operation_limit(_config, limit);
+            }
+            return this;
+        }
+
+
+        /// <summary>
+        /// Set a limit on the number of macro expansions that will be performed when compiling an expression.
+        /// </summary>
+        /// <param name="limit">Maximum number of macro expansions.</param>
+        public CompilerConfig SetMaxMacroExpansions(int limit)
+        {
+            unsafe
+            {
+                KuiperInterop.config_set_max_macro_expansions(_config, limit);
+            }
+            return this;
+        }
+
+        unsafe static FreeDataCallback freeDataDelegate = new FreeDataCallback(data =>
+        {
+            var handle = GCHandle.FromIntPtr((IntPtr)data);
+            handle.Free();
+        });
+
+        /// <summary>
+        /// Add a custom function that can be called from kuiper expressions.
+        /// </summary>
+        /// <param name="name">The name of the custom function.</param>
+        /// <param name="callback">The callback function to be invoked.</param>
+        /// <exception cref="InvalidOperationException">If adding the custom function fails for some reason.</exception>
+        public CompilerConfig AddCustomFunction(string name, Func<string[], string> callback)
+        {
+            unsafe
+            {
+                var rawName = Encoding.UTF8.GetBytes(name + char.MinValue);
+                var pinnedName = GCHandle.Alloc(rawName, GCHandleType.Pinned);
+                var namePtr = (byte*)pinnedName.AddrOfPinnedObject();
+
+                CustomFunctionResult inner(byte** args, UIntPtr argsLen)
+                {
+                    var strings = new string[argsLen.ToUInt64()];
+                    for (ulong i = 0; i < argsLen.ToUInt64(); i++)
+                    {
+                        strings[i] = Utils.PointerToStringUTF8(args[i]);
+                    }
+                    string result;
+                    bool isError = false;
+                    try
+                    {
+                        result = callback(strings);
+                    }
+                    catch (Exception ex)
+                    {
+                        isError = true;
+                        result = ex.Message;
+                    }
+
+                    var rawResult = Encoding.UTF8.GetBytes(result + char.MinValue);
+                    var pinnedResult = GCHandle.Alloc(rawResult, GCHandleType.Pinned);
+                    var resultPtr = GCHandle.ToIntPtr(pinnedResult);
+
+                    return new CustomFunctionResult
+                    {
+                        isError = isError,
+                        data = (byte*)pinnedResult.AddrOfPinnedObject(),
+                        free_payload = resultPtr,
+                        freeData = Marshal.GetFunctionPointerForDelegate(freeDataDelegate)
+                    };
+                }
+
+                var dg = new CustomFunctionCallback(inner);
+                _customFunctionCallbacks.Add(dg);
+
+                IntPtr callbackPtr = Marshal.GetFunctionPointerForDelegate(dg);
+
+                int res = KuiperInterop.config_add_custom_function(_config, namePtr, callbackPtr);
+                pinnedName.Free();
+
+                if (res != 0)
+                {
+                    throw new InvalidOperationException($"Failed to add custom function {name} to compiler config");
+                }
+            }
+            return this;
+        }
+
+        internal unsafe RawCompilerConfig* GetRawConfig() => _config;
+
+        ~CompilerConfig() => Dispose(false);
+
+        private bool disposedValue;
+
+        private void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                unsafe
+                {
+                    if (_config != null)
+                    {
+                        KuiperInterop.destroy_compiler_config(_config);
+                        _config = null;
+                    }
                 }
 
                 disposedValue = true;

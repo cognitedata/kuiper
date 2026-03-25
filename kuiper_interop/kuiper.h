@@ -77,8 +77,15 @@ void config_set_max_macro_expansions(CompilerConfig *config, int limit);
 // If `is_error` is true, then `data` contains an error message.
 // Otherwise, `data` contains the result of the function as a JSON string.
 typedef struct CustomFunctionResult {
+    // Indicates whether the custom function resulted in an error.
     bool is_error;
+    // The result of the custom function as a JSON string, or an error message if `is_error` is true.
     char *data;
+    // A pointer to data passed to the `free_data` function for cleanup. This is typically the same as `data`, but can
+    // be a different pointer if needed.
+    void *free_payload;
+    // A function pointer to a function that can be called to free the memory allocated for `data` and any associated
+    // resources. The `free_payload` pointer will be passed to this function when it is called.
     void (*free_data)(void *);
 } CustomFunctionResult;
 
