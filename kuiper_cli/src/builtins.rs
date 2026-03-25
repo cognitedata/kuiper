@@ -5,7 +5,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-pub const BUILT_INS: [&str; 70] = [
+pub const BUILT_INS: [&str; 71] = [
     "acos(",
     "all(",
     "any(",
@@ -75,6 +75,7 @@ pub const BUILT_INS: [&str; 70] = [
     "try_float(",
     "try_int(",
     "upper(",
+    "uuid4(",
     "zip(",
 ];
 
@@ -594,6 +595,13 @@ The format is given using the table found [here](https://docs.rs/chrono/latest/c
             FunctionDef {
                 signature: "upper(x)",
                 description: "Convert all characters in the string `x` to uppercase. If `x` is a boolean or number, it will be converted to a string first.",
+            }
+        ),
+        (
+            "uuid4",
+            FunctionDef {
+                signature: "uuid4()",
+                description: "Generate a random UUID (version 4) and return it as a string.",
             }
         ),
         (

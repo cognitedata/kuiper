@@ -14,6 +14,7 @@ mod regex;
 mod string;
 mod time;
 mod transforms;
+mod uuid;
 
 use crate::compiler::BuildError;
 pub use arrays::*;
@@ -30,6 +31,7 @@ pub use regex::*;
 pub use string::*;
 pub use time::*;
 pub use transforms::*;
+pub use uuid::*;
 
 use super::{base::ExpressionType, LambdaExpression};
 

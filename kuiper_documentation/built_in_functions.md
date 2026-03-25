@@ -1041,6 +1041,17 @@ Convert all characters in the string `x` to uppercase. If `x` is a boolean or nu
 true.upper() -> "TRUE"
 ```
 
+## uuid4
+
+`uuid4()`
+
+Generate a random UUID (version 4) and return it as a string.
+
+**Code example**
+```
+uuid4() -> "a3bb189e-8bf9-3888-9912-ace4e6543002"
+```
+
 ## zip
 
 `zip(x, y, ..., (i1, i2, ...) => ...)`

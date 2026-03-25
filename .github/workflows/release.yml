@@ -117,8 +117,8 @@ jobs:
           node-version: 18.x
       - name: Authenticate with npm
         env:
-          NPM_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
-        run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
+          NPM_TOKEN: ${{ secrets.ARTIFACTORY_PUBLISH_TOKEN }}
+        run: echo "//cognite.jfrog.io/artifactory/api/npm/cognite-internal-npm/:_authToken=$NPM_TOKEN" >> .npmrc
 
       # WASM module
       - name: Setup wasm-pack
@@ -130,7 +130,7 @@ jobs:
         run: cp .npmrc ./kuiper_js/pkg/.npmrc
       - name: Publish wasm package
         working-directory: ./kuiper_js/pkg
-        run: npm publish || true
+        run: npm publish --registry="https://cognite.jfrog.io/artifactory/api/npm/cognite-internal-npm/" || true
 
       # Codemirror module
       - name: Run install
@@ -141,7 +141,7 @@ jobs:
         run: yarn prepare
       - name: Publish package
         working-directory: ./kuiper_lezer
-        run: npm publish || true
+        run: npm publish --registry="https://cognite.jfrog.io/artifactory/api/npm/cognite-internal-npm/" || true
 
   build_packages:
     strategy:
