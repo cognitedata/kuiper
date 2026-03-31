@@ -143,14 +143,14 @@ mod tests {
     use logos::Span;
 
     use crate::{
-        compile_expression,
+        compile_expression_test,
         types::{Object, ObjectField, Type},
         CompileError, TransformError,
     };
 
     #[test]
     fn test_join() {
-        let expr = compile_expression(r#"join({'a': 1}, {'b': 2})"#, &[]).unwrap();
+        let expr = compile_expression_test(r#"join({'a': 1}, {'b': 2})"#, &[]).unwrap();
 
         let res = expr.run([]).unwrap();
 
@@ -163,7 +163,7 @@ mod tests {
 
     #[test]
     fn test_join_multiple() {
-        let expr = compile_expression(r#"join({'a':1}, {'b': 2}, {'c': 3})"#, &[]).unwrap();
+        let expr = compile_expression_test(r#"join({'a':1}, {'b': 2}, {'c': 3})"#, &[]).unwrap();
 
         let res = expr.run([]).unwrap();
 
@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn test_join_overwrites() {
-        let expr = compile_expression(r#"join({'a':1}, {'a': 2})"#, &[]).unwrap();
+        let expr = compile_expression_test(r#"join({'a':1}, {'a': 2})"#, &[]).unwrap();
 
         let res = expr.run([]).unwrap();
 
@@ -187,7 +187,7 @@ mod tests {
 
     #[test]
     fn test_join_fails_for_other_types() {
-        match compile_expression(r#"join({'a':1}, [1,2,3])"#, &[]) {
+        match crate::compile_expression(r#"join({'a':1}, [1,2,3])"#, &[]) {
             Ok(_) => panic!("Should not be able to resolve"),
             Err(err) => match err {
                 CompileError::Optimizer(TransformError::IncorrectTypeInField(t_err)) => {
@@ -204,7 +204,7 @@ mod tests {
 
     #[test]
     fn test_join_arrays() {
-        let expr = compile_expression(r#"join([1, 2, 3], [4, 5], [6, 7, 8])"#, &[]).unwrap();
+        let expr = compile_expression_test(r#"join([1, 2, 3], [4, 5], [6, 7, 8])"#, &[]).unwrap();
 
         let res = expr.run([]).unwrap();
 
@@ -218,7 +218,8 @@ mod tests {
 
     #[test]
     fn test_join_types() {
-        let expr = compile_expression(r#"join(input1, input2)"#, &["input1", "input2"]).unwrap();
+        let expr =
+            compile_expression_test(r#"join(input1, input2)"#, &["input1", "input2"]).unwrap();
 
         let t = expr
             .run_types([
