@@ -89,13 +89,13 @@ impl LambdaAcceptFunction for ToObjectFunction {
 #[cfg(test)]
 mod tests {
     use crate::{
-        compile_expression,
+        compile_expression_test,
         types::{Array, Object, Type},
     };
 
     #[test]
     pub fn test_to_object_implicit_value() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             [{"test": 1, "key": "v1"}, {"test2": 2, "key": "v2"}]
                 .to_object(v => v.key)
@@ -122,7 +122,7 @@ mod tests {
 
     #[test]
     pub fn test_to_object() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             [{"test": 1, "key": "v1"}, {"test": 2, "key": "v2"}]
                 .to_object(v => v.key, v => v.test)
@@ -141,7 +141,7 @@ mod tests {
 
     #[test]
     fn test_to_object_types() {
-        let expr = compile_expression("to_object(input, v => v)", &["input"]).unwrap();
+        let expr = compile_expression_test("to_object(input, v => v)", &["input"]).unwrap();
         let res = expr.run_types([Type::array_of_type(Type::String)]).unwrap();
         assert_eq!(res, Type::object_of_type(Type::String));
 
@@ -174,7 +174,8 @@ mod tests {
 
     #[test]
     fn test_to_object_types_value() {
-        let expr = compile_expression("to_object(input, v => v, v => int(v))", &["input"]).unwrap();
+        let expr =
+            compile_expression_test("to_object(input, v => v, v => int(v))", &["input"]).unwrap();
         let res = expr.run_types([Type::array_of_type(Type::String)]).unwrap();
         assert_eq!(res, Type::object_of_type(Type::Integer));
     }

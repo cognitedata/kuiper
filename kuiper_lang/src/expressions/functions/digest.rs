@@ -72,11 +72,11 @@ impl Expression for DigestFunction {
 mod tests {
     use base64::Engine;
 
-    use crate::compile_expression;
+    use crate::compile_expression_test;
 
     #[test]
     fn test_digest() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
         digest("test", 123, 321.321, [1, 2, 3], { "a": "b", "c": "d" })
         "#,
@@ -95,7 +95,7 @@ mod tests {
 
     #[test]
     fn test_digest_eq() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             digest("test", "foo", 123) == digest("test", "foo", 123)
         "#,
@@ -109,7 +109,7 @@ mod tests {
 
     #[test]
     fn test_digest_types() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             digest(input1, input2, input3)
         "#,
