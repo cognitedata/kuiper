@@ -10,9 +10,8 @@ fn parse_string(mut raw: &str, border_char: char, start: usize) -> Result<String
     raw = &raw[1..raw.len() - 1];
     let mut res = String::with_capacity(raw.len());
 
-    let mut pos = start;
     let mut escaping = false;
-    for c in raw.chars() {
+    for (pos, c) in (start..).zip(raw.chars()) {
         if c == '\\' {
             if escaping {
                 res.push(c);
@@ -40,7 +39,6 @@ fn parse_string(mut raw: &str, border_char: char, start: usize) -> Result<String
         } else {
             res.push(c);
         }
-        pos += 1;
     }
     Ok(res)
 }
