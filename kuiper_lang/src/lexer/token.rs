@@ -11,7 +11,7 @@ fn parse_string(mut raw: &str, border_char: char, start: usize) -> Result<String
     let mut res = String::with_capacity(raw.len());
 
     let mut escaping = false;
-    for (pos, c) in (start..).zip(raw.chars()) {
+    for (i, c) in raw.char_indices() {
         if c == '\\' {
             if escaping {
                 res.push(c);
@@ -30,8 +30,8 @@ fn parse_string(mut raw: &str, border_char: char, start: usize) -> Result<String
                 return Err(LexerError::InvalidEscapeChar((
                     c,
                     Span {
-                        start: pos,
-                        end: pos + 1,
+                        start: start + i,
+                        end: start + i + 1,
                     },
                 )));
             }
@@ -459,6 +459,15 @@ mod test {
             Some(Err(crate::lexer::LexerError::InvalidEscapeChar((
                 'b',
                 Span { start: 5, end: 6 }
+            ))))
+        );
+        // Test multibyte characters
+        let mut lex = Token::lexer(r"'æøå\b'");
+        assert_eq!(
+            lex.next(),
+            Some(Err(crate::lexer::LexerError::InvalidEscapeChar((
+                'b',
+                Span { start: 7, end: 8 }
             ))))
         );
     }
