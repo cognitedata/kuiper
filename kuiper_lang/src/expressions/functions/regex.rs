@@ -323,14 +323,14 @@ mod tests {
     use serde_json::{json, Value};
 
     use crate::{
-        compile_expression,
+        compile_expression_test,
         types::{Object, ObjectField, Type},
         BuildError, CompileError,
     };
 
     #[test]
     pub fn test_regex_is_match() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             {
                 "v1": regex_is_match("test", ".*"),
@@ -353,7 +353,7 @@ mod tests {
 
     #[test]
     pub fn test_regex_first_match() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             {
                 "v1": regex_first_match("test", "^te[s]"),
@@ -376,7 +376,7 @@ mod tests {
 
     #[test]
     pub fn test_regex_all_matches() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             {
                 "v1": regex_all_matches("tets", "t."),
@@ -405,7 +405,7 @@ mod tests {
 
     #[test]
     pub fn test_regex_first_captures() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             {
                 "v1": regex_first_captures("test", "te([st]{2})"),
@@ -455,7 +455,7 @@ mod tests {
 
     #[test]
     pub fn test_regex_all_captures() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             {
                 "v1": regex_all_captures("test tets", "te([st]{2})"),
@@ -515,7 +515,7 @@ mod tests {
 
     #[test]
     pub fn test_regex_replace() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             {
                 "v1": "test".regex_replace("t", "s"),
@@ -537,7 +537,7 @@ mod tests {
 
     #[test]
     pub fn test_regex_replace_all() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
             {
                 "v1": "test".regex_replace_all("t", "s"),
@@ -559,8 +559,8 @@ mod tests {
 
     #[test]
     pub fn test_regex_non_constant() {
-        let e =
-            compile_expression(r#"regex_is_match("test", concat("te", "st"))"#, &[]).unwrap_err();
+        let e = compile_expression_test(r#"regex_is_match("test", concat("te", "st"))"#, &[])
+            .unwrap_err();
         match e {
             CompileError::Build(BuildError::Other(v)) => {
                 assert_eq!(v.detail, "Regex must be constant at compile time");
@@ -571,7 +571,7 @@ mod tests {
 
     #[test]
     pub fn test_regex_non_constant_2() {
-        let e = compile_expression(r#"regex_is_match("test", 12345)"#, &[]).unwrap_err();
+        let e = compile_expression_test(r#"regex_is_match("test", 12345)"#, &[]).unwrap_err();
         match e {
             CompileError::Build(BuildError::Other(v)) => {
                 assert_eq!(v.detail, "Regex must be constant at compile time");
@@ -582,7 +582,7 @@ mod tests {
 
     #[test]
     pub fn test_regex_invalid() {
-        let e = compile_expression(r#"regex_is_match("test", "te[[")"#, &[]).unwrap_err();
+        let e = compile_expression_test(r#"regex_is_match("test", "te[[")"#, &[]).unwrap_err();
         match e {
             CompileError::Build(BuildError::Other(v)) => {
                 assert!(v.detail.starts_with("Regex compilation failed:"))
@@ -593,7 +593,7 @@ mod tests {
 
     #[test]
     fn test_regex_is_match_types() {
-        let expr = compile_expression(r#"regex_is_match(input, ".*")"#, &["input"]).unwrap();
+        let expr = compile_expression_test(r#"regex_is_match(input, ".*")"#, &["input"]).unwrap();
         let ty = expr.run_types([Type::String]).unwrap();
         assert_eq!(ty, Type::Boolean);
 
@@ -604,7 +604,8 @@ mod tests {
 
     #[test]
     fn test_regex_first_match_types() {
-        let expr = compile_expression(r#"regex_first_match(input, ".*")"#, &["input"]).unwrap();
+        let expr =
+            compile_expression_test(r#"regex_first_match(input, ".*")"#, &["input"]).unwrap();
         let ty = expr.run_types([Type::String]).unwrap();
         assert_eq!(ty, Type::String.nullable());
 
@@ -615,7 +616,8 @@ mod tests {
 
     #[test]
     fn test_regex_all_matches_types() {
-        let expr = compile_expression(r#"regex_all_matches(input, ".*")"#, &["input"]).unwrap();
+        let expr =
+            compile_expression_test(r#"regex_all_matches(input, ".*")"#, &["input"]).unwrap();
         let ty = expr.run_types([Type::String]).unwrap();
         assert_eq!(ty, Type::array_of_type(Type::String));
 
@@ -626,7 +628,7 @@ mod tests {
 
     #[test]
     fn test_regex_first_captures_types() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"regex_first_captures(input, "(?<foo>[a-z]+)(?<bar>[0-9]*)(a-z)")"#,
             &["input"],
         )
@@ -654,7 +656,7 @@ mod tests {
 
     #[test]
     fn test_regex_all_captures_types() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"regex_all_captures(input, "(?<foo>[a-z]+)(?<bar>[0-9]*)(a-z)")"#,
             &["input"],
         )

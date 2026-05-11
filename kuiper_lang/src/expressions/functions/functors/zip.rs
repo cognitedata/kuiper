@@ -153,13 +153,13 @@ mod tests {
     use serde_json::Value;
 
     use crate::{
-        compile_expression,
+        compile_expression_test,
         types::{Array, Object, Type},
     };
 
     #[test]
     pub fn test_zip_two() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"zip([1, 2, 3], [4, 5, 6, 7], (v1, v2) => { "v1": v1, "v2": v2 })"#,
             &[],
         )
@@ -184,7 +184,7 @@ mod tests {
 
     #[test]
     fn test_zip_types() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             "zip(input1, input2, (v1, v2) => { \"v1\": v1, \"v2\": v2 })",
             &["input1", "input2"],
         )
