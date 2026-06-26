@@ -98,14 +98,14 @@ lazy_static! {
             "all",
             FunctionDef {
                 signature: "all(x)",
-                description: "Return `true` if all items in the array `x` is true.",
+                description: "Return `true` if all items in the array `x` are true.",
             }
         ),
         (
             "any",
             FunctionDef {
                 signature: "any(x)",
-                description: "Return `true` if any items in the array `x` is true.",
+                description: "Return `true` if any item in the array `x` is true.",
             }
         ),
         (
@@ -154,7 +154,7 @@ lazy_static! {
             "chunk",
             FunctionDef {
                 signature: "chunk(x, s)",
-                description: "Convert the list `x` into several lists of length at most `s`",
+                description: "Convert the list `x` into several lists of length at most `s`.",
             }
         ),
         (
@@ -210,7 +210,7 @@ lazy_static! {
             "except",
             FunctionDef {
                 signature: "except(x, (v(, k)) => ...)` or `except(x, l)",
-                description: "Return a list or object where keys or entries maching the predicate have been removed.
+                description: "Return a list or object where keys or entries matching the predicate have been removed.
 If the second argument is a lambda, it will be given the entry and if it returns `true`, the entry is removed.
 If the second argument is a list, any entry also found in this list will be removed.",
             }
@@ -233,7 +233,7 @@ If the second argument is a list, any entry also found in this list will be remo
             "flatmap",
             FunctionDef {
                 signature: "flatmap(x, it => ...)",
-                description: "Apply the lambda function to every item in the list `x` and flattens the result.
+                description: "Apply the lambda function to every item in the list `x` and flatten the result.
 
 For example, if the lambda function returns a list, the result of the `flatmap` will just be a list instead of a list of lists.",
             }
@@ -297,7 +297,7 @@ Consider using [try_int](#try_int) instead if you need error handling.",
             "length",
             FunctionDef {
                 signature: "length(x)",
-                description: "Return the length on the list, string or object `x`.",
+                description: "Return the length of the list, string, or object `x`.",
             }
         ),
         (
@@ -329,14 +329,14 @@ If the value is `null`, the lambda is ignored and `map` returns `null`.",
             "max",
             FunctionDef {
                 signature: "max(a, b, ...)",
-                description: "Returns the larger of the given numbers. Can also be used on an array.",
+                description: "Return the larger of the given numbers. Can also be used on an array.",
             }
         ),
         (
             "min",
             FunctionDef {
                 signature: "min(a, b, ...)",
-                description: "Returns the smaller of the given numbers. Can also be used on an array.",
+                description: "Return the smaller of the given numbers. Can also be used on an array.",
             }
         ),
         (
@@ -364,7 +364,7 @@ If the value is `null`, the lambda is ignored and `map` returns `null`.",
             "pow",
             FunctionDef {
                 signature: "pow(x, y)",
-                description: "Return `x` to the power of `y`",
+                description: "Return `x` to the power of `y`.",
             }
         ),
         (
@@ -440,7 +440,7 @@ See [regex_is_match](#regex_is_match) for details on regex support.",
             "replace",
             FunctionDef {
                 signature: "replace(a, b, c)",
-                description: "Replaces a string with another string",
+                description: "Replace occurrences of `b` in string `a` with `c`.",
             }
         ),
         (
@@ -468,14 +468,14 @@ See [regex_is_match](#regex_is_match) for details on regex support.",
             "slice",
             FunctionDef {
                 signature: "slice(x, start(, end))",
-                description: "Create a sub-array from an array `x` from `start` to `end`. If `end is not specified, go from `start` the end of the array. If `start` or `end` are negative, count from the end of the array.",
+                description: "Create a sub-array from an array `x` from `start` to `end`. If `end` is not specified, go from `start` to the end of the array. If `start` or `end` are negative, count from the end of the array.",
             }
         ),
         (
             "split",
             FunctionDef {
                 signature: "split(a, b)",
-                description: "Split string `a` on any occurences of `b`. If `b` is an empty string, this will split on each character, including before the first and after the last.",
+                description: "Split string `a` on any occurrences of `b`. If `b` is an empty string, this will split on each character, including before the first and after the last.",
             }
         ),
         (
@@ -566,28 +566,28 @@ The format is given using the table found [here](https://docs.rs/chrono/latest/c
             "trim_whitespace",
             FunctionDef {
                 signature: "trim_whitespace(x)",
-                description: "Remove any whitespace from the start and end of `x`",
+                description: "Remove any whitespace from the start and end of `x`.",
             }
         ),
         (
             "try_bool",
             FunctionDef {
                 signature: "try_bool(a, b)",
-                description: "Try convert `a` to a boolean, if it fails, return `b`.",
+                description: "Try to convert `a` to a boolean; if it fails, return `b`.",
             }
         ),
         (
             "try_float",
             FunctionDef {
                 signature: "try_float(a, b)",
-                description: "Try convert `a` to a float, if it fails, return `b`.",
+                description: "Try to convert `a` to a float; if it fails, return `b`.",
             }
         ),
         (
             "try_int",
             FunctionDef {
                 signature: "try_int(a, b)",
-                description: "Try convert `a` to a int, if it fails, return `b`.",
+                description: "Try to convert `a` to an int; if it fails, return `b`.",
             }
         ),
         (
