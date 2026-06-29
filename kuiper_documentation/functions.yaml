@@ -36,10 +36,8 @@ functions:
     examples:
       - input: 'concat("Hello, ", "world!")'
         output: '"Hello, world!"'
-      - input: |
-          {
-              "externalId": concat("some-prefix:", input.tag)
-          }
+      - input: '{"externalId": concat("some-prefix:", "my-tag")}'
+        output: '{"externalId": "some-prefix:my-tag"}'
 
   - name: distinct_by
     signature: "`distinct_by(x, (a(, b)) => ...)`"
@@ -88,13 +86,8 @@ functions:
     examples:
       - input: "[1, 2, 3, 4].filter(item => item > 2)"
         output: "[3, 4]"
-      - input: |
-          input.data.map(row => {
-              "timestamp": to_unix_timestamp(row.StartTime, "%Y-%m-%dT%H:%M:%S"),
-              "value": try_float(row.Value, null),
-              "externalId": concat("prefix/", column.Name),
-              "type": "datapoint",
-          }).filter(dp => dp.value is "number")
+      - input: '[{"value": 1.5}, {"value": "n/a"}, {"value": 2.0}].filter(dp => dp.value is number)'
+        output: '[{"value": 1.5}, {"value": 2.0}]'
 
   - name: flatmap
     signature: "`flatmap(x, it => ...)`"
@@ -106,14 +99,10 @@ functions:
       - input: "[[1, 2, 3], [2, 3, 4], [3, 4, 5]].flatmap(list => list.map(item => item + 1))"
         output: "[2, 3, 4, 3, 4, 5, 4, 5, 6]"
       - input: |
-          input.sensorData.flatmap(timeseries =>
-              timeseries.values.map(datapoint => {
-                  "value": datapoint.value,
-                  "timestamp": to_unix_timestamp(datapoint.datetime, "%Y-%m-%dT%H:%M:%S"),
-                  "externalId": concat(timeseries.location, "/", timeseries.sensor),
-                  "type": "datapoint"
-              })
+          [{"tag": "sensor-1", "values": [1.5, 2.0]}, {"tag": "sensor-2", "values": [3.0]}].flatmap(ts =>
+              ts.values.map(v => {"externalId": ts.tag, "value": v})
           )
+        output: '[{"externalId": "sensor-1", "value": 1.5}, {"externalId": "sensor-1", "value": 2.0}, {"externalId": "sensor-2", "value": 3.0}]'
 
   - name: float
     signature: "`float(x)`"
@@ -148,7 +137,8 @@ functions:
     signature: "`if(x, y, (z))`"
     description: Return `y` if `x` evaluates to `true`, otherwise return `z`, or `null` if `z` is omitted.
     examples:
-      - input: 'if(condition, "yes", "no")'
+      - input: 'if(false, "yes", "no")'
+        output: '"no"'
       - input: 'if(true, "on", "off")'
         output: '"on"'
 
@@ -183,7 +173,8 @@ functions:
         output: "12"
       - input: "length([1, 2, 3])"
         output: "3"
-      - input: "length(input.items)"
+      - input: 'length({"a": 1, "b": 2})'
+        output: "2"
 
   - name: log
     signature: "`log(x, y)`"
@@ -204,14 +195,13 @@ functions:
       - input: "[1, 2, 3, 4].map(number => number * 2)"
         output: "[2, 4, 6, 8]"
       - input: |
-          input.data.map(item => {
-              "type": "datapoint",
-              "value": item.value,
+          [{"value": 1.5, "tag": "sensor-1"}, {"value": 2.0, "tag": "sensor-2"}].map(item => {
               "externalId": concat("prefix:", item.tag),
-              "timestamp": now()
+              "value": item.value
           })
+        output: '[{"externalId": "prefix:sensor-1", "value": 1.5}, {"externalId": "prefix:sensor-2", "value": 2.0}]'
       - input: '["a", "b", "c"].map((item, index) => index)'
-        output: "[1, 2, 3]"
+        output: "[0, 1, 2]"
       - input: '{"a": 1, "b": 2, "c": 3}.map((value, key) => concat(value, key))'
         output: '{"a": "1a", "b": "2b", "c": "3c"}'
 
@@ -222,6 +212,10 @@ functions:
       - input: |
           {
               "timestamp": now()
+          }
+        output: |
+          {
+              "timestamp": 1694159249120
           }
 
   - name: pairs
@@ -251,11 +245,10 @@ functions:
               "y-axis": 17.3,
               "z-axis": 2.1
           }.pairs().map(kv => {
-              "timestamp": now(),
-              "value": kv.value,
               "externalId": kv.key,
-              "type": "datapoint"
+              "value": kv.value
           })
+        output: '[{"externalId": "x-axis", "value": 12.4}, {"externalId": "y-axis", "value": 17.3}, {"externalId": "z-axis", "value": 2.1}]'
 
   - name: pow
     signature: "`pow(x, y)`"
@@ -360,7 +353,11 @@ functions:
         output: "1682945003000"
       - input: |
           {
-              "timestamp": to_unix_timestamp(input.time, "%Y-%m-%d %H:%M:%S")
+              "timestamp": to_unix_timestamp("2023-05-01 12:43:23", "%Y-%m-%d %H:%M:%S")
+          }
+        output: |
+          {
+              "timestamp": 1682945003000
           }
 
   - name: try_bool
@@ -554,6 +551,8 @@ functions:
     examples:
       - input: 'regex_first_match("test", "te")'
         output: '"te"'
+      - input: 'regex_first_match("test", "te[st]{2}")'
+        output: '"test"'
 
   - name: regex_all_matches
     signature: "`regex_all_matches(haystack, regex)`"

@@ -27,6 +27,8 @@ title: Functions
             f"**Code example{'s' if len(function['examples']) > 1 else ''}**\n\n"
         )
         for i, example in enumerate(function["examples"]):
+            if not isinstance(example, dict):
+                continue
             if i > 0:
                 file.write("\n")
             if "output" in example:
@@ -37,7 +39,7 @@ title: Functions
             if "output" in example:
                 file.write("**Output**\n")
                 file.write("```\n")
-                file.write(example["output"].strip())
+                file.write(str(example["output"]).strip())
                 file.write("\n```\n")
 
 

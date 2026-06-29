@@ -264,10 +264,13 @@ concat("Hello, ", "world!")
 "Hello, world!"
 ```
 
+**Input**
 ```kuiper
-{
-    "externalId": concat("some-prefix:", input.tag)
-}
+{"externalId": concat("some-prefix:", "my-tag")}
+```
+**Output**
+```
+{"externalId": "some-prefix:my-tag"}
 ```
 
 ## contains
@@ -462,13 +465,13 @@ Remove any item from the list `x` where the lambda function returns `false` or `
 [3, 4]
 ```
 
+**Input**
 ```kuiper
-input.data.map(row => {
-    "timestamp": to_unix_timestamp(row.StartTime, "%Y-%m-%dT%H:%M:%S"),
-    "value": try_float(row.Value, null),
-    "externalId": concat("prefix/", column.Name),
-    "type": "datapoint",
-}).filter(dp => dp.value is "number")
+[{"value": 1.5}, {"value": "n/a"}, {"value": 2.0}].filter(dp => dp.value is number)
+```
+**Output**
+```
+[{"value": 1.5}, {"value": 2.0}]
 ```
 
 ## flatmap
@@ -490,15 +493,15 @@ For example, if the lambda function returns a list, the result of the `flatmap` 
 [2, 3, 4, 3, 4, 5, 4, 5, 6]
 ```
 
+**Input**
 ```kuiper
-input.sensorData.flatmap(timeseries =>
-    timeseries.values.map(datapoint => {
-        "value": datapoint.value,
-        "timestamp": to_unix_timestamp(datapoint.datetime, "%Y-%m-%dT%H:%M:%S"),
-        "externalId": concat(timeseries.location, "/", timeseries.sensor),
-        "type": "datapoint"
-    })
+[{"tag": "sensor-1", "values": [1.5, 2.0]}, {"tag": "sensor-2", "values": [3.0]}].flatmap(ts =>
+    ts.values.map(v => {"externalId": ts.tag, "value": v})
 )
+```
+**Output**
+```
+[{"externalId": "sensor-1", "value": 1.5}, {"externalId": "sensor-1", "value": 2.0}, {"externalId": "sensor-2", "value": 3.0}]
 ```
 
 ## float
@@ -573,8 +576,13 @@ Return `y` if `x` evaluates to `true`, otherwise return `z`, or `null` if `z` is
 
 **Code examples**
 
+**Input**
 ```kuiper
-if(condition, "yes", "no")
+if(false, "yes", "no")
+```
+**Output**
+```
+"no"
 ```
 
 **Input**
@@ -695,8 +703,13 @@ length([1, 2, 3])
 3
 ```
 
+**Input**
 ```kuiper
-length(input.items)
+length({"a": 1, "b": 2})
+```
+**Output**
+```
+2
 ```
 
 ## log
@@ -754,13 +767,16 @@ If the value is `null`, the lambda is ignored and `map` returns `null`.
 [2, 4, 6, 8]
 ```
 
+**Input**
 ```kuiper
-input.data.map(item => {
-    "type": "datapoint",
-    "value": item.value,
+[{"value": 1.5, "tag": "sensor-1"}, {"value": 2.0, "tag": "sensor-2"}].map(item => {
     "externalId": concat("prefix:", item.tag),
-    "timestamp": now()
+    "value": item.value
 })
+```
+**Output**
+```
+[{"externalId": "prefix:sensor-1", "value": 1.5}, {"externalId": "prefix:sensor-2", "value": 2.0}]
 ```
 
 **Input**
@@ -769,7 +785,7 @@ input.data.map(item => {
 ```
 **Output**
 ```
-[1, 2, 3]
+[0, 1, 2]
 ```
 
 **Input**
@@ -859,9 +875,16 @@ Return the current time as a millisecond Unix timestamp, that is, the number of 
 
 **Code example**
 
+**Input**
 ```kuiper
 {
     "timestamp": now()
+}
+```
+**Output**
+```
+{
+    "timestamp": 1694159249120
 }
 ```
 
@@ -895,17 +918,20 @@ Convert the object `x` into a list of key/value pairs.
 }]
 ```
 
+**Input**
 ```kuiper
 {
     "x-axis": 12.4,
     "y-axis": 17.3,
     "z-axis": 2.1
 }.pairs().map(kv => {
-    "timestamp": now(),
-    "value": kv.value,
     "externalId": kv.key,
-    "type": "datapoint"
+    "value": kv.value
 })
+```
+**Output**
+```
+[{"externalId": "x-axis", "value": 12.4}, {"externalId": "y-axis", "value": 17.3}, {"externalId": "z-axis", "value": 2.1}]
 ```
 
 ## parse_json
@@ -1074,7 +1100,7 @@ regex_first_captures("test foo bar", "test (?<v1>\\w{3}) (\\w{3})")
 Return the first substring in the haystack that matches the regex. If no match is found, this returns `null`. Prefer [regex_is_match](#regex_is_match) if all you need is to check for the existence of a match.
 See [regex_is_match](#regex_is_match) for details on regex support.
 
-**Code example**
+**Code examples**
 
 **Input**
 ```kuiper
@@ -1083,6 +1109,15 @@ regex_first_match("test", "te")
 **Output**
 ```
 "te"
+```
+
+**Input**
+```kuiper
+regex_first_match("test", "te[st]{2}")
+```
+**Output**
+```
+"test"
 ```
 
 ## regex_is_match
@@ -1541,9 +1576,16 @@ to_unix_timestamp("2023-05-01 12:43:23", "%Y-%m-%d %H:%M:%S")
 1682945003000
 ```
 
+**Input**
 ```kuiper
 {
-    "timestamp": to_unix_timestamp(input.time, "%Y-%m-%d %H:%M:%S")
+    "timestamp": to_unix_timestamp("2023-05-01 12:43:23", "%Y-%m-%d %H:%M:%S")
+}
+```
+**Output**
+```
+{
+    "timestamp": 1682945003000
 }
 ```
 
