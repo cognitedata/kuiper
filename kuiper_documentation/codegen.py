@@ -23,11 +23,24 @@ title: Functions
         file.write(f"## {function['name'].strip()}\n\n")
         file.write(f"{function['signature'].strip()}\n\n")
         file.write(f"{function['description'].strip()}\n\n")
-        file.write(f"**Code example{'s' if len(function['examples']) > 1 else ''}**\n")
-        for example in function["examples"]:
-            file.write("```\n")
-            file.write(example.strip())
+        file.write(
+            f"**Code example{'s' if len(function['examples']) > 1 else ''}**\n\n"
+        )
+        for i, example in enumerate(function["examples"]):
+            if not isinstance(example, dict):
+                continue
+            if i > 0:
+                file.write("\n")
+            if "output" in example:
+                file.write("**Input**\n")
+            file.write("```kuiper\n")
+            file.write(example["input"].strip())
             file.write("\n```\n")
+            if "output" in example:
+                file.write("**Output**\n")
+                file.write("```\n")
+                file.write(str(example["output"]).strip())
+                file.write("\n```\n")
 
 
 def generate_warning_header(file: TextIO, comment_tag="//"):
