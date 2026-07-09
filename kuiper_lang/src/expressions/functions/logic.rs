@@ -266,11 +266,11 @@ impl CaseFunction {
 
 #[cfg(test)]
 mod tests {
-    use crate::{compile_expression, types::Type};
+    use crate::{compile_expression_test, types::Type};
 
     #[test]
     pub fn test_simple_if() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "t1": if(true, 'test'),
             "t2": if(1 == 2, 'test2'),
@@ -289,7 +289,7 @@ mod tests {
 
     #[test]
     pub fn test_case() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "t1": case('foo', 'bar', 1, 'baz', 2, 'foo', 3),
             "t2": case('nope', 'bar', 1, 'baz', 2, 'foo', 3),
@@ -308,7 +308,7 @@ mod tests {
 
     #[test]
     pub fn test_any() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
                 "t1": any([false, false, true]),
                 "t2": any([false, false, false]),
@@ -332,7 +332,7 @@ mod tests {
 
     #[test]
     pub fn test_all() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
                 "t1": all([false, false, true]),
                 "t2": all([false, false, false]),
@@ -356,13 +356,14 @@ mod tests {
 
     #[test]
     fn test_if_function_types() {
-        let expr = compile_expression("if(input1, input2)", &["input1", "input2"]).unwrap();
+        let expr = compile_expression_test("if(input1, input2)", &["input1", "input2"]).unwrap();
         let ty = expr.run_types([Type::Boolean, Type::Integer]).unwrap();
         assert_eq!(Type::Integer.nullable(), ty);
         let ty = expr.run_types([Type::Integer, Type::Integer]).unwrap();
         assert_eq!(Type::Integer, ty);
 
-        let expr = compile_expression("if(input1, input2, 123)", &["input1", "input2"]).unwrap();
+        let expr =
+            compile_expression_test("if(input1, input2, 123)", &["input1", "input2"]).unwrap();
         let ty = expr.run_types([Type::Integer, Type::Float]).unwrap();
         assert_eq!(Type::Float, ty);
         let ty = expr.run_types([Type::Any, Type::Float]).unwrap();
@@ -371,7 +372,7 @@ mod tests {
 
     #[test]
     fn test_case_types() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             "case(input1, input2, 1, input3, 2)",
             &["input1", "input2", "input3"],
         )
@@ -402,7 +403,7 @@ mod tests {
         assert_eq!(Type::from_const(2), ty);
 
         // With a default expression
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             "case(input1, input2, 1, input3, 2, 3)",
             &["input1", "input2", "input3"],
         )
@@ -420,11 +421,11 @@ mod tests {
 
     #[test]
     fn test_any_all_types() {
-        let expr = compile_expression("any(input)", &["input"]).unwrap();
+        let expr = compile_expression_test("any(input)", &["input"]).unwrap();
         let ty = expr.run_types([Type::Any]).unwrap();
         assert_eq!(Type::Boolean, ty);
 
-        let expr = compile_expression("all(input)", &["input"]).unwrap();
+        let expr = compile_expression_test("all(input)", &["input"]).unwrap();
         let ty = expr.run_types([Type::any_array()]).unwrap();
         assert_eq!(Type::Boolean, ty);
     }

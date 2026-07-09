@@ -153,7 +153,7 @@ mod tests {
     use logos::Span;
 
     use crate::{
-        compile_expression,
+        compile_expression_test,
         types::{Object, Type},
         CompileError, TransformError,
     };
@@ -161,7 +161,8 @@ mod tests {
     #[test]
     fn test_select() {
         let expr =
-            compile_expression(r#"select({'a': 1, 'b': 2, 'c': 3}, (v) => v > 1)"#, &[]).unwrap();
+            compile_expression_test(r#"select({'a': 1, 'b': 2, 'c': 3}, (v) => v > 1)"#, &[])
+                .unwrap();
 
         let res = expr.run([]).unwrap();
 
@@ -174,7 +175,7 @@ mod tests {
 
     #[test]
     fn test_select_filter_by_key() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"select({'a': 1, 'b': 2, 'c': 3}, (_, k) => k != 'a')"#,
             &[],
         )
@@ -191,7 +192,7 @@ mod tests {
 
     #[test]
     fn test_select_fails_for_other_types() {
-        match compile_expression(r#"select({'a':1}, ['a',2,3])"#, &[]) {
+        match crate::compile_expression(r#"select({'a':1}, ['a',2,3])"#, &[]) {
             Ok(_) => panic!("Should not be able to resolve"),
             Err(err) => match err {
                 CompileError::Optimizer(TransformError::IncorrectTypeInField(t_err)) => {
@@ -208,7 +209,7 @@ mod tests {
 
     #[test]
     fn test_select_lambda_types() {
-        let r = compile_expression("input.select(a => a is not float)", &["input"]).unwrap();
+        let r = compile_expression_test("input.select(a => a is not float)", &["input"]).unwrap();
         let t = r.run_types([Type::object_of_type(Type::Integer)]).unwrap();
         assert_eq!(t, Type::object_of_type(Type::Integer));
 
@@ -235,7 +236,7 @@ mod tests {
 
     #[test]
     fn test_select_array_types() {
-        let r = compile_expression("input.select(['k2', 'k3'])", &["input"]).unwrap();
+        let r = compile_expression_test("input.select(['k2', 'k3'])", &["input"]).unwrap();
         let t = r
             .run_types([Type::Object(
                 Object::default()

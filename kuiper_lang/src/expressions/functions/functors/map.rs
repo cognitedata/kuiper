@@ -151,13 +151,13 @@ mod tests {
     use std::collections::BTreeMap;
 
     use crate::{
-        compile_expression,
+        compile_expression_test,
         types::{Array, Object, ObjectField, Type},
     };
 
     #[test]
     pub fn test_simple_map() {
-        let expr = compile_expression(r#"map([1, 2, 3, 4], (i) => pow(i, 2))"#, &[]).unwrap();
+        let expr = compile_expression_test(r#"map([1, 2, 3, 4], (i) => pow(i, 2))"#, &[]).unwrap();
 
         let res = expr.run([]).unwrap();
 
@@ -172,7 +172,7 @@ mod tests {
     #[test]
     pub fn test_map_with_index() {
         let expr =
-            compile_expression(r#"map(["a", "b", "c"], (it, index) => index)"#, &[]).unwrap();
+            compile_expression_test(r#"map(["a", "b", "c"], (it, index) => index)"#, &[]).unwrap();
 
         let res = expr.run([]).unwrap();
 
@@ -185,7 +185,7 @@ mod tests {
 
     #[test]
     pub fn test_map_object() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
         { "v1": 1, "v2": 2, "v3": 3 }.map(val => val * 2)
         "#,
@@ -203,7 +203,7 @@ mod tests {
 
     #[test]
     pub fn test_map_object_with_key() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
         { "v1": 1, "v2": 2, "v3": 3 }.map((val, key) => concat(val, key))
         "#,
@@ -221,7 +221,7 @@ mod tests {
 
     #[test]
     fn test_map_array_types() {
-        let expr = compile_expression("map(input, it => string(it))", &["input"]).unwrap();
+        let expr = compile_expression_test("map(input, it => string(it))", &["input"]).unwrap();
         let res = expr
             .run_types([Type::Array(Array {
                 elements: vec![Type::String, Type::Float, Type::from_const(3)],
@@ -236,7 +236,7 @@ mod tests {
             })
         );
 
-        let expr = compile_expression("map(input, (it, idx) => idx)", &["input"]).unwrap();
+        let expr = compile_expression_test("map(input, (it, idx) => idx)", &["input"]).unwrap();
         let res = expr
             .run_types([Type::Array(Array {
                 elements: vec![Type::String, Type::Float, Type::from_const(3)],
@@ -258,7 +258,8 @@ mod tests {
 
     #[test]
     fn test_map_object_types() {
-        let expr = compile_expression("map(input, (val, key) => string(key))", &["input"]).unwrap();
+        let expr =
+            compile_expression_test("map(input, (val, key) => string(key))", &["input"]).unwrap();
         let res = expr
             .run_types([Type::Object(Object {
                 fields: BTreeMap::from([
@@ -299,7 +300,8 @@ mod tests {
         // In general, type checking should do two things:
         //   - If we can prove that the expression _must_ fail, we should report that as an error.
         //   - If not, return the possible types of the expression if it passes.
-        let expr = compile_expression("map(input, it => it.flatmap(a => a))", &["input"]).unwrap();
+        let expr =
+            compile_expression_test("map(input, it => it.flatmap(a => a))", &["input"]).unwrap();
         let res = expr
             .run_types([Type::array_of_type(Type::array_of_type(Type::Integer))
                 .union_with(Type::object_of_type(Type::Integer))])

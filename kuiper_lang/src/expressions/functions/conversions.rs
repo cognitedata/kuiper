@@ -147,12 +147,12 @@ impl Expression for TryBoolFunction {
 
 #[cfg(test)]
 mod tests {
-    use crate::{compile_expression, types::Type};
+    use crate::{compile_expression_test, types::Type};
     use serde_json::json;
 
     #[test]
     pub fn test_try_float() {
-        let exp = compile_expression(
+        let exp = compile_expression_test(
             r#"{
             "test1": try_float("4.2", 7),
             "test2": try_float(input.floatValue, 7),
@@ -192,7 +192,7 @@ mod tests {
 
     #[test]
     pub fn test_try_int() {
-        let exp = compile_expression(
+        let exp = compile_expression_test(
             r#"{
             "test1": try_int("4.2", 7),
             "test2": try_int(input.intValue, 7),
@@ -226,7 +226,7 @@ mod tests {
 
     #[test]
     pub fn test_try_bool() {
-        let exp = compile_expression(
+        let exp = compile_expression_test(
             r#"{
             "test1": try_bool("true", false),
             "test2": try_bool("True", false),
@@ -260,7 +260,7 @@ mod tests {
 
     #[test]
     fn test_try_float_types() {
-        let exp = compile_expression(r#"try_float(input, "default")"#, &["input"]).unwrap();
+        let exp = compile_expression_test(r#"try_float(input, "default")"#, &["input"]).unwrap();
         let t = exp.run_types([Type::String]).unwrap();
         assert_eq!(t, Type::Float.union_with(Type::from_const("default")));
 
@@ -273,7 +273,7 @@ mod tests {
 
     #[test]
     fn test_try_int_types() {
-        let exp = compile_expression(r#"try_int(input, "default")"#, &["input"]).unwrap();
+        let exp = compile_expression_test(r#"try_int(input, "default")"#, &["input"]).unwrap();
         let t = exp.run_types([Type::String]).unwrap();
         assert_eq!(t, Type::Integer.union_with(Type::from_const("default")));
 
@@ -286,7 +286,7 @@ mod tests {
 
     #[test]
     fn test_try_bool_types() {
-        let exp = compile_expression(r#"try_bool(input, "default")"#, &["input"]).unwrap();
+        let exp = compile_expression_test(r#"try_bool(input, "default")"#, &["input"]).unwrap();
         let t = exp.run_types([Type::String]).unwrap();
         assert_eq!(t, Type::Boolean.union_with(Type::from_const("default")));
 
