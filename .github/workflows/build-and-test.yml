@@ -24,13 +24,13 @@ jobs:
         run: cargo fmt --check
 
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
+        uses: taiki-e/install-action@6001e75680da9482e125349961b715573ec77af8 # cargo-llvm-cov
 
       - name: Test
         run: cargo llvm-cov --workspace --exclude kuiper_cli --codecov --output-path codecov.json --locked
 
       - name: Upload coverage to codecov.io
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5
         with:
           files: codecov.json
           token: ${{ secrets.CODECOV_TOKEN }}
