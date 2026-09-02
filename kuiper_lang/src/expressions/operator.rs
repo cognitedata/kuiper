@@ -132,7 +132,7 @@ impl Expression for OpExpression {
             Err(TransformError::new_invalid_operation(
                 format!(
                     "Operator {} not applicable to {} and {}",
-                    &self.operator,
+                    self.operator,
                     TransformError::value_desc(&lhs),
                     TransformError::value_desc(rhs_ref)
                 ),
@@ -232,7 +232,7 @@ impl OpExpression {
         rhs.fail_if_lambda()?;
         Ok(Self {
             operator: op,
-            descriptor: format!("'{}'", &op),
+            descriptor: format!("'{}'", op),
             elements: [Box::new(lhs), Box::new(rhs)],
             span,
         })
@@ -273,7 +273,7 @@ impl OpExpression {
             Operator::Or => lhs || rhs,
             _ => {
                 return Err(TransformError::new_invalid_operation(
-                    format!("Operator {} not applicable to booleans", &self.operator),
+                    format!("Operator {} not applicable to booleans", self.operator),
                     &self.span,
                 ))
             }
@@ -300,7 +300,7 @@ impl OpExpression {
             Operator::LessThanEquals => lhs <= rhs,
             _ => {
                 return Err(TransformError::new_invalid_operation(
-                    format!("Operator {} not applicable to strings", &self.operator),
+                    format!("Operator {} not applicable to strings", self.operator),
                     &self.span,
                 ))
             }
@@ -336,7 +336,7 @@ impl OpExpression {
             Operator::Modulo => lhs.try_mod(rhs, &self.span)?,
             _ => {
                 return Err(TransformError::new_invalid_operation(
-                    format!("Operator {} not applicable to numbers", &self.operator),
+                    format!("Operator {} not applicable to numbers", self.operator),
                     &self.span,
                 ))
             }
@@ -346,7 +346,7 @@ impl OpExpression {
                 TransformError::new_conversion_failed(
                     format!(
                         "Failed to convert result of operator {} to number",
-                        &self.descriptor
+                        self.descriptor
                     ),
                     &self.span,
                 )
@@ -429,7 +429,7 @@ impl UnaryOpExpression {
         el.fail_if_lambda()?;
         Ok(Self {
             operator: op,
-            descriptor: format!("'{}'", &op),
+            descriptor: format!("'{}'", op),
             element: Box::new(el),
             span,
         })

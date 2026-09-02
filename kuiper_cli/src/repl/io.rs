@@ -27,7 +27,7 @@ fn pretty_print_error_message(
         // Line is wide, print just an expert containing the error
         if error_width > WIDTH_THRESHOLD {
             // Error is really wide, just print error
-            eprintln!("{}", &expression[error_span.clone()].cyan());
+            eprintln!("{}", expression[error_span.clone()].cyan());
             0
         } else {
             // Error is short, include surrounding code
@@ -66,7 +66,7 @@ fn pretty_print_error_message(
             eprintln!(
                 "{}{}{}",
                 prepend,
-                &expression[error_span.start - left_pad..error_span.end + right_pad].cyan(),
+                expression[error_span.start - left_pad..error_span.end + right_pad].cyan(),
                 append
             );
 
