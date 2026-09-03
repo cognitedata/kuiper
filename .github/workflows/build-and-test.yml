@@ -24,7 +24,7 @@ jobs:
         run: cargo fmt --check
 
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@6001e75680da9482e125349961b715573ec77af8 # cargo-llvm-cov
+        uses: taiki-e/install-action@e67fa11c4b9316fa714ddf0abed07a0c3143b95b # cargo-llvm-cov
 
       - name: Test
         run: cargo llvm-cov --workspace --exclude kuiper_cli --codecov --output-path codecov.json --locked
