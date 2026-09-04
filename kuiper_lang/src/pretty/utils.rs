@@ -159,7 +159,7 @@ pub(super) fn prettify_comment(comment: &str) -> String {
             let has_newline = !line.ends_with("*/");
             let mut line = line.trim_end().to_owned();
             if line.starts_with("/*") {
-                line = format!("/* {}", &line[2..].trim_start())
+                line = format!("/* {}", line[2..].trim_start())
                     .trim_end()
                     .to_owned();
             }

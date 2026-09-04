@@ -147,7 +147,7 @@ pub fn repl(verbose_log: bool) {
                             }
                             _ => value.to_string(),
                         };
-                        println!("{} {}", format!("{chunk_id}:").green(), &line);
+                        println!("{} {}", format!("{chunk_id}:").green(), line);
                         inputs.push(chunk_id);
                         data.push(value);
                     }
