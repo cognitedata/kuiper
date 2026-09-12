@@ -447,7 +447,7 @@ mod tests {
     use serde_json::json;
 
     use crate::{
-        compile_expression,
+        compile_expression_test,
         types::{Array, Type},
     };
 
@@ -455,7 +455,7 @@ mod tests {
 
     #[test]
     pub fn test_max_function() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "res": max(2, 2),  // Simple base case
             "res2": max(input.val1, input.val2),  // Max of input (so computation happens at runtime)
@@ -489,7 +489,7 @@ mod tests {
         assert!(res.get("res5").unwrap().is_f64());
         assert!(res.get("res6").unwrap().is_i64());
 
-        let no_args = compile_expression(
+        let no_args = compile_expression_test(
             r#"{
             "res": max() // No args should yield an error
         }"#,
@@ -497,7 +497,7 @@ mod tests {
         );
         assert!(no_args.is_err());
 
-        let empty_list = compile_expression(
+        let empty_list = compile_expression_test(
             r#"{
             "res": max([]) // Empty list should yield an error
         }"#,
@@ -505,7 +505,7 @@ mod tests {
         );
         assert!(empty_list.is_err());
 
-        let non_list = compile_expression(
+        let non_list = compile_expression_test(
             r#"{
             "res": max(1) // If the first arg isn't a list it should yield an error
         }"#,
@@ -513,7 +513,7 @@ mod tests {
         );
         assert!(non_list.is_err());
 
-        let non_number = compile_expression(
+        let non_number = compile_expression_test(
             r#"{
             "res": max([1, 2, 3, 'a']) // If the list contains a non-number it should yield an error
         }"#,
@@ -524,7 +524,7 @@ mod tests {
 
     #[test]
     pub fn test_min_function() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "res": min(2, 2),  // Simple base case
             "res2": min(input.val1, input.val2),  // Min of input (so computation happens at runtime)
@@ -558,7 +558,7 @@ mod tests {
         assert!(res.get("res5").unwrap().is_f64());
         assert!(res.get("res6").unwrap().is_i64());
 
-        let no_args = compile_expression(
+        let no_args = compile_expression_test(
             r#"{
             "res": min() // No args should yield an error
         }"#,
@@ -566,7 +566,7 @@ mod tests {
         );
         assert!(no_args.is_err());
 
-        let empty_list = compile_expression(
+        let empty_list = compile_expression_test(
             r#"{
             "res": min([]) // Empty list should yield an error
         }"#,
@@ -574,7 +574,7 @@ mod tests {
         );
         assert!(empty_list.is_err());
 
-        let non_list = compile_expression(
+        let non_list = compile_expression_test(
             r#"{
             "res": min(1) // If the first arg isn't a list it should yield an error
         }"#,
@@ -582,7 +582,7 @@ mod tests {
         );
         assert!(non_list.is_err());
 
-        let non_number = compile_expression(
+        let non_number = compile_expression_test(
             r#"{
             "res": min([1, 2, 3, 'a']) // If the list contains a non-number it should yield an error
         }"#,
@@ -593,7 +593,7 @@ mod tests {
 
     #[test]
     pub fn test_pow_function() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "res": pow(2, 2),
             "res2": pow(input.val1, input.val2)
@@ -613,7 +613,7 @@ mod tests {
 
     #[test]
     pub fn test_log_function() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "res": log(2, 2),
             "res2": log(input.val1, input.val2)
@@ -634,7 +634,7 @@ mod tests {
 
     #[test]
     pub fn test_int_function() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "res": int('123'),
             "res2": int('-1234')
@@ -654,7 +654,7 @@ mod tests {
 
     #[test]
     pub fn test_float_function() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "res": float('123'),
             "res2": float('-1234'),
@@ -678,7 +678,7 @@ mod tests {
 
     #[test]
     pub fn test_sqrt_function() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "res": sqrt(4),
             "res2": sqrt(input.val1)
@@ -694,12 +694,13 @@ mod tests {
         assert!((2.0 - res.get("res").unwrap().as_f64().unwrap()).abs() < TINY);
         assert!((10.0 - res.get("res2").unwrap().as_f64().unwrap()).abs() < TINY);
 
-        assert!(compile_expression(r#"{"res": sqrt(-1)}"#, &[],).is_err()); // sqrt(-1) is undefined, should yield an error
+        assert!(compile_expression_test(r#"{"res": sqrt(-1)}"#, &[],).is_err());
+        // sqrt(-1) is undefined, should yield an error
     }
 
     #[test]
     pub fn test_exp_function() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "res": exp(1),
             "res2": exp(input.val1)
@@ -720,7 +721,7 @@ mod tests {
 
     #[test]
     pub fn test_trig_functions() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "res0": sin(0),
             "res1": sin(input),
@@ -752,8 +753,8 @@ mod tests {
         assert!((0.0 - res.get("res9").unwrap().as_f64().unwrap()).abs() < TINY);
         assert!((0.4636476090008061 - res.get("res10").unwrap().as_f64().unwrap()).abs() < TINY);
 
-        assert!(compile_expression(r#"{"res": asin(2)}"#, &[],).is_err()); // asin(2) is undefined, should yield an error
-        assert!(compile_expression(r#"{"res": acos(2)}"#, &[],).is_err()); // acos(2) is undefined, should yield an error
+        assert!(compile_expression_test(r#"{"res": asin(2)}"#, &[],).is_err()); // asin(2) is undefined, should yield an error
+        assert!(compile_expression_test(r#"{"res": acos(2)}"#, &[],).is_err()); // acos(2) is undefined, should yield an error
     }
 
     #[test]
@@ -761,7 +762,7 @@ mod tests {
         for func in [
             "floor", "ceil", "round", "sqrt", "exp", "sin", "cos", "tan", "asin", "acos", "atan",
         ] {
-            let expr = compile_expression(&format!("{}(input)", func), &["input"]).unwrap();
+            let expr = compile_expression_test(&format!("{}(input)", func), &["input"]).unwrap();
 
             // The argument can be either an integer or a float, and the result should be a float.
             let ty = expr.run_types([Type::Integer]).unwrap();
@@ -780,9 +781,11 @@ mod tests {
     #[test]
     fn test_two_arg_math_function_types() {
         for func in ["pow", "log", "atan2"] {
-            let expr =
-                compile_expression(&format!("{}(input1, input2)", func), &["input1", "input2"])
-                    .unwrap();
+            let expr = compile_expression_test(
+                &format!("{}(input1, input2)", func),
+                &["input1", "input2"],
+            )
+            .unwrap();
 
             // The arguments can be either integers or floats, and the result should be a float.
             let ty = expr.run_types([Type::Integer, Type::Integer]).unwrap();
@@ -807,7 +810,7 @@ mod tests {
 
     #[test]
     fn test_int_function_types() {
-        let expr = compile_expression("int(input)", &["input"]).unwrap();
+        let expr = compile_expression_test("int(input)", &["input"]).unwrap();
 
         // The argument can be a number, string, or boolean, and the result should be an integer.
         let ty = expr.run_types([Type::Integer]).unwrap();
@@ -830,7 +833,7 @@ mod tests {
 
     #[test]
     fn test_float_function_types() {
-        let expr = compile_expression("float(input)", &["input"]).unwrap();
+        let expr = compile_expression_test("float(input)", &["input"]).unwrap();
 
         // The argument can be a number, string, or boolean, and the result should be a float.
         let ty = expr.run_types([Type::Integer]).unwrap();
@@ -854,7 +857,7 @@ mod tests {
     #[test]
     fn test_min_max_function_types() {
         for func in ["min", "max"] {
-            let expr = compile_expression(&format!("{}(input)", func), &["input"]).unwrap();
+            let expr = compile_expression_test(&format!("{}(input)", func), &["input"]).unwrap();
 
             // The argument can be either an array of numbers, or many numbers as distinct args. The result should be a number.
             let ty = expr
@@ -875,9 +878,11 @@ mod tests {
                 })])
                 .is_err());
 
-            let expr =
-                compile_expression(&format!("{}(input1, input2)", func), &["input1", "input2"])
-                    .unwrap();
+            let expr = compile_expression_test(
+                &format!("{}(input1, input2)", func),
+                &["input1", "input2"],
+            )
+            .unwrap();
 
             let ty = expr.run_types([Type::number(), Type::number()]).unwrap();
             assert_eq!(Type::number(), ty);

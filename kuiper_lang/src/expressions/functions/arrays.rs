@@ -464,13 +464,13 @@ mod tests {
     use serde_json::Value;
 
     use crate::{
-        compile_expression,
+        compile_expression_test,
         types::{Array, Type},
     };
 
     #[test]
     pub fn test_length() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "v1": [1, 2, 3, 4].length(),
             "v2": "test test".length(),
@@ -491,7 +491,7 @@ mod tests {
 
     #[test]
     pub fn test_chunks() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "v1": [1, 2, 3, 4, 5, 6].chunk(4),
             "v2": ["test", 1, 2].chunk(1),
@@ -512,7 +512,7 @@ mod tests {
 
     #[test]
     pub fn test_slice() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "s1": [1, 2, 3, 4].slice(1, 3),
             "s2": [].slice(15, 16),
@@ -553,7 +553,7 @@ mod tests {
 
     #[test]
     pub fn test_tail() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
             "v1": [1, 2, 3, 4, 5, 6].tail(),
             "v2": [1, 2, 3, 4].tail(2),
@@ -577,7 +577,7 @@ mod tests {
 
     #[test]
     pub fn test_sum() {
-        let expr = compile_expression("[1, 1, 1, 2, 2, 2].sum()", &[]).unwrap();
+        let expr = compile_expression_test("[1, 1, 1, 2, 2, 2].sum()", &[]).unwrap();
 
         let res = expr.run([]).unwrap();
 
@@ -586,7 +586,7 @@ mod tests {
 
     #[test]
     pub fn test_contains() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"{
                 "t1": [1, 2, 3, 4].contains(4),
                 "t2": [1, 2, 3, 4].contains(6),
@@ -617,7 +617,7 @@ mod tests {
 
     #[test]
     pub fn test_length_types() {
-        let expr = compile_expression("input.length()", &["input"]).unwrap();
+        let expr = compile_expression_test("input.length()", &["input"]).unwrap();
         let ty = expr.run_types([Type::String]).unwrap();
         assert_eq!(Type::Integer, ty);
         let ty = expr
@@ -639,7 +639,7 @@ mod tests {
 
     #[test]
     pub fn test_chunk_types() {
-        let expr = compile_expression("input.chunk(input2)", &["input", "input2"]).unwrap();
+        let expr = compile_expression_test("input.chunk(input2)", &["input", "input2"]).unwrap();
         // Unknown chunk size, unknown array type
         let ty = expr
             .run_types([Type::array_of_type(Type::Integer), Type::Integer])
@@ -722,7 +722,7 @@ mod tests {
 
     #[test]
     fn test_tail_types() {
-        let expr = compile_expression("input.tail(input2)", &["input", "input2"]).unwrap();
+        let expr = compile_expression_test("input.tail(input2)", &["input", "input2"]).unwrap();
         // Unknown tail size, unknown array type
         let ty = expr
             .run_types([Type::array_of_type(Type::Integer), Type::Integer])
@@ -800,7 +800,7 @@ mod tests {
 
     #[test]
     fn test_slice_types() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             "input.slice(input2, input3)",
             &["input", "input2", "input3"],
         )
@@ -823,7 +823,7 @@ mod tests {
 
     #[test]
     fn test_sum_types() {
-        let expr = compile_expression("input.sum()", &["input"]).unwrap();
+        let expr = compile_expression_test("input.sum()", &["input"]).unwrap();
         let ty = expr
             .run_types([Type::array_of_type(Type::Integer)])
             .unwrap();
@@ -848,7 +848,8 @@ mod tests {
 
     #[test]
     fn test_contains_types() {
-        let expr = compile_expression("input1.contains(input2)", &["input1", "input2"]).unwrap();
+        let expr =
+            compile_expression_test("input1.contains(input2)", &["input1", "input2"]).unwrap();
         let ty = expr
             .run_types([Type::array_of_type(Type::Integer), Type::Integer])
             .unwrap();

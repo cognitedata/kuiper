@@ -109,13 +109,14 @@ impl LambdaAcceptFunction for FilterFunction {
 #[cfg(test)]
 mod tests {
     use crate::{
-        compile_expression,
+        compile_expression_test,
         types::{Array, Type},
     };
 
     #[test]
     pub fn test_simple_filter() {
-        let expr = compile_expression("[1, 2, 3, 4, 5, 6].filter((i) => i >= 4)", &[]).unwrap();
+        let expr =
+            compile_expression_test("[1, 2, 3, 4, 5, 6].filter((i) => i >= 4)", &[]).unwrap();
 
         let res = expr.run([]).unwrap();
 
@@ -128,7 +129,7 @@ mod tests {
 
     #[test]
     fn test_filter_types() {
-        let expr = compile_expression("input.filter(i => i == 'foo')", &["input"]).unwrap();
+        let expr = compile_expression_test("input.filter(i => i == 'foo')", &["input"]).unwrap();
         let res = expr
             .run_types([Type::Array(Array {
                 elements: vec![Type::String],

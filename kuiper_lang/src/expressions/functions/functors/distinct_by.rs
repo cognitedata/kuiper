@@ -151,14 +151,14 @@ mod tests {
     use logos::Span;
 
     use crate::{
-        compile_expression,
+        compile_expression_test,
         types::{Array, Object, ObjectField, Type},
         CompileError, TransformError,
     };
 
     #[test]
     fn test_distinct_by_fails_for_unknown_types() {
-        match compile_expression(r#"distinct_by(1234567890, (a) => a)"#, &[]) {
+        match crate::compile_expression(r#"distinct_by(1234567890, (a) => a)"#, &[]) {
             Ok(_) => panic!("Should not be able to resolve"),
             Err(err) => match err {
                 CompileError::Optimizer(TransformError::IncorrectTypeInField(t_err)) => {
@@ -176,7 +176,8 @@ mod tests {
     #[test]
     fn test_distinct_by_for_arrays() {
         let expr =
-            compile_expression(r#"distinct_by(["sheep", "apple", "sheep"], a => a)"#, &[]).unwrap();
+            compile_expression_test(r#"distinct_by(["sheep", "apple", "sheep"], a => a)"#, &[])
+                .unwrap();
 
         let res = expr.run([]).unwrap();
 
@@ -188,7 +189,7 @@ mod tests {
 
     #[test]
     fn test_distinct_by_for_objects() {
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"distinct_by({'x': 'y', 'a': 'b', 'c': 'b'}, (a, b) => a)"#,
             &[],
         )
@@ -204,7 +205,7 @@ mod tests {
 
     #[test]
     fn test_distinct_by_types() {
-        let r = compile_expression(r#"distinct_by(input, (a) => a)"#, &["input"]).unwrap();
+        let r = compile_expression_test(r#"distinct_by(input, (a) => a)"#, &["input"]).unwrap();
         let t = r
             .run_types([Type::Array(Array {
                 elements: vec![Type::Integer, Type::String],
@@ -249,7 +250,7 @@ mod tests {
     #[test]
     fn test_distinct_by_types_inner_error() {
         // If the lambda is called with impossible types we should get an error about that.
-        let r = compile_expression("distinct_by(input, a => a + 1)", &["input"]).unwrap();
+        let r = compile_expression_test("distinct_by(input, a => a + 1)", &["input"]).unwrap();
         let err = r
             .run_types([Type::Array(Array {
                 elements: vec![Type::String],

@@ -378,7 +378,7 @@ mod tests {
     use kuiper_lang_macros::SourceData;
     use serde::Serialize;
 
-    use crate::{compile_expression, expressions::source::SourceData};
+    use crate::{compile_expression_test, expressions::source::SourceData};
 
     use crate as kuiper_lang;
 
@@ -394,7 +394,7 @@ mod tests {
             name: "test".to_string(),
             values: vec![1, 2, 3],
         };
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
         {
             "foo": input.name,
@@ -424,7 +424,7 @@ mod tests {
             values: vec![1, 2, 3],
         };
         let lazy_data = crate::expressions::source::LazySourceDataJson::new_json(data);
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
         {
             "foo": input.name,
@@ -466,7 +466,7 @@ mod tests {
             data_1: vec![1, 2, 3],
             data_2: serde_json::json!({"a": 1, "b": 2}),
         };
-        let expr = compile_expression(
+        let expr = compile_expression_test(
             r#"
         {
             "foo": input.foo,

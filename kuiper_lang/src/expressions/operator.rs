@@ -438,11 +438,11 @@ impl UnaryOpExpression {
 
 #[cfg(test)]
 mod tests {
-    use crate::{compile_expression, types::Type};
+    use crate::{compile_expression_test, types::Type};
 
     #[test]
     fn test_arith_expr_types() {
-        let expr = compile_expression("1 + input", &["input"]).unwrap();
+        let expr = compile_expression_test("1 + input", &["input"]).unwrap();
         assert_eq!(expr.run_types([Type::Integer]).unwrap(), Type::Integer);
         assert_eq!(expr.run_types([Type::Float]).unwrap(), Type::Float);
         assert_eq!(expr.run_types([Type::number()]).unwrap(), Type::number());
@@ -461,7 +461,7 @@ mod tests {
 
     #[test]
     fn test_div_expr_types() {
-        let expr = compile_expression("1 / input", &["input"]).unwrap();
+        let expr = compile_expression_test("1 / input", &["input"]).unwrap();
         assert_eq!(expr.run_types([Type::Integer]).unwrap(), Type::Float);
         assert_eq!(expr.run_types([Type::Float]).unwrap(), Type::Float);
         assert_eq!(expr.run_types([Type::number()]).unwrap(), Type::Float);
@@ -477,7 +477,7 @@ mod tests {
 
     #[test]
     fn test_and_expr_types() {
-        let expr = compile_expression("input1 && input2", &["input1", "input2"]).unwrap();
+        let expr = compile_expression_test("input1 && input2", &["input1", "input2"]).unwrap();
         assert_eq!(
             expr.run_types([Type::from_const(true), Type::from_const(true)])
                 .unwrap(),
@@ -509,7 +509,7 @@ mod tests {
 
     #[test]
     fn test_or_expr_types() {
-        let expr = compile_expression("input1 || input2", &["input1", "input2"]).unwrap();
+        let expr = compile_expression_test("input1 || input2", &["input1", "input2"]).unwrap();
         assert_eq!(
             expr.run_types([Type::from_const(true), Type::from_const(true)])
                 .unwrap(),
@@ -541,7 +541,7 @@ mod tests {
 
     #[test]
     fn test_equality_expr_types() {
-        let expr = compile_expression("input1 == input2", &["input1", "input2"]).unwrap();
+        let expr = compile_expression_test("input1 == input2", &["input1", "input2"]).unwrap();
         assert_eq!(
             expr.run_types([Type::from_const(5), Type::from_const(5)])
                 .unwrap(),
@@ -568,7 +568,7 @@ mod tests {
 
     #[test]
     fn test_negate_expr_types() {
-        let expr = compile_expression("!input", &["input"]).unwrap();
+        let expr = compile_expression_test("!input", &["input"]).unwrap();
         assert_eq!(
             expr.run_types([Type::from_const(true)]).unwrap(),
             Type::from_const(false)
@@ -586,7 +586,7 @@ mod tests {
 
     #[test]
     fn test_minus_expr_types() {
-        let expr = compile_expression("-input", &["input"]).unwrap();
+        let expr = compile_expression_test("-input", &["input"]).unwrap();
         assert_eq!(
             expr.run_types([Type::from_const(5)]).unwrap(),
             Type::Integer

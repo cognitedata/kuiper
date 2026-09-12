@@ -122,11 +122,11 @@ impl LambdaAcceptFunction for FlatMapFunction {
 
 #[cfg(test)]
 mod tests {
-    use crate::{compile_expression, types::Type};
+    use crate::{compile_expression_test, types::Type};
 
     #[test]
     fn test_flatmap() {
-        let expr = compile_expression(r#"flatmap([1,2,3], a => [a + a])"#, &[]).unwrap();
+        let expr = compile_expression_test(r#"flatmap([1,2,3], a => [a + a])"#, &[]).unwrap();
 
         let res = expr.run([]).unwrap();
 
@@ -139,7 +139,7 @@ mod tests {
 
     #[test]
     fn test_flatmap_where_include_single() {
-        let expr = compile_expression(r#"flatmap([1,2,3, [4, 5]], a => a)"#, &[]).unwrap();
+        let expr = compile_expression_test(r#"flatmap([1,2,3, [4, 5]], a => a)"#, &[]).unwrap();
 
         let res = expr.run([]).unwrap();
 
@@ -154,7 +154,7 @@ mod tests {
 
     #[test]
     fn test_flatmap_types() {
-        let expr = compile_expression("flatmap(input, it => it)", &["input"]).unwrap();
+        let expr = compile_expression_test("flatmap(input, it => it)", &["input"]).unwrap();
         let res = expr
             .run_types([Type::Array(crate::types::Array {
                 elements: vec![
